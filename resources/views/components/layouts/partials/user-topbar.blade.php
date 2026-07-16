@@ -34,6 +34,11 @@
     </div>
 
     <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <button type="button" class="app-topbar__icon" data-modal-open="userPageHelp"
+            aria-label="{{ __('Help for this page') }}" title="{{ __('Help for this page') }}">
+            <i class="ph ph-question text-xl"></i>
+        </button>
+
         <button type="button" class="app-topbar__icon" data-action="toggle-theme"
             aria-label="{{ __('Toggle theme') }}">
             <svg id="sunIcon" class="hidden h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2"

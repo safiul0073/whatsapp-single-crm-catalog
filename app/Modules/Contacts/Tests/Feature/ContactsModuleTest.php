@@ -32,6 +32,8 @@ it('shows the csv upload drop zone in the import modal', function (): void {
         ->actingAs($user)
         ->get(route('user.contacts.index'))
         ->assertOk()
+        ->assertSee('Maintain clean customer records so conversations, campaigns, CRM leads, and automation use the right people.')
+        ->assertSee('Contacts guide')
         ->assertSee('Drop your file here or click to browse')
         ->assertSee(route('user.contacts.export'), false)
         ->assertSee('Custom fields')

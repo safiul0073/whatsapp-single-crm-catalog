@@ -58,6 +58,7 @@
 
         {{-- Main Content --}}
         <main class="px-4 py-6 sm:px-6 lg:px-8">
+            <x-ui.page-help :page-title="$title" />
             {{ $slot }}
         </main>
     </div>
