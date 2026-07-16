@@ -1,0 +1,19 @@
+<x-layouts.{{ panelLower }} :title="__('{{ studlyName }}')">
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <h1 class="heading-4 text-neutral-950">{{ __('{{ studlyName }}') }}</h1>
+            <div class="flex items-center gap-3">
+                <x-ui.button variant="outline" type="button" data-modal-trigger="importCsv">
+                    <i class="ph ph-upload-simple"></i> {{ __('Import') }}
+                </x-ui.button>
+                <x-ui.button variant="primary" href="{{ route('{{ panelLower }}.{{ lowerName }}.create') }}">
+                    <i class="ph ph-plus-circle"></i> {{ __('Create') }}
+                </x-ui.button>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <x-tables.resource :definition="$table" :items="${{ variablePlural }}" />
+        </div>
+    </div>
+</x-layouts.{{ panelLower }}>

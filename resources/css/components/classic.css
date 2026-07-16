@@ -1,0 +1,1599 @@
+/* =====================================================================
+   Classic Theme — WhatsApp SaaS component styles
+   Ported from whatsapp-html/src/assets/css/app.css
+   ===================================================================== */
+
+/* =====================================================================
+   App Shell — left sidebar + content column
+   ===================================================================== */
+.app-shell {
+  @apply min-h-screen w-full max-w-full bg-section lg:pl-64;
+}
+
+.app-shell main > .grid > *,
+.app-shell main .grid > * {
+  @apply min-w-0;
+}
+
+.app-sidebar {
+  @apply invisible fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-neutral-200 bg-neutral-0 transition-transform duration-300 lg:visible lg:translate-x-0;
+}
+
+.app-sidebar.is-open {
+  @apply visible translate-x-0;
+}
+
+.app-sidebar__brand {
+  @apply flex h-16 shrink-0 items-center gap-2.5 border-b border-neutral-200 px-5;
+}
+
+.app-sidebar__user {
+  @apply shrink-0 border-t border-neutral-200 p-3;
+}
+
+.app-backdrop {
+  @apply invisible fixed inset-0 z-40 bg-title/40 opacity-0 transition-opacity duration-300;
+}
+
+.app-backdrop.is-open {
+  @apply visible opacity-100;
+}
+
+.app-nav__group {
+  @apply px-3 pt-5 pb-2 text-xs font-bold tracking-wider text-neutral-400 uppercase first:pt-1;
+}
+
+.app-nav__link {
+  @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.app-nav__link.is-active {
+  @apply bg-primary/10 font-semibold text-primary;
+}
+
+.app-nav__link.is-active::before {
+  @apply absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent content-[''];
+}
+
+.app-topbar {
+  @apply sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-0/85 px-4 backdrop-blur-lg sm:px-6;
+}
+
+.app-topbar__search {
+  @apply hidden w-full max-w-xs items-center gap-2 rounded-full border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
+}
+
+.app-topbar__search input {
+  @apply w-full bg-transparent text-title outline-none placeholder:text-neutral-400;
+}
+
+.app-topbar__icon {
+  @apply relative grid h-9 w-9 place-items-center rounded-full text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.app-topbar__sidebar-toggle {
+  @apply grid h-10 w-10 shrink-0 place-items-center rounded-full border border-neutral-200 bg-neutral-0 text-title shadow-sm transition-colors hover:border-primary/40 hover:bg-section hover:text-primary;
+}
+
+@media (min-width: 992px) {
+  .app-topbar__sidebar-toggle {
+    display: none;
+  }
+}
+
+/* =====================================================================
+   App Card — reusable container for content sections
+   ===================================================================== */
+.app-card {
+  @apply rounded-2xl border border-neutral-200 bg-neutral-0;
+}
+
+/* =====================================================================
+   App Table — data tables for list pages
+   ===================================================================== */
+.app-table {
+  @apply w-full border-collapse text-left text-sm;
+}
+
+.app-table thead th {
+  @apply border-b border-neutral-200 bg-section/50 px-4 py-3.5 text-xs font-bold tracking-wider text-neutral-400 uppercase;
+}
+
+.app-table tbody td {
+  @apply border-b border-neutral-100 px-4 py-3.5 align-middle text-body;
+}
+
+.app-table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.app-table tbody tr {
+  @apply transition-colors hover:bg-section/60;
+}
+
+/* =====================================================================
+   List Table — responsive grid-based table
+   ===================================================================== */
+.list-table {
+  --list-cols: 2.5rem minmax(10rem, 1.6fr) minmax(9rem, 1.2fr)
+    minmax(12rem, 1.6fr) minmax(9rem, 1.2fr) minmax(7rem, 1fr) 3rem;
+  min-width: 56rem;
+}
+
+.list-table__head,
+.list-table__row {
+  display: grid;
+  grid-template-columns: var(--list-cols);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  white-space: nowrap;
+}
+
+.list-table__head {
+  @apply border-b border-neutral-200 bg-section/50 text-xs font-bold tracking-wider text-neutral-400 uppercase;
+}
+
+.list-table__row {
+  @apply border-b border-neutral-100 text-sm text-body transition-colors last:border-b-0 hover:bg-section/60;
+}
+
+.list-table__row.is-selected {
+  @apply bg-primary/5;
+}
+
+.list-table__row .truncate {
+  @apply min-w-0;
+}
+
+/* Hidden state for JS filtering */
+.is-hidden {
+  display: none !important;
+}
+
+/* =====================================================================
+   App Checkbox & Radio
+   ===================================================================== */
+.app-checkbox {
+  @apply h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/30;
+}
+
+.app-radio {
+  @apply h-4 w-4 border-neutral-300 text-primary focus:ring-primary/30;
+}
+
+/* =====================================================================
+   Row Action Button
+   ===================================================================== */
+.row-action {
+  @apply grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-title;
+}
+
+/* =====================================================================
+   Range Button (7d/30d/90d, status filters)
+   ===================================================================== */
+.range-btn {
+  @apply rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.range-btn.is-active {
+  @apply bg-primary text-neutral-0 shadow-[0_4px_12px_-4px_rgba(31,170,83,0.6)] hover:bg-primary hover:text-neutral-0;
+}
+
+/* =====================================================================
+   Template Card — WhatsApp message template preview
+   ===================================================================== */
+.template-card {
+  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+}
+
+.template-card__chat {
+  @apply mt-4 flex-1 rounded-xl bg-section p-3;
+}
+
+.template-card__bubble {
+  @apply overflow-hidden rounded-xl rounded-tl-sm bg-neutral-0 shadow-[0_1px_2px_rgba(10,27,20,0.08)];
+}
+
+.template-card__media {
+  @apply grid h-28 place-items-center bg-neutral-100 text-neutral-400;
+}
+
+.template-card__body {
+  @apply px-3 py-2.5 text-sm leading-relaxed text-title;
+}
+
+.template-card__body strong {
+  @apply font-semibold;
+}
+
+.template-card__footer {
+  @apply px-3 pb-2 text-xs text-neutral-400;
+}
+
+.template-card__btn {
+  @apply flex items-center justify-center gap-1.5 border-t border-neutral-100 py-2 text-sm font-medium text-info;
+}
+
+/* =====================================================================
+   Segment Card
+   ===================================================================== */
+.segment-card {
+  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+}
+
+.segment-card__footer {
+  @apply mt-4 flex items-center justify-between gap-3 border-t border-neutral-100 pt-3;
+}
+
+/* =====================================================================
+   Plan Card
+   ===================================================================== */
+.plan-card {
+  @apply relative flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+}
+
+.plan-card--popular {
+  @apply border-primary/40 ring-1 ring-primary/30;
+}
+
+.plan-card__flag {
+  @apply absolute -top-3 left-5 rounded-full bg-primary px-3 py-1 text-xs font-bold text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)];
+}
+
+.plan-card__features {
+  @apply mt-5 flex-1 space-y-2.5 text-sm text-body;
+
+  li {
+    @apply flex items-center gap-2;
+  }
+}
+
+.plan-card__footer {
+  @apply mt-6 flex items-center justify-between gap-3 border-t border-neutral-100 pt-4;
+}
+
+/* =====================================================================
+   Gateway Card
+   ===================================================================== */
+.gateway-card {
+  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+}
+
+.gateway-card__logo {
+  @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl;
+}
+
+.gateway-card__footer {
+  @apply mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4;
+}
+
+/* =====================================================================
+   Integration Card
+   ===================================================================== */
+.integration-card {
+  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+}
+
+.integration-card__head {
+  @apply flex items-center gap-3;
+}
+
+.integration-card__logo {
+  @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl;
+}
+
+.integration-card__meta {
+  @apply mt-4 flex-1 text-xs text-body;
+}
+
+.integration-card__footer {
+  @apply mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4;
+}
+
+/* =====================================================================
+   Auto-Reply Rule Row
+   ===================================================================== */
+.rule-row {
+  @apply flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-neutral-0 p-4 sm:flex-row sm:items-center sm:gap-4;
+}
+
+.rule-row__msg {
+  @apply mt-2 truncate text-sm text-body;
+}
+
+.rule-row__actions {
+  @apply flex shrink-0 items-center gap-2 self-end sm:self-center;
+}
+
+.rule-pill {
+  @apply inline-flex items-center gap-1 rounded-md bg-section px-2 py-0.5 text-xs font-medium text-body;
+}
+
+/* =====================================================================
+   Chat Widget Card
+   ===================================================================== */
+.widget-card {
+  @apply relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0 p-5 pt-6;
+}
+
+.widget-card__accent {
+  @apply absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-accent;
+}
+
+/* Inline embed code snippet */
+.code-box {
+  @apply truncate rounded-lg bg-deep px-3 py-2 font-mono text-xs text-neutral-0/90;
+}
+
+/* Code block with copy button */
+.code-block {
+  @apply relative max-w-3xl rounded-xl border border-neutral-200 bg-deep py-3 pr-12 pl-4;
+
+  code {
+    @apply block overflow-x-auto font-mono text-xs whitespace-nowrap text-neutral-0;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+.code-block__copy {
+  @apply absolute top-2 right-2 grid h-8 w-8 place-items-center rounded-lg text-neutral-300 transition-colors hover:bg-neutral-0/10 hover:text-neutral-0;
+}
+
+.code-block--multi pre {
+  @apply m-0;
+}
+.code-block--multi pre code {
+  @apply block overflow-x-auto font-mono text-xs whitespace-pre-wrap text-neutral-0;
+}
+
+/* =====================================================================
+   Inbox (3-pane)
+   ===================================================================== */
+.inbox {
+  @apply flex h-[calc(100vh-4rem)] overflow-hidden;
+}
+
+.inbox__rail {
+  @apply hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-neutral-0 xl:flex;
+}
+
+.inbox__list {
+  @apply flex w-full shrink-0 flex-col overflow-hidden border-r border-neutral-200 bg-neutral-0 lg:w-80;
+}
+
+.inbox__thread {
+  @apply hidden min-w-0 flex-1 flex-col bg-section lg:flex;
+}
+
+.inbox__crm {
+  @apply fixed inset-y-0 right-0 z-50 hidden w-[min(22rem,calc(100vw-2rem))] flex-col border-l border-neutral-200 bg-neutral-0 shadow-2xl 2xl:relative 2xl:z-auto 2xl:flex 2xl:w-80 2xl:shrink-0 2xl:shadow-none;
+}
+
+.inbox__crm.is-open {
+  @apply flex;
+}
+
+.inbox.show-thread .inbox__list {
+  @apply hidden lg:flex;
+}
+
+.inbox.show-thread .inbox__thread {
+  @apply flex;
+}
+
+/* Chat bubbles */
+.chat-date-separator {
+  @apply flex items-center justify-center py-3 text-[11px] font-semibold uppercase tracking-wide text-neutral-400;
+}
+
+.chat-date-separator span {
+  @apply rounded-full border border-neutral-200 bg-neutral-0 px-3 py-1 shadow-sm;
+}
+
+.chat-message {
+  @apply flex w-full;
+}
+
+.chat-message--in {
+  @apply justify-start;
+}
+
+.chat-message--out {
+  @apply justify-end;
+}
+
+.chat-message:not(.chat-message--grouped) {
+  @apply mt-2.5;
+}
+
+.chat-message--grouped {
+  @apply mt-1;
+}
+
+.chat-bubble {
+  @apply max-w-[84%] rounded-[1.15rem] px-3.5 py-2.5 text-sm leading-relaxed shadow-sm sm:max-w-[68%] xl:max-w-[58%];
+}
+
+.chat-bubble--in {
+  @apply rounded-bl-md border border-neutral-200 bg-neutral-0 text-title;
+}
+
+.chat-bubble--out {
+  @apply rounded-br-md bg-primary/90 text-neutral-0 shadow-primary/10;
+}
+
+.chat-bubble__body {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.chat-bubble__meta {
+  @apply mt-1.5 flex items-center justify-end gap-1 text-[10px] font-medium leading-none opacity-75;
+}
+
+.chat-bubble--in .chat-bubble__meta {
+  @apply text-body;
+}
+
+.chat-bubble--out .chat-bubble__meta {
+  @apply text-neutral-0/80;
+}
+
+.chat-attachment {
+  @apply transition hover:opacity-90;
+}
+
+.chat-attachment--image {
+  @apply block overflow-hidden rounded-xl bg-black/5;
+}
+
+.chat-attachment--image img {
+  @apply max-h-64 w-full object-cover;
+}
+
+.chat-attachment--file {
+  @apply flex items-center gap-3 rounded-xl bg-neutral-0/20 p-3 text-current;
+}
+
+.chat-attachment__icon {
+  @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-neutral-0/25;
+}
+
+.inbox-composer {
+  @apply flex items-end gap-2 border-t border-neutral-200 bg-neutral-0/95 px-3 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.04)] backdrop-blur;
+}
+
+.inbox-composer__icon {
+  @apply grid h-10 w-10 shrink-0 place-items-center rounded-full border border-neutral-200 bg-neutral-0 text-body transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-300;
+}
+
+.inbox-composer__attachment {
+  @apply mb-2 flex items-center gap-3 rounded-xl border border-neutral-200 bg-section p-2 shadow-sm;
+}
+
+.inbox-composer__input {
+  @apply min-h-10 max-h-32 w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-0 px-4 py-2.5 text-sm text-title outline-none transition focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:bg-neutral-50 disabled:text-neutral-400;
+}
+
+.inbox-composer__send {
+  @apply grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-neutral-0 transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-neutral-300;
+}
+
+/* Conversation row */
+.convo-item {
+  @apply flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-section;
+}
+
+.convo-item.is-active {
+  @apply bg-primary/5;
+}
+
+/* View/label link in the inbox rail */
+.inbox-view {
+  @apply flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.inbox-view.is-active {
+  @apply bg-primary/10 text-primary;
+}
+
+/* =====================================================================
+   Avatar
+   ===================================================================== */
+.avatar {
+  @apply grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary;
+}
+
+/* =====================================================================
+   Toggle Switch
+   ===================================================================== */
+.switch {
+  @apply relative inline-flex cursor-pointer items-center;
+}
+
+.switch input {
+  @apply sr-only;
+}
+
+.switch__track {
+  @apply h-5 w-9 rounded-full bg-neutral-300 transition-colors after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-neutral-0 after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30;
+}
+
+/* =====================================================================
+   Form Controls — Classic theme
+   ===================================================================== */
+.form-input {
+  @apply w-full rounded-xl border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm text-title transition-colors placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+}
+
+select.form-input {
+  @apply cursor-pointer appearance-none bg-no-repeat pr-10;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.85rem center;
+  background-size: 1.1rem;
+}
+
+.form-input-sm {
+  @apply rounded-lg px-2.5 py-1.5 text-sm;
+}
+
+.input-search {
+  padding-left: 2.75rem;
+}
+
+.form-label {
+  @apply mb-1.5 block text-sm font-semibold text-title;
+}
+
+.form-hint {
+  @apply mt-1.5 text-xs text-neutral-400;
+}
+
+.form-note {
+  @apply hidden;
+}
+
+.form-note.is-shown {
+  @apply flex;
+}
+
+/* =====================================================================
+   Form Editor Controls (template/campaign builders)
+   ===================================================================== */
+.radio-card {
+  @apply cursor-pointer rounded-md border border-neutral-200 px-4 py-2 text-sm font-semibold text-body transition-colors hover:border-primary/40 hover:text-title;
+}
+
+.radio-card input {
+  @apply sr-only;
+}
+
+.radio-card:has(input:checked) {
+  @apply border-primary bg-primary/10 text-primary;
+}
+
+.seg-tab {
+  @apply rounded-lg border border-neutral-200 px-3 py-1.5 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-title;
+}
+
+.seg-tab.is-active {
+  @apply border-primary bg-primary text-neutral-0 hover:text-neutral-0;
+}
+
+.component-block {
+  @apply rounded-xl border border-neutral-200 p-4;
+}
+
+.component-block__label {
+  @apply text-xs font-bold tracking-wider text-neutral-400 uppercase;
+}
+
+.upload-drop {
+  @apply grid place-items-center rounded-xl border border-dashed border-neutral-300 bg-section/60 px-4 py-8 text-center text-neutral-400;
+}
+
+/* WhatsApp template builder live preview */
+.wa-phone {
+  @apply overflow-hidden rounded-[2rem] border border-neutral-200 bg-neutral-900 p-2 shadow-[0_24px_60px_-32px_rgba(10,27,20,0.45)];
+}
+
+.wa-phone--compact {
+  @apply rounded-[1.75rem] p-1.5;
+}
+
+.wa-phone--compact .wa-phone__bar {
+  @apply gap-2 px-3 py-2;
+}
+
+.wa-phone--compact .wa-phone__avatar {
+  @apply h-8 w-8 text-lg;
+}
+
+.wa-phone--compact .wa-phone__name {
+  @apply text-[0.8rem];
+}
+
+.wa-phone--compact .wa-phone__status {
+  @apply text-[0.68rem];
+}
+
+.wa-phone__bar {
+  @apply flex items-center gap-3 rounded-t-[1.5rem] bg-deep px-4 py-3 text-neutral-0;
+}
+
+.wa-phone__avatar {
+  @apply grid h-9 w-9 place-items-center rounded-full bg-neutral-0/15 text-xl text-neutral-0;
+}
+
+.wa-phone__name {
+  @apply text-sm font-bold leading-tight text-neutral-0;
+}
+
+.wa-phone__status {
+  @apply text-xs leading-tight text-neutral-0/70;
+}
+
+.wa-phone__screen {
+  @apply min-h-[34rem] rounded-b-[1.5rem] bg-[#e5ddd5] p-4;
+  background-position: center;
+  background-repeat: repeat;
+  background-size: 320px 320px;
+}
+
+.wa-phone--compact .wa-phone__screen {
+  @apply min-h-[27rem] p-3;
+  background-size: 260px 260px;
+}
+
+.wa-phone__bubble {
+  @apply ml-auto max-w-[19rem] overflow-hidden rounded-xl rounded-tr-sm bg-[#dcf8c6] shadow-[0_1px_2px_rgba(10,27,20,0.16)];
+}
+
+.wa-phone--centered .wa-phone__bubble {
+  @apply mx-auto ml-0;
+}
+
+.wa-phone--compact .wa-phone__bubble {
+  @apply max-w-[16rem];
+}
+
+.wa-phone__header {
+  @apply px-3 pt-3 text-sm font-bold leading-snug text-neutral-900;
+}
+
+.wa-phone--compact .wa-phone__header {
+  @apply px-2.5 pt-2 text-xs;
+}
+
+.wa-phone__media {
+  @apply overflow-hidden bg-neutral-100;
+}
+
+.wa-phone__media img {
+  @apply h-44 w-full object-cover;
+}
+
+.wa-phone--compact .wa-phone__media img {
+  @apply h-32;
+}
+
+.wa-phone__media-placeholder {
+  @apply grid h-40 place-items-center gap-2 px-4 text-center text-sm font-semibold text-neutral-500;
+}
+
+.wa-phone--compact .wa-phone__media-placeholder {
+  @apply h-28 gap-1.5 px-3 text-xs;
+}
+
+.wa-phone__body {
+  @apply px-3 pt-2.5 text-sm leading-relaxed text-neutral-900;
+}
+
+.wa-phone--compact .wa-phone__body {
+  @apply px-2.5 pt-2 text-xs leading-relaxed;
+}
+
+.wa-phone__body code {
+  @apply rounded bg-neutral-900/10 px-1 font-mono text-[0.8em];
+}
+
+.wa-phone__footer {
+  @apply px-3 pt-1.5 text-xs text-neutral-500;
+}
+
+.wa-phone--compact .wa-phone__footer {
+  @apply px-2.5 pt-1 text-[0.68rem];
+}
+
+.wa-phone__time {
+  @apply px-3 pb-1.5 pt-1 text-right text-[0.68rem] text-neutral-500;
+}
+
+.wa-phone--compact .wa-phone__time {
+  @apply px-2.5 pb-1 pt-0.5 text-[0.62rem];
+}
+
+.wa-phone__button {
+  @apply flex items-center justify-center gap-1.5 border-t border-neutral-900/10 bg-[#dcf8c6] px-3 py-2 text-sm font-semibold text-info;
+}
+
+.wa-phone--compact .wa-phone__button {
+  @apply px-2.5 py-1.5 text-xs;
+}
+
+.wa-phone--whatsapp .wa-phone__bar {
+  @apply bg-[#075e54];
+}
+
+.wa-phone--whatsapp .wa-phone__screen {
+  @apply bg-[#efe7dc];
+  background-image: url("/assets/images/previews/whatsapp-chat-bg.svg");
+}
+
+.wa-phone--telegram .wa-phone__bar {
+  @apply bg-[#2aabee];
+}
+
+.wa-phone--telegram .wa-phone__screen {
+  @apply bg-[#8fc5e8];
+  background-image: url("/assets/images/previews/telegram-chat-bg.svg");
+}
+
+.wa-phone--telegram .wa-phone__bubble,
+.wa-phone--telegram .wa-phone__button {
+  @apply bg-neutral-0;
+}
+
+.wa-phone--telegram .wa-phone__bubble {
+  @apply rounded-2xl rounded-br-sm;
+}
+
+.wa-phone--telegram .wa-phone__button {
+  @apply text-[#2aabee];
+}
+
+.step-chip {
+  @apply grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 font-title text-sm font-extrabold text-primary;
+}
+
+.check-row {
+  @apply flex cursor-pointer items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 transition-colors hover:border-primary/40;
+}
+
+.check-row:has(input:checked) {
+  @apply border-primary bg-primary/5;
+}
+
+.plan-pick {
+  @apply block cursor-pointer rounded-xl border border-neutral-200 p-4 transition-colors hover:border-primary/40;
+}
+
+.plan-pick:has(input:checked) {
+  @apply border-primary bg-primary/5;
+}
+
+.info-banner {
+  @apply flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3;
+}
+
+/* =====================================================================
+   Funnel / Progress Bars
+   ===================================================================== */
+.funnel-track {
+  @apply h-2.5 w-full overflow-hidden rounded-full bg-neutral-100;
+}
+
+.funnel-bar {
+  @apply block h-full rounded-full;
+}
+
+.status-dot {
+  @apply inline-block h-2 w-2 shrink-0 rounded-full;
+}
+
+/* =====================================================================
+   Copy Feedback
+   ===================================================================== */
+.is-copied {
+  @apply relative border-success text-success;
+}
+
+.is-copied > * {
+  @apply invisible;
+}
+
+.is-copied::after {
+  content: "Copied!";
+  @apply absolute inset-0 grid place-items-center font-semibold;
+}
+
+/* =====================================================================
+   Section Nav (landing-page editor)
+   ===================================================================== */
+.section-nav {
+  @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.section-nav.is-active {
+  @apply bg-primary/10 text-primary;
+}
+
+/* =====================================================================
+   Support Inbox
+   ===================================================================== */
+.ticket-item {
+  @apply block cursor-pointer px-4 py-3 transition-colors hover:bg-section;
+}
+
+.ticket-item.is-active {
+  @apply bg-primary/5 ring-1 ring-primary/20 ring-inset;
+}
+
+.attach-chip {
+  @apply inline-flex max-w-full items-center gap-1.5 rounded-lg border border-neutral-200 bg-section py-1 pr-1 pl-2.5 text-xs text-title;
+}
+
+.attach-chip__name {
+  @apply max-w-44 truncate;
+}
+
+.attach-chip__remove {
+  @apply grid h-5 w-5 shrink-0 place-items-center rounded-md text-neutral-400 transition-colors hover:bg-error/10 hover:text-error;
+}
+
+/* =====================================================================
+   Chart Box
+   ===================================================================== */
+.chart-box {
+  @apply relative h-44 w-full;
+
+  canvas {
+    @apply !h-full !max-w-full;
+  }
+}
+
+/* =====================================================================
+   Coupon Code (copyable)
+   ===================================================================== */
+.coupon-code {
+  @apply inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-section px-2.5 py-1 font-mono text-sm font-semibold text-title transition-colors hover:border-primary/40 hover:text-primary;
+}
+
+/* =====================================================================
+   Pagination
+   ===================================================================== */
+.page-btn {
+  @apply grid h-9 min-w-9 place-items-center rounded-lg border border-neutral-200 px-3 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-primary;
+}
+
+.page-btn.is-active {
+  @apply border-primary bg-primary text-neutral-0;
+}
+
+.page-btn:disabled {
+  @apply cursor-not-allowed opacity-40 hover:border-neutral-200 hover:text-body;
+}
+
+/* =====================================================================
+   Dropdown — portaled floating menu
+   ===================================================================== */
+.dropdown-menu {
+  @apply absolute z-50 hidden w-48 origin-top scale-95 rounded-xl border border-neutral-200 bg-neutral-0 p-1.5 opacity-0 shadow-[0_20px_50px_-20px_rgba(10,27,20,0.35)] transition-[opacity,transform] duration-150;
+}
+
+.dropdown-menu.dropdown-menu--floating {
+  @apply block scale-100 opacity-100;
+}
+
+.dropdown-menu--up {
+  @apply origin-bottom;
+}
+
+.dropdown-item {
+  @apply flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+}
+
+.dropdown-item.is-active {
+  @apply bg-primary/10 font-semibold text-primary;
+
+  &::after {
+    @apply ml-auto content-[''];
+    width: 1rem;
+    height: 1rem;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+      no-repeat center / contain;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+      no-repeat center / contain;
+  }
+}
+
+/* =====================================================================
+   Wizard (import steps)
+   ===================================================================== */
+.wizard-steps {
+  @apply flex flex-wrap items-center gap-x-3 gap-y-2;
+}
+
+.wizard-step {
+  @apply flex items-center gap-2 text-sm font-semibold text-neutral-400;
+}
+
+.wizard-step__dot {
+  @apply grid h-7 w-7 shrink-0 place-items-center rounded-full bg-neutral-100 font-title text-sm font-extrabold text-neutral-400 transition-colors;
+}
+
+.wizard-step.is-active {
+  @apply text-title;
+}
+
+.wizard-step.is-active .wizard-step__dot {
+  @apply bg-primary text-neutral-0;
+}
+
+.wizard-step.is-done {
+  @apply text-title;
+}
+
+.wizard-step.is-done .wizard-step__dot {
+  @apply bg-primary/15 text-primary;
+}
+
+.wizard-panel {
+  @apply hidden;
+}
+
+.wizard-panel.is-active {
+  @apply block;
+}
+
+/* =====================================================================
+   Bulk Actions Bar
+   ===================================================================== */
+.bulk-bar {
+  @apply hidden flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3;
+}
+
+.bulk-bar.is-shown {
+  @apply flex;
+}
+
+/* =====================================================================
+   Leads Pipeline Board
+   ===================================================================== */
+.crm-board {
+  @apply flex min-h-[32rem] gap-4 overflow-x-auto pb-4;
+}
+
+.pipeline-col {
+  @apply flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-section;
+}
+
+.pipeline-col__head {
+  @apply flex items-center justify-between gap-2 px-3.5 pt-3 pb-2;
+}
+
+.pipeline-col__title {
+  @apply text-sm font-bold text-title;
+}
+
+.pipeline-col__count {
+  @apply grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs font-bold;
+}
+
+.pipeline-col__body {
+  @apply flex flex-col gap-3 px-3 pt-1 pb-3;
+}
+
+.pipeline-col--new .pipeline-col__count {
+  @apply bg-info/15 text-info;
+}
+
+.pipeline-col--contacted .pipeline-col__count {
+  @apply bg-warning/15 text-warning;
+}
+
+.pipeline-col--qualified .pipeline-col__count {
+  @apply bg-primary/15 text-primary;
+}
+
+.pipeline-col--won .pipeline-col__count {
+  @apply bg-success/15 text-success;
+}
+
+.lead-card {
+  @apply relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0 p-3 pl-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)];
+}
+
+.lead-card--campaign::before {
+  @apply bg-primary;
+}
+
+.lead-card--referral::before {
+  @apply bg-accent;
+}
+
+.lead-card--walk-in::before {
+  @apply bg-warning;
+}
+
+.lead-card--won::before {
+  @apply bg-success;
+}
+
+.lead-card__foot {
+  @apply mt-3 flex items-center justify-between border-t border-neutral-100 pt-2.5;
+}
+
+/* =====================================================================
+   Automation Builder
+   ===================================================================== */
+.builder-canvas {
+  @apply relative max-h-[34rem] min-h-[28rem] overflow-auto rounded-none border border-dashed border-neutral-300 bg-section;
+}
+.builder-canvas.is-dropping {
+  @apply border-primary bg-primary/5;
+}
+
+.builder-surface {
+  @apply relative h-full min-h-[26rem] w-full min-w-[44rem];
+  background-image: radial-gradient(
+    var(--color-neutral-200) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+}
+
+.palette-item {
+  @apply flex cursor-grab items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-3 transition-colors select-none hover:border-primary/40 hover:bg-section active:cursor-grabbing;
+}
+.palette-item__icon {
+  @apply grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary;
+}
+
+.palette-item--start {
+  @apply border-primary/40 bg-primary/10 text-primary hover:border-primary hover:bg-primary/15;
+}
+
+.palette-item--start .palette-item__icon {
+  @apply bg-primary text-neutral-0;
+}
+
+.palette-item--start span {
+  @apply text-primary;
+}
+
+.flow-node {
+  @apply absolute flex w-44 cursor-grab items-center gap-2.5 rounded-xl border border-neutral-200 bg-neutral-0 p-3 shadow-[0_4px_14px_-6px_rgba(10,27,20,0.2)] transition-shadow select-none;
+}
+.flow-node:hover {
+  @apply border-primary/40;
+}
+.flow-node.is-selected {
+  @apply border-primary ring-2 ring-primary/25;
+}
+.flow-node.is-dragging {
+  @apply cursor-grabbing shadow-[0_12px_28px_-8px_rgba(10,27,20,0.35)];
+}
+.flow-node__icon {
+  @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-0;
+}
+.flow-node--trigger .flow-node__icon {
+  @apply bg-accent;
+}
+.flow-node--condition .flow-node__icon {
+  @apply bg-warning;
+}
+.flow-node--action .flow-node__icon {
+  @apply bg-primary;
+}
+.flow-node--delay .flow-node__icon {
+  @apply bg-deep;
+}
+.flow-node__text {
+  @apply flex min-w-0 flex-col;
+}
+.flow-node__kind {
+  @apply text-[10px] font-bold tracking-wider text-neutral-400 uppercase;
+}
+.flow-node__title {
+  @apply truncate text-sm font-semibold text-title;
+}
+
+.flow-line {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  opacity: 0.5;
+}
+
+.flow-builder-canvas {
+  @apply max-h-[46rem] min-h-[42rem] bg-neutral-50;
+}
+
+.flow-builder-surface {
+  @apply min-h-0 min-w-0;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.flow-builder-shell {
+  @apply relative shadow-[0_18px_45px_-34px_rgba(10,27,20,0.45)];
+}
+
+.flow-builder-palette {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-300) transparent;
+}
+
+.flow-palette-toggle {
+  @apply absolute top-1/2 left-0 z-30 grid h-12 w-5 -translate-y-1/2 place-items-center rounded-r-lg border border-l-0 border-neutral-200 bg-neutral-0 text-neutral-500 shadow-sm hover:bg-section hover:text-primary;
+}
+
+.flow-builder-shell.is-palette-open .flow-palette-toggle {
+  @apply left-64;
+}
+
+.flow-builder-shell.is-palette-collapsed .flow-palette-toggle {
+  @apply left-0;
+}
+
+.flow-builder-zoom-layer {
+  @apply absolute top-0 left-0 origin-top-left;
+}
+
+.flow-builder-empty {
+  @apply absolute top-1/2 left-1/2 z-10 w-[min(30rem,calc(100vw-4rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-dashed border-neutral-300 bg-neutral-0/95 p-6 text-center shadow-[0_18px_48px_-28px_rgba(10,27,20,0.45)];
+}
+
+.flow-builder-empty__icon {
+  @apply mx-auto grid h-12 w-12 place-items-center rounded-lg bg-primary/10 text-xl text-primary;
+}
+
+.flow-builder-empty__title {
+  @apply mt-3 font-title text-lg font-bold text-title;
+}
+
+.flow-builder-empty__text {
+  @apply mx-auto mt-1 max-w-sm text-sm text-neutral-500;
+}
+
+.flow-node-card {
+  @apply absolute w-[268px] rounded-xl border border-neutral-200 bg-neutral-0 shadow-[0_12px_30px_-22px_rgba(10,27,20,0.35)] transition select-none;
+  transition-property: border-color, box-shadow, transform;
+}
+
+.flow-node-card:hover,
+.flow-node-card.is-selected {
+  @apply border-primary shadow-[0_18px_34px_-24px_rgba(7,94,84,0.46)] ring-2 ring-primary/15;
+}
+
+.flow-node-card--trigger {
+  @apply border-primary/40;
+}
+
+.flow-node-card--trigger .flow-node-card__title {
+  @apply text-primary;
+}
+
+.flow-node-card--trigger .flow-node-card__icon {
+  @apply bg-primary text-neutral-0;
+}
+
+.flow-node-card--trigger .flow-node-card__badge {
+  @apply border-primary bg-primary text-neutral-0;
+}
+
+.flow-node-card.is-dragging {
+  @apply cursor-grabbing shadow-[0_24px_44px_-22px_rgba(10,27,20,0.45)];
+  transition: none;
+}
+
+.flow-node-card__head {
+  @apply flex cursor-grab items-start gap-3 border-b border-neutral-100 p-3;
+}
+
+.flow-node-card__icon {
+  @apply grid h-8 w-8 shrink-0 place-items-center rounded-md text-base;
+}
+
+.flow-node-card__title {
+  @apply block truncate text-sm font-bold text-title;
+}
+
+.flow-node-card__id {
+  @apply block truncate font-mono text-[10px] text-neutral-400;
+}
+
+.flow-node-card__badge {
+  @apply ml-auto rounded border border-neutral-200 px-1.5 py-1 text-[9px] font-bold tracking-wider text-neutral-400;
+}
+
+.flow-node-card__body {
+  @apply space-y-2 p-3 text-sm;
+}
+
+.flow-node-card__prompt {
+  @apply rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-title;
+}
+
+.flow-node-card__row {
+  @apply relative flex min-h-8 items-center gap-2 rounded-md px-2 text-xs text-neutral-600;
+}
+
+.flow-row-icon {
+  @apply grid h-6 w-6 shrink-0 place-items-center rounded bg-section text-neutral-500;
+}
+
+.flow-condition-expression {
+  @apply border-b border-neutral-100 pb-2 font-mono text-xs text-title;
+}
+
+.flow-port {
+  @apply absolute z-10 h-5 w-5 -translate-y-1/2 rounded-full border-0 bg-transparent transition;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.flow-port::after {
+  @apply absolute top-1/2 left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-300 bg-neutral-0 shadow-[0_0_0_3px_rgba(255,255,255,0.9)] transition content-[''];
+}
+
+.flow-port:hover::after,
+.flow-port.is-hot::after,
+.flow-port.is-active::after,
+.flow-port.is-hovered::after {
+  @apply scale-125 border-primary bg-primary shadow-[0_0_0_5px_rgba(7,94,84,0.13)];
+}
+
+.flow-port--input::after {
+  @apply border-neutral-300;
+}
+
+.flow-port--input::before {
+  @apply absolute top-1/2 left-full h-px w-2 -translate-y-1/2 bg-neutral-200 content-[''];
+}
+
+.flow-port--start {
+  top: 61px;
+  left: -10px;
+  pointer-events: none;
+}
+
+.flow-port--start::after {
+  @apply border-primary/60 bg-primary/10;
+}
+
+.flow-port--start::before {
+  @apply bg-primary/30;
+}
+
+.flow-port--output:not(.flow-port--branch)::before {
+  @apply absolute top-1/2 right-full h-px w-2 -translate-y-1/2 bg-neutral-200 content-[''];
+}
+
+.flow-port--branch::before {
+  @apply absolute top-1/2 right-full h-px w-3 -translate-y-1/2 bg-neutral-200 content-[''];
+}
+
+.flow-port--success::after {
+  @apply border-success;
+}
+
+.flow-port--error::after {
+  @apply border-error;
+}
+
+.flow-port.is-hovered::after {
+  @apply border-primary bg-primary shadow-[0_0_0_7px_rgba(7,94,84,0.16)];
+}
+
+.flow-edge {
+  @apply text-primary/40 transition;
+  transition-property: stroke, opacity;
+}
+
+.flow-edge-group {
+  @apply text-primary/55;
+}
+
+.flow-edge-group.flow-edge--success {
+  @apply text-success/65;
+}
+
+.flow-edge-group.flow-edge--error {
+  @apply text-primary/55;
+}
+
+.flow-edge__signal {
+  stroke-dasharray: 4 18;
+  animation: flow-edge-signal 1.25s linear infinite;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.flow-edge--draft {
+  @apply text-primary opacity-80;
+}
+
+@keyframes flow-edge-signal {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+.flow-builder-canvas.is-connecting {
+  cursor: crosshair;
+}
+
+.flow-canvas-frame {
+  @apply relative min-w-0;
+}
+
+.flow-viewport-hud {
+  @apply pointer-events-none absolute right-5 bottom-5 z-30 flex max-w-[calc(100%-2.5rem)] flex-col items-end gap-3;
+}
+
+.flow-canvas-help {
+  @apply pointer-events-auto absolute right-0 bottom-[15rem] grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-neutral-0/95 text-neutral-500 shadow-[0_12px_28px_-22px_rgba(10,27,20,0.45)] backdrop-blur hover:border-primary/40 hover:bg-section hover:text-primary focus:border-primary/40 focus:bg-section focus:text-primary focus:outline-none focus:ring-2 focus:ring-primary/15;
+}
+
+.flow-canvas-help__tip {
+  @apply pointer-events-none absolute right-11 bottom-0 hidden w-64 rounded-lg border border-neutral-200 bg-neutral-0/98 px-3 py-2 text-left text-xs font-semibold leading-5 text-neutral-600 shadow-[0_18px_42px_-24px_rgba(10,27,20,0.45)] backdrop-blur;
+}
+
+.flow-canvas-help:hover .flow-canvas-help__tip,
+.flow-canvas-help:focus .flow-canvas-help__tip,
+.flow-canvas-help:focus-visible .flow-canvas-help__tip {
+  @apply block;
+}
+
+.flow-canvas-controls {
+  @apply pointer-events-auto;
+}
+
+.flow-canvas-controls__row {
+  @apply flex flex-wrap items-center justify-end gap-2;
+}
+
+.flow-control-group {
+  @apply flex items-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-0/95 shadow-[0_14px_30px_-22px_rgba(10,27,20,0.45)] backdrop-blur;
+}
+
+.flow-control-btn {
+  @apply grid h-10 w-10 place-items-center text-neutral-600 hover:bg-section hover:text-primary disabled:cursor-not-allowed disabled:opacity-35;
+}
+
+.flow-control-value {
+  @apply grid h-10 min-w-14 place-items-center border-x border-neutral-200 px-3 text-xs font-semibold text-title;
+}
+
+.flow-minimap {
+  @apply pointer-events-auto rounded-xl border border-primary/25 bg-[#064633] p-2 shadow-[0_18px_42px_-20px_rgba(6,70,51,0.65)];
+}
+
+.flow-minimap__map {
+  @apply relative block h-[88px] w-[168px] overflow-hidden rounded-lg bg-[#0c573f] text-left;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+.flow-minimap__node {
+  @apply absolute rounded-sm opacity-90 ring-1 ring-neutral-0/20;
+}
+
+.flow-minimap__viewport {
+  @apply absolute rounded-md border border-neutral-0/70 bg-neutral-0/10;
+}
+
+.flow-node-toolbar {
+  @apply absolute z-20 flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-0 p-2 shadow-[0_16px_32px_-18px_rgba(10,27,20,0.45)];
+}
+
+.flow-node-toolbar__btn {
+  @apply grid h-8 w-8 place-items-center rounded-md text-neutral-500 hover:bg-section hover:text-primary;
+}
+
+.flow-node-toolbar__btn.is-active {
+  @apply bg-warning/10 text-warning;
+}
+
+.flow-inspector {
+  @apply absolute top-0 right-0 bottom-0 z-40 w-[min(24rem,100%)] overflow-y-auto border-l border-neutral-200 bg-neutral-0 shadow-[-18px_0_42px_-28px_rgba(10,27,20,0.45)];
+}
+
+.flow-inspector.is-minimized {
+  @apply top-4 bottom-auto w-12 overflow-visible border-0 bg-transparent shadow-none;
+}
+
+.flow-inspector__content {
+  @apply min-h-full bg-neutral-0;
+}
+
+.flow-inspector__minimized {
+  @apply flex h-12 w-12 items-center justify-center rounded-full border border-neutral-200 bg-neutral-0/95 text-primary shadow-[0_18px_42px_-24px_rgba(10,27,20,0.45)] backdrop-blur hover:border-primary/40 hover:bg-section focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15;
+}
+
+.flow-inspector__minimized span {
+  @apply sr-only;
+}
+
+.flow-inspector__header {
+  @apply flex items-center gap-3 border-b border-neutral-200 p-4;
+}
+
+.flow-whatsapp-preview {
+  @apply rounded-xl bg-[#062b24] p-3 text-neutral-0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.flow-whatsapp-preview__label {
+  @apply mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-300;
+}
+
+.flow-whatsapp-preview__bubble {
+  @apply mb-2 rounded-lg bg-primary/20 px-3 py-2 text-sm text-neutral-0;
+}
+
+.flow-whatsapp-preview__bubble small {
+  @apply mt-2 block text-right text-[10px] text-neutral-300;
+}
+
+.flow-whatsapp-preview__button {
+  @apply mb-1 flex items-center justify-center gap-2 rounded-lg bg-neutral-0 px-3 py-2 text-sm font-semibold text-primary;
+}
+
+.tone-success {
+  @apply bg-success/15 text-success;
+}
+
+.tone-error {
+  @apply bg-error/15 text-error;
+}
+
+.tone-warning {
+  @apply bg-warning/15 text-warning;
+}
+
+.tone-info {
+  @apply bg-info/15 text-info;
+}
+
+.tone-purple {
+  @apply bg-purple-100 text-purple-700;
+}
+
+.tone-dark {
+  @apply bg-title text-neutral-0;
+}
+
+/* =====================================================================
+   Media Library Card
+   ===================================================================== */
+.media-card {
+  @apply overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0;
+}
+.media-card__thumb {
+  @apply grid aspect-square w-full place-items-center;
+}
+.media-card__body {
+  @apply border-t border-neutral-100 p-3;
+}
+
+/* =====================================================================
+   Range Slider
+   ===================================================================== */
+.range-slider {
+  @apply h-1.5 w-full cursor-pointer appearance-none rounded-full;
+  --range-fill: 0%;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0% var(--range-fill),
+    var(--color-neutral-200) var(--range-fill) 100%
+  );
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  border: 2px solid var(--color-neutral-0);
+  box-shadow: 0 1px 3px rgba(10, 27, 20, 0.25);
+  cursor: pointer;
+}
+
+.range-slider::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-neutral-0);
+  border-radius: 9999px;
+  background: var(--color-primary);
+  cursor: pointer;
+}
+
+/* =====================================================================
+   API Docs Nav
+   ===================================================================== */
+.doc-nav__link {
+  @apply block shrink-0 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-body transition-colors hover:bg-section hover:text-title;
+}
+
+/* =====================================================================
+   Animations & Effects
+   ===================================================================== */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease both;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Reveal on scroll */
+.reveal,
+[data-reveal] {
+  @apply translate-y-5 opacity-0 transition-all duration-700 ease-out;
+}
+
+.reveal.is-visible,
+[data-reveal].is-visible {
+  @apply translate-y-0 opacity-100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-fade-up,
+  .animate-slide-up,
+  .flow-edge__signal {
+    animation: none;
+  }
+
+  .reveal,
+  [data-reveal] {
+    @apply translate-y-0 opacity-100 transition-none;
+  }
+}

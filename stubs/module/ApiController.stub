@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\{{ singularName }}Resource;
+use App\Modules\Shared\Traits\ApiResponse;
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class {{ singularName }}Controller extends Controller
+{
+    use ApiResponse;
+
+    public function __construct(
+        protected {{ studlyName }}Service $service
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $filters = [
+            'search' => $request->get('search'),
+            'sort_by' => $request->get('sort_by', 'created_at'),
+            'sort_order' => $request->get('sort_order', 'desc'),
+        ];
+
+        $items = $this->service->listPaginated($filters, $request->integer('per_page', 15));
+
+        return $this->successResponse(
+            {{ singularName }}Resource::collection($items)->response()->getData(true)
+        );
+    }
+
+    public function show({{ singularName }} ${{ variableName }}): JsonResponse
+    {
+        return $this->successResponse(new {{ singularName }}Resource(${{ variableName }}));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $record = $this->service->create($validated);
+
+        return $this->createdResponse(new {{ singularName }}Resource($record));
+    }
+
+    public function update(Request $request, {{ singularName }} ${{ variableName }}): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $record = $this->service->update(${{ variableName }}, $validated);
+
+        return $this->successResponse(new {{ singularName }}Resource($record));
+    }
+
+    public function destroy({{ singularName }} ${{ variableName }}): JsonResponse
+    {
+        $this->service->delete(${{ variableName }});
+
+        return $this->successResponse(null, __(':resource deleted successfully.', ['resource' => '{{ singularName }}']));
+    }
+}

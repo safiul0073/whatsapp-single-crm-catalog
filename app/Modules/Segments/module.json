@@ -1,0 +1,1 @@
+{"name":"Segments","alias":"segments","description":"Static and dynamic WhatsApp audience segments","version":"1.0.0","priority":41,"providers":["App\\Modules\\Segments\\Providers\\SegmentsServiceProvider"],"requires":["contacts"],"active":true}

@@ -1,0 +1,1 @@
+{"name":"PlansSubscriptions","alias":"plans-subscriptions","description":"SaaS plans, subscriptions, and quota limits","version":"1.0.0","priority":31,"providers":["App\\Modules\\PlansSubscriptions\\Providers\\PlansSubscriptionsServiceProvider"],"requires":[],"active":false}

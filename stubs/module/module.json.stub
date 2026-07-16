@@ -1,0 +1,16 @@
+{
+    "name": "{{ studlyName }}",
+    "alias": "{{ lowerName }}",
+    "description": "{{ studlyName }} module",
+    "version": "1.0.0",
+    "priority": 100,
+    "providers": [
+        "App\\Modules\\{{ studlyName }}\\Providers\\{{ studlyName }}ServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

@@ -1,0 +1,17 @@
+<?php
+
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+
+if (!function_exists('{{ helperFunction }}')) {
+    /**
+     * Get a {{ singularName }} setting value.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function {{ helperFunction }}(string $key, mixed $default = null): mixed
+    {
+        return app({{ studlyName }}Service::class)->get($key, $default);
+    }
+}

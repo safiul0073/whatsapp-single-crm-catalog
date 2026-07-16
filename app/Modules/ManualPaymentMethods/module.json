@@ -1,0 +1,12 @@
+{
+    "name": "ManualPaymentMethods",
+    "alias": "manual-payment-methods",
+    "description": "Manual payment methods",
+    "version": "1.0.0",
+    "priority": 133,
+    "providers": [
+        "App\\Modules\\ManualPaymentMethods\\Providers\\ManualPaymentMethodsServiceProvider"
+    ],
+    "requires": [],
+    "active": false
+}

@@ -1,0 +1,1 @@
+{"name":"Inbox","alias":"inbox","description":"Shared WhatsApp inbox, conversations, and messages","version":"1.0.0","priority":44,"providers":["App\\Modules\\Inbox\\Providers\\InboxServiceProvider"],"requires":["contacts","whatsapp-cloud"],"active":true}

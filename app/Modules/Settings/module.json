@@ -1,0 +1,12 @@
+{
+    "name": "Settings",
+    "alias": "settings",
+    "description": "Application settings",
+    "version": "1.0.0",
+    "priority": 130,
+    "providers": [
+        "App\\Modules\\Settings\\Providers\\SettingsServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

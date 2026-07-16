@@ -1,0 +1,16 @@
+{
+    "name": "Commerce",
+    "alias": "commerce",
+    "description": "Workspace apparel catalog, Meta feeds, WhatsApp carts, and reliable order workflows",
+    "version": "1.0.0",
+    "priority": 38,
+    "providers": [
+        "App\\Modules\\Commerce\\Providers\\CommerceServiceProvider"
+    ],
+    "requires": ["contacts", "inbox", "marketing-channels", "media", "whatsapp-cloud"],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

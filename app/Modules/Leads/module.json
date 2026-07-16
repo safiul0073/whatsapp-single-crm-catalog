@@ -1,0 +1,1 @@
+{"name":"Leads","alias":"leads","description":"WhatsApp-sourced lead pipeline","version":"1.0.0","priority":53,"providers":["App\\Modules\\Leads\\Providers\\LeadsServiceProvider"],"requires":["contacts"],"active":true}

@@ -1,0 +1,79 @@
+<x-layouts.{{ panelLower }} :title="__('{{ studlyName }}')">
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <h1 class="heading-4 text-neutral-950">{{ __('{{ studlyName }}') }}</h1>
+            <div class="flex items-center gap-3">
+                <x-ui.button variant="outline" type="button" data-modal-trigger="importCsv">
+                    <i class="ph ph-upload-simple"></i> {{ __('Import') }}
+                </x-ui.button>
+                <x-ui.button variant="primary" href="{{ route('{{ panelLower }}.{{ kebabName }}.create') }}">
+                    <i class="ph ph-plus-circle"></i> {{ __('Create') }}
+                </x-ui.button>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <x-tables.datatable
+                :url="route('{{ panelLower }}.{{ kebabName }}.index')"
+                :exportUrl="route('{{ panelLower }}.{{ kebabName }}.export')"
+            >
+                <x-slot:bulkActions>
+                    <x-tables.bulk-actions
+                        group="{{ kebabName }}"
+                        :deleteAction="route('{{ panelLower }}.{{ kebabName }}.bulk-delete')"
+                        :toggleAction="route('{{ panelLower }}.{{ kebabName }}.bulk-toggle-status')"
+                        :exportAction="route('{{ panelLower }}.{{ kebabName }}.export')"
+                    />
+                </x-slot:bulkActions>
+
+                <x-tables.table>
+                    <thead>
+                        <tr>
+                            <th class="w-10">
+                                <input type="checkbox" class="custom-checkbox" data-select-all="{{ kebabName }}" />
+                            </th>
+                            <x-tables.heading field="name" sortable>{{ __('Name') }}</x-tables.heading>
+                            <th>{{ __('Status') }}</th>
+                            <th>{{ __('Created') }}</th>
+                            <th class="text-right">{{ __('Actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-datatable-body>
+                        @include('panels.{{ panelLower }}.{{ kebabName }}._table-rows')
+                    </tbody>
+                </x-tables.table>
+
+                <x-slot:pagination>
+                    <x-tables.pagination :paginator="${{ variablePlural }}" />
+                </x-slot:pagination>
+            </x-tables.datatable>
+        </div>
+    </div>
+
+    @foreach(${{ variablePlural }} as ${{ variableName }})
+    @push('modals')
+        <x-ui.confirm
+            id="confirmDelete-{{ ${{ variableName }}->id }}"
+            :title="__('Delete {{ singularName }}?')"
+            :message="__('Are you sure you want to delete this record? This action cannot be undone.')"
+            :confirmText="__('Yes, Delete')"
+            :cancelText="__('Cancel')"
+            formId="delete-{{ kebabSingular }}-{{ ${{ variableName }}->id }}"
+        />
+    @endpush
+    @endforeach
+
+    @foreach(${{ variablePlural }} as ${{ variableName }})
+        <form id="delete-{{ kebabSingular }}-{{ ${{ variableName }}->id }}" method="POST" action="{{ route('{{ panelLower }}.{{ kebabName }}.destroy', ${{ variableName }}) }}" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endforeach
+
+    @push('modals')
+        <x-tables.import-modal
+            :previewUrl="route('{{ panelLower }}.{{ kebabName }}.import.preview')"
+            :importUrl="route('{{ panelLower }}.{{ kebabName }}.import')"
+        />
+    @endpush
+</x-layouts.{{ panelLower }}>

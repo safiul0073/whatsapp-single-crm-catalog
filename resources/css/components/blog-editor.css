@@ -1,0 +1,115 @@
+/* Blog post editor layout: project-native styling with a classic CMS sidebar. */
+.blog-post-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.blog-post-editor__main {
+  min-width: 0;
+}
+
+.blog-post-editor__sidebar {
+  min-width: 0;
+}
+
+.blog-post-editor__title {
+  width: 100%;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xl);
+  background: var(--color-neutral-0);
+  padding: 0.875rem 1rem;
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-title);
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.blog-post-editor__title::placeholder {
+  color: var(--color-neutral-300);
+}
+
+.blog-post-editor__title:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.blog-post-editor__permalink {
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xl);
+  background: var(--color-neutral-0);
+  padding: 0.625rem 1rem;
+  color: var(--color-body);
+  font-size: 0.875rem;
+}
+
+.blog-post-editor__slug {
+  display: inline-flex;
+  width: min(100%, 16rem);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.125rem 0.25rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  outline: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.blog-post-editor__slug:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: var(--color-section);
+}
+
+.blog-post-editor__box {
+  overflow: hidden;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xl);
+  background: var(--color-neutral-0);
+}
+
+.blog-post-editor__box-header {
+  border-bottom: 1px solid var(--color-border-default);
+  padding: 0.75rem 1rem;
+}
+
+.blog-post-editor__box-title {
+  color: var(--color-title);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.blog-post-editor__box-body {
+  padding: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .blog-post-editor {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  .blog-post-editor__sidebar {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .blog-post-editor {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .blog-post-editor__title {
+    font-size: 1.5rem;
+  }
+}

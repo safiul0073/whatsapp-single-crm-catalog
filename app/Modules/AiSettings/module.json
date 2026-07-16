@@ -1,0 +1,12 @@
+{
+    "name": "AiSettings",
+    "alias": "ai-settings",
+    "description": "AI provider settings",
+    "version": "1.0.0",
+    "priority": 131,
+    "providers": [
+        "App\\Modules\\AiSettings\\Providers\\AiSettingsServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

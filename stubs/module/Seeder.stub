@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Database\Seeders;
+
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use Illuminate\Database\Seeder;
+
+class {{ studlyName }}Seeder extends Seeder
+{
+    public function run(): void
+    {
+        {{ singularName }}::create([
+            'name' => 'Sample {{ singularName }}',
+            'description' => 'This is a sample record',
+            'is_active' => true,
+        ]);
+    }
+}

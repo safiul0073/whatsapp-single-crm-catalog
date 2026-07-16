@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Modules\{{ moduleName }}\Widgets;
+
+use App\Modules\Shared\Widgets\BaseWidget;
+
+class {{ className }} extends BaseWidget
+{
+    public function id(): string
+    {
+        return '{{ widgetId }}';
+    }
+
+    public function title(): string
+    {
+        return __('{{ widgetTitle }}');
+    }
+
+    public function render(): string
+    {
+        // Fetch data for this widget
+        $data = [];
+
+        return $this->view('{{ viewPath }}', compact('data'));
+    }
+
+    public function position(): int
+    {
+        return {{ position }};
+    }
+
+    public function width(): string
+    {
+        return '{{ width }}';
+    }
+
+    public function panel(): string
+    {
+        return '{{ panel }}';
+    }
+}

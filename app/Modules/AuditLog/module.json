@@ -1,0 +1,12 @@
+{
+    "name": "AuditLog",
+    "alias": "audit-log",
+    "description": "Audit log management",
+    "version": "1.0.0",
+    "priority": 90,
+    "providers": [
+        "App\\Modules\\AuditLog\\Providers\\AuditLogServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

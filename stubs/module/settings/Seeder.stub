@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Database\Seeders;
+
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use Illuminate\Database\Seeder;
+
+class {{ studlyName }}Seeder extends Seeder
+{
+    public function run(): void
+    {
+        foreach (config('{{ kebabName }}', []) as $group) {
+            foreach ($group['settings'] as $key => $definition) {
+                $default = $definition['default'] ?? null;
+
+                $stored = match ($definition['type'] ?? 'text') {
+                    'boolean', 'feature' => $default ? '1' : '0',
+                    default => $default !== null ? (string) $default : null,
+                };
+
+                {{ singularName }}::firstOrCreate(
+                    ['key' => $key],
+                    ['value' => $stored]
+                );
+            }
+        }
+    }
+}

@@ -1,0 +1,111 @@
+/* ==========================================================================
+   MARQUEE — state, transition, animation & mask rules only.
+   Base visual styles are inline Tailwind in marquee.html.
+   ========================================================================== */
+
+/* --- Background grid (gradient + mask-image) --- */
+.mq2-bg-grid {
+  background-image: linear-gradient(to right, rgba(17, 18, 74, 0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(17, 18, 74, 0.06) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(80% 70% at 50% 50%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(80% 70% at 50% 50%, #000 30%, transparent 95%);
+}
+
+/* --- Row mask-image (edge fade) --- */
+.mq2-row {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+}
+
+/* --- Track animations --- */
+.mq2-track--ltr {
+  animation: mq2-scroll-ltr 38s linear infinite;
+}
+.mq2-track--rtl {
+  animation: mq2-scroll-rtl 44s linear infinite;
+}
+@keyframes mq2-scroll-ltr {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes mq2-scroll-rtl {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* --- Hover: pause animation --- */
+.mq2:hover .mq2-track--ltr,
+.mq2:hover .mq2-track--rtl {
+  animation-play-state: paused;
+}
+
+/* --- Word transition (custom easing) --- */
+.mq2-word {
+  transition:
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- Outline word (-webkit-text-stroke) --- */
+.mq2-word--outline {
+  -webkit-text-stroke: 1.4px rgba(15, 15, 73, 0.18);
+}
+.mq2:hover .mq2-word--outline {
+  -webkit-text-stroke-color: rgba(15, 15, 73, 0.42);
+}
+
+/* --- Solid word (color + hover state) --- */
+.mq2-word--solid {
+  color: rgba(15, 15, 73, 0.1);
+}
+.mq2:hover .mq2-word--solid {
+  color: rgba(15, 15, 73, 0.2);
+}
+
+/* --- Badge transition + hover --- */
+.mq2-badge {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+
+/* --- Badge ring spin animation --- */
+.mq2-badge-ring {
+  animation: mq2-spin 26s linear infinite;
+}
+@keyframes mq2-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Badge core transition + hover --- */
+.mq2-badge-core {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mq2-badge:hover .mq2-badge-core {
+  transform: rotate(8deg) scale(1.06);
+}
+
+/* --- Badge core img (filter) --- */
+.mq2-badge-core img {
+  filter: brightness(0) invert(1);
+}
+
+/* --- Responsive --- */
+@media (max-width: 880px) {
+  .mq2-badge {
+    width: 92px;
+    height: 92px;
+    right: 16px;
+  }
+  .mq2-badge-core {
+    width: 44px;
+    height: 44px;
+  }
+  .mq2-badge-core img {
+    width: 22px;
+    height: 22px;
+  }
+  .mq2-badge-text {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+}

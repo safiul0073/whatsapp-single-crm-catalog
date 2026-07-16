@@ -1,0 +1,127 @@
+/* Tom Select Custom Styling */
+
+/* Import base Tom Select styles */
+@import 'tom-select/dist/css/tom-select.css';
+
+/* Override Tom Select to match admin panel design */
+.ts-wrapper.single .ts-control {
+  @apply s-body bg-neutral-0 flex h-auto min-h-[48px] w-full cursor-pointer items-center rounded-xl border border-neutral-200 px-4 py-2 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  background-image: none;
+}
+
+.ts-wrapper.single .ts-control::after {
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #6b7280;
+  content: '';
+  display: block;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+}
+
+[dir="rtl"] .ts-wrapper.single .ts-control::after {
+  right: auto;
+  left: 12px;
+}
+
+.ts-wrapper.single.input-active .ts-control::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.ts-wrapper.multi .ts-control {
+  @apply bg-neutral-0 flex min-h-[48px] w-full cursor-pointer flex-wrap items-center gap-1 rounded-xl border border-neutral-200 px-2 py-1.5 shadow-sm transition-all duration-300;
+}
+
+.ts-wrapper .ts-control {
+  @apply bg-neutral-0 rounded-xl border-neutral-200;
+}
+
+.ts-wrapper .ts-control:hover {
+  @apply border-neutral-200;
+}
+
+.ts-wrapper.focus .ts-control {
+  @apply border-primary ring-primary/10 ring-4;
+  box-shadow: none;
+}
+
+/* Dropdown Panel */
+.ts-wrapper .ts-dropdown {
+  @apply bg-neutral-0 z-50 mt-2 overflow-hidden rounded-xl border border-neutral-200 shadow-xl;
+}
+
+/* Search Input */
+.ts-dropdown .ts-dropdown-content {
+  @apply max-h-60 overflow-y-auto p-1;
+}
+
+/* Options */
+.ts-dropdown .option {
+  @apply flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2 text-sm text-neutral-600 transition-colors;
+}
+
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+  @apply bg-neutral-50 text-neutral-900;
+}
+
+.ts-dropdown .option.selected {
+  @apply bg-primary/10 text-primary font-semibold;
+}
+
+.ts-dropdown .option.selected:hover,
+.ts-dropdown .option.selected.active {
+  @apply bg-primary/20 text-primary;
+}
+
+/* Multi Select Tags */
+.ts-wrapper.multi .ts-control > .item {
+  @apply bg-primary/10 border-primary/20 text-primary m-0 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium;
+}
+
+/* Remove button on tags */
+.ts-wrapper.plugin-remove_button .item .remove {
+  @apply hover:bg-primary/20 hover:text-primary text-primary border-0 transition-colors;
+  border-radius: 4px;
+}
+
+/* Placeholder */
+.ts-wrapper .ts-control > input::placeholder {
+  @apply text-neutral-400;
+}
+
+.ts-wrapper .ts-control > .ts-input-placeholder {
+  @apply text-neutral-400;
+}
+
+/* Clear button */
+.ts-wrapper.single .ts-control .clear-button {
+  @apply hover:text-error me-2 p-0 text-lg leading-none text-neutral-400;
+}
+
+/* No results */
+.ts-dropdown .no-results {
+  @apply px-4 py-3 text-sm text-neutral-400;
+}
+
+/* Dark mode overrides */
+.dark .ts-wrapper .ts-control {
+  @apply bg-neutral-0 border-neutral-200 text-neutral-900;
+}
+
+.dark .ts-wrapper .ts-dropdown {
+  @apply bg-neutral-0 border-neutral-200;
+}
+
+.dark .ts-dropdown .option {
+  @apply text-neutral-600;
+}
+
+.dark .ts-dropdown .option:hover,
+.dark .ts-dropdown .option.active {
+  @apply bg-neutral-50 text-neutral-900;
+}

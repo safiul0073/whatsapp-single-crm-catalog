@@ -1,0 +1,30 @@
+{{--
+    Legacy fallback template.
+    New CRUD modules default to TableDefinition + <x-tables.resource> and do not generate this file.
+    Copy this into your module only when you intentionally use manual row rendering.
+--}}
+
+@forelse(${{ variablePlural }} as ${{ variableName }})
+<tr>
+    <td data-th="{{ __('Select') }}">
+        <input type="checkbox" class="custom-checkbox" data-select-item="{{ lowerName }}" value="{{ ${{ variableName }}->id }}" />
+    </td>
+    <td data-th="{{ __('Name') }}" class="text-sm text-neutral-900">{{ ${{ variableName }}->name }}</td>
+    <td data-th="{{ __('Status') }}">
+        <x-ui.badge :variant="${{ variableName }}->is_active ? 'success' : 'danger'">
+            {{ ${{ variableName }}->is_active ? __('Active') : __('Inactive') }}
+        </x-ui.badge>
+    </td>
+    <td data-th="{{ __('Created') }}" class="text-sm text-neutral-400">{{ format_date(${{ variableName }}->created_at) }}</td>
+    <td data-th="{{ __('Actions') }}" class="text-right">
+        <x-tables.actions>
+            <x-tables.action icon="eye" :href="route('{{ panelLower }}.{{ lowerName }}.show', ${{ variableName }})" :label="__('View')" />
+            <x-tables.action icon="pencil-simple" :href="route('{{ panelLower }}.{{ lowerName }}.edit', ${{ variableName }})" :label="__('Edit')" />
+        </x-tables.actions>
+    </td>
+</tr>
+@empty
+<tr>
+    <td colspan="5" class="py-8 text-center text-neutral-400">{{ __('No records found.') }}</td>
+</tr>
+@endforelse

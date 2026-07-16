@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Modules\NotificationTemplates\Notifications;
+
+class {{ name }}Notification extends BaseTemplateNotification
+{
+    public function __construct(
+        // Add constructor parameters for your data
+    ) {}
+
+    protected function templateSlug(): string
+    {
+        return '{{ slug }}';
+    }
+
+    /**
+     * Variables to substitute into the template.
+     *
+     * @return array<string, string>
+     */
+    protected function templateVariables(): array
+    {
+        return [
+            // Map your data to template variable names
+            // 'user_name' => $this->user->name,
+        ];
+    }
+
+    // Override these if your notification has an action button:
+    // protected function actionUrl(): ?string { return null; }
+    // protected function actionText(): ?string { return null; }
+    // protected function inAppIcon(): string { return 'ph-bell'; }
+    // protected function inAppType(): string { return 'info'; }
+}

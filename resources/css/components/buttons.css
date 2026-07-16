@@ -1,0 +1,138 @@
+/* Button Components — Classic WhatsApp Theme */
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 sm:text-base;
+
+  &:active {
+    @apply scale-95;
+  }
+}
+
+@utility btn-primary {
+  @apply bg-primary text-neutral-0 shadow-[0_8px_24px_-8px_rgba(31,170,83,0.6)];
+
+  &:hover {
+    @apply bg-primary-dark shadow-[0_10px_28px_-6px_rgba(31,170,83,0.7)];
+  }
+}
+
+@utility btn-secondary {
+  @apply bg-secondary shadow-secondary/20 text-white shadow-lg;
+
+  &:hover {
+    @apply -translate-y-0.5 shadow-xl;
+  }
+}
+
+@utility btn-success {
+  @apply bg-success shadow-success/20 text-white shadow-lg;
+
+  &:hover {
+    @apply -translate-y-0.5 shadow-xl;
+  }
+}
+
+@utility btn-error {
+  @apply bg-error text-neutral-0 shadow-[0_8px_24px_-8px_rgba(229,57,53,0.55)];
+
+  &:hover {
+    @apply bg-error/90 -translate-y-0.5;
+  }
+}
+
+@utility btn-danger {
+  @apply bg-error shadow-error/20 text-white shadow-lg;
+
+  &:hover {
+    @apply -translate-y-0.5 shadow-xl;
+  }
+}
+
+@utility btn-warning {
+  @apply bg-warning shadow-warning/20 text-white shadow-lg;
+
+  &:hover {
+    @apply -translate-y-0.5 shadow-xl;
+  }
+}
+
+@utility btn-info {
+  @apply bg-info shadow-info/20 text-white shadow-lg;
+
+  &:hover {
+    @apply -translate-y-0.5 shadow-xl;
+  }
+}
+
+/* Soft Buttons */
+@utility btn-soft-primary {
+  @apply bg-primary/10 text-primary hover:bg-primary hover:text-white;
+}
+
+@utility btn-soft-secondary {
+  @apply bg-secondary/10 text-secondary hover:bg-secondary hover:text-white;
+}
+
+@utility btn-soft-success {
+  @apply bg-success/10 text-success hover:bg-success hover:text-white;
+}
+
+@utility btn-soft-error {
+  @apply bg-error/10 text-error hover:bg-error hover:text-white;
+}
+
+@utility btn-soft-warning {
+  @apply bg-warning/10 text-warning hover:bg-warning hover:text-white;
+}
+
+@utility btn-soft-info {
+  @apply bg-info/10 text-info hover:bg-info hover:text-white;
+}
+
+@utility btn-outline {
+  @apply border border-neutral-200 bg-neutral-0 text-title hover:border-primary hover:text-primary;
+}
+
+@utility btn-outline-primary {
+  @apply border-primary/30 text-primary hover:bg-primary border bg-transparent hover:text-white;
+}
+
+@utility btn-outline-danger {
+  @apply border-error/30 text-error hover:bg-error border bg-transparent hover:text-white;
+}
+
+@utility btn-outline-success {
+  @apply border-success/30 text-success hover:bg-success border bg-transparent hover:text-white;
+}
+
+@utility btn-outline-warning {
+  @apply border-warning/30 text-warning hover:bg-warning border bg-transparent hover:text-white;
+}
+
+@utility btn-outline-secondary {
+  @apply border-secondary/30 text-secondary hover:bg-secondary border bg-transparent hover:text-white;
+}
+
+@utility btn-outline-info {
+  @apply border-info/30 text-info hover:bg-info border bg-transparent hover:text-white;
+}
+
+@utility btn-ghost {
+  @apply text-body hover:bg-section hover:text-title;
+}
+
+@utility btn-link {
+  @apply text-primary bg-transparent p-0 underline-offset-4 shadow-none hover:underline;
+}
+
+/* Sizes */
+@utility btn-sm {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200;
+}
+
+@utility btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+@utility btn-icon {
+  @apply p-2;
+}

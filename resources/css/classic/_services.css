@@ -1,0 +1,194 @@
+/* ==========================================================================
+   SERVICES — State / Transition / Animation rules only
+   Base visual styles are inline Tailwind in services.html
+   ========================================================================== */
+
+/* Grid background pattern with mask-image */
+.srv3-grid-bg {
+  background-image: linear-gradient(to right, rgba(17, 18, 74, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(17, 18, 74, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 90%);
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 90%);
+}
+
+/* Eyebrow dot shadow */
+.srv3-eyebrow-dot {
+  box-shadow: 0 0 0 3px rgba(33, 72, 255, 0.2);
+}
+
+/* CTA ghost — hover state with custom transition */
+.srv3-cta-ghost {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-cta-ghost:hover {
+  @apply border-brand-navy-ink bg-bg-soft;
+  gap: 12px;
+}
+
+/* Card — transition for open state */
+.srv3-card {
+  transition: background 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card:first-child {
+  border-top: none;
+}
+.srv3-card.is-open {
+  background: var(--color-bg-elevated);
+}
+.srv3-card.is-open::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--color-brand-blue), var(--color-brand-green));
+}
+.srv3-card.is-open.srv3-card--green::before {
+  background: linear-gradient(180deg, var(--color-brand-green), var(--color-brand-blue));
+}
+.srv3-card.is-open.srv3-card--navy::before {
+  background: linear-gradient(180deg, var(--color-brand-navy-ink), var(--color-brand-blue));
+}
+
+/* Row number — color transition on open */
+.srv3-row-num {
+  transition: color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card.is-open .srv3-row-num {
+  @apply text-brand-blue;
+}
+.srv3-card.is-open.srv3-card--green .srv3-row-num {
+  @apply text-brand-green;
+}
+.srv3-card.is-open.srv3-card--navy .srv3-row-num {
+  @apply text-brand-navy-ink;
+}
+
+/* Row icon — state transitions */
+.srv3-row-icon {
+  transition: all 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card.is-open.srv3-card--blue .srv3-row-icon {
+  background: rgba(33, 72, 255, 0.1);
+  border-color: rgba(33, 72, 255, 0.2);
+  @apply text-brand-blue;
+}
+.srv3-card.is-open.srv3-card--green .srv3-row-icon {
+  background: rgba(22, 199, 132, 0.1);
+  border-color: rgba(22, 199, 132, 0.22);
+  @apply text-brand-green;
+}
+.srv3-card.is-open.srv3-card--navy .srv3-row-icon {
+  @apply bg-brand-navy-ink border-brand-navy-ink text-white;
+}
+
+/* Row toggle — state transitions */
+.srv3-row-toggle {
+  transition: all 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card.is-open .srv3-row-toggle {
+  @apply bg-brand-navy-ink border-brand-navy-ink text-white;
+  transform: rotate(45deg);
+}
+.srv3-card:not(.is-open) .srv3-row:hover .srv3-row-toggle {
+  @apply border-brand-navy-ink text-brand-navy-ink;
+}
+.srv3-card:not(.is-open) .srv3-row:hover {
+  @apply bg-bg-soft;
+}
+
+/* Collapse — grid-row animation */
+.srv3-collapse {
+  transition: grid-template-rows 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card.is-open .srv3-collapse {
+  grid-template-rows: 1fr;
+}
+
+/* Collapse inner — opacity + transform transition */
+.srv3-collapse-inner {
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-card.is-open .srv3-collapse-inner {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 80ms;
+}
+
+/* CTA primary — hover state */
+.srv3-cta-primary {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.srv3-cta-primary:hover {
+  background: var(--color-brand-navy);
+  transform: translateY(-1px);
+}
+
+/* CTA secondary — underline via ::after */
+.srv3-cta-secondary::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  @apply bg-border-strong;
+  transition: background 220ms;
+}
+.srv3-cta-secondary:hover {
+  @apply text-brand-navy-ink;
+}
+.srv3-cta-secondary:hover::after {
+  @apply bg-brand-navy-ink;
+}
+
+/* Deco image — drop-shadow filter */
+.srv3-deco {
+  filter: drop-shadow(0 18px 30px rgba(15, 15, 73, 0.1));
+}
+
+/* Preview — transitions and overlay */
+.srv3-preview {
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  @apply shadow-srv-preview bg-brand-navy-ink;
+}
+.srv3-preview.is-visible {
+  opacity: 1;
+}
+
+/* Preview images — transitions and filter */
+.srv3-preview-img {
+  transition:
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  filter: saturate(0.92) brightness(0.98);
+}
+.srv3-preview-img.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Preview overlay gradient via ::after */
+.srv3-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 15, 73, 0) 50%, rgba(15, 15, 73, 0.55) 100%), linear-gradient(135deg, rgba(33, 72, 255, 0.2) 0%, rgba(15, 15, 73, 0.2) 100%);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Preview tag backdrop-filter */
+.srv3-preview-tag {
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (hover: none), (max-width: 1100px) {
+  .srv3-preview {
+    display: none !important;
+  }
+}

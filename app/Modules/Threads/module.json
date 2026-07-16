@@ -1,0 +1,1 @@
+{"name":"Threads","alias":"threads","description":"Threads account publishing, connection testing, and webhook event normalization","version":"1.0.0","priority":35,"providers":["App\\Modules\\Threads\\Providers\\ThreadsServiceProvider"],"requires":["marketing-channels"],"active":true}

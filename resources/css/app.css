@@ -1,0 +1,781 @@
+@import "tailwindcss";
+@import "./classic/_tokens.css";
+
+/* Laravel source directives */
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+/* Safelist: dynamic classes used via PHP/JS concatenation (e.g. 'badge-' . $variant) */
+@source inline("badge-primary badge-secondary badge-success badge-warning badge-danger badge-info badge-purple badge-cyan badge-dark badge-light badge-outline-primary badge-outline-success badge-outline-warning badge-outline-danger badge-outline-info btn-primary btn-secondary btn-success btn-error btn-danger btn-warning btn-info btn-soft-primary btn-soft-secondary btn-soft-success btn-soft-error btn-soft-warning btn-soft-info btn-outline btn-outline-primary btn-ghost btn-link btn-sm btn-lg gradient-primary gradient-secondary gradient-success gradient-danger gradient-warning gradient-info gradient-purple gradient-cyan badge-deep stat-card app-card app-table range-btn template-card segment-card plan-card gateway-card integration-card rule-row widget-card");
+
+/* Component CSS */
+@import "./components/table.css";
+@import "./components/filter.css";
+@import "./components/kpi-card.css";
+@import "./components/toast.css";
+@import "./components/form/inputs.css";
+@import "./components/drawer.css";
+@import "./components/modal.css";
+@import "./components/buttons.css";
+@import "./components/floating-dropdown.css";
+@import "./components/tom-select-custom.css";
+@import "./components/air-datepicker-custom.css";
+@import "./components/topbar.css";
+@import "./components/sidebar.css";
+@import "./components/editor.css";
+@import "./components/blog-editor.css";
+@import "./components/settings.css";
+@import "./components/media-picker.css";
+@import "./components/portal.css";
+
+/* WhatsApp Classic Theme — additional components */
+@import "./components/classic.css";
+
+[x-cloak] {
+  display: none !important;
+}
+
+/* Dark mode variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =====================================================================
+   Design Tokens — "Classic" WhatsApp-green SaaS theme
+   ===================================================================== */
+@theme {
+  /* Typography */
+  --font-primary: "Inter", sans-serif;
+  --font-title: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* Brand — WhatsApp greens */
+  --color-primary: #1faa53;
+  --color-primary-dark: #178a43;
+  --color-primary-hover: #178a43;
+  --color-secondary: #6366f1;
+  --color-accent: #25d366;
+  --color-deep: #075e54;
+  --color-brand-blue: #1faa53;
+  --color-brand-blue-electric: #25d366;
+  --color-brand-blue-soft: #178a43;
+  --color-brand-green: #16a34a;
+  --color-brand-green-deep: #1faa53;
+
+  /* Semantic text colors */
+  --color-title: #0a1b14;
+  --color-body: #4b5a55;
+  --color-section: #f3f8f5;
+  --color-bg-soft: #f7faf8;
+  --color-bg-section: #f3f8f5;
+  --color-bg-elevated: #ffffff;
+  --color-border-default: #e1e8e4;
+  --color-border-soft: #eef3f0;
+  --color-border-strong: #cdd7d1;
+  --color-text-strong: #0a1b14;
+  --color-text-default: #344039;
+  --color-text-muted: #6b7a73;
+  --color-text-light: #9aa8a1;
+
+  /* Status */
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #1faa53;
+  --color-info-soft: #e8f7ee;
+  --color-tint-blue: #e8f7ee;
+  --color-tint-blue-strong: #d6f0df;
+  --color-tint-green: #e8f7ee;
+  --color-tint-navy: #eef3f0;
+  --shadow-brand: 0 18px 40px -16px rgba(31, 170, 83, 0.45);
+  --shadow-hero-cta: 0 14px 28px -10px rgba(31, 170, 83, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --shadow-hero-cta-hover: 0 18px 36px -12px rgba(31, 170, 83, 0.5);
+  --background-image-grad-brand: linear-gradient(135deg, #1faa53 0%, #25d366 100%);
+  --background-image-grad-brand-soft: linear-gradient(135deg, #e8f7ee 0%, #f3f8f5 100%);
+  --background-image-grad-mark: linear-gradient(135deg, #1faa53 0%, #25d366 100%);
+  --background-image-grad-glow: radial-gradient(60% 60% at 50% 0%, rgba(31, 170, 83, 0.1) 0%, rgba(31, 170, 83, 0) 60%);
+  --background-image-grad-halo: radial-gradient(60% 60% at 50% 50%, rgba(31, 170, 83, 0.16) 0%, rgba(31, 170, 83, 0) 70%), radial-gradient(40% 40% at 70% 30%, rgba(37, 211, 102, 0.1) 0%, rgba(37, 211, 102, 0) 70%);
+
+  /* Neutral scale (green-tinted) */
+  --color-neutral-0: #ffffff;
+  --color-neutral-10: #f7faf8;
+  --color-neutral-50: #f7faf8;
+  --color-neutral-100: #eef3f0;
+  --color-neutral-200: #e1e8e4;
+  --color-neutral-300: #cdd7d1;
+  --color-neutral-400: #9aa8a1;
+  --color-neutral-500: #6b7a73;
+  --color-neutral-600: #4b5a55;
+  --color-neutral-700: #344039;
+  --color-neutral-800: #1f2a24;
+  --color-neutral-900: #0f1813;
+  --color-neutral-950: #070d0a;
+
+  /* Breakpoints */
+  --breakpoint-xsm: 400px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-2xl: 1400px;
+  --breakpoint-e2xl: 1500px;
+  --breakpoint-3xl: 1600px;
+  --breakpoint-4xl: 1800px;
+}
+
+@layer base {
+  .dark {
+    --color-title: #f3f8f5;
+    --color-body: #cdd7d1;
+    --color-section: #0f1813;
+    --color-bg-soft: #0f1813;
+    --color-bg-section: #0a100d;
+    --color-bg-elevated: #070d0a;
+    --color-border-default: #344039;
+    --color-border-soft: #1f2a24;
+    --color-border-strong: #4b5a55;
+    --color-text-strong: #f3f8f5;
+    --color-text-default: #e1e8e4;
+    --color-text-muted: #9aa8a1;
+    --color-text-light: #6b7a73;
+    --color-info: #25d366;
+    --color-info-soft: #123321;
+    --color-tint-blue: #123321;
+    --color-tint-blue-strong: #16442a;
+    --color-tint-green: #123321;
+    --color-tint-navy: #1f2a24;
+    --shadow-brand: 0 18px 40px -16px rgba(37, 211, 102, 0.35);
+    --background-image-grad-brand-soft: linear-gradient(135deg, #123321 0%, #0f1813 100%);
+    --color-neutral-0: #070d0a;
+    --color-neutral-10: #0a100d;
+    --color-neutral-50: #0f1813;
+    --color-neutral-100: #1f2a24;
+    --color-neutral-200: #344039;
+    --color-neutral-300: #4b5a55;
+    --color-neutral-400: #6b7a73;
+    --color-neutral-500: #9aa8a1;
+    --color-neutral-600: #cdd7d1;
+    --color-neutral-700: #e1e8e4;
+    --color-neutral-800: #eef3f0;
+    --color-neutral-900: #f3f8f5;
+    --color-neutral-950: #ffffff;
+  }
+
+  .dark .bg-white {
+    background-color: var(--color-neutral-0) !important;
+  }
+
+  .dark .text-white {
+    color: #ffffff;
+  }
+}
+
+/* =====================================================================
+   Base
+   ===================================================================== */
+body {
+  @apply bg-neutral-0 font-body text-body antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-title;
+  color: inherit;
+}
+
+button {
+  @apply cursor-pointer;
+}
+
+p {
+  @apply leading-[1.65];
+}
+
+/* =====================================================================
+   Layout
+   ===================================================================== */
+@utility container {
+  @apply mx-auto w-full px-4 sm:px-6 2xl:max-w-[1240px];
+}
+
+@utility container-xl {
+  @apply 3xl:max-w-400 4xl:max-w-[1760px] mx-auto px-3 sm:max-w-135 md:max-w-180 lg:max-w-243 xl:max-w-295 2xl:max-w-350;
+}
+
+.large-container {
+  @apply 4xl:max-w-480 mx-auto;
+}
+
+.f-center {
+  @apply flex items-center justify-center;
+}
+
+.f-between {
+  @apply flex items-center justify-between;
+}
+
+/* =====================================================================
+   Typography (responsive) — from Classic theme
+   ===================================================================== */
+@utility display-1 {
+  @apply font-title text-4xl leading-[1.08] font-extrabold tracking-tight text-title sm:text-5xl lg:text-6xl 2xl:text-[68px];
+}
+
+@utility display-2 {
+  @apply font-title text-4xl leading-[120%] font-bold md:text-5xl lg:text-6xl xl:text-[88px];
+}
+
+@utility heading-1 {
+  @apply font-title text-3xl leading-[1.15] font-bold tracking-tight text-title sm:text-4xl lg:text-[44px];
+}
+
+@utility heading-2 {
+  @apply font-title text-2xl leading-[1.2] font-bold tracking-tight text-title sm:text-3xl lg:text-4xl;
+}
+
+@utility heading-3 {
+  @apply font-title text-xl leading-[1.25] font-bold text-title sm:text-2xl;
+}
+
+@utility heading-4 {
+  @apply font-title text-lg font-bold text-title sm:text-xl;
+}
+
+@utility heading-5 {
+  @apply font-title text-base font-bold text-title lg:text-lg;
+}
+
+@utility heading-6 {
+  @apply font-title text-sm font-bold text-title lg:text-base;
+}
+
+@utility lead-text {
+  @apply font-body text-lg leading-relaxed text-body lg:text-xl;
+}
+
+@utility l-text {
+  @apply font-body text-base text-body lg:text-lg;
+}
+
+@utility m-text {
+  @apply font-body text-sm text-body sm:text-base;
+}
+
+@utility s-text {
+  @apply font-body text-sm text-body;
+}
+
+@utility eyebrow {
+  @apply inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-primary uppercase;
+}
+
+/* Legacy aliases (existing views use these) */
+@utility exl-text {
+  @apply text-xl lg:text-2xl;
+}
+
+@utility xl-text {
+  @apply text-sm sm:text-base lg:text-lg xl:text-xl;
+}
+
+@utility lg-text {
+  @apply text-base lg:text-lg;
+}
+
+@utility base-text {
+  @apply text-sm xl:text-base;
+}
+
+@utility s-body {
+  @apply text-sm;
+}
+
+/* Template card surfaces used by imported whatsapp-html app pages. */
+.card {
+  @apply rounded-2xl border border-neutral-200 bg-neutral-0 p-6;
+}
+
+.card-soft {
+  @apply rounded-2xl bg-section p-6;
+}
+
+.dashboard-card {
+  @apply overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0;
+}
+
+/* =====================================================================
+   Gradients — updated for Classic green theme
+   ===================================================================== */
+@utility gradient-primary {
+  background: linear-gradient(135deg, #1faa53 0%, #25d366 50%, #16a34a 100%);
+}
+
+@utility gradient-secondary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+@utility gradient-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+@utility gradient-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+@utility gradient-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+}
+
+@utility gradient-info {
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+}
+
+@utility gradient-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+}
+
+@utility gradient-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+}
+
+@utility text-gradient {
+  background: linear-gradient(135deg, #1faa53 0%, #25d366 50%, #075e54 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* =====================================================================
+   Responsive section spacing
+   ===================================================================== */
+@utility spy-section {
+  @apply py-16 sm:py-20 lg:py-28;
+}
+
+@utility spt-section {
+  @apply pt-16 sm:pt-20 lg:pt-28;
+}
+
+@utility spb-section {
+  @apply pb-16 sm:pb-20 lg:pb-28;
+}
+
+/* sp = spacing padding, t = top */
+@utility spt-30 {
+  @apply pt-16 md:pt-24 xl:pt-30;
+}
+
+@utility spt-25 {
+  @apply pt-14 md:pt-20 xl:pt-25;
+}
+
+@utility spt-20 {
+  @apply pt-10 md:pt-16 xl:pt-20;
+}
+
+@utility spt-18 {
+  @apply pt-9 md:pt-14 xl:pt-18;
+}
+
+@utility spt-15 {
+  @apply pt-8 md:pt-12 xl:pt-15;
+}
+
+@utility spt-10 {
+  @apply pt-5 md:pt-8 xl:pt-10;
+}
+
+/* sp = spacing padding, b = bottom */
+@utility spb-30 {
+  @apply pb-16 md:pb-24 xl:pb-30;
+}
+
+@utility spb-25 {
+  @apply pb-14 md:pb-20 xl:pb-25;
+}
+
+@utility spb-20 {
+  @apply pb-10 md:pb-16 xl:pb-20;
+}
+
+@utility spb-18 {
+  @apply pb-9 md:pb-14 xl:pb-18;
+}
+
+@utility spb-15 {
+  @apply pb-8 md:pb-12 xl:pb-15;
+}
+
+@utility spb-10 {
+  @apply pb-5 md:pb-8 xl:pb-10;
+}
+
+/* sp = spacing padding, y = vertical */
+@utility spy-30 {
+  @apply py-16 md:py-24 xl:py-30;
+}
+
+@utility spy-25 {
+  @apply py-14 md:py-20 xl:py-25;
+}
+
+@utility spy-20 {
+  @apply py-10 md:py-16 xl:py-20;
+}
+
+@utility spy-18 {
+  @apply py-9 md:py-14 xl:py-18;
+}
+
+@utility spy-15 {
+  @apply py-8 md:py-12 xl:py-15;
+}
+
+@utility spy-10 {
+  @apply py-5 md:py-8 xl:py-10;
+}
+
+/* sp = spacing padding, x = horizontal */
+@utility spx-30 {
+  @apply px-16 md:px-24 xl:px-30;
+}
+
+@utility spx-25 {
+  @apply px-14 md:px-20 xl:px-25;
+}
+
+@utility spx-20 {
+  @apply px-10 md:px-16 xl:px-20;
+}
+
+@utility spx-18 {
+  @apply px-9 md:px-14 xl:px-18;
+}
+
+@utility spx-15 {
+  @apply px-8 md:px-12 xl:px-15;
+}
+
+@utility spx-10 {
+  @apply px-5 md:px-8 xl:px-10;
+}
+
+/* sm = spacing margin, t = top */
+@utility smt-30 {
+  @apply mt-16 md:mt-24 xl:mt-30;
+}
+
+@utility smt-25 {
+  @apply mt-14 md:mt-20 xl:mt-25;
+}
+
+@utility smt-20 {
+  @apply mt-10 md:mt-16 xl:mt-20;
+}
+
+@utility smt-18 {
+  @apply mt-9 md:mt-14 xl:mt-18;
+}
+
+@utility smt-15 {
+  @apply mt-8 md:mt-12 xl:mt-15;
+}
+
+@utility smt-10 {
+  @apply mt-5 md:mt-8 xl:mt-10;
+}
+
+/* sm = spacing margin, b = bottom */
+@utility smb-30 {
+  @apply mb-16 md:mb-24 xl:mb-30;
+}
+
+@utility smb-25 {
+  @apply mb-14 md:mb-20 xl:mb-25;
+}
+
+@utility smb-20 {
+  @apply mb-10 md:mb-16 xl:mb-20;
+}
+
+@utility smb-18 {
+  @apply mb-9 md:mb-14 xl:mb-18;
+}
+
+@utility smb-15 {
+  @apply mb-8 md:mb-12 xl:mb-15;
+}
+
+@utility smb-10 {
+  @apply mb-5 md:mb-8 xl:mb-10;
+}
+
+/* sm = spacing margin, y = vertical */
+@utility smy-30 {
+  @apply my-16 md:my-24 xl:my-30;
+}
+
+@utility smy-25 {
+  @apply my-14 md:my-20 xl:my-25;
+}
+
+@utility smy-20 {
+  @apply my-10 md:my-16 xl:my-20;
+}
+
+@utility smy-18 {
+  @apply my-9 md:my-14 xl:my-18;
+}
+
+@utility smy-15 {
+  @apply my-8 md:my-12 xl:my-15;
+}
+
+@utility smy-10 {
+  @apply my-5 md:my-8 xl:my-10;
+}
+
+/* sm = spacing margin, x = horizontal */
+@utility smx-30 {
+  @apply mx-16 md:mx-24 xl:mx-30;
+}
+
+@utility smx-25 {
+  @apply mx-14 md:mx-20 xl:mx-25;
+}
+
+@utility smx-20 {
+  @apply mx-10 md:mx-16 xl:mx-20;
+}
+
+@utility smx-18 {
+  @apply mx-9 md:mx-14 xl:mx-18;
+}
+
+@utility smx-15 {
+  @apply mx-8 md:mx-12 xl:mx-15;
+}
+
+@utility smx-10 {
+  @apply mx-5 md:mx-8 xl:mx-10;
+}
+
+/* =====================================================================
+   Badges — updated with Classic green primary
+   ===================================================================== */
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+@utility badge-primary {
+  @apply bg-primary/10 text-primary;
+}
+
+@utility badge-secondary {
+  @apply bg-secondary/10 text-secondary;
+}
+
+@utility badge-success {
+  @apply bg-success/15 text-success;
+}
+
+@utility badge-warning {
+  @apply bg-warning/15 text-warning;
+}
+
+@utility badge-danger {
+  @apply border-error/50 bg-error/10 text-error;
+}
+
+@utility badge-info {
+  @apply bg-info/15 text-info;
+}
+
+@utility badge-purple {
+  @apply bg-secondary/10 text-secondary;
+}
+
+@utility badge-cyan {
+  @apply bg-info/10 text-info;
+}
+
+@utility badge-dark {
+  @apply border-neutral-700 bg-neutral-800 text-neutral-100;
+}
+
+@utility badge-light {
+  @apply border-neutral-200 bg-neutral-50 text-neutral-700;
+}
+
+@utility badge-deep {
+  @apply bg-deep/12 text-deep;
+}
+
+/* Borderless badge variants (for Classic template compat) */
+.badge-soft {
+  @apply bg-primary/10 text-primary;
+}
+
+.badge-neutral {
+  @apply bg-neutral-100 text-neutral-500;
+}
+
+.badge-error {
+  @apply bg-error/15 text-error;
+}
+
+/* outline badges */
+@utility badge-outline-primary {
+  @apply border-primary text-primary bg-transparent;
+}
+
+@utility badge-outline-success {
+  @apply border-success text-success bg-transparent;
+}
+
+@utility badge-outline-warning {
+  @apply border-warning text-warning bg-transparent;
+}
+
+@utility badge-outline-danger {
+  @apply border-error text-error bg-transparent;
+}
+
+@utility badge-outline-info {
+  @apply border-info text-info bg-transparent;
+}
+
+/* =====================================================================
+   Button icon & Custom checkbox — from original
+   ===================================================================== */
+@utility btn-icon {
+  @apply bg-neutral-0 flex cursor-pointer items-center justify-center rounded-xl border border-neutral-100 text-neutral-700 transition-all duration-300;
+
+  &:hover {
+    @apply border-primary bg-primary/10 -translate-y-0.5;
+  }
+
+  &.text-error:hover {
+    @apply border-error bg-error/10;
+  }
+}
+
+@utility custom-checkbox {
+  @apply relative h-5 w-5 cursor-pointer appearance-none rounded-md border border-neutral-100 transition-all duration-300;
+
+  &:checked {
+    @apply bg-primary border-primary;
+  }
+
+  &:checked::after {
+    content: "\2713";
+    @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-bold text-white;
+  }
+}
+
+/* =====================================================================
+   Scrollbar
+   ===================================================================== */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border-radius: 10px;
+}
+
+/* ===== Dropdown ===== */
+.dropdown-panel {
+  @apply invisible translate-y-1 opacity-0 transition-all duration-150 ease-in-out;
+}
+
+.dropdown-panel.open {
+  @apply visible translate-y-0 opacity-100;
+}
+
+/* Stat card hover glow — updated to green */
+.stat-card::after {
+  content: "";
+  @apply pointer-events-none absolute -top-1/2 -right-1/2 h-[200%] w-[200%] transition-all duration-700 ease-in-out;
+  background: radial-gradient(circle,
+      rgba(31, 170, 83, 0.08) 0%,
+      transparent 70%);
+}
+
+.stat-card:hover::after {
+  @apply -top-1/4 -right-1/4;
+}
+
+/* ===== Card Elevated ===== */
+.card-elevated {
+  @apply bg-neutral-0 relative overflow-hidden rounded-2xl border border-neutral-100 transition-all duration-500;
+}
+
+.section-card {
+  @apply bg-neutral-0 relative overflow-hidden rounded-2xl border border-neutral-100 px-3 py-6 transition-all duration-500 sm:px-6;
+}
+
+/* ===== DataTable Loading Overlay ===== */
+.datatable-body {
+  @apply relative;
+}
+
+.datatable-overlay {
+  @apply absolute inset-0 z-10 flex items-center justify-center;
+  background: color-mix(in srgb, var(--color-neutral-0) 70%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.datatable-spinner {
+  @apply h-8 w-8 rounded-full border-[3px] border-neutral-200;
+  border-top-color: var(--color-primary);
+  animation: dt-spin 0.6s linear infinite;
+}
+
+@keyframes dt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== ApexCharts ===== */
+.apexcharts-tooltip,
+.apexcharts-text,
+.apexcharts-legend-text {
+  font-family: "Inter", sans-serif !important;
+}
+
+.apexcharts-canvas,
+.apexcharts-canvas svg,
+.apexcharts-canvas *:focus,
+.apexcharts-canvas *:active,
+.apex-chart-widget *:focus,
+.apex-chart-widget *:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.apexcharts-selection-rect {
+  display: none !important;
+}

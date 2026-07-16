@@ -1,0 +1,56 @@
+/* Drawer Styles */
+.drawer {
+  @apply bg-neutral-0 fixed top-0 -right-full z-[100] h-full w-full border-l border-neutral-100 transition-all duration-300 ease-in-out sm:-right-[500px] sm:w-[500px];
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.05);
+}
+
+.drawer.active {
+  @apply right-0;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.1);
+}
+
+.drawer-overlay {
+  @apply pointer-events-none fixed inset-0 z-[90] bg-neutral-50/20 opacity-0 backdrop-blur-sm transition-opacity duration-300;
+}
+
+.drawer-overlay.active {
+  @apply pointer-events-auto opacity-100;
+}
+
+/* Left Drawer Variant */
+.drawer-left {
+  @apply bg-neutral-0 fixed top-0 -left-full z-[100] h-full w-full border-r border-neutral-100 transition-all duration-300 ease-in-out sm:-left-[500px] sm:w-[500px];
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05);
+}
+
+.drawer-left.active {
+  @apply left-0;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Bottom Drawer Variant */
+.drawer-bottom {
+  @apply bg-neutral-0 fixed right-0 -bottom-[500px] left-0 z-[100] h-[500px] w-full border-t border-neutral-100 transition-all duration-300 ease-in-out;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.05);
+}
+
+.drawer-bottom.active {
+  @apply bottom-0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Sizes */
+/* Sizes */
+.drawer-sm {
+  @apply sm:-right-[320px] sm:w-[320px];
+}
+.drawer-sm.drawer-left {
+  @apply sm:-left-[320px];
+}
+
+.drawer-full {
+  @apply -right-[100%] sm:w-full;
+}
+.drawer-full.drawer-left {
+  @apply -left-[100%];
+}

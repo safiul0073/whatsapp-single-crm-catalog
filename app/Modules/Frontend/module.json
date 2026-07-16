@@ -1,0 +1,12 @@
+{
+    "name": "Frontend",
+    "alias": "frontend",
+    "description": "Frontend themes, menus, sections, and pages",
+    "version": "1.0.0",
+    "priority": 140,
+    "providers": [
+        "App\\Modules\\Frontend\\Providers\\FrontendServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

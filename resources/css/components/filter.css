@@ -1,0 +1,32 @@
+/* Filter & Input Components */
+@utility filter-btn {
+  @apply bg-neutral-0 w-full rounded-xl border border-neutral-100 px-4 py-2.5 text-sm text-neutral-950 transition-all duration-300 outline-none;
+
+  &:hover {
+    @apply border-neutral-200 bg-neutral-50;
+  }
+
+  &:focus {
+    @apply border-primary ring-primary/10 ring-4;
+  }
+}
+
+@utility filter-select {
+  @apply bg-neutral-0 w-full appearance-none rounded-xl border border-neutral-100 px-4 py-2.5 text-sm text-neutral-950 transition-all duration-300 outline-none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+
+  &:hover {
+    @apply border-neutral-200 bg-neutral-50;
+  }
+
+  &:focus {
+    @apply border-primary ring-primary/10 ring-4;
+  }
+}
+
+@utility filter-wrapper {
+  @apply bg-neutral-0 rounded-3xl border border-neutral-100 p-6 shadow-sm;
+}

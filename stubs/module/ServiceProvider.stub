@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Providers;
+
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use App\Modules\{{ studlyName }}\Policies\{{ singularName }}Policy;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
+
+class {{ studlyName }}ServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        //
+    }
+
+    public function boot(): void
+    {
+        Gate::policy({{ singularName }}::class, {{ singularName }}Policy::class);
+        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+    }
+}

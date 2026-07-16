@@ -1,0 +1,12 @@
+{
+    "name": "LoginActivity",
+    "alias": "login-activity",
+    "description": "Login activity management",
+    "version": "1.0.0",
+    "priority": 100,
+    "providers": [
+        "App\\Modules\\LoginActivity\\Providers\\LoginActivityServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

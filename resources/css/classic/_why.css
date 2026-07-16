@@ -1,0 +1,172 @@
+/* ==========================================================================
+   WHY — state / transition / hover / animation / media rules only.
+   Base visual styles are inline Tailwind in why.html.
+   ========================================================================== */
+
+/* ---------- BG grid (mask-image + grid pattern) ---------- */
+.why2-bg-grid {
+  background-image: linear-gradient(to right, rgba(17, 18, 74, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(17, 18, 74, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 95%);
+}
+
+/* ---------- Eyebrow dot box-shadow ---------- */
+.why2-eyebrow-dot {
+  box-shadow: 0 0 0 3px rgba(33, 72, 255, 0.2);
+}
+
+/* ---------- Pillar reveal transition (custom easing + multi-property) ---------- */
+.why2-pillar {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.why2-pillar.is-visible {
+  @apply opacity-100 translate-y-0;
+}
+
+/* ---------- Pillar hover (border + shadow) ---------- */
+.why2-pillar:hover {
+  @apply border-border-strong;
+  box-shadow: theme(--shadow-why-pillar-hover);
+}
+
+/* ---------- Pillar complex radial-gradient backgrounds ---------- */
+.why2-pillar--hero {
+  background: radial-gradient(60% 80% at 0% 0%, rgba(33, 72, 255, 0.06), transparent 60%), linear-gradient(135deg, #fbfcff 0%, #ffffff 100%);
+}
+.why2-pillar--wide {
+  background: radial-gradient(60% 80% at 100% 0%, rgba(33, 72, 255, 0.05), transparent 60%), linear-gradient(135deg, #ffffff 0%, #fbfcff 100%);
+}
+
+/* ---------- Pillar corner decoration (transition + hover) ---------- */
+.why2-pillar-corner {
+  transition:
+    color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.why2-pillar:hover .why2-pillar-corner {
+  color: rgba(15, 15, 73, 0.2);
+  transform: scale(1.06);
+}
+
+/* ---------- Pillar icon transition + hover transform ---------- */
+.why2-pillar-icon {
+  transition: all 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.why2-pillar:hover .why2-pillar-icon {
+  transform: rotate(-6deg) scale(1.06);
+}
+
+/* ---------- Color-variant icon backgrounds (tinted rgba, not in tokens) ---------- */
+.why2-pillar--blue {
+  background: linear-gradient(135deg, rgba(33, 72, 255, 0.07) 0%, rgba(33, 72, 255, 0.02) 60%, #ffffff 100%);
+}
+.why2-pillar--blue .why2-pillar-icon {
+  background: rgba(33, 72, 255, 0.08);
+  border-color: rgba(33, 72, 255, 0.18);
+  @apply text-brand-blue;
+}
+.why2-pillar--green {
+  background: linear-gradient(135deg, rgba(22, 199, 132, 0.07) 0%, rgba(22, 199, 132, 0.02) 60%, #ffffff 100%);
+}
+.why2-pillar--green .why2-pillar-icon {
+  background: rgba(22, 199, 132, 0.08);
+  border-color: rgba(22, 199, 132, 0.2);
+  @apply text-brand-green;
+}
+.why2-pillar--navy {
+  background: linear-gradient(135deg, rgba(33, 72, 255, 0.06) 0%, rgba(15, 15, 73, 0.03) 60%, #ffffff 100%);
+}
+.why2-pillar--navy .why2-pillar-icon {
+  background: rgba(15, 15, 73, 0.06);
+  border-color: rgba(15, 15, 73, 0.16);
+  @apply text-brand-navy-ink;
+}
+
+/* ---------- Color-variant check mark backgrounds (tinted rgba) ---------- */
+.why2-pillar--blue .why2-pillar-checks-mark {
+  background: rgba(33, 72, 255, 0.12);
+  @apply text-brand-blue;
+}
+.why2-pillar--navy .why2-pillar-checks-mark {
+  background: rgba(15, 15, 73, 0.1);
+  @apply text-brand-navy-ink;
+}
+
+/* ---------- Footer CTA transition + hover ---------- */
+.why2-foot-cta {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.why2-foot-cta:hover {
+  transform: translateY(-1px);
+  gap: 12px;
+  box-shadow: theme(--shadow-why-foot-cta-hover);
+}
+
+/* ---------- Footer complex gradient + border + shadow ---------- */
+.why2-foot {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* box-shadow: theme(--shadow-brand); */
+}
+.why2-foot-left {
+  background: #2148ff;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 48px) 100%, 0 100%);
+  padding-right: 72px;
+  position: relative;
+  z-index: 1;
+}
+.why2-foot-right {
+  background: #0d0d28;
+  margin-left: -48px;
+}
+
+/* ---------- Responsive grid overrides ---------- */
+@media (max-width: 1100px) {
+  .why2-pillars {
+    @apply grid-cols-2;
+  }
+  .why2-pillar--hero,
+  .why2-pillar--wide {
+    grid-column: span 2;
+  }
+  .why2-pillar--std {
+    grid-column: span 1;
+  }
+}
+@media (max-width: 720px) {
+  .why2-pillars {
+    @apply grid-cols-1;
+  }
+  .why2-pillar--hero,
+  .why2-pillar--wide,
+  .why2-pillar--std {
+    grid-column: auto;
+  }
+  .why2-pillar-checks {
+    grid-template-columns: 1fr !important;
+  }
+  .why2-foot {
+    @apply flex-col;
+  }
+  .why2-foot-left {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 0px) 100%, 0 100%);
+    padding-right: 2rem;
+    width: 100%;
+  }
+  .why2-foot-right {
+    width: 100%;
+    margin-left: 0;
+    margin-top: -24px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 2rem;
+    @apply flex-wrap gap-4;
+  }
+}

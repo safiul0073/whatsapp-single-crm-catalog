@@ -1,0 +1,12 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class {{ singularName }} extends Model
+{
+    protected $table = '{{ tableName }}';
+
+    protected $fillable = ['key', 'value'];
+}

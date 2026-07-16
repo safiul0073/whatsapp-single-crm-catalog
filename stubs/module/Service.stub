@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Services;
+
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use App\Modules\Shared\Traits\HasCrudOperations;
+use App\Modules\Shared\Traits\HasExport;
+use App\Modules\Shared\Traits\HasImport;
+
+class {{ studlyName }}Service
+{
+    use HasCrudOperations;
+    use HasExport;
+    use HasImport;
+
+    protected string $model = {{ singularName }}::class;
+
+    /**
+     * Columns to search with LIKE when 'search' filter is provided.
+     */
+    protected array $searchable = ['name'];
+
+    /**
+     * Columns that accept exact-match filters.
+     */
+    protected array $filterable = ['is_active'];
+
+    /**
+     * Optional explicit sortable whitelist for query safety.
+     * Leave empty to allow default trait behavior.
+     */
+    protected array $sortable = ['name', 'is_active', 'created_at'];
+
+    /**
+     * Columns available for CSV export as ['column' => 'Label'].
+     */
+    protected array $exportable = [
+        'id' => 'ID',
+        'name' => 'Name',
+        'is_active' => 'Status',
+        'created_at' => 'Created At',
+    ];
+
+    /**
+     * CSV header to database column mapping as ['CSV Header' => 'db_column'].
+     */
+    protected array $importable = [
+        'Name' => 'name',
+        'Status' => 'is_active',
+    ];
+
+    /**
+     * Validation rules per database column for import.
+     */
+    protected array $importRules = [
+        'name' => ['required', 'string', 'max:255'],
+    ];
+
+    // Add custom methods below...
+}

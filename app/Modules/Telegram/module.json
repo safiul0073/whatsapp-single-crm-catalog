@@ -1,0 +1,1 @@
+{"name":"Telegram","alias":"telegram","description":"Workspace Telegram bot channel setup and campaign delivery for subscribers and channels","version":"1.0.0","priority":34,"providers":["App\\Modules\\Telegram\\Providers\\TelegramServiceProvider"],"requires":["marketing-channels"],"active":true}

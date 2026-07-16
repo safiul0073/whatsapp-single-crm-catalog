@@ -1,0 +1,20 @@
+{
+    "name": "AuthApi",
+    "alias": "auth-api",
+    "description": "Versioned authentication API module",
+    "version": "1.0.0",
+    "priority": 25,
+    "providers": [
+        "App\\Modules\\AuthApi\\Providers\\AuthApiServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {
+            "darkaonline/l5-swagger": "^11.0",
+            "laravel/sanctum": "^4.3",
+            "laravel/socialite": "^5.26"
+        },
+        "require-dev": {}
+    },
+    "active": true
+}

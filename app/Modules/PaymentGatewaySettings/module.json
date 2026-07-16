@@ -1,0 +1,12 @@
+{
+    "name": "PaymentGatewaySettings",
+    "alias": "payment-gateway-settings",
+    "description": "Payment gateway settings",
+    "version": "1.0.0",
+    "priority": 132,
+    "providers": [
+        "App\\Modules\\PaymentGatewaySettings\\Providers\\PaymentGatewaySettingsServiceProvider"
+    ],
+    "requires": [],
+    "active": false
+}

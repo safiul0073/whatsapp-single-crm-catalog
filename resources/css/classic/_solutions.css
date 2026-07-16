@@ -1,0 +1,179 @@
+/* ==========================================================================
+   SOLUTIONS — state, transition, animation & decorative rules only.
+   Base visual styles are inline Tailwind in solutions.html.
+   ========================================================================== */
+
+/* ---------- Grid background (complex gradient + mask-image) ---------- */
+.sol3-grid-bg {
+  background-image: linear-gradient(to right, rgba(17, 18, 74, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 18, 74, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(80% 70% at 50% 30%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(80% 70% at 50% 30%, #000 30%, transparent 95%);
+}
+
+/* ---------- Banner variants (complex radial gradients) ---------- */
+.sol3-banner--blue {
+  background: radial-gradient(60% 80% at 100% 0%, rgba(33, 72, 255, 0.06), transparent 60%),
+    linear-gradient(135deg, #f4f7ff 0%, #ffffff 100%);
+  border-color: rgba(33, 72, 255, 0.18);
+}
+.sol3-banner--green {
+  background: radial-gradient(60% 80% at 0% 0%, rgba(22, 199, 132, 0.07), transparent 60%),
+    linear-gradient(135deg, #f1fbf7 0%, #ffffff 100%);
+  border-color: rgba(22, 199, 132, 0.22);
+}
+.sol3-banner--navy {
+  background: radial-gradient(60% 80% at 100% 0%, rgba(15, 15, 73, 0.06), transparent 60%),
+    linear-gradient(135deg, #f5f6fa 0%, #ffffff 100%);
+  border-color: rgba(15, 15, 73, 0.16);
+}
+
+/* ---------- Banner scroll-reveal transition ---------- */
+.sol3-banner {
+  transition:
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sol3-banner.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Inverted layout (order swap) ---------- */
+.sol3-banner.is-inverted .sol3-banner-text {
+  order: 2;
+}
+.sol3-banner.is-inverted .sol3-banner-visual {
+  order: 1;
+}
+.sol3-banner.is-inverted .sol3-banner-block--a {
+  right: auto;
+  left: 6%;
+}
+.sol3-banner.is-inverted .sol3-banner-block--b {
+  right: auto;
+  left: 18%;
+}
+
+/* ---------- Photo tint overlays (complex gradients) ---------- */
+.sol3-banner-photo-tint {
+  background:
+    linear-gradient(180deg, rgba(15, 15, 73, 0) 40%, rgba(15, 15, 73, 0.3) 100%),
+    linear-gradient(135deg, rgba(33, 72, 255, 0.16) 0%, rgba(15, 15, 73, 0.08) 60%, rgba(22, 199, 132, 0.1) 100%);
+  mix-blend-mode: multiply;
+}
+.sol3-banner--green .sol3-banner-photo-tint {
+  background: linear-gradient(180deg, rgba(15, 15, 73, 0) 40%, rgba(15, 15, 73, 0.28) 100%),
+    linear-gradient(135deg, rgba(22, 199, 132, 0.2) 0%, rgba(33, 72, 255, 0.1) 100%);
+}
+.sol3-banner--navy .sol3-banner-photo-tint {
+  background: linear-gradient(180deg, rgba(15, 15, 73, 0) 40%, rgba(15, 15, 73, 0.32) 100%),
+    linear-gradient(135deg, rgba(15, 15, 73, 0.22) 0%, rgba(33, 72, 255, 0.14) 100%);
+}
+
+/* ---------- Variant-specific icon color overrides ---------- */
+.sol3-banner--green .sol3-banner-eyebrow > i,
+.sol3-banner--green .sol3-banner-eyebrow > svg {
+  color: #16c784;
+}
+.sol3-banner--navy .sol3-banner-eyebrow > i,
+.sol3-banner--navy .sol3-banner-eyebrow > svg {
+  color: #0f0f49;
+}
+
+/* ---------- CTA hover state ---------- */
+.sol3-banner-cta {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sol3-banner-cta:hover {
+  background: #1b1c5c;
+  transform: translateY(-1px);
+  gap: 12px;
+}
+
+/* ---------- SaaS bar chart bars (CSS custom property + gradient) ---------- */
+.sol3-vis-saas-bars > span {
+  height: var(--h);
+  background: linear-gradient(180deg, #2148ff, #1a3ce5);
+  border-radius: 4px 4px 1px 1px;
+  opacity: 0.9;
+}
+
+/* ---------- Track fill gradient ---------- */
+.sol3-vis-mvp-track-fill {
+  background: linear-gradient(90deg, #2148ff, #16c784);
+}
+
+/* ---------- Track dot done state ---------- */
+.sol3-vis-mvp-track-dot.is-done {
+  background: #16c784;
+  border-color: #16c784;
+  box-shadow: var(--shadow-sol-track-dot-done);
+}
+
+/* ---------- Fin row variants ---------- */
+.sol3-vis-fin-row--cleared .sol3-vis-fin-amount {
+  color: #16c784;
+}
+.sol3-vis-fin-row--pending .sol3-vis-fin-amount {
+  color: #f59e0b;
+}
+
+/* ---------- Adm check variant (nth-child) ---------- */
+.sol3-vis-adm-row:nth-child(2) .sol3-vis-adm-check {
+  background: #2148ff;
+  border-color: #2148ff;
+}
+
+/* ---------- Visualization variant overrides ---------- */
+/* These modify the base .sol3-vis inline styles (split-class pattern) */
+.sol3-vis-mvp {
+  gap: 18px;
+}
+.sol3-vis-fin {
+  gap: 6px;
+}
+.sol3-vis-mkt {
+  gap: 8px;
+}
+.sol3-vis-adm {
+  padding: 14px;
+  gap: 6px;
+}
+.sol3-vis-mob {
+  flex-direction: row;
+  align-items: center;
+  gap: 22px;
+}
+
+/* ---------- Responsive: max-width 1100px ---------- */
+@media (max-width: 1100px) {
+  .sol3-banner {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .sol3-banner.is-inverted .sol3-banner-text {
+    order: 1;
+  }
+  .sol3-banner.is-inverted .sol3-banner-visual {
+    order: 2;
+  }
+}
+
+/* ---------- Responsive: max-width 640px ---------- */
+@media (max-width: 640px) {
+  .sol3-banner-foot {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .sol3-banner-metric {
+    flex-direction: row;
+    gap: 10px;
+    align-items: baseline;
+  }
+  .sol3-vis-mob {
+    flex-direction: column;
+  }
+}

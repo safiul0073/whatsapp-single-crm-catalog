@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Modules\PaymentGateways\Drivers;
+
+use App\Modules\PaymentGateways\Contracts\PaymentGatewayInterface;
+use App\Modules\PaymentGateways\DataObjects\PaymentData;
+use App\Modules\PaymentGateways\DataObjects\PaymentResponse;
+use App\Modules\PaymentGateways\DataObjects\WebhookResult;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+
+class {{ name }}PaymentGateway implements PaymentGatewayInterface
+{
+    public function name(): string
+    {
+        return '{{ slug }}';
+    }
+
+    public function createPayment(PaymentData $data): PaymentResponse
+    {
+        // TODO: Implement payment creation
+        // For redirect gateways: return PaymentResponse::redirect($id, $url);
+        // For embedded gateways: return PaymentResponse::clientAction($id, ['token' => '...']);
+        throw new \RuntimeException('{{ name }}PaymentGateway::createPayment() not implemented');
+    }
+
+    public function verifyPayment(Request $request): PaymentResponse
+    {
+        // TODO: Verify payment after user returns from redirect or JS callback
+        throw new \RuntimeException('{{ name }}PaymentGateway::verifyPayment() not implemented');
+    }
+
+    public function verifyWebhook(Request $request): bool
+    {
+        // TODO: Verify webhook signature
+        return false;
+    }
+
+    public function handleWebhook(Request $request): WebhookResult
+    {
+        // TODO: Process webhook event
+        return new WebhookResult;
+    }
+
+    public function getClientConfig(): array
+    {
+        return [
+            'gateway' => '{{ slug }}',
+        ];
+    }
+}

@@ -1,0 +1,66 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Http\Controllers\{{ panelStudly }};
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use App\Modules\{{ studlyName }}\Tables\{{ studlyName }}Table;
+use App\Modules\Shared\Support\Tables\TableDefinition;
+use App\Modules\Shared\Traits\HasCrudActions;
+use App\Modules\Shared\Traits\HasExportActions;
+use App\Modules\Shared\Traits\HasImportActions;
+use App\Modules\{{ studlyName }}\Http\Requests\Store{{ singularName }}Request;
+use App\Modules\{{ studlyName }}\Http\Requests\Update{{ singularName }}Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+
+class {{ studlyName }}Controller extends Controller implements HasMiddleware
+{
+    use HasCrudActions;
+    use HasExportActions;
+    use HasImportActions;
+
+    protected string $viewPath = '{{ lowerName }}::{{ panelLower }}';
+
+    protected string $routePrefix = '{{ panelLower }}.{{ lowerName }}';
+
+    protected string $resourceName = '{{ variablePlural }}';
+
+    public static function middleware(): array
+    {
+        return [
+            ...static::crudMiddleware('{{ lowerName }}'),
+            ...static::exportMiddleware('{{ lowerName }}'),
+            ...static::importMiddleware('{{ lowerName }}'),
+        ];
+    }
+
+    public function __construct(
+        protected {{ studlyName }}Service $service
+    ) {}
+
+    public function store(Store{{ singularName }}Request $request): RedirectResponse
+    {
+        $this->service->create($request->validated());
+
+        return redirect()
+            ->route("{$this->routePrefix}.index")
+            ->with('success', __('Created successfully'));
+    }
+
+    public function update(Update{{ singularName }}Request $request, $record): RedirectResponse
+    {
+        $record = $this->resolveRecord($record);
+        $this->service->update($record, $request->validated());
+
+        return redirect()
+            ->route("{$this->routePrefix}.index")
+            ->with('success', __('Updated successfully'));
+    }
+
+    protected function tableDefinition(Request $request): ?TableDefinition
+    {
+        return {{ studlyName }}Table::make();
+    }
+}

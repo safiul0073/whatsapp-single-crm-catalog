@@ -1,0 +1,80 @@
+/* Modal Styles */
+.modal {
+  @apply fixed inset-0 z-[100] flex h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto p-4 md:p-6;
+  display: none;
+}
+
+.modal.active,
+.modal.is-open {
+  /* Layout is now handled by base class, active handles visibility via children */
+}
+
+.modal-backdrop,
+.modal__backdrop {
+  @apply fixed inset-0 bg-title/30 transition-opacity duration-300 ease-out;
+  opacity: 0;
+}
+
+.modal.active .modal-backdrop,
+.modal.is-open .modal-backdrop,
+.modal.active .modal__backdrop,
+.modal.is-open .modal__backdrop {
+  opacity: 1;
+}
+
+.modal-content,
+.modal__panel {
+  @apply bg-neutral-0 relative w-full max-w-lg scale-95 transform rounded-2xl border border-neutral-100 text-neutral-900 opacity-0 shadow-2xl transition-all duration-300 ease-out;
+  transform: scale(0.95) translateY(10px);
+}
+
+.modal__panel {
+  @apply max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-6;
+}
+
+.modal.active .modal-content,
+.modal.is-open .modal-content,
+.modal.active .modal__panel,
+.modal.is-open .modal__panel {
+  @apply scale-100 opacity-100;
+  transform: scale(1) translateY(0);
+}
+
+.modal__panel--lg {
+  @apply max-w-3xl;
+}
+
+/* Modal Sizes */
+.modal-sm .modal-content,
+.modal-sm .modal__panel {
+  @apply max-w-sm;
+}
+.modal-lg .modal-content,
+.modal-lg .modal__panel {
+  @apply max-w-2xl;
+}
+.modal-xl .modal-content,
+.modal-xl .modal__panel {
+  @apply max-w-4xl;
+}
+.modal-full .modal-content,
+.modal-full .modal__panel {
+  @apply h-full max-w-full rounded-none;
+}
+
+/* Modal Header/Body/Footer */
+.modal-header {
+  @apply flex items-center justify-between border-b border-neutral-100 p-5 md:p-6;
+
+  .btn-icon {
+    @apply text-neutral-400 rounded-full border border-neutral-200 hover:text-error hover:border-error/30 hover:bg-error/10 transition-colors;
+  }
+}
+
+.modal-body {
+  @apply p-5 md:p-6;
+}
+
+.modal-footer {
+  @apply flex items-center justify-end gap-3 border-t border-neutral-100 bg-neutral-50/50 p-5 md:p-6;
+}

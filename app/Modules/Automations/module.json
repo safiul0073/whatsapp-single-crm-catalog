@@ -1,0 +1,1 @@
+{"name":"Automations","alias":"automations","description":"Visual WhatsApp workflow builder and execution logs","version":"1.0.0","priority":50,"providers":["App\\Modules\\Automations\\Providers\\AutomationsServiceProvider"],"requires":["contacts","message-templates"],"active":true}

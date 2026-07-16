@@ -1,0 +1,6 @@
+<div class="section-card">
+    <h2 class="heading-5 text-neutral-950 mb-4">{{ __('{{ widgetTitle }}') }}</h2>
+
+    {{-- Widget content goes here --}}
+    <p class="text-sm text-neutral-500">{{ __('No data to display.') }}</p>
+</div>

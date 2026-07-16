@@ -1,0 +1,173 @@
+/* Air Datepicker Custom Styling */
+
+.air-datepicker {
+  @apply !bg-neutral-0 !rounded-3xl !border-neutral-100 !p-3 !shadow-2xl;
+  --adp-background-color: var(--color-neutral-0);
+  --adp-color: var(--color-neutral-900) !important;
+  --adp-accent-color: var(--color-primary) !important;
+  --adp-color-secondary: var(--color-neutral-400) !important;
+  --adp-border-color: var(--color-neutral-100) !important;
+  --adp-border-color-inline: var(--color-neutral-0) !important;
+  --adp-cell-background-color-hover: var(--color-neutral-100) !important;
+  --adp-background-color-hover: var(--color-neutral-100) !important;
+  --adp-pointer-offset: 23px !important;
+  --adp-border-radius: 1.5rem !important;
+  --adp-cell-border-radius: 0.75rem !important;
+  --adp-font-family: inherit !important;
+  --adp-font-size: 14px !important;
+  --adp-nav-action-size: 32px !important;
+  --adp-time-track-color: var(--color-neutral-100) !important;
+  --adp-time-track-height: 4px !important;
+  --adp-time-thumb-size: 14px !important;
+}
+
+/* Fix for the pointer/arrow appearing white in dark mode */
+.air-datepicker--pointer {
+  background: var(--color-neutral-0) !important;
+  /* border-top: 1px solid var(--color-neutral-100) !important;
+  border-right: 1px solid var(--color-neutral-100) !important; */
+  /* @apply !border-neutral-100; */
+}
+
+.air-datepicker--pointer::after {
+  background: var(--color-neutral-0) !important;
+  border-top: 1px solid var(--color-neutral-100) !important;
+  border-right: 1px solid var(--color-neutral-100) !important;
+}
+
+.air-datepicker--buttons,
+.air-datepicker--time {
+  padding: 0px !important;
+  border-top: none !important;
+}
+
+.air-datepicker-nav {
+  @apply !mb-2 !border-0 !px-1;
+}
+
+.air-datepicker-nav--title {
+  @apply !rounded-xl !px-3 !font-bold !text-neutral-900 transition-colors hover:!bg-neutral-50;
+}
+
+.air-datepicker-nav--title i {
+  @apply !ml-1 !font-medium !text-neutral-400;
+}
+
+.air-datepicker-nav--action {
+  @apply !rounded-xl transition-all hover:!bg-neutral-50 active:!scale-95;
+}
+
+/* Body Styles */
+.air-datepicker-body--day-names {
+  @apply !mb-1;
+}
+
+.air-datepicker-body--day-name {
+  @apply !text-[10px] !font-bold !tracking-[0.1em] !text-neutral-400 !uppercase;
+}
+
+.air-datepicker-cell {
+  @apply !transition-all !duration-150;
+}
+
+.air-datepicker-cell.-day-.-other-month- {
+  @apply !opacity-20;
+}
+
+.air-datepicker-cell.-day-.-current- {
+  @apply !bg-primary/10 !text-primary !font-bold;
+}
+
+.air-datepicker-cell.-day-.-selected-,
+.air-datepicker-cell.-day-.-selected-.-current- {
+  @apply !bg-primary !shadow-primary/30 !font-bold !text-white !shadow-lg;
+}
+
+.air-datepicker-cell.-day-.-in-range- {
+  @apply !bg-primary/10 !text-primary !rounded-none;
+}
+
+.air-datepicker-cell.-range-from- {
+  @apply !rounded-l-xl;
+}
+
+.air-datepicker-cell.-range-to- {
+  @apply !rounded-r-xl;
+}
+
+/* Timepicker Styles */
+.air-datepicker-time {
+  @apply !mt-4 !grid !gap-4 !border-t !border-neutral-100 !px-1 !pt-4;
+  grid-template-columns: auto 1fr !important;
+}
+
+.air-datepicker-time--current {
+  @apply !mb-0 !flex !items-center !gap-3 !p-0 !text-lg !font-bold !text-neutral-900;
+}
+
+.air-datepicker-time--current-column {
+  @apply !flex !h-auto !items-center !p-0;
+}
+
+.air-datepicker-time--sliders {
+  @apply !flex !flex-col !gap-4 !p-0;
+}
+
+.air-datepicker-time--row {
+  @apply !m-0 !flex !items-center !gap-3;
+}
+
+.air-datepicker-time--row input[type="range"] {
+  @apply !h-1 !w-full !cursor-pointer !appearance-none !rounded-full !bg-neutral-100;
+}
+
+.air-datepicker-time--row input[type="range"]::-webkit-slider-thumb {
+  @apply !bg-neutral-0 !ring-primary !h-4 !w-4 !appearance-none !rounded-full !ring-2 !transition-transform hover:!scale-110 active:!scale-125;
+}
+
+.air-datepicker-time--row input[type="range"]::-moz-range-thumb {
+  @apply !bg-neutral-0 !ring-primary !h-4 !w-4 !rounded-full !border-0 !ring-2 !transition-transform hover:!scale-110 active:!scale-125;
+}
+
+/* Custom Icons */
+.air-datepicker-nav--action svg {
+  @apply !hidden; /* Hide default small brackets */
+}
+
+/* Add custom arrow look for nav buttons */
+.air-datepicker-nav--action::before {
+  content: "";
+  @apply !block !h-2 !w-2 !border-t-2 !border-r-2 !border-neutral-600;
+}
+
+.air-datepicker-nav--action[data-action="prev"]::before {
+  @apply !ml-1 !rotate-[225deg];
+}
+
+.air-datepicker-nav--action[data-action="next"]::before {
+  @apply !mr-1 !rotate-[45deg];
+}
+
+/* RTL Support for Icons */
+[dir="rtl"] .air-datepicker-nav--action[data-action="prev"]::before {
+  @apply !mr-1 !ml-0 !rotate-[45deg];
+}
+
+[dir="rtl"] .air-datepicker-nav--action[data-action="next"]::before {
+  @apply !mr-0 !ml-1 !rotate-[225deg];
+}
+
+/* Inline Adjustment */
+.air-datepicker.-inline- {
+  @apply !border-0 !shadow-none;
+  background: transparent !important;
+}
+
+/* Right to Left Support */
+[dir="rtl"] .air-datepicker-cell.-range-from- {
+  @apply !rounded-l-none !rounded-r-xl;
+}
+
+[dir="rtl"] .air-datepicker-cell.-range-to- {
+  @apply !rounded-l-xl !rounded-r-none;
+}

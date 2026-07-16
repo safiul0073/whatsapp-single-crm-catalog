@@ -1,0 +1,165 @@
+/* ── Portal / User Dashboard ── */
+
+/* Sidebar transition for mobile */
+.portal-sidebar-transition {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 1023px) {
+  #portal-sidebar {
+    transform: translateX(-100%);
+  }
+
+  #portal-sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+/* Nav link active/hover */
+.portal-nav-link.active {
+  background: var(--color-tint-blue);
+  color: var(--color-brand-blue);
+  font-weight: 600;
+}
+
+.portal-nav-link.active .portal-nav-icon {
+  color: var(--color-brand-blue);
+}
+
+.portal-nav-link:not(.active):hover {
+  background: var(--color-bg-soft);
+  color: var(--color-text-strong);
+}
+
+/* Notification dot */
+.portal-notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #fff;
+}
+
+/* Avatar ring */
+.portal-avatar-ring {
+  box-shadow: 0 0 0 2px var(--color-neutral-0), 0 0 0 4px var(--color-brand-blue);
+}
+
+/* Stat card hover */
+.portal-stat-card {
+  transition: box-shadow 200ms, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.portal-stat-card:hover {
+  box-shadow: 0 16px 32px -12px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Progress bar */
+.portal-prog-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-neutral-200);
+  overflow: hidden;
+}
+
+.portal-prog-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* Table row hover */
+.portal-tbl-row:hover td {
+  background: var(--color-bg-soft);
+}
+
+/* Badge colours */
+.portal-badge-open {
+  background: var(--color-tint-blue);
+  color: var(--color-brand-blue);
+}
+
+.portal-badge-progress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.portal-badge-resolved {
+  background: #e6faf1;
+  color: #065f46;
+}
+
+.portal-badge-closed {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+}
+
+.portal-badge-pending {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+/* Priority dots */
+.portal-pri-high,
+.portal-pri-urgent {
+  background: #ef4444;
+}
+
+.portal-pri-med {
+  background: #f59e0b;
+}
+
+.portal-pri-low {
+  background: #16c784;
+}
+
+/* Priority label colours */
+.portal-pri-label-high,
+.portal-pri-label-urgent {
+  color: #b91c1c;
+}
+
+.portal-pri-label-med {
+  color: #92400e;
+}
+
+.portal-pri-label-low {
+  color: #16c784;
+}
+
+/* Tab buttons */
+.portal-tab-btn {
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms;
+}
+
+.portal-tab-btn.active {
+  border-bottom-color: var(--color-brand-blue);
+  color: var(--color-brand-blue);
+  font-weight: 600;
+}
+
+.portal-tab-btn:not(.active):hover {
+  color: var(--color-text-strong);
+}
+
+/* Portal input */
+.portal-input {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  color: var(--color-text-strong);
+  transition: border-color 150ms, box-shadow 150ms;
+  outline: none;
+  width: 100%;
+  background: var(--color-neutral-0);
+}
+
+.portal-input:focus {
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-blue) 15%, transparent);
+}

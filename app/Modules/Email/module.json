@@ -1,0 +1,1 @@
+{"name":"Email","alias":"email","description":"Workspace email channel setup and campaign delivery via SMTP, Mailgun, or Sendmail","version":"1.0.0","priority":35,"providers":["App\\Modules\\Email\\Providers\\EmailServiceProvider"],"requires":["marketing-channels","settings"],"active":true}

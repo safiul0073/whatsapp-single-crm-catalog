@@ -1,0 +1,46 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | {{ studlyName }}
+    |--------------------------------------------------------------------------
+    |
+    | Define settings groups and fields below. Each group appears as a tab
+    | in the settings sidebar. Available field types:
+    |
+    |   text, textarea, email, number, select, boolean, feature, media, color,
+    |   checkbox, tags, date, date_range, datetime, time
+    |
+    | Keys:
+    |   type      – Field type (required)
+    |   label     – Display label (required)
+    |   hint      – Help text shown below the label
+    |   default   – Default value when no DB override exists
+    |   rules     – Laravel validation rules
+    |   options   – Key-value pairs for select, checkbox, tags
+    |   columns   – Grid columns for checkbox layout (default: 2)
+    |   public    – If true, accessible via getPublicSettings()
+    |   accept    – For media type: 'image' or 'file'
+    |
+    | See docs/settings_fields.md for detailed examples.
+    |
+    */
+
+    'general' => [
+        'label' => 'General',
+        'icon' => 'ph ph-sliders-horizontal',
+        'description' => 'Core {{ lowerName }} configuration',
+        'settings' => [
+            // 'example_key' => [
+            //     'type' => 'text',
+            //     'label' => 'Example Setting',
+            //     'hint' => 'A helpful description',
+            //     'default' => '',
+            //     'rules' => 'nullable|string|max:255',
+            // ],
+        ],
+    ],
+
+];

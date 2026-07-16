@@ -1,0 +1,14 @@
+{
+    "name": "PlaceApiSettings",
+    "alias": "place-api-settings",
+    "description": "Google Places API settings",
+    "version": "1.0.0",
+    "priority": 132,
+    "providers": [
+        "App\\Modules\\PlaceApiSettings\\Providers\\PlaceApiSettingsServiceProvider"
+    ],
+    "requires": [
+        "settings"
+    ],
+    "active": true
+}

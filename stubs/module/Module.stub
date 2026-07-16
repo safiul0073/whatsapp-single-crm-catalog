@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Modules\{{ studlyName }};
+
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use App\Modules\{{ studlyName }}\Policies\{{ singularName }}Policy;
+use App\Modules\Shared\Support\BasePanelModule;
+use App\Modules\Shared\Support\NavigationBuilder;
+
+class Module extends BasePanelModule
+{
+    public function id(): string
+    {
+        return '{{ lowerName }}';
+    }
+
+    public function permissions(): array
+    {
+        return [
+{{ permissionsBlock }}
+        ];
+    }
+
+    public function policies(): array
+    {
+        return [
+{{ policiesBlock }}
+        ];
+    }
+
+{{ navigationMethods }}
+}

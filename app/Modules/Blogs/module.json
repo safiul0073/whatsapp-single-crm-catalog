@@ -1,0 +1,16 @@
+{
+    "name": "Blogs",
+    "alias": "blogs",
+    "description": "Blog post management",
+    "version": "1.0.0",
+    "priority": 73,
+    "providers": [
+        "App\\Modules\\Blogs\\Providers\\BlogsServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

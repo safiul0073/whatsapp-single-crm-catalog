@@ -1,0 +1,242 @@
+@theme {
+  /* ---------- COLORS ---------- */
+  --color-brand-navy-deep: #11124a;
+  --color-brand-navy: #15164f;
+  --color-brand-navy-ink: #0f0f49;
+  --color-brand-blue-electric: #1313ff;
+  --color-brand-blue: #2148ff;
+  --color-brand-blue-soft: #215ebf;
+  --color-brand-green: #16c784;
+  --color-brand-green-bright: #27c76f;
+  --color-brand-green-deep: #1fb254;
+
+  --color-bg-soft: #f7f9fc;
+  --color-bg-section: #f3f6fb;
+  --color-bg-elevated: #ffffff;
+
+  --color-border-default: #e5e7eb;
+  --color-border-soft: #eef2f7;
+  --color-border-strong: #cbd5e1;
+
+  --color-text-strong: #0f172a;
+  --color-text-default: #1e293b;
+  --color-text-muted: #64748b;
+  --color-text-light: #94a3b8;
+  --color-text-on-brand: #ffffff;
+
+  --color-primary: #2148ff;
+  --color-primary-hover: #1a3ce5;
+  --color-success: #16c784;
+  --color-success-soft: #e6faf1;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fee2e2;
+  --color-info: #2148ff;
+  --color-info-soft: #e8eeff;
+
+  --color-tint-blue: #e8eeff;
+  --color-tint-blue-strong: #d6e0ff;
+  --color-tint-green: #e6faf1;
+  --color-tint-navy: #eef2f7;
+  --color-accent-lime: #c7f045;
+
+  /* ---------- FONT FAMILIES ---------- */
+  --font-sans: "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Manrope", "Inter", -apple-system, sans-serif;
+  --font-body: "Inter", "Manrope", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---------- TYPE SCALE (font-size utilities: text-display-2xl, text-h1, etc.) ---------- */
+  --text-display-2xl: 80px;
+  --text-display-xl: 64px;
+  --text-display-lg: 52px;
+  --text-display-md: 44px;
+  --text-h1: 40px;
+  --text-h2: 32px;
+  --text-h3: 24px;
+  --text-h4: 20px;
+  --text-body-lg: 18px;
+  --text-body: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-micro: 11px;
+
+  /* ---------- LINE HEIGHT (leading-*) ---------- */
+  --leading-tight-display: 1.05;
+  --leading-display: 1.1;
+  --leading-heading: 1.2;
+  --leading-body: 1.6;
+  --leading-relaxed-body: 1.7;
+
+  /* ---------- LETTER SPACING (tracking-*) ---------- */
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.02em;
+  --tracking-body: -0.005em;
+  --tracking-eyebrow: 0.12em;
+
+  /* ---------- RADII ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+  
+
+  /* ---------- SHADOWS ---------- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.12), 0 6px 12px -4px rgba(15, 23, 42, 0.05);
+  --shadow-xl: 0 30px 60px -20px rgba(17, 18, 74, 0.18), 0 10px 20px -8px rgba(15, 23, 42, 0.06);
+  --shadow-brand: 0 18px 40px -16px rgba(33, 72, 255, 0.45);
+  --shadow-inner-hi: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* hero chip shadows */
+  --shadow-hero-chip: 0 14px 30px -12px rgba(15, 15, 73, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-hero-card: 0 18px 36px -14px rgba(15, 15, 73, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --shadow-hero-deploy: 0 18px 40px -14px rgba(33, 72, 255, 0.55);
+  --shadow-hero-avatar: 0 4px 8px -3px rgba(15, 15, 73, 0.25);
+  --shadow-hero-dot: 0 0 0 4px rgba(22, 199, 132, 0.18);
+  --shadow-hero-cta: 0 14px 28px -10px rgba(33, 72, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --shadow-hero-cta-hover: 0 18px 36px -12px rgba(33, 72, 255, 0.55);
+  --shadow-hero-eyebrow: 0 4px 14px -6px rgba(15, 15, 73, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* nav shadows */
+  --shadow-nav-bar: 0 8px 24px -16px rgba(15, 15, 73, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-nav-bar-scrolled: 0 14px 32px -18px rgba(15, 15, 73, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  --shadow-nav-panel: 0 36px 72px -24px rgba(17, 18, 74, 0.18), 0 12px 24px -8px rgba(15, 23, 42, 0.05);
+  --shadow-nav-feature-hover: 0 14px 30px -16px rgba(15, 15, 73, 0.18);
+  --shadow-nav-cta-hover: 0 18px 32px -16px rgba(22, 199, 132, 0.35);
+  --shadow-nav-helplines: 0 28px 60px -24px rgba(17, 18, 74, 0.18), 0 10px 22px -8px rgba(15, 23, 42, 0.05);
+  --shadow-nav-drawer: 0 30px 60px -20px rgba(17, 18, 74, 0.18);
+  --shadow-nav-dot: 0 0 0 4px rgba(33, 72, 255, 0.12);
+  --shadow-focus-ring: 0 0 0 2px #fff, 0 0 0 5px rgba(15, 15, 73, 0.32);
+  --shadow-focus-ring-strong: 0 0 0 2px #fff, 0 0 0 5px rgba(15, 15, 73, 0.45);
+
+  /* ---------- MOTION ---------- */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 400ms;
+
+  /* ---------- LAYOUT (max-w-site) ---------- */
+  --container-site: 1240px;
+
+  /* ---------- GRADIENTS (bg-grad-*) ---------- */
+  --background-image-grad-brand: linear-gradient(135deg, #2148ff 0%, #1313ff 100%);
+  --background-image-grad-brand-soft: linear-gradient(135deg, #e8eeff 0%, #f3f6fb 100%);
+  --background-image-grad-mark: linear-gradient(135deg, #2148ff 0%, #16c784 100%);
+  --background-image-grad-section: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  --background-image-grad-glow: radial-gradient(60% 60% at 50% 0%, rgba(33, 72, 255, 0.1) 0%, rgba(33, 72, 255, 0) 60%);
+  --background-image-grad-halo: radial-gradient(60% 60% at 50% 50%, rgba(33, 72, 255, 0.16) 0%, rgba(33, 72, 255, 0) 70%), radial-gradient(40% 40% at 70% 30%, rgba(22, 199, 132, 0.1) 0%, rgba(22, 199, 132, 0) 70%);
+
+  /* ---------- ABOUT ANIMATIONS ---------- */
+  --animate-aboutv2-pulse: aboutv2-pulse 2.4s ease-in-out infinite;
+  @keyframes aboutv2-pulse {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+
+  --animate-aboutv2-anchor-sweep: aboutv2-anchor-sweep 3000ms cubic-bezier(0.22, 1, 0.36, 1) 200ms 1 forwards;
+  @keyframes aboutv2-anchor-sweep {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0% 0; }
+  }
+
+  /* ---------- HERO ANIMATIONS ---------- */
+  --animate-hero-bg-breathe: hero-bg-breathe 9s ease-in-out infinite;
+  @keyframes hero-bg-breathe {
+    0%, 100% { transform: translate(calc(-50% + var(--bx, 0px)), calc(-50% + var(--by, 0px))) scale(1); }
+    50% { transform: translate(calc(-50% + var(--bx, 0px)), calc(-50% + var(--by, 0px))) scale(1.025); }
+  }
+
+  --animate-hero-ring-spin: hero-ring-spin 38s linear infinite;
+  @keyframes hero-ring-spin {
+    0% { transform: translate(calc(-50% + var(--rx, 0px)), calc(-50% + var(--ry, 0px))) rotate(0deg); }
+    100% { transform: translate(calc(-50% + var(--rx, 0px)), calc(-50% + var(--ry, 0px))) rotate(360deg); }
+  }
+
+  --animate-hero-rocket-float: hero-rocket-float 6.5s ease-in-out infinite;
+  @keyframes hero-rocket-float {
+    0%, 100% { transform: translate(calc(-50% + var(--mx, 0px)), calc(-50% + var(--my, 0px))) translateY(-6px) rotate(-1deg); }
+    50% { transform: translate(calc(-50% + var(--mx, 0px)), calc(-50% + var(--my, 0px))) translateY(8px) rotate(1deg); }
+  }
+
+  --animate-hero-float-slow: hero-float-slow 6s ease-in-out infinite;
+  @keyframes hero-float-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  --animate-hero-float-mid: hero-float-mid 5.4s ease-in-out infinite;
+  @keyframes hero-float-mid {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+
+  --animate-hero-pulse: hero-pulse 2.4s ease-in-out infinite;
+  @keyframes hero-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* nav animations */
+  --animate-nav-fadein: nav-fadein 240ms var(--ease-out-soft);
+  @keyframes nav-fadein {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-nav-dot-in: nav-dot-in 420ms var(--ease-out-soft) both;
+  @keyframes nav-dot-in {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* why section shadows */
+  --shadow-why-pillar-hover: 0 8px 24px -8px rgba(15, 23, 42, 0.10);
+  --shadow-why-foot-cta-hover: 0 14px 32px -12px rgba(255, 255, 255, 0.25);
+
+  /* process section shadows */
+  --shadow-proc-card-active: 0 12px 28px -8px rgba(33, 72, 255, 0.14), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+
+  /* faq animations */
+  --animate-faq2-pulse: faq2-pulse 2s ease-in-out infinite;
+  @keyframes faq2-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.5; }
+  }
+
+  /* footer animations */
+  --animate-footv2-spin: footv2-spin 10s linear infinite;
+  @keyframes footv2-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* footer shadows */
+  --shadow-foot-cta-btn-hover: 0 18px 36px -12px rgba(255, 255, 255, 0.3);
+
+  /* solutions shadows */
+  --shadow-sol-track-dot-done: 0 0 0 4px rgba(22, 199, 132, 0.2);
+
+  /* services shadows */
+  --shadow-srv-preview: 0 20px 40px -16px rgba(15, 23, 42, 0.12);
+
+  /* stack shadows */
+  --shadow-stack-container: 0 24px 48px -16px rgba(15, 23, 42, 0.08);
+  --shadow-stack-pill: 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+  --shadow-stack-tile: 0 8px 20px -6px rgba(15, 23, 42, 0.08);
+
+  /* stats shadows */
+  --shadow-stats-card-hover: 0 16px 32px -12px rgba(15, 23, 42, 0.12);
+
+  /* testimonials shadows */
+  --shadow-tst-card-hover: 0 16px 32px -12px rgba(33, 72, 255, 0.12);
+}

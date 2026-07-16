@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Tests\Feature;
+
+use App\Modules\Shared\Support\ModuleRegistry;
+use Tests\TestCase;
+
+class {{ studlyName }}ModuleTest extends TestCase
+{
+    public function test_it_loads_the_module_descriptor(): void
+    {
+        $this->assertNotNull(app(ModuleRegistry::class)->find('{{ lowerName }}'));
+    }
+}

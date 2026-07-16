@@ -1,0 +1,1 @@
+{"name":"WhatsAppCloud","alias":"whatsapp-cloud","description":"Official WhatsApp Cloud API channels, webhook processing, and delivery status","version":"1.0.0","priority":32,"providers":["App\\Modules\\WhatsAppCloud\\Providers\\WhatsAppCloudServiceProvider"],"requires":["marketing-channels"],"active":true}

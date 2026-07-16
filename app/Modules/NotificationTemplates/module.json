@@ -1,0 +1,21 @@
+{
+    "name": "NotificationTemplates",
+    "alias": "notification-templates",
+    "description": "Notification templates and logs",
+    "version": "1.0.0",
+    "priority": 40,
+    "providers": [
+        "App\\Modules\\NotificationTemplates\\Providers\\NotificationTemplatesServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {
+            "laravel-notification-channels/fcm": "^6.1",
+            "laravel-notification-channels/webpush": "^10.5",
+            "twilio/sdk": "^8.11",
+            "vonage/client-core": "^4.12"
+        },
+        "require-dev": {}
+    },
+    "active": true
+}

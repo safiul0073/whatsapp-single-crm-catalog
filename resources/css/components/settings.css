@@ -1,0 +1,428 @@
+/* Settings Page Layout — independent scroll panels like template */
+.settings-layout {
+  @apply flex -mx-4 lg:-mx-8 -mb-4 lg:-mb-8 -mt-4 lg:-mt-8;
+  height: calc(100vh - 85px);
+  overflow: hidden;
+}
+
+/* ── Settings Sidebar Navigation ── */
+.settings-nav {
+  @apply hidden lg:flex flex-col w-64 shrink-0 border-r border-neutral-100 bg-neutral-10;
+  overflow: hidden;
+}
+
+.settings-nav-group {
+  overflow-y: auto;
+  flex: 1 1 0;
+}
+
+.settings-nav-group::-webkit-scrollbar { width: 4px; }
+.settings-nav-group::-webkit-scrollbar-track { background: transparent; }
+.settings-nav-group::-webkit-scrollbar-thumb { background: var(--color-neutral-200); border-radius: 2px; }
+.settings-nav-group::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-300); }
+
+.settings-nav-header {
+  @apply px-5 pt-6 pb-4;
+}
+
+.settings-nav-header h2 {
+  @apply text-sm font-semibold text-neutral-900 tracking-tight;
+}
+
+.settings-nav-header p {
+  @apply text-xs text-neutral-400 mt-0.5;
+}
+
+/* Sidebar Search */
+.settings-nav-search {
+  @apply relative mx-4 mb-4;
+}
+
+.settings-nav-search input {
+  @apply w-full py-1.5 pl-8 pr-3 border border-neutral-100 rounded-lg text-[12.5px] bg-neutral-0 text-neutral-700 outline-none transition-colors duration-150;
+  font-family: inherit;
+}
+
+.settings-nav-search input:focus {
+  @apply border-primary;
+}
+
+.settings-nav-search input::placeholder {
+  @apply text-neutral-400;
+}
+
+.settings-nav-search i {
+  @apply absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none;
+}
+
+/* Nav Groups */
+
+.settings-nav-group-title {
+  @apply px-5 mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-neutral-400;
+}
+
+.settings-nav-item {
+  @apply flex items-center gap-2.5 px-5 py-2 text-[13px] text-neutral-500 border-l-2 border-transparent transition-all duration-150 cursor-pointer no-underline;
+
+  &:hover {
+    @apply text-neutral-900 bg-neutral-100/60;
+  }
+
+  &.active {
+    @apply text-primary bg-primary/5 border-l-primary font-medium;
+  }
+
+  i {
+    @apply text-base opacity-60;
+  }
+
+  &.active i {
+    @apply opacity-90;
+  }
+}
+
+/* Nav Footer */
+.settings-nav-footer {
+  @apply px-5 py-4 border-t border-neutral-100;
+}
+
+/* ── Settings Content Area (scrolls independently) ── */
+.settings-content {
+  @apply flex-1 min-w-0 flex flex-col;
+  overflow: hidden;
+}
+
+.settings-content-scroll {
+  @apply flex-1 py-6 lg:px-8 lg:py-8;
+  overflow-y: auto;
+}
+
+.settings-content-scroll::-webkit-scrollbar { width: 5px; }
+.settings-content-scroll::-webkit-scrollbar-track { background: transparent; }
+.settings-content-scroll::-webkit-scrollbar-thumb { background: var(--color-neutral-200); border-radius: 3px; }
+.settings-content-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-300); }
+
+/* Page Header */
+.settings-page-header {
+  @apply mb-9 max-w-3xl;
+}
+
+.settings-page-header h1 {
+  @apply text-[22px] font-bold text-neutral-950 tracking-tight leading-tight;
+}
+
+.settings-page-header p {
+  @apply text-[13.5px] text-neutral-400 mt-1.5 leading-relaxed;
+}
+
+/* ── Settings Section ── */
+.settings-section {
+  @apply max-w-3xl mb-6;
+}
+
+.settings-section-full {
+  @apply max-w-none mb-6;
+}
+
+.settings-section.is-hidden,
+.settings-section-full.is-hidden,
+[data-visible-if].is-hidden {
+  display: none;
+}
+
+.settings-section-title {
+  @apply text-sm font-bold tracking-wider text-neutral-500 uppercase;
+}
+
+.settings-section-desc {
+  @apply text-xs text-neutral-400 mt-1;
+}
+
+.settings-section-body {
+  @apply mt-4;
+}
+
+/* ── Setting Row — 2-column grid ── */
+.setting-row {
+  @apply grid gap-6 py-5 border-b border-neutral-100 items-start;
+  grid-template-columns: 200px 1fr;
+}
+
+.setting-row:last-child {
+  @apply border-b-0 pb-0;
+}
+
+.setting-row-full {
+  @apply py-5 border-b border-neutral-100;
+  grid-template-columns: 1fr;
+}
+
+.setting-row-full:last-child {
+  @apply border-b-0 pb-0;
+}
+
+.setting-label .label {
+  @apply text-[13px] font-medium text-neutral-800;
+}
+
+.setting-label .hint {
+  @apply block text-[11.5px] text-neutral-400 leading-relaxed mt-0.5;
+}
+
+/* ── Color Picker Field ── */
+.setting-color-field {
+  @apply flex items-center gap-3;
+}
+
+.setting-color-swatch {
+  @apply w-10 h-10 rounded-xl border border-neutral-100 cursor-pointer p-0.5;
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: 8px;
+  }
+
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: 8px;
+  }
+}
+
+.setting-color-hex {
+  @apply w-28 py-2 px-3 border border-neutral-100 rounded-xl text-[13px] font-mono text-neutral-700 bg-neutral-0 outline-none transition-colors duration-150;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+
+  &:focus {
+    @apply border-primary;
+  }
+}
+
+.setting-tile-field {
+  @apply space-y-2;
+}
+
+.setting-tile-select {
+  @apply grid gap-3 sm:grid-cols-3;
+}
+
+.setting-option-tile {
+  @apply flex min-h-28 cursor-pointer items-start gap-3 rounded-2xl border border-neutral-100 bg-neutral-0 p-4 text-left transition-all duration-150;
+
+  &:hover {
+    @apply border-primary/40 bg-primary/5;
+  }
+
+  &.active {
+    @apply border-primary bg-primary/10 shadow-sm;
+  }
+}
+
+.setting-option-icon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-lg text-neutral-500 transition-colors duration-150;
+}
+
+.setting-option-tile.active .setting-option-icon {
+  @apply bg-primary text-white;
+}
+
+.setting-option-copy {
+  @apply flex min-w-0 flex-col gap-1;
+}
+
+.setting-option-title {
+  @apply text-sm font-semibold text-neutral-900;
+}
+
+.setting-option-desc {
+  @apply text-xs leading-relaxed text-neutral-500;
+}
+
+.setting-copy-field {
+  @apply space-y-2;
+}
+
+.setting-copy-control {
+  @apply flex gap-2;
+}
+
+.setting-copy-input {
+  @apply min-w-0 flex-1 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-[13px] text-neutral-700 outline-none;
+}
+
+.setting-copy-button {
+  @apply inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-neutral-100 bg-neutral-0 px-3 py-2.5 text-sm font-semibold text-neutral-700 transition-colors duration-150;
+
+  &:hover {
+    @apply border-primary/40 text-primary;
+  }
+
+  &.copied {
+    @apply border-success/30 bg-success/10 text-success;
+  }
+}
+
+/* ── Sticky Footer Bar ── */
+.settings-footer {
+  @apply flex items-center gap-3 px-4 py-3 lg:px-8 border-t border-neutral-100 bg-neutral-0 shrink-0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 991px) {
+  .settings-layout {
+    @apply flex-col mx-0 mt-0 mb-0;
+    height: auto;
+    overflow: visible;
+    padding-bottom: 72px;
+  }
+
+  .settings-nav {
+    @apply hidden;
+  }
+
+  .settings-content-scroll {
+    overflow: visible;
+  }
+
+  .setting-row {
+    grid-template-columns: 1fr;
+    @apply gap-2;
+  }
+
+  /* ── Fixed Footer Bar ── */
+  .settings-footer {
+    @apply fixed bottom-0 left-0 right-0 z-[60] px-4 py-3 border-t border-neutral-100 bg-neutral-0;
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  /* ── Floating Nav Trigger Button ── */
+  .settings-mobile-nav-trigger {
+    @apply fixed z-[61] flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg cursor-pointer border-0;
+    right: 16px;
+    bottom: 80px;
+    box-shadow: 0 4px 20px rgba(80, 150, 242, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .settings-mobile-nav-trigger:active {
+    transform: scale(0.93);
+  }
+
+  .settings-mobile-nav-trigger i {
+    @apply text-xl;
+  }
+
+  /* ── Bottom Sheet Overlay ── */
+  .settings-sheet-overlay {
+    @apply fixed inset-0 z-[90] bg-neutral-950/30 backdrop-blur-sm opacity-0 pointer-events-none;
+    transition: opacity 0.3s ease;
+  }
+
+  .settings-sheet-overlay.active {
+    @apply opacity-100 pointer-events-auto;
+  }
+
+  /* ── Bottom Sheet Panel ── */
+  .settings-sheet {
+    @apply fixed left-0 right-0 z-[100] bg-neutral-0 flex flex-col;
+    bottom: 0;
+    max-height: 70vh;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.1);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .settings-sheet.active {
+    transform: translateY(0);
+  }
+
+  /* Sheet Handle */
+  .settings-sheet-handle {
+    @apply flex justify-center pt-3 pb-1 cursor-grab;
+  }
+
+  .settings-sheet-handle span {
+    @apply block w-10 h-1 rounded-full bg-neutral-200;
+  }
+
+  /* Sheet Header */
+  .settings-sheet-header {
+    @apply px-5 pt-2 pb-3;
+  }
+
+  .settings-sheet-header h3 {
+    @apply text-sm font-semibold text-neutral-900 tracking-tight;
+  }
+
+  .settings-sheet-header p {
+    @apply text-xs text-neutral-400 mt-0.5;
+  }
+
+  /* Sheet Search */
+  .settings-sheet-search {
+    @apply relative mx-5 mb-3;
+  }
+
+  .settings-sheet-search input {
+    @apply w-full py-2 pl-9 pr-3 border border-neutral-100 rounded-xl text-[13px] bg-neutral-50/50 text-neutral-700 outline-none transition-colors duration-150;
+    font-family: inherit;
+  }
+
+  .settings-sheet-search input:focus {
+    @apply border-primary bg-neutral-0;
+  }
+
+  .settings-sheet-search input::placeholder {
+    @apply text-neutral-400;
+  }
+
+  .settings-sheet-search i {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none;
+  }
+
+  /* Sheet Nav List */
+  .settings-sheet-list {
+    @apply flex-1 px-3 pb-5 overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-sheet-list::-webkit-scrollbar { width: 3px; }
+  .settings-sheet-list::-webkit-scrollbar-track { background: transparent; }
+  .settings-sheet-list::-webkit-scrollbar-thumb { background: var(--color-neutral-200); border-radius: 2px; }
+
+  .settings-sheet-item {
+    @apply flex items-center gap-3 px-4 py-2.5 text-[13.5px] text-neutral-600 rounded-xl no-underline cursor-pointer transition-all duration-150;
+  }
+
+  .settings-sheet-item:hover {
+    @apply bg-neutral-50;
+  }
+
+  .settings-sheet-item.active {
+    @apply bg-primary/8 text-primary font-medium;
+  }
+
+  .settings-sheet-item i {
+    @apply text-base opacity-60;
+  }
+
+  .settings-sheet-item.active i {
+    @apply opacity-90;
+  }
+}
+
+/* ── Desktop: hide mobile-only elements ── */
+@media (min-width: 992px) {
+  .settings-mobile-nav-trigger,
+  .settings-sheet-overlay,
+  .settings-sheet {
+    display: none !important;
+  }
+}

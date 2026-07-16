@@ -1,0 +1,63 @@
+<?php
+
+namespace App\Panels\{{ panelStudly }}\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\View\View;
+
+class {{ studlyName }}Controller extends Controller implements HasMiddleware
+{
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:{{ kebabName }}.view', only: ['index']),
+            new Middleware('permission:{{ kebabName }}.edit', only: ['update']),
+        ];
+    }
+
+    public function __construct(
+        protected {{ studlyName }}Service $service
+    ) {}
+
+    public function index(): View
+    {
+        $groups = $this->service->getGroupedDefinitions();
+
+        return view('panels.{{ panelLower }}.{{ kebabName }}.index', compact('groups'));
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        $settings = $request->input('settings', []);
+
+        // Build validation rules and custom attribute names from config
+        $rules = [];
+        $attributes = [];
+
+        foreach (config('{{ kebabName }}', []) as $group) {
+            foreach ($group['settings'] as $key => $def) {
+                if (isset($def['rules'])) {
+                    $rules["settings.{$key}"] = $def['rules'];
+                    $attributes["settings.{$key}"] = $def['label'];
+                }
+            }
+        }
+
+        $request->validate($rules, [], $attributes);
+
+        // Save all settings
+        foreach ($settings as $key => $value) {
+            $this->service->set($key, $value);
+        }
+
+        $tab = $request->input('_active_tab', array_key_first(config('{{ kebabName }}', [])));
+
+        return redirect()->to(route('{{ panelLower }}.{{ kebabName }}.index') . '#' . $tab)
+            ->with('success', __('Settings updated successfully.'));
+    }
+}

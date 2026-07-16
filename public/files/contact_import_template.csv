@@ -1,0 +1,7 @@
+name,phone,email,city,country,tags
+John Smith,+12125551234,john@example.com,New York,US,"vip,lead"
+Jane Doe,+447911123456,jane@example.co.uk,London,UK,premium
+Carlos Rivera,+525512345678,carlos@example.mx,Mexico City,MX,"lead,new"
+Aisha Khan,+919876543210,aisha@example.in,Mumbai,IN,"vip,partner"
+Support Team,support@company.com,"","","","support,team"
+Alex Chen,+8613800138000,alex@example.cn,Shanghai,CN,

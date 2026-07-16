@@ -1,0 +1,19 @@
+{
+    "name": "ContactMessages",
+    "alias": "contact-messages",
+    "description": "Frontend contact form submission management",
+    "version": "1.0.0",
+    "priority": 82,
+    "providers": [
+        "App\\Modules\\ContactMessages\\Providers\\ContactMessagesServiceProvider"
+    ],
+    "requires": [
+        "newsletter",
+        "notification-templates"
+    ],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

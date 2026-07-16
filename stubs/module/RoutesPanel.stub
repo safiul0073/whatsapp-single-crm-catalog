@@ -1,0 +1,12 @@
+<?php
+
+use App\Modules\{{ studlyName }}\Http\Controllers\{{ panelStudly }}\{{ studlyName }}Controller;
+use Illuminate\Support\Facades\Route;
+
+Route::get('{{ lowerName }}/export/csv', [{{ studlyName }}Controller::class, 'export'])->name('{{ lowerName }}.export');
+Route::post('{{ lowerName }}/import/preview', [{{ studlyName }}Controller::class, 'importPreview'])->name('{{ lowerName }}.import.preview');
+Route::post('{{ lowerName }}/import', [{{ studlyName }}Controller::class, 'import'])->name('{{ lowerName }}.import');
+Route::post('{{ lowerName }}/bulk-delete', [{{ studlyName }}Controller::class, 'bulkDelete'])->name('{{ lowerName }}.bulk-delete');
+Route::post('{{ lowerName }}/bulk-toggle-status', [{{ studlyName }}Controller::class, 'bulkToggleStatus'])->name('{{ lowerName }}.bulk-toggle-status');
+Route::resource('{{ lowerName }}', {{ studlyName }}Controller::class);
+Route::post('{{ lowerName }}/{__ROUTE_PARAMETER__}/toggle-status', [{{ studlyName }}Controller::class, 'toggleStatus'])->name('{{ lowerName }}.toggle-status');

@@ -1,0 +1,20 @@
+{
+    "name": "PaymentGateways",
+    "alias": "payment-gateways",
+    "description": "Payments, webhook logs, and gateway runtime",
+    "version": "1.0.0",
+    "priority": 220,
+    "providers": [
+        "App\\Modules\\PaymentGateways\\Providers\\PaymentGatewaysServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {
+            "blendbyte/paypal": "^1.0",
+            "razorpay/razorpay": "^2.9",
+            "stripe/stripe-php": "^20.0"
+        },
+        "require-dev": {}
+    },
+    "active": false
+}

@@ -1,0 +1,1 @@
+{"name":"Sms","alias":"sms","description":"Workspace SMS channel setup and campaign delivery via Twilio or Vonage","version":"1.0.0","priority":36,"providers":["App\\Modules\\Sms\\Providers\\SmsServiceProvider"],"requires":["marketing-channels","settings"],"active":true}

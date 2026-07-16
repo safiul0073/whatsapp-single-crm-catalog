@@ -1,0 +1,28 @@
+@php
+    $gallery = $product->gallery->map(fn ($item) => ['id' => $item->media_id, 'type' => $item->media_type, 'url' => $item->media?->url, 'alt' => $item->alt_text ?: $product->name, 'primary' => $item->is_primary])->values();
+    $variants = $product->variants->whereIn('status', ['active', 'out_of_stock'])->map(fn ($variant) => ['id' => $variant->id, 'attributes' => $variant->attributes, 'price' => (float) $variant->price, 'compare_at_price' => $variant->compare_at_price ? (float) $variant->compare_at_price : null, 'stock' => $variant->stock_quantity, 'status' => $variant->status, 'media_id' => $variant->media_id])->values();
+@endphp
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="{{ str($product->description)->limit(155) }}"><title>{{ $product->name }} — {{ config('app.name') }}</title>@vite(['resources/css/app.css','resources/js/app.js'])</head>
+<body class="min-h-screen bg-section text-title">
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-14" x-data="{ gallery: @js($gallery), variants: @js($variants), productName: @js($product->name), activeMedia: 0, selectedVariant: 0, selectVariant(index) { this.selectedVariant = index; const mediaId = this.variants[index]?.media_id; if (mediaId) { const mediaIndex = this.gallery.findIndex(item => String(item.id) === String(mediaId)); if (mediaIndex >= 0) this.activeMedia = mediaIndex; } }, money(value) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0); } }">
+        <div class="grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+            <section aria-label="{{ __('Product media') }}">
+                <div class="overflow-hidden rounded-3xl bg-neutral-0 shadow-sm">
+                    <template x-for="(item, index) in gallery" :key="item.id"><div x-show="activeMedia === index" class="aspect-square"><template x-if="item.type === 'image'"><img :src="item.url" :alt="item.alt" class="h-full w-full object-cover"></template><template x-if="item.type === 'video'"><video :src="item.url" controls preload="metadata" class="h-full w-full object-cover"></video></template></div></template>
+                    <div x-show="gallery.length === 0" class="grid aspect-square place-items-center text-7xl text-neutral-300"><i class="ph ph-t-shirt"></i></div>
+                </div>
+                <div class="mt-4 grid grid-cols-5 gap-3 sm:grid-cols-6"> <template x-for="(item, index) in gallery" :key="item.id"><button type="button" class="relative aspect-square overflow-hidden rounded-xl border-2 bg-neutral-0" :class="activeMedia === index ? 'border-primary' : 'border-transparent'" @click="activeMedia = index" :aria-label="`View media ${index + 1}`"><template x-if="item.type === 'image'"><img :src="item.url" :alt="item.alt" class="h-full w-full object-cover"></template><template x-if="item.type === 'video'"><span class="grid h-full place-items-center bg-deep text-2xl text-neutral-0"><i class="ph ph-play-circle"></i></span></template></button></template></div>
+            </section>
+            <section class="space-y-6 lg:sticky lg:top-8 lg:self-start">
+                <div><p class="text-sm font-semibold uppercase tracking-wide text-primary">{{ $product->brand }}</p><h1 class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{{ $product->name }}</h1><p class="mt-4 leading-7 text-body">{{ $product->description }}</p></div>
+                <div class="rounded-2xl border border-border bg-neutral-0 p-5"><div class="flex items-end justify-between gap-3"><div><p class="text-sm text-body">{{ __('Selected price') }}</p><p class="text-3xl font-bold text-title" x-text="money(variants[selectedVariant]?.price)"></p></div><span class="badge" :class="variants[selectedVariant]?.stock > 0 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'" x-text="variants[selectedVariant]?.stock > 0 ? '{{ __('In stock') }}' : '{{ __('Quote availability') }}'"></span></div><div class="mt-5 space-y-2"><template x-for="(variant, index) in variants" :key="variant.id"><button type="button" class="flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left" :class="selectedVariant === index ? 'border-primary bg-primary/5' : 'border-border'" @click="selectVariant(index)"><span><template x-for="(value, key) in variant.attributes" :key="key"><span class="mr-2 text-sm"><span class="text-body" x-text="key + ':'"></span> <strong x-text="value"></strong></span></template></span><strong x-text="money(variant.price)"></strong></button></template></div></div>
+                <div class="rounded-2xl bg-warning/10 p-4 text-sm text-body"><strong class="block text-title">{{ __('Shipping from Bangladesh to the USA') }}</strong>{{ __('Shipping cost, duties, delivery time, and final availability are manually confirmed in WhatsApp before payment.') }}</div>
+                @if($whatsappPhone)<a class="btn btn-primary w-full justify-center py-3" :href="`https://wa.me/{{ $whatsappPhone }}?text=${encodeURIComponent('Hello, I am interested in ' + productName + ' (' + Object.values(variants[selectedVariant]?.attributes || {}).join(' / ') + ').')}`" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo text-xl"></i> {{ __('Ask and order on WhatsApp') }}</a>@endif
+                @if($product->care_information)<details class="rounded-2xl border border-border bg-neutral-0 p-4"><summary class="cursor-pointer font-semibold">{{ __('Care information') }}</summary><p class="mt-3 whitespace-pre-line text-sm leading-6 text-body">{{ $product->care_information }}</p></details>@endif
+            </section>
+        </div>
+    </main>
+</body>
+</html>

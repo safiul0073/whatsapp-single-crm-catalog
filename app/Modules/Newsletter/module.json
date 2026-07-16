@@ -1,0 +1,16 @@
+{
+    "name": "Newsletter",
+    "alias": "newsletter",
+    "description": "Newsletter and subscriber management",
+    "version": "1.0.0",
+    "priority": 80,
+    "providers": [
+        "App\\Modules\\Newsletter\\Providers\\NewsletterServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

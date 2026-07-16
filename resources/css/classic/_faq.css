@@ -1,0 +1,269 @@
+/* ==========================================================================
+   FAQ — state / transition / animation / hover rules only.
+   Base visual styles are inline Tailwind in the HTML.
+   ========================================================================== */
+
+/* ---------- scrollbar hide (webkit) ---------- */
+.faq2-side-sticky::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- background grid mask ---------- */
+.faq2-bg-grid {
+  background-image: linear-gradient(to right, rgba(17, 18, 74, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 18, 74, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 30%, transparent 95%);
+}
+
+/* ---------- heading gradient text ---------- */
+.faq2-h2-accent {
+  background: linear-gradient(135deg, #2148ff 0%, #16c784 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- support cards: complex gradients + hover states ---------- */
+.faq2-support-card {
+  transition:
+    border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-support-card--blue {
+  background: radial-gradient(80% 100% at 0% 0%, rgba(33, 72, 255, 0.06), transparent 60%),
+    rgba(33, 72, 255, 0.05);
+  border-color: rgba(33, 72, 255, 0.18);
+}
+.faq2-support-card--blue:hover {
+  background: radial-gradient(80% 100% at 0% 0%, rgba(33, 72, 255, 0.1), transparent 60%),
+    rgba(33, 72, 255, 0.08);
+  border-color: rgba(33, 72, 255, 0.32);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px -22px rgba(33, 72, 255, 0.3);
+}
+.faq2-support-card--blue .faq2-support-icon {
+  background: rgba(33, 72, 255, 0.12);
+  border: 1px solid rgba(33, 72, 255, 0.26);
+  color: #2148ff;
+}
+.faq2-support-card--blue .faq2-support-cta {
+  color: #2148ff;
+}
+.faq2-support-card--green {
+  background: radial-gradient(80% 100% at 0% 0%, rgba(22, 199, 132, 0.07), transparent 60%),
+    rgba(22, 199, 132, 0.06);
+  border-color: rgba(22, 199, 132, 0.22);
+}
+.faq2-support-card--green:hover {
+  background: radial-gradient(80% 100% at 0% 0%, rgba(22, 199, 132, 0.12), transparent 60%),
+    rgba(22, 199, 132, 0.1);
+  border-color: rgba(22, 199, 132, 0.36);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px -22px rgba(22, 199, 132, 0.32);
+}
+.faq2-support-card--green .faq2-support-icon {
+  background: rgba(22, 199, 132, 0.14);
+  border: 1px solid rgba(22, 199, 132, 0.28);
+  color: #16c784;
+}
+.faq2-support-card--green .faq2-support-cta {
+  color: #16c784;
+}
+
+/* ---------- CTA gap animation on hover ---------- */
+.faq2-support-cta {
+  transition: gap 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-support-card:hover .faq2-support-cta {
+  gap: 9px;
+}
+
+/* ---------- avatar border-color variants ---------- */
+.faq2-support-avatars {
+  border-top: 1px solid rgba(33, 72, 255, 0.15);
+}
+.faq2-support-card--green .faq2-support-avatars {
+  border-top-color: rgba(22, 199, 132, 0.22);
+}
+
+/* ---------- avatar hover margin + transition ---------- */
+.faq2-support-avatar {
+  transition:
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    margin-left 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-support-avatar:nth-child(1) {
+  z-index: 10;
+}
+.faq2-support-avatar:nth-child(2) {
+  z-index: 9;
+}
+.faq2-support-avatar:nth-child(3) {
+  z-index: 8;
+}
+.faq2-support-avatar:nth-child(4) {
+  z-index: 7;
+}
+.faq2-support-card:hover .faq2-support-avatar {
+  margin-left: -6px;
+}
+.faq2-support-card:hover .faq2-support-avatar:first-child {
+  margin-left: 0;
+}
+
+/* ---------- overflow avatar state ---------- */
+.faq2-support-avatar.is-overflow {
+  background: #fff;
+  border-color: rgba(33, 72, 255, 0.22);
+}
+
+/* ---------- pulse ::after animation ---------- */
+.faq2-support-avatars-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #16c784;
+  animation: theme(--animate-faq2-pulse);
+}
+
+/* ---------- FAQ item number color transitions ---------- */
+.faq2-item-num {
+  transition: color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-item-trigger:hover .faq2-item-num {
+  color: #475569;
+}
+.faq2-item.is-open .faq2-item-num {
+  color: #2148ff;
+}
+
+/* ---------- FAQ question color transitions ---------- */
+.faq2-item-q {
+  transition: color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-item-trigger:hover .faq2-item-q {
+  color: #2148ff;
+}
+.faq2-item.is-open .faq2-item-q {
+  color: #2148ff;
+}
+
+/* ---------- toggle button transitions + ::before glow ---------- */
+.faq2-item-toggle {
+  transition:
+    background 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.faq2-item-toggle::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(33, 72, 255, 0.2), transparent 70%);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.faq2-item.is-open .faq2-item-toggle::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ---------- toggle bars (plus/minus) ---------- */
+.faq2-item-toggle-bar {
+  transition:
+    transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-item-toggle-bar--h {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+.faq2-item-toggle-bar--v {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+.faq2-item-trigger:hover .faq2-item-toggle {
+  border-color: #0f0f49;
+  color: #0f0f49;
+}
+.faq2-item-trigger:hover .faq2-item-toggle-bar--h {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.faq2-item-trigger:hover .faq2-item-toggle-bar--v {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.faq2-item.is-open .faq2-item-toggle {
+  background: #0f0f49;
+  border-color: #0f0f49;
+  color: #fff;
+  transform: scale(1.06);
+}
+.faq2-item.is-open .faq2-item-toggle-bar--h {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+.faq2-item.is-open .faq2-item-toggle-bar--v {
+  transform: translate(-50%, -50%) rotate(180deg) scaleY(0);
+  opacity: 0;
+}
+
+/* ---------- collapse expand/collapse ---------- */
+.faq2-item-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 460ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-item.is-open .faq2-item-collapse {
+  grid-template-rows: 1fr;
+}
+.faq2-item-collapse-inner {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq2-item.is-open .faq2-item-collapse-inner {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 80ms;
+}
+
+/* ---------- responsive overrides ---------- */
+@media (max-width: 1100px) {
+  .faq2-layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .faq2-side-sticky {
+    position: static;
+  }
+  .faq2-support {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .faq2-support-card {
+    flex: 1 1 280px;
+  }
+}
+@media (max-width: 640px) {
+  .faq2-item-trigger {
+    grid-template-columns: 36px minmax(0, 1fr) 28px;
+    gap: 12px;
+    padding: 18px 4px;
+  }
+  .faq2-item-a {
+    padding-left: 48px;
+  }
+  .faq2-support {
+    flex-direction: column;
+  }
+}

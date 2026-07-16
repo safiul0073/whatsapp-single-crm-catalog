@@ -1,0 +1,272 @@
+/* Table & Data Table Component */
+.table-responsive {
+  @apply w-full overflow-x-auto px-3 pb-3 sm:px-4 sm:pb-4;
+
+  td {
+    word-break: break-word;
+  }
+}
+
+.datatable-shell {
+  @apply overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-0 shadow-sm;
+}
+
+.section-card > .datatable-shell {
+  @apply -mx-3 -my-6 rounded-2xl border-0 bg-transparent shadow-none sm:-mx-6;
+}
+
+.section-card > .table-responsive {
+  @apply -mx-3 sm:-mx-6;
+}
+
+.datatable-toolbar {
+  @apply flex flex-col gap-4 border-b border-neutral-100 bg-neutral-0 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6;
+}
+
+.datatable-controls {
+  @apply flex flex-wrap items-center gap-3;
+}
+
+.datatable-per-page {
+  @apply flex items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-500;
+}
+
+.table {
+  @apply w-full border-collapse text-left text-sm;
+
+  thead th {
+    @apply border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-semibold tracking-wider text-neutral-600 uppercase;
+  }
+
+  tbody td {
+    @apply border-b border-neutral-100 px-4 py-3 text-neutral-700;
+  }
+
+  tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+.table-striped tbody tr:nth-child(even) td {
+  @apply bg-neutral-50;
+}
+
+.table-bordered {
+  @apply border border-neutral-200;
+
+  thead th,
+  tbody td {
+    @apply border border-neutral-200;
+  }
+}
+
+.table-hover tbody tr {
+  @apply transition-colors duration-150;
+
+  &:hover td {
+    @apply bg-neutral-50;
+  }
+}
+
+/* Responsive Stack Table (Taskerhub Style) */
+.table-stack {
+  @media (max-width: 991px) {
+    @apply block border-0;
+
+    thead {
+      @apply absolute h-px w-px overflow-hidden border-0 p-0;
+      clip: rect(0 0 0 0);
+    }
+
+    tbody {
+      @apply block;
+    }
+
+    tr {
+      @apply bg-neutral-0 mb-4 block rounded-xl border border-neutral-200 p-2;
+    }
+
+    td {
+      @apply block border-b border-neutral-100 px-4 py-3 text-right text-sm last:border-0;
+    }
+
+    [dir="rtl"] td {
+      @apply text-left;
+    }
+
+    td::before {
+      content: attr(data-th);
+      @apply float-left text-xs font-bold whitespace-nowrap text-neutral-600 uppercase;
+    }
+
+    [dir="rtl"] td::before {
+      @apply float-right;
+    }
+  }
+}
+
+/* data-table */
+.data-table {
+  @apply w-full border-separate;
+  border-spacing: 0 7px;
+
+  @media (min-width: 992px) {
+    border-spacing: 0 9px;
+  }
+
+  thead th {
+    @apply sticky top-0 z-[1] bg-neutral-0 px-4 py-3 text-left text-xs font-bold tracking-wide text-neutral-500 uppercase lg:px-5;
+
+    [dir="rtl"] & {
+      @apply text-right;
+    }
+  }
+
+  thead tr {
+    box-shadow: inset 0 -1px 0 var(--color-neutral-100);
+  }
+
+  tbody tr {
+    @apply bg-neutral-0 transition-all duration-200;
+  }
+
+  tbody tr:hover {
+    @apply shadow-sm;
+  }
+
+  tbody tr.is-selected {
+    @apply bg-primary/5 shadow-sm;
+  }
+
+  tbody td {
+    @apply border-y border-neutral-100 bg-neutral-0 px-4 py-3.5 text-left text-sm text-neutral-700 transition-colors duration-200 lg:px-5 lg:py-4;
+
+    [dir="rtl"] & {
+      @apply text-right;
+    }
+  }
+
+  tbody tr:hover td {
+    @apply border-primary/20 bg-neutral-50;
+  }
+
+  tbody td:first-child {
+    @apply rounded-l-xl border-l;
+
+    [dir="rtl"] & {
+      @apply rounded-l-none rounded-r-xl border-r border-l-0;
+    }
+  }
+
+  tbody td:last-child {
+    @apply rounded-r-xl border-r;
+
+    [dir="rtl"] & {
+      @apply rounded-l-xl rounded-r-none border-r-0 border-l;
+    }
+  }
+
+  .table-sort-link {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -mx-2 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-800;
+  }
+
+  .table-sort-link.active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .table-sort-icon {
+    @apply text-sm text-neutral-400 transition-transform duration-200;
+  }
+
+  .table-sort-link.active .table-sort-icon {
+    @apply text-primary;
+  }
+
+  .table-sort-icon.sort-desc {
+    @apply rotate-180;
+  }
+
+  .table-empty-state {
+    @apply rounded-xl border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
+  }
+
+  tbody tr:only-child td[colspan] {
+    @apply rounded-xl border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
+  }
+
+  .table-empty-state__icon {
+    @apply mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-neutral-0 text-xl text-neutral-400 shadow-sm;
+  }
+
+  /* Responsive stack for data-table too */
+  &.table-stack {
+    @media (max-width: 991px) {
+      @apply block border-separate border-spacing-0;
+
+      thead {
+        @apply hidden;
+      }
+
+      tbody tr {
+        @apply mb-3 block rounded-xl border border-neutral-100 bg-neutral-0 p-2 shadow-sm;
+      }
+
+      tbody td {
+        @apply grid grid-cols-[minmax(7rem,38%)_1fr] items-start gap-3 rounded-none border-0 border-b border-neutral-100 px-3 py-3 text-right last:border-0;
+      }
+
+      [dir="rtl"] tbody td {
+        @apply text-left;
+      }
+
+      tbody td:first-child,
+      tbody td:last-child {
+        @apply rounded-none border-0 border-b border-neutral-100;
+      }
+
+      tbody td:last-child {
+        @apply border-b-0;
+      }
+
+      tbody td::before {
+        content: attr(data-th);
+        @apply float-none text-left text-xs font-bold whitespace-normal text-neutral-500 uppercase;
+      }
+
+      [dir="rtl"] tbody td::before {
+        @apply text-right;
+      }
+    }
+  }
+
+  /* Variant: Rows (Separator Only) */
+  &.data-table-separator {
+    @apply border-collapse;
+    border-spacing: 0;
+
+    tbody tr {
+      @apply bg-transparent shadow-none max-lg:rounded-2xl lg:rounded-none;
+    }
+
+    tbody tr:hover {
+      @apply bg-neutral-50 shadow-none;
+      background: var(--color-neutral-50);
+    }
+
+    tbody td {
+      @apply rounded-none border-x-0 border-t-0 border-b border-e-0! border-s-0!  border-neutral-100;
+    }
+
+    tbody td:first-child {
+      @apply rounded-l-none border-l-0;
+    }
+
+    tbody td:last-child {
+      @apply rounded-r-none border-r-0;
+    }
+
+    tbody tr:last-child td {
+      @apply lg:border-b-0;
+    }
+  }
+}

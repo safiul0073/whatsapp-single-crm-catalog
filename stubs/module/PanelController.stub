@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Panels\{{ panelStudly }}\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{ studlyName }}\Models\{{ singularName }};
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use App\Modules\Shared\Traits\HasCrudActions;
+use App\Modules\Shared\Traits\HasExportActions;
+use App\Modules\Shared\Traits\HasImportActions;
+use App\Panels\{{ panelStudly }}\Requests\Store{{ singularName }}Request;
+use App\Panels\{{ panelStudly }}\Requests\Update{{ singularName }}Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Http\RedirectResponse;
+
+class {{ studlyName }}Controller extends Controller implements HasMiddleware
+{
+    use HasCrudActions;
+    use HasExportActions;
+    use HasImportActions;
+
+    protected string $viewPath = 'panels.{{ panelLower }}.{{ kebabName }}';
+    protected string $routePrefix = '{{ panelLower }}.{{ kebabName }}';
+    protected string $resourceName = '{{ kebabName }}';
+
+    public static function middleware(): array
+    {
+        return [
+            ...static::crudMiddleware('{{ kebabName }}'),
+            ...static::exportMiddleware('{{ kebabName }}'),
+            ...static::importMiddleware('{{ kebabName }}'),
+        ];
+    }
+
+    public function __construct(
+        protected {{ studlyName }}Service $service
+    ) {}
+
+    /**
+     * Override store to use FormRequest validation.
+     */
+    public function store(Store{{ singularName }}Request $request): RedirectResponse
+    {
+        $this->service->create($request->validated());
+
+        return redirect()
+            ->route("{$this->routePrefix}.index")
+            ->with('success', __('Created successfully'));
+    }
+
+    /**
+     * Override update to use FormRequest validation.
+     */
+    public function update(Update{{ singularName }}Request $request, {{ singularName }} ${{ variableName }}): RedirectResponse
+    {
+        $this->service->update(${{ variableName }}, $request->validated());
+
+        return redirect()
+            ->route("{$this->routePrefix}.index")
+            ->with('success', __('Updated successfully'));
+    }
+
+    // Add custom methods below...
+}

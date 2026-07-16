@@ -1,0 +1,28 @@
+/* ===== Topbar — Classic WhatsApp Theme ===== */
+.topbar {
+  @apply sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-0/85 px-4 backdrop-blur-lg sm:px-6;
+}
+
+@supports (background-color: color-mix(in srgb, red, transparent)) {
+  .topbar {
+    background-color: color-mix(
+      in srgb,
+      var(--color-neutral-0) 85%,
+      transparent
+    );
+  }
+}
+
+/* Topbar search field */
+.topbar__search {
+  @apply hidden w-full max-w-xs items-center gap-2 rounded-full border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
+}
+
+.topbar__search input {
+  @apply w-full bg-transparent text-title outline-none placeholder:text-neutral-400;
+}
+
+/* Topbar icon button */
+.topbar__icon {
+  @apply relative grid h-9 w-9 place-items-center rounded-full text-body transition-colors hover:bg-section hover:text-title;
+}

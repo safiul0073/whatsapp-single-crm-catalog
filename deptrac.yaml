@@ -1,0 +1,128 @@
+deptrac:
+  paths:
+    - ./app
+  exclude_files:
+    - '#.*Tests/.*#'
+  layers:
+    - name: Shared
+      collectors:
+        - type: directory
+          value: app/Modules/Shared/.*
+    - name: Products
+      collectors:
+        - type: directory
+          value: app/Modules/Products/.*
+    - name: HomePageSettings
+      collectors:
+        - type: directory
+          value: app/Modules/HomePageSettings/.*
+    - name: Currencies
+      collectors:
+        - type: directory
+          value: app/Modules/Currencies/.*
+    - name: Languages
+      collectors:
+        - type: directory
+          value: app/Modules/Languages/.*
+    - name: AuditLog
+      collectors:
+        - type: directory
+          value: app/Modules/AuditLog/.*
+    - name: LoginActivity
+      collectors:
+        - type: directory
+          value: app/Modules/LoginActivity/.*
+    - name: NotificationTemplates
+      collectors:
+        - type: directory
+          value: app/Modules/NotificationTemplates/.*
+    - name: SystemNotifications
+      collectors:
+        - type: directory
+          value: app/Modules/SystemNotifications/.*
+    - name: Settings
+      collectors:
+        - type: directory
+          value: app/Modules/Settings/.*
+    - name: AiSettings
+      collectors:
+        - type: directory
+          value: app/Modules/AiSettings/.*
+    - name: PaymentGatewaySettings
+      collectors:
+        - type: directory
+          value: app/Modules/PaymentGatewaySettings/.*
+    - name: ManualPaymentMethods
+      collectors:
+        - type: directory
+          value: app/Modules/ManualPaymentMethods/.*
+    - name: Media
+      collectors:
+        - type: directory
+          value: app/Modules/Media/.*
+    - name: Frontend
+      collectors:
+        - type: directory
+          value: app/Modules/Frontend/.*
+    - name: PaymentGateways
+      collectors:
+        - type: directory
+          value: app/Modules/PaymentGateways/.*
+    - name: Framework
+      collectors:
+        - type: classLike
+          value: ^Illuminate\\.*
+  ruleset:
+    Shared:
+      - Framework
+      - AuditLog
+      - LoginActivity
+    Products:
+      - Shared
+      - Framework
+    HomePageSettings:
+      - Shared
+      - Framework
+    Currencies:
+      - Shared
+      - Framework
+    Languages:
+      - Shared
+      - Framework
+    AuditLog:
+      - Shared
+      - Framework
+    LoginActivity:
+      - Shared
+      - Framework
+    NotificationTemplates:
+      - Shared
+      - Framework
+      - SystemNotifications
+    SystemNotifications:
+      - Shared
+      - Framework
+    Settings:
+      - Shared
+      - Framework
+    AiSettings:
+      - Shared
+      - Framework
+    PaymentGatewaySettings:
+      - Shared
+      - Framework
+      - ManualPaymentMethods
+    ManualPaymentMethods:
+      - Shared
+      - Framework
+      - PaymentGatewaySettings
+    Media:
+      - Shared
+      - Framework
+    Frontend:
+      - Shared
+      - Framework
+    PaymentGateways:
+      - Shared
+      - Framework
+      - ManualPaymentMethods

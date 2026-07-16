@@ -1,0 +1,12 @@
+{
+    "name": "Currencies",
+    "alias": "currencies",
+    "description": "Currency management",
+    "version": "1.0.0",
+    "priority": 70,
+    "providers": [
+        "App\\Modules\\Currencies\\Providers\\CurrenciesServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

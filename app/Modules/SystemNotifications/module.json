@@ -1,0 +1,12 @@
+{
+    "name": "SystemNotifications",
+    "alias": "system-notifications",
+    "description": "System notification management",
+    "version": "1.0.0",
+    "priority": 41,
+    "providers": [
+        "App\\Modules\\SystemNotifications\\Providers\\SystemNotificationsServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

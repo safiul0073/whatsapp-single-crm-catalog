@@ -1,0 +1,234 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Admin Panel API",
+        "description": "Versioned API documentation for the modular application.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Primary API server"
+        }
+    ],
+    "paths": {
+        "/api/v1/auth/me": {
+            "get": {
+                "operationId": "c0be30bd4586e674352b3800a9177f3f",
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user details"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "operationId": "8c3fada3f406b6e0d89e450fd0beff3f",
+                "responses": {
+                    "200": {
+                        "description": "Logout successful"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "operationId": "7b2dc25f431d9e0e894fbbb6104449c8",
+                "responses": {
+                    "200": {
+                        "description": "Login successful"
+                    },
+                    "422": {
+                        "description": "Invalid credentials"
+                    },
+                    "429": {
+                        "description": "Too many attempts"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "operationId": "9f7c649ca8f1a1aa9986c133e0107abf",
+                "responses": {
+                    "200": {
+                        "description": "Reset link sent"
+                    },
+                    "422": {
+                        "description": "Unable to send reset link"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "operationId": "c167ff03408dceab330a0e176ea8be99",
+                "responses": {
+                    "200": {
+                        "description": "Password reset successful"
+                    },
+                    "422": {
+                        "description": "Unable to reset password"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "operationId": "49a184ed31f6059d9983d0761ab29fa1",
+                "responses": {
+                    "201": {
+                        "description": "Registration successful"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/social/{provider}/redirect": {
+            "get": {
+                "operationId": "399439839185f9e8b4e701eb3070ce18",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "google"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to provider"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/social/{provider}/callback": {
+            "get": {
+                "operationId": "e7c0161729b35e9a79f1dea3e0a6bdcd",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "google"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Social login successful"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/social/{provider}/mobile": {
+            "post": {
+                "operationId": "db6a1cfefdf251ce624bdeb1f3a91f8f",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "google"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mobile social login successful"
+                    },
+                    "422": {
+                        "description": "Invalid provider token"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/2fa/setup": {
+            "post": {
+                "operationId": "c620225f91c745eaafd8616bdb22bd40",
+                "responses": {
+                    "200": {
+                        "description": "Two-factor setup initialized"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/2fa/confirm": {
+            "post": {
+                "operationId": "de9fa4ebc0fad8174746fcb1935ab7ed",
+                "responses": {
+                    "200": {
+                        "description": "Two-factor enabled"
+                    },
+                    "422": {
+                        "description": "Invalid confirmation code"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/2fa/disable": {
+            "post": {
+                "operationId": "e344748fac746a5e89c84173c8b6962a",
+                "responses": {
+                    "200": {
+                        "description": "Two-factor disabled"
+                    },
+                    "422": {
+                        "description": "Invalid password"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/2fa/verify": {
+            "post": {
+                "operationId": "98ea4182a19d66dd9b0862f964978c49",
+                "responses": {
+                    "200": {
+                        "description": "Two-factor verification successful"
+                    },
+                    "422": {
+                        "description": "Invalid challenge or code"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/2fa/recovery": {
+            "post": {
+                "operationId": "fea8af7e9fff4e9649356f221037179b",
+                "responses": {
+                    "200": {
+                        "description": "Recovery code accepted"
+                    },
+                    "422": {
+                        "description": "Invalid challenge or recovery code"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctum": {
+                "type": "apiKey",
+                "description": "Enter token in format (Bearer <token>)",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
+    },
+    "security": [
+        {
+            "sanctum": []
+        }
+    ]
+}

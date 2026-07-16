@@ -1,0 +1,12 @@
+{
+    "name": "SchedulerQueue",
+    "alias": "scheduler-queue",
+    "description": "Admin scheduler and queue management",
+    "version": "1.0.0",
+    "priority": 133,
+    "providers": [
+        "App\\Modules\\SchedulerQueue\\Providers\\SchedulerQueueServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

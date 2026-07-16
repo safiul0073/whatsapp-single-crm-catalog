@@ -1,0 +1,7 @@
+<?php
+
+return [
+    'created' => '{{ singularName }} created successfully.',
+    'updated' => '{{ singularName }} updated successfully.',
+    'deleted' => '{{ singularName }} deleted successfully.',
+];

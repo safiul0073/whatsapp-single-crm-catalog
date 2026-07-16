@@ -1,0 +1,1 @@
+{"name":"Campaigns","alias":"campaigns","description":"WhatsApp template campaigns, recipients, scheduling, and reports","version":"1.0.0","priority":43,"providers":["App\\Modules\\Campaigns\\Providers\\CampaignsServiceProvider"],"requires":["contacts","message-templates"],"active":true}

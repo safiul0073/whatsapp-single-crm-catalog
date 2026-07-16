@@ -1,0 +1,12 @@
+{
+    "name": "Shared",
+    "alias": "shared",
+    "description": "Shared support module",
+    "version": "1.0.0",
+    "priority": 0,
+    "providers": [
+        "App\\Modules\\Shared\\Providers\\SharedServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

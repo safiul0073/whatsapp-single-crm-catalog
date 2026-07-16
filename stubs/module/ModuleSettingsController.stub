@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Http\Controllers\{{ panelStudly }};
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\View\View;
+
+class {{ studlyName }}Controller extends Controller implements HasMiddleware
+{
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:{{ lowerName }}.view', only: ['index']),
+            new Middleware('permission:{{ lowerName }}.edit', only: ['update']),
+        ];
+    }
+
+    public function __construct(
+        protected {{ studlyName }}Service $service
+    ) {}
+
+    public function index(): View
+    {
+        $groups = $this->service->getGroupedDefinitions();
+
+        return view('{{ lowerName }}::{{ panelLower }}.index', compact('groups'));
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        $settings = $request->input('settings', []);
+        $rules = [];
+        $attributes = [];
+
+        foreach (config('{{ lowerName }}', []) as $group) {
+            foreach ($group['settings'] as $key => $definition) {
+                if (isset($definition['rules'])) {
+                    $rules["settings.{$key}"] = $definition['rules'];
+                    $attributes["settings.{$key}"] = $definition['label'];
+                }
+            }
+        }
+
+        $request->validate($rules, [], $attributes);
+
+        foreach ($settings as $key => $value) {
+            $this->service->set($key, $value);
+        }
+
+        $tab = $request->input('_active_tab', array_key_first(config('{{ lowerName }}', [])));
+
+        return redirect()->to(route('{{ panelLower }}.{{ lowerName }}.index').'#'.$tab)
+            ->with('success', __('Settings updated successfully.'));
+    }
+}

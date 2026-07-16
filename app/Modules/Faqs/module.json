@@ -1,0 +1,16 @@
+{
+    "name": "Faqs",
+    "alias": "faqs",
+    "description": "FAQ management",
+    "version": "1.0.0",
+    "priority": 74,
+    "providers": [
+        "App\\Modules\\Faqs\\Providers\\FaqsServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

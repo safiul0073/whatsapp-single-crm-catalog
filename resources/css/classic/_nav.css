@@ -1,0 +1,288 @@
+/* ==========================================================================
+   Nav — floating glass pill, scroll-shrink, mobile toggle.
+   Tailwind utilities carry tokens; raw CSS handles the bar's variable
+   max-width / padding / background-opacity transitions driven by the
+   `is-scrolled` state set on the <header>.
+   ========================================================================== */
+@layer components {
+  .nav {
+    transition: padding 320ms theme(--ease-out-soft);
+  }
+  .nav.is-scrolled {
+    @apply py-2.5;
+  }
+
+  .nav__shell {
+    transition: max-width 320ms theme(--ease-out-soft);
+  }
+  .nav.is-scrolled .nav__shell {
+    max-width: 1180px;
+  }
+
+  .nav__bar {
+    transition: all 320ms theme(--ease-out-soft);
+  }
+  .nav.is-scrolled .nav__bar {
+    @apply h-[58px] py-0 pr-2.5 pl-[18px] shadow-nav-bar-scrolled;
+    background: rgba(255, 255, 255, 0.78);
+  }
+
+  .nav__item {
+    transition: color 220ms theme(--ease-out-soft);
+  }
+  .nav__item:hover {
+    @apply text-brand-navy-ink;
+  }
+  .nav__item-text {
+    transition: transform 320ms theme(--ease-out-soft);
+  }
+  .nav__item:hover .nav__item-text {
+    @apply -translate-y-px;
+  }
+  .nav__chevron {
+    transition:
+      transform 320ms theme(--ease-out-soft),
+      color 220ms theme(--ease-out-soft);
+  }
+  .nav__item--mega:not(.is-active):hover .nav__chevron {
+    @apply translate-y-0.5 text-brand-navy-ink;
+  }
+  .nav__item.is-active {
+    @apply text-brand-navy-ink font-semibold;
+  }
+  .nav__item.is-active .nav__chevron {
+    @apply rotate-180 text-brand-navy-ink;
+  }
+  /* Active-item navy dot */
+  .nav__item.is-active::after {
+    content: "";
+    @apply absolute left-1/2 bottom-0.5 w-1 h-1 -ml-0.5 rounded-pill bg-brand-navy-ink shadow-nav-dot animate-nav-dot-in;
+  }
+
+  .nav__item--animated-border {
+    position: relative;
+    border: 1px solid transparent;
+    background-image:
+      linear-gradient(var(--color-white, #fff), var(--color-white, #fff)),
+      linear-gradient(90deg, var(--color-brand-blue, #2148ff), var(--color-brand-blue-electric, #2b6bf3), var(--color-brand-green, #00c875), var(--color-brand-blue, #2148ff));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-size: 300% 100%;
+    animation: border-grad-shift 6s linear infinite;
+    transition: box-shadow 220ms ease;
+  }
+  .nav__item--animated-border:hover {
+    @apply shadow-xs;
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--color-white, #fff) 95%, var(--color-brand-blue, #2148ff)), color-mix(in srgb, var(--color-white, #fff) 95%, var(--color-brand-blue, #2148ff))),
+      linear-gradient(90deg, var(--color-brand-blue, #2148ff), var(--color-brand-blue-electric, #2b6bf3), var(--color-brand-green, #00c875), var(--color-brand-blue, #2148ff));
+  }
+  @keyframes border-grad-shift {
+    to { background-position: 300% 0; }
+  }
+
+  /* Magnetic hover pill — JS-driven transition */
+  .nav__hover-pill {
+    transition:
+      transform 380ms cubic-bezier(0.22, 1.05, 0.36, 1),
+      width 380ms cubic-bezier(0.22, 1.05, 0.36, 1),
+      opacity 180ms theme(--ease-out-soft);
+  }
+
+  .nav__cta:hover {
+    @apply bg-[#1b1c5c] text-white;
+  }
+  .nav__cta:active {
+    @apply translate-y-px;
+  }
+
+  /* Skip link — transition + focus state only */
+  .nav__skip {
+    transition: transform 200ms theme(--ease-out-soft);
+  }
+  .nav__skip:focus-visible {
+    @apply translate-y-0 outline-none shadow-focus-ring-strong;
+  }
+
+  /* Focus-visible halo (brand a11y rule) */
+  .nav__bar a:focus-visible,
+  .nav__bar button:focus-visible,
+  .nav__drawer a:focus-visible,
+  .nav__drawer button:focus-visible {
+    @apply outline-none shadow-focus-ring rounded-[10px];
+  }
+
+  /* ==== Mega-menu panels ==== */
+  .nav__panel {
+    @apply hidden pointer-events-auto;
+  }
+  .nav__panel.is-open {
+    @apply block;
+  }
+  .nav__panel-card--wide {
+    width: min(1040px, calc(100vw - 32px));
+  }
+  .nav__panel-card--compact {
+    width: min(880px, calc(100vw - 32px));
+  }
+
+  /* Item groups */
+
+  /* Single mega item */
+  .nav__mega-item {
+    transition: background-color 180ms theme(--ease-out-soft);
+  }
+  .nav__mega-item:hover {
+    @apply bg-bg-soft;
+  }
+  .nav__icon-tile {
+    transition:
+      color 180ms theme(--ease-out-soft),
+      border-color 180ms theme(--ease-out-soft);
+  }
+  .nav__mega-item:hover .nav__icon-tile {
+    @apply text-brand-navy-ink border-border-strong;
+  }
+
+  /* Status badge — pseudo-element only */
+  .nav__badge::before {
+    content: "";
+    @apply w-[5px] h-[5px] flex-none rounded-pill bg-text-muted;
+  }
+  .nav__badge[data-status="stable"]::before {
+    @apply bg-brand-green;
+  }
+  .nav__badge[data-status="beta"]::before {
+    @apply bg-warning;
+  }
+  .nav__badge[data-status="new"]::before {
+    @apply bg-brand-blue;
+  }
+  .nav__badge[data-status="popular"]::before {
+    @apply bg-brand-navy-ink;
+  }
+
+  /* Feature preview card — transition + hover only */
+  .nav__feature {
+    transition:
+      transform 240ms theme(--ease-out-soft),
+      box-shadow 240ms theme(--ease-out-soft);
+  }
+  .nav__feature:hover {
+    @apply -translate-y-0.5 shadow-nav-feature-hover;
+  }
+
+  /* Quick-access row — state rules only */
+  .nav__quick-item {
+    transition: background-color 180ms theme(--ease-out-soft);
+  }
+  .nav__quick-item + .nav__quick-item {
+    @apply border-l border-border-soft;
+  }
+  .nav__quick-item:hover {
+    @apply bg-bg-soft;
+  }
+  .nav__quick-arrow {
+    transition: transform 220ms theme(--ease-out-soft);
+  }
+  .nav__quick-item:hover .nav__quick-arrow {
+    @apply translate-x-0.5;
+  }
+
+  /* Compact panel CTA — transition + hover only */
+  .nav__compact-cta {
+    transition:
+      transform 240ms theme(--ease-out-soft),
+      box-shadow 240ms theme(--ease-out-soft);
+  }
+  .nav__compact-cta:hover {
+    @apply -translate-y-0.5 shadow-nav-cta-hover;
+  }
+  .nav__compact-cta-pill {
+    transition: transform 240ms theme(--ease-out-soft);
+  }
+  .nav__compact-cta:hover .nav__compact-cta-pill {
+    @apply translate-x-0.5;
+  }
+
+  /* Responsive panel collapse */
+  @media (max-width: 1100px) {
+    .nav__panel-card--wide {
+      grid-template-columns: 240px 1fr 1fr !important;
+    }
+    .nav__panel-card--wide .nav__feature {
+      display: none;
+    }
+  }
+  @media (max-width: 880px) {
+    .nav__panel-card--wide {
+      grid-template-columns: 1fr !important;
+    }
+    .nav__quick {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .nav__quick-item:nth-child(odd) {
+      @apply border-l-0;
+    }
+    .nav__quick-item:nth-child(n + 3) {
+      @apply border-t border-border-soft;
+    }
+    .nav__panel-card--compact {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* Helplines popover */
+  .nav__support:hover {
+    @apply -translate-y-px;
+    background: rgba(15, 15, 73, 0.07);
+  }
+  .nav__support[aria-expanded="true"] {
+    background: rgba(15, 15, 73, 0.07);
+  }
+  .nav__helplines {
+    width: min(380px, calc(100vw - 32px));
+  }
+  .nav__helpline-action {
+    transition: all 200ms theme(--ease-out-soft);
+  }
+  .nav__helpline-action:hover {
+    @apply bg-brand-navy-ink text-white -translate-y-px;
+  }
+
+  /* Drawer accordion groups */
+  .nav__drawer-chevron {
+    transition: transform 220ms theme(--ease-out-soft);
+  }
+  .nav__drawer-trigger[aria-expanded="true"] .nav__drawer-chevron {
+    @apply text-brand-navy-ink rotate-180;
+  }
+  .nav__drawer-child {
+    transition:
+      background-color 180ms theme(--ease-out-soft),
+      color 180ms theme(--ease-out-soft);
+  }
+  .nav__drawer-child:hover {
+    @apply bg-bg-soft text-brand-navy-ink;
+  }
+
+  /* Mobile drawer */
+}
+
+/* Mobile-only toggle: hide desktop nav, show burger */
+@media (max-width: 1100px) {
+  .nav__desktop {
+    display: none !important;
+  }
+  .nav__mobile-toggle {
+    display: grid !important;
+  }
+}
+@media (min-width: 1101px) {
+  .nav__mobile-toggle {
+    display: none !important;
+  }
+  .nav__drawer {
+    display: none !important;
+  }
+}

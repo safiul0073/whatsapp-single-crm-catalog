@@ -1,0 +1,80 @@
+x-app-environment: &app-environment
+  APP_NAME: ${APP_NAME:-Marketing App}
+  APP_ENV: local
+  APP_KEY: ${DOCKER_APP_KEY:-base64:YfkImmvtD3I1GQRfZYdEmZ3XiJXFeVgQfkgu8xAAQDU=}
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:${APP_PORT:-8000}
+  LOG_CHANNEL: stderr
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: ${DOCKER_DB_DATABASE:-marketing_app}
+  DB_USERNAME: ${DOCKER_DB_USERNAME:-laravel}
+  DB_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
+  SESSION_DRIVER: database
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+
+x-app-volumes: &app-volumes
+  - .:/var/www/html
+
+x-app-service: &app-service
+  image: marketing-app:local
+  environment: *app-environment
+  volumes: *app-volumes
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DOCKER_DB_DATABASE:-marketing_app}
+      MYSQL_USER: ${DOCKER_DB_USERNAME:-laravel}
+      MYSQL_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DOCKER_DB_ROOT_PASSWORD:-root}
+    ports:
+      - "${DOCKER_DB_FORWARD_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DOCKER_DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: application
+    image: marketing-app:local
+    command: ["php", "artisan", "migrate", "--force"]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    <<: *app-service
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  queue:
+    <<: *app-service
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90", "--max-time=3600"]
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

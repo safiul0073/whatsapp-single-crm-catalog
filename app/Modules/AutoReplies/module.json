@@ -1,0 +1,1 @@
+{"name":"AutoReplies","alias":"auto-replies","description":"Keyword, business-hour, fallback, and handoff auto replies","version":"1.0.0","priority":45,"providers":["App\\Modules\\AutoReplies\\Providers\\AutoRepliesServiceProvider"],"requires":["inbox"],"active":true}

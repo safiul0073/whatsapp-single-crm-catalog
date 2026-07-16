@@ -1,0 +1,1 @@
+{"name":"MarketingChannels","alias":"marketing-channels","description":"Shared multi-channel marketing accounts, drivers, webhook events, and delivery contracts","version":"1.0.0","priority":30,"providers":["App\\Modules\\MarketingChannels\\Providers\\MarketingChannelsServiceProvider"],"requires":[],"active":true}

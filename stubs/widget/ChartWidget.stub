@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Modules\{{ moduleName }}\Widgets;
+
+use App\Modules\Shared\Widgets\ChartWidget;
+
+class {{ className }} extends ChartWidget
+{
+    public function id(): string
+    {
+        return '{{ widgetId }}';
+    }
+
+    public function title(): string
+    {
+        return __('{{ widgetTitle }}');
+    }
+
+    public function chartType(): string
+    {
+        return '{{ chartType }}';
+    }
+
+    protected function getData(): array
+    {
+        // Replace with your actual data query
+        return [
+            'series' => [
+                ['name' => 'Sample', 'data' => [30, 40, 35, 50, 49, 60, 70]],
+            ],
+            'categories' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        ];
+    }
+
+    public function position(): int
+    {
+        return {{ position }};
+    }
+
+    public function width(): string
+    {
+        return '{{ width }}';
+    }
+
+    public function panel(): string
+    {
+        return '{{ panel }}';
+    }
+}

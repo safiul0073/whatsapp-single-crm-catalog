@@ -1,0 +1,25 @@
+/* KPI Card Components — Classic WhatsApp Theme */
+.kpi-card {
+  @apply bg-neutral-0 rounded-2xl border border-neutral-200 p-6 transition-all duration-300 hover:shadow-md;
+}
+
+.kpi-icon-wrapper {
+  @apply flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300;
+}
+
+.kpi-card:hover .kpi-icon-wrapper {
+  @apply scale-110;
+}
+
+/* Stat card — display only, no whole-card action */
+.stat-card {
+  @apply rounded-2xl border border-neutral-200 bg-neutral-0 p-5 relative overflow-hidden transition-all duration-300 ease-in-out;
+}
+
+.stat-card:hover {
+  @apply border-primary/20 -translate-y-1 shadow-md;
+}
+
+.stat-card__icon {
+  @apply grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary;
+}

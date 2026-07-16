@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+// use Illuminate\Database\Eloquent\SoftDeletes;
+
+class {{ singularName }} extends Model
+{
+    use HasFactory; // Add SoftDeletes trait when needed
+
+    protected $table = '{{ tableName }}';
+
+    protected $fillable = [
+        'name',
+        'description',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+        ];
+    }
+}

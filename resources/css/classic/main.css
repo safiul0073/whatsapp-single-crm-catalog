@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Classic Design System tokens, mapped into Tailwind v4 via @theme.
+   Source of truth: ../../../classic-design-system/project/colors_and_type.css
+   Light theme only.
+   ========================================================================== */
+@import "./_tokens.css";
+
+/* Components */
+@import "./_nav.css";
+@import "./_hero.css";
+@import "./_about.css";
+@import "./_services.css";
+@import "./_stats.css";
+@import "./_solutions.css";
+@import "./_marquee.css";
+@import "./_why.css";
+@import "./_process.css";
+@import "./_stack.css";
+@import "./_testimonials.css";
+@import "./_faq.css";
+@import "./_footer.css";
+@import "./_contact.css";
+@import "./_components.css";
+@import "./_product-details.css";
+@import "./_blog.css";
+@import "./_cookie-consent.css";
+
+/* Shared section container — max-width, auto margins, responsive padding */
+@layer utilities {
+  .section-container {
+    @apply w-full mx-auto max-w-[1640px] px-4 md:px-6 xl:px-14;
+  }
+}
+
+html,
+body,
+.site-main {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+button {
+  cursor: pointer !important;
+}

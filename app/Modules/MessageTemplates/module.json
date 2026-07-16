@@ -1,0 +1,1 @@
+{"name":"MessageTemplates","alias":"message-templates","description":"WhatsApp and Telegram template drafts, components, and sync status","version":"1.0.0","priority":42,"providers":["App\\Modules\\MessageTemplates\\Providers\\MessageTemplatesServiceProvider"],"requires":["whatsapp-cloud","telegram"],"active":true}

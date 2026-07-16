@@ -1,0 +1,221 @@
+/* ==========================================================================
+   STACK — state / transition / animation / pseudo-element rules only.
+   Base visual styles are inline Tailwind in stack.html + sections.js.
+   ========================================================================== */
+
+/* ---------- Container gradient + grid overlay ---------- */
+.stk2 .container-fluid {
+  position: relative;
+  background:
+    radial-gradient(120% 80% at 80% 0%, rgba(33, 72, 255, 0.22), transparent 60%),
+    radial-gradient(80% 60% at 0% 100%, rgba(22, 199, 132, 0.1), transparent 60%),
+    linear-gradient(180deg, #15164f 0%, #0b0b33 100%);
+  border-radius: clamp(20px, 3vw, 36px);
+  padding: clamp(48px, 6vw, 88px) clamp(24px, 4vw, 64px);
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-stack-container);
+}
+.stk2 .container-fluid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(80% 60% at 50% 50%, transparent 30%, #000 100%);
+  mask-image: radial-gradient(80% 60% at 50% 50%, transparent 30%, #000 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ---------- Glows (filter stays in CSS) ---------- */
+.stk2-glow--blue {
+  top: -8%;
+  left: 20%;
+  width: clamp(200px, 40vw, 480px);
+  height: clamp(200px, 40vw, 480px);
+  background: radial-gradient(closest-side, rgba(33, 72, 255, 0.32), transparent 70%);
+}
+.stk2-glow--green {
+  bottom: -10%;
+  right: 18%;
+  width: clamp(160px, 30vw, 380px);
+  height: clamp(160px, 30vw, 380px);
+  background: radial-gradient(closest-side, rgba(22, 199, 132, 0.18), transparent 70%);
+}
+
+/* ---------- Constellations (SVG injected by JS) ---------- */
+.stk2-constellation--left {
+  left: -2%;
+  transform: scaleX(-1);
+}
+.stk2-constellation--right {
+  right: -2%;
+}
+.stk2-constellation svg {
+  display: block;
+  height: 100%;
+}
+
+/* ---------- Heading accent gradient ---------- */
+.stk2-h2-accent {
+  background: linear-gradient(135deg, #c8d4ff 0%, #16c784 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Toggle pill ---------- */
+.stk2-toggle-pill {
+  background: var(--color-brand-navy-ink);
+  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1), width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 1px 4px rgba(15, 15, 73, 0.18);
+}
+
+/* ---------- Toggle buttons ---------- */
+.stk2-toggle-btn {
+  transition: color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stk2-toggle-btn:hover {
+  color: var(--color-brand-navy-ink);
+}
+.stk2-toggle-btn.is-active {
+  color: #fff;
+}
+
+/* ---------- Tool card fade-in ---------- */
+.stk2-tool-card {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: stk2-card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+/* ---------- Card (complex gradients, color-mix, animation, hover transitions) ---------- */
+.stk2-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: clamp(24px, 2.6vw, 36px) 16px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(140% 100% at 50% 0%, color-mix(in srgb, var(--card-tint, #2148ff) 18%, transparent) 0%, color-mix(in srgb, var(--card-tint, #2148ff) 6%, transparent) 60%, transparent 100%),
+    rgba(0, 0, 0, 0.3);
+  border: 1px solid color-mix(in srgb, var(--card-tint, #fff) 18%, rgba(255, 255, 255, 0.08));
+  border-radius: clamp(16px, 1.6vw, 22px);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: stk2-card-in 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--card-delay, 0ms);
+  transition:
+    border-color 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+.stk2-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+.stk2-card:hover {
+  border-color: color-mix(in srgb, var(--card-tint, #2148ff) 50%, transparent);
+  transform: translateY(-3px);
+  box-shadow:
+    0 24px 40px -22px color-mix(in srgb, var(--card-tint, #2148ff) 60%, transparent),
+    0 8px 18px -10px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- Card tile (pseudo-elements + transition) ---------- */
+.stk2-card-tile {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-stack-tile);
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stk2-card-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--tile-tint, #2148ff);
+  opacity: 0.26;
+  border-radius: inherit;
+}
+.stk2-card-tile::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.3), transparent 70%);
+  pointer-events: none;
+}
+.stk2-card:hover .stk2-card-tile {
+  transform: rotate(-4deg) scale(1.06);
+}
+
+/* ---------- Responsive grid overrides ---------- */
+@media (max-width: 1100px) {
+  .stk2-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 880px) {
+  .stk2-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stk2-toggle {
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .stk2-toggle::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .stk2-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stk2-card-tile {
+    width: 52px;
+    height: 52px;
+  }
+  .stk2-card-mark {
+    font-size: 20px;
+  }
+}
+
+@keyframes stk2-card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stk2-pill-sheen {
+  0%, 100% { transform: translateX(-100%); }
+  50%       { transform: translateX(200%); }
+}
+
+@keyframes stk2-dot-pulse {
+  0%, 100% { opacity: 0.14; r: 1.6; }
+  50%       { opacity: 0.7;  r: 2.4; }
+}

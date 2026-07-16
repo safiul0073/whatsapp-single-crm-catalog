@@ -1,0 +1,57 @@
+/* ==========================================================================
+   PRODUCT DETAILS — State / Transition / Animation rules only
+   Base visual styles are inline Tailwind in product-details.html
+   ========================================================================== */
+
+.pd-badge-sale { @apply bg-danger; }
+.pd-badge-appweb { @apply bg-brand-navy-ink; }
+.pd-badge-early { @apply bg-warning; }
+
+.pd-tab-btn {
+  transition: all 200ms var(--ease-out-soft);
+  border-bottom: 2px solid transparent;
+}
+.pd-tab-btn.is-active {
+  border-bottom-color: var(--color-brand-blue);
+  @apply text-brand-blue;
+}
+
+.pd-feature-card {
+  transition: box-shadow 240ms var(--ease-out-soft), transform 240ms var(--ease-out-soft);
+}
+.pd-feature-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.pd-stat-num {
+  background: var(--background-image-grad-mark);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pd-stripe-deco {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0px, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 28px);
+}
+
+.pd-gw-logo {
+  filter: grayscale(0.3) brightness(0.9);
+  transition: filter var(--duration-base);
+}
+.pd-gw-logo:hover { filter: none; }
+
+.pd-carousel-btn {
+  transition: all var(--duration-base) var(--ease-out-soft);
+}
+.pd-carousel-btn:hover {
+  @apply bg-brand-navy-ink text-white border-brand-navy-ink;
+}
+
+/* Screenshot carousel */
+.pd-shots-wrap { overflow: hidden; }
+.pd-shots-track {
+  display: flex;
+  gap: 16px;
+  transition: transform var(--duration-slow) var(--ease-out-soft);
+}

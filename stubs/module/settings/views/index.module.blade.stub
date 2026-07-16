@@ -1,0 +1,24 @@
+<x-layouts.{{ panelLower }} :title="__('{{ studlyName }}')">
+    <div class="section-card">
+        <form method="POST" action="{{ route('{{ panelLower }}.{{ lowerName }}.update') }}" class="space-y-6">
+            @csrf
+            @method('PUT')
+            @foreach($groups as $groupKey => $group)
+                <div>
+                    <h2 class="heading-5 text-neutral-950">{{ __($group['label']) }}</h2>
+                    @foreach($group['settings'] as $key => $setting)
+                        <div class="mt-4">
+                            <x-forms.input
+                                :label="__($setting['label'])"
+                                :name="'settings[' . $key . ']'"
+                                :value="$setting['value']"
+                            />
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+
+            <x-forms.submit :label="__('Save Changes')" />
+        </form>
+    </div>
+</x-layouts.{{ panelLower }}>

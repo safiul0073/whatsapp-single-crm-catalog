@@ -1,0 +1,237 @@
+/* ==========================================================================
+   FOOTER — State / transition / animation rules only
+   Base visual styles are inline Tailwind in footer.html
+   ========================================================================== */
+
+/* --- CTA card gradient + decorative line (pseudo-element) --- */
+.footv2-cta {
+  background: radial-gradient(80% 100% at 0% 0%, rgba(255, 255, 255, 0.1), transparent 60%),
+    linear-gradient(135deg, #2148ff 0%, #1a3ce5 50%, #1313ff 100%);
+}
+.footv2-cta::after {
+  content: "";
+  @apply absolute left-8 bottom-3.5 h-px pointer-events-none;
+  width: calc(100% - 64px);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+}
+
+/* --- CTA primary button hover --- */
+.footv2-cta-primary {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms;
+}
+.footv2-cta-primary:hover {
+  transform: translateY(-1px);
+  @apply shadow-foot-cta-btn-hover;
+}
+
+/* --- CTA ghost link hover --- */
+.footv2-cta-ghost {
+  transition: text-decoration-color 220ms;
+}
+.footv2-cta-ghost:hover {
+  text-decoration-color: #fff;
+}
+
+/* --- Badge ring spin --- */
+.footv2-cta-badge-ring {
+  animation: theme(--animate-footv2-spin);
+}
+
+/* --- Badge core hover --- */
+.footv2-cta-badge-core {
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-cta-badge:hover .footv2-cta-badge-core {
+  transform: rotate(8deg) scale(1.04);
+}
+
+/* --- Grid background (mask-image) --- */
+.footv2-grid-bg {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(80% 60% at 50% 0%, #000 30%, transparent 90%);
+  mask-image: radial-gradient(80% 60% at 50% 0%, #000 30%, transparent 90%);
+}
+
+/* --- Glow blob --- */
+.footv2-glow {
+  background: radial-gradient(closest-side, rgba(33, 72, 255, 0.45), transparent 70%);
+}
+
+/* --- Social link hover --- */
+.footv2-social-link {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-social-link:hover {
+  @apply bg-brand-blue border-brand-blue text-white;
+  transform: translateY(-2px);
+}
+
+/* --- Newsletter input row focus --- */
+.footv2-newsletter-row {
+  transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-newsletter-row:focus-within {
+  @apply border-white/30;
+}
+
+/* --- Newsletter input placeholder --- */
+.footv2-newsletter-input::placeholder {
+  @apply text-white/40;
+}
+
+/* --- Newsletter submit hover / disabled --- */
+.footv2-newsletter-submit {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-newsletter-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.footv2-newsletter-submit:disabled {
+  @apply bg-brand-green/18 text-brand-green cursor-default;
+}
+
+/* --- Column link hover --- */
+.footv2-col-link {
+  transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-col-link:hover {
+  @apply text-white;
+}
+.footv2-col-link-arrow {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-col-link:hover .footv2-col-link-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* --- Contact block hover --- */
+.footv2-contact-block {
+  transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-contact-block:hover {
+  @apply text-white;
+}
+.footv2-contact-block:hover .footv2-contact-tile {
+  @apply bg-brand-blue/20 text-white;
+}
+
+/* --- Helpline hover --- */
+.footv2-helpline {
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footv2-helpline:hover {
+  @apply bg-brand-blue/14 border-brand-blue/30;
+  transform: translateY(-1px);
+}
+
+/* --- Legal divider (adjacent sibling) --- */
+.footv2-legal li + li::before {
+  content: "";
+  @apply inline-block w-px h-3 bg-white/14 my-0 mx-3.5 align-middle;
+}
+
+/* --- Legal link hover --- */
+.footv2-legal a {
+  transition: color 200ms;
+}
+.footv2-legal a:hover {
+  @apply text-white;
+}
+
+/* Base grids — all layout owned here, no inline styles on HTML */
+.footv2-top {
+  display: grid;
+  grid-template-columns: minmax(min(320px, 100%), 1.1fr) minmax(min(360px, 100%), 1fr);
+  gap: 3rem;
+}
+.footv2-mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(min(320px, 100%), 380px);
+  gap: 3.5rem;
+}
+.footv2-links {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+/* --- Responsive overrides --- */
+@media (max-width: 1100px) {
+  .footv2-top {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .footv2-mid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  .footv2-links {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.75rem;
+  }
+  .footv2-cta {
+    grid-template-columns: 1fr;
+  }
+  .footv2-cta-badge {
+    @apply w-[132px] h-[132px] justify-self-start;
+  }
+  .footv2-cta-badge-core {
+    @apply w-[72px] h-[72px];
+  }
+}
+@media (max-width: 768px) {
+  .footv2-inner {
+    gap: 2.5rem;
+  }
+  .footv2-top {
+    gap: 1.75rem;
+    @apply pb-8;
+  }
+  .footv2-mid {
+    gap: 2rem;
+    @apply pb-8;
+  }
+}
+@media (max-width: 640px) {
+  .footv2-cta-wrap {
+    @apply -mb-14;
+  }
+  .footv2-surface {
+    @apply pt-24;
+  }
+  .footv2-links {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .footv2-helplines-grid {
+    grid-template-columns: 1fr;
+  }
+  .footv2-bottom {
+    @apply flex-col items-start gap-4;
+  }
+  .footv2-legal {
+    @apply flex-wrap gap-y-2;
+  }
+  .footv2-cta-badge-ring {
+    @apply hidden;
+  }
+}
+@media (max-width: 480px) {
+  .footv2-links {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .footv2-top,
+  .footv2-mid {
+    @apply pb-6;
+  }
+}
+@media (max-width: 360px) {
+  .footv2-links {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,33 @@
+/* Toast Component */
+.toast-container {
+  @apply fixed top-6 right-6 z-[1000] flex flex-col gap-3;
+}
+
+.toast {
+  @apply bg-neutral-0 flex min-w-[320px] items-center gap-4 rounded-2xl border border-neutral-100 p-4 shadow-2xl backdrop-blur-xl transition-all duration-300;
+  transform: translateX(120%);
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast-icon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl;
+}
+
+.toast-success-icon {
+  @apply bg-success/10 text-success;
+}
+
+.toast-error-icon {
+  @apply bg-error/10 text-error;
+}
+
+.toast-warning-icon {
+  @apply bg-warning/10 text-warning;
+}
+
+.toast-info-icon {
+  @apply bg-info/10 text-info;
+}

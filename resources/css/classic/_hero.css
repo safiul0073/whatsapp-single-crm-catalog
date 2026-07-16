@@ -1,0 +1,318 @@
+/* ==========================================================================
+   Hero section — bespoke layout, animations, and decorative layers.
+   Tailwind utilities (via @apply) carry colors / fonts / radii / shadows
+   from @theme tokens; raw CSS is reserved for keyframes, CSS-var transforms,
+   masks, and percentage-based positioning that utilities can't express.
+   ========================================================================== */
+@layer components {
+  /* --- Headline word-rise --- */
+  .hero-word {
+    @apply relative inline-block overflow-hidden align-top;
+    padding: 0 0.02em 0.12em;
+    margin-bottom: -0.12em;
+  }
+  .hero-word__inner {
+    @apply inline-block opacity-0;
+    transform: translateY(110%);
+    animation: hero-word-rise 700ms theme(--ease-out-soft) var(--rise-delay, 0ms) both;
+    will-change: transform, opacity;
+  }
+  @keyframes hero-word-rise {
+    0% {
+      transform: translateY(110%);
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .hero-word--accent .hero-word__inner {
+    background-image: linear-gradient(
+      100deg,
+      theme(--color-brand-blue) 0%,
+      theme(--color-brand-blue-electric) 22%,
+      theme(--color-brand-blue) 42%,
+      theme(--color-brand-green) 70%,
+      theme(--color-brand-blue) 100%
+    );
+    background-size: 220% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation:
+      hero-word-rise 700ms theme(--ease-out-soft) var(--rise-delay, 0ms) both,
+      hero-gradient-sweep 1600ms theme(--ease-out-soft) 1340ms 1 forwards;
+  }
+  @keyframes hero-gradient-sweep {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0% 0;
+    }
+  }
+  .hero-word--underline {
+    padding-bottom: 0.18em;
+  }
+  .hero-underline-svg {
+    @apply absolute overflow-visible pointer-events-none;
+    left: 4%;
+    right: 4%;
+    bottom: 0.04em;
+    width: 92%;
+    height: 0.14em;
+  }
+  .hero-underline-svg path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: hero-underline-draw 700ms theme(--ease-out-soft) both;
+  }
+  @keyframes hero-underline-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* --- Rotating caption --- */
+  .hero-caption {
+    @apply flex flex-wrap items-baseline font-display font-semibold opacity-0 text-text-muted mt-[18px];
+    gap: 0 0.35em;
+    font-size: clamp(20px, 1.85vw, 24px);
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    transform: translateY(10px);
+    animation: hero-fade-up 700ms theme(--ease-out-soft) 980ms both;
+  }
+  .hero-caption__clip {
+    @apply relative inline-block overflow-hidden align-baseline;
+    padding: 0 0.04em 0.12em;
+    margin-bottom: -0.12em;
+    min-height: 1.25em;
+  }
+  .hero-caption__word {
+    @apply inline-block;
+    background-image: linear-gradient(100deg, theme(--color-brand-blue) 0%, theme(--color-brand-blue-electric) 35%, theme(--color-brand-green) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    will-change: transform, opacity;
+  }
+  .hero-caption__word--in {
+    animation: hero-caption-in 460ms theme(--ease-out-soft) both;
+  }
+  .hero-caption__word--out {
+    animation: hero-caption-out 460ms cubic-bezier(0.55, 0, 0.36, 1) both;
+  }
+  @keyframes hero-caption-in {
+    0% {
+      transform: translateY(105%);
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes hero-caption-out {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-105%);
+      opacity: 0;
+    }
+  }
+
+  /* --- Generic fade/pulse --- */
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-fade {
+    animation: hero-fade-up 700ms theme(--ease-out-soft) both;
+  }
+  .hero-fade-1 {
+    animation-delay: 80ms;
+  }
+  .hero-fade-2 {
+    animation-delay: 180ms;
+  }
+  .hero-fade-3 {
+    animation-delay: 280ms;
+  }
+  .hero-fade-4 {
+    animation-delay: 380ms;
+  }
+  .hero-fade-5 {
+    animation-delay: 480ms;
+  }
+
+  /* --- CTA hover polish --- */
+  .hero-cta-primary:hover {
+    @apply shadow-hero-cta-hover;
+    transform: translateY(-2px);
+  }
+  .hero-cta-primary:active {
+    transform: translateY(0);
+  }
+  .hero-cta-ghost:hover {
+    @apply bg-bg-soft border-brand-navy-ink;
+  }
+
+  /* --- Logo marquee --- */
+
+  /* --- Marquee --- */
+  .hero-marquee-section {
+    @apply border-y border-border-soft;
+    background: rgba(22, 199, 132, 0.06);
+  }
+  .hero-marquee-section::before {
+    content: "";
+    @apply absolute inset-0 pointer-events-none;
+    background: radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(15, 15, 73, 0.025) 100%);
+  }
+  .hero-marquee {
+    @apply relative flex w-full overflow-hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+  }
+  .hero-marquee__track {
+    @apply flex flex-none items-center gap-12 md:gap-16 pr-12 md:pr-16;
+    animation: hero-marquee-scroll 50s linear infinite;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    transition: animation-duration 600ms theme(--ease-out-soft);
+  }
+  .hero-marquee:hover .hero-marquee__track {
+    animation-duration: 150s;
+  }
+  @keyframes hero-marquee-scroll {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(-100%, 0, 0);
+    }
+  }
+  .hero-marquee__item {
+    @apply inline-flex items-center flex-none;
+    filter: saturate(0.85);
+    opacity: 0.8;
+    transition:
+      opacity 280ms theme(--ease-out-soft),
+      transform 380ms theme(--ease-out-soft),
+      filter 380ms theme(--ease-out-soft);
+  }
+  .hero-marquee__item:hover {
+    opacity: 1;
+    filter: saturate(1.1) drop-shadow(0 8px 16px rgba(15, 15, 73, 0.12));
+    transform: translateY(-2px);
+  }
+}
+
+/* --- Responsive --- */
+@media (max-width: 1100px) and (min-width: 961px) {
+  .hero__content {
+    gap: 48px;
+  }
+  .hero-stage {
+    height: 540px !important;
+  }
+  .hero-stage__chip {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+}
+@media (max-width: 960px) {
+  .hero__content {
+    grid-template-columns: 1fr !important;
+    gap: 48px !important;
+    padding-top: 32px !important;
+  }
+  .hero-headline {
+    font-size: clamp(40px, 9vw, 56px) !important;
+    max-width: 100% !important;
+  }
+  .hero-stage {
+    height: 460px !important;
+  }
+  .hero-stage__chip--uptime {
+    top: 4%;
+    left: 4%;
+  }
+  .hero-stage__chip--deploy {
+    bottom: 4%;
+    right: 4%;
+  }
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-fade,
+  .hero-pulse,
+  .hero-stage__bg,
+  .hero-stage__ring,
+  .hero-stage__rocket,
+  .hero-stage__chip--uptime,
+  .hero-stage__chip--deploy,
+  .hero-stage__chip--customers,
+  .hero-stage__dot,
+  .hero-marquee__track {
+    animation: none !important;
+  }
+  .hero-word__inner {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .hero-word--accent .hero-word__inner {
+    background-position: 0% 0 !important;
+  }
+  .hero-underline-svg path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .hero-caption {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-caption__word {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .hero-marquee__track + .hero-marquee__track {
+    display: none !important;
+  }
+  .hero-marquee {
+    justify-content: center;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  .hero-stage__bg {
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+  .hero-stage__ring {
+    transform: translate(-50%, -50%) rotate(0deg) !important;
+  }
+  .hero-stage__rocket {
+    transform: translate(-50%, -50%) !important;
+  }
+}

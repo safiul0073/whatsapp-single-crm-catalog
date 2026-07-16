@@ -1,0 +1,1 @@
+{"name":"MetaSocial","alias":"meta-social","description":"Official Meta Messenger and Instagram channel connections, embedded signup, and webhooks","version":"1.0.0","priority":33,"providers":["App\\Modules\\MetaSocial\\Providers\\MetaSocialServiceProvider"],"requires":["marketing-channels","contacts","inbox"],"active":true}

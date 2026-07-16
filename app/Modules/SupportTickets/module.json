@@ -1,0 +1,16 @@
+{
+    "name": "SupportTickets",
+    "alias": "support-tickets",
+    "description": "Support ticket system for users to submit requests and admins to respond and manage them",
+    "version": "1.0.0",
+    "priority": 55,
+    "providers": [
+        "App\\Modules\\SupportTickets\\Providers\\SupportTicketsServiceProvider"
+    ],
+    "requires": [],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

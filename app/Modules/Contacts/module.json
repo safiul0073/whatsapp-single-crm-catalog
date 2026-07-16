@@ -1,0 +1,1 @@
+{"name":"Contacts","alias":"contacts","description":"WhatsApp contacts, tags, custom fields, and consent","version":"1.0.0","priority":40,"providers":["App\\Modules\\Contacts\\Providers\\ContactsServiceProvider"],"requires":[],"active":true}

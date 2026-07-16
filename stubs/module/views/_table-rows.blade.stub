@@ -1,0 +1,27 @@
+@forelse(${{ variablePlural }} as ${{ variableName }})
+<tr>
+    <td data-th="{{ __('Select') }}">
+        <input type="checkbox" class="custom-checkbox" data-select-item="{{ kebabName }}" value="{{ ${{ variableName }}->id }}" />
+    </td>
+    <td data-th="{{ __('Name') }}" class="text-sm text-neutral-900">{{ ${{ variableName }}->name }}</td>
+    <td data-th="{{ __('Status') }}">
+        <div class="flex justify-end lg:justify-start rtl:justify-start">
+            <x-ui.badge :variant="${{ variableName }}->is_active ? 'success' : 'danger'">
+                {{ ${{ variableName }}->is_active ? __('Active') : __('Inactive') }}
+            </x-ui.badge>
+        </div>
+    </td>
+    <td data-th="{{ __('Created') }}" class="text-sm text-neutral-400">{{ format_date(${{ variableName }}->created_at) }}</td>
+    <td data-th="{{ __('Actions') }}" class="text-right">
+        <x-tables.actions>
+            <x-tables.action icon="eye" :href="route('{{ panelLower }}.{{ kebabName }}.show', ${{ variableName }})" :label="__('View')" />
+            <x-tables.action icon="pencil-simple" :href="route('{{ panelLower }}.{{ kebabName }}.edit', ${{ variableName }})" :label="__('Edit')" />
+            <x-tables.action icon="trash" :label="__('Delete')" variant="danger" data-modal-trigger="confirmDelete-{{ ${{ variableName }}->id }}" />
+        </x-tables.actions>
+    </td>
+</tr>
+@empty
+<tr>
+    <td colspan="5" class="py-8 text-center text-neutral-400">{{ __('No records found') }}</td>
+</tr>
+@endforelse

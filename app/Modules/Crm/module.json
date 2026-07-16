@@ -1,0 +1,16 @@
+{
+    "name": "CRM",
+    "alias": "crm",
+    "description": "Workspace CRM pipelines, leads, activities, and follow-up tasks",
+    "version": "1.0.0",
+    "priority": 54,
+    "providers": [
+        "App\\Modules\\Crm\\Providers\\CrmServiceProvider"
+    ],
+    "requires": ["contacts", "inbox", "campaigns", "automations"],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "active": true
+}

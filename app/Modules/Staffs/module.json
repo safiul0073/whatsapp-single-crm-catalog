@@ -1,0 +1,10 @@
+{
+    "name": "Staffs",
+    "alias": "staffs",
+    "version": "1.0.0",
+    "active": true,
+    "providers": [
+        "App\\Modules\\Staffs\\Providers\\StaffsServiceProvider"
+    ],
+    "requires": []
+}

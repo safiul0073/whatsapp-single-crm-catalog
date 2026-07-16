@@ -1,0 +1,34 @@
+@props(['title' => 'Dashboard'])
+
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $currentDirection ?? 'ltr' }}" class="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $title }} - {{ config('app.name', '{{ studlyName }}') }}</title>
+    <link rel="stylesheet" href="{{ asset('vendor/phosphor/regular/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/phosphor/fill/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/phosphor/bold/style.css') }}">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
+</head>
+<body class="bg-neutral-0 text-neutral-900 antialiased">
+    <x-navigation.sidebar />
+    <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+
+    <section id="mainContent" class="main-content min-h-screen">
+        <x-navigation.topbar :title="$title" />
+        <main class="p-4 lg:p-8">
+            {{ $slot }}
+        </main>
+    </section>
+
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+    @stack('drawers')
+    <x-ui.toast />
+    <x-ui.flash />
+    @stack('modals')
+    @stack('scripts')
+</body>
+</html>

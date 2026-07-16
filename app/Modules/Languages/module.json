@@ -1,0 +1,12 @@
+{
+    "name": "Languages",
+    "alias": "languages",
+    "description": "Language management",
+    "version": "1.0.0",
+    "priority": 80,
+    "providers": [
+        "App\\Modules\\Languages\\Providers\\LanguagesServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

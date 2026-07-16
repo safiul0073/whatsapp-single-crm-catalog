@@ -1,0 +1,337 @@
+/* Input Fields */
+.input-field {
+  @apply s-body w-full rounded-xl border border-neutral-200 px-4 py-3 text-neutral-900 transition-all duration-300 outline-none;
+  @apply bg-neutral-0;
+
+  &::placeholder {
+    @apply text-neutral-400;
+  }
+
+  &:hover:not(:disabled) {
+    @apply border-neutral-200 bg-neutral-50;
+  }
+
+  &:focus:not(:disabled) {
+    @apply border-primary;
+    @apply bg-neutral-0;
+    box-shadow: 0 0 0 4px rgba(80, 150, 242, 0.1);
+  }
+
+  &:disabled {
+    @apply cursor-not-allowed bg-neutral-50 text-neutral-400;
+  }
+
+  /* Validation States */
+  &.is-invalid {
+    @apply border-error text-error placeholder:text-error/50;
+
+    &:focus {
+      @apply bg-neutral-0;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+    }
+  }
+
+  &.is-valid {
+    @apply border-success text-success;
+
+    &:focus {
+      @apply bg-neutral-0;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+    }
+  }
+  /* General Date & Time Picker Customization */
+  &::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer opacity-60 transition-opacity hover:opacity-100;
+    background-size: 1.25rem;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+}
+
+/* Specific Icons for Input Types */
+/* Date, Datetime, Month, Week -> Calendar Icon */
+.input-field[type="date"]::-webkit-calendar-picker-indicator,
+.input-field[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.input-field[type="month"]::-webkit-calendar-picker-indicator,
+.input-field[type="week"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='%236b7280'%3e%3cpath d='M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM48,208V96H208V208Z'/%3e%3c/svg%3e");
+}
+
+/* Time -> Clock Icon */
+.input-field[type="time"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='%236b7280'%3e%3cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z'/%3e%3c/svg%3e");
+}
+
+/* Base styles for date/time inputs */
+.input-field[type="date"],
+.input-field[type="datetime-local"],
+.input-field[type="time"],
+.input-field[type="month"],
+.input-field[type="week"] {
+  @apply appearance-none;
+  /* Ensure text doesn't overlap with the custom icon if needed, though default placement is usually fine. 
+     Adding a bit of padding-right can help if the browser places the icon inside the padding box. */
+}
+
+/* Select Fields */
+.select-field {
+  @apply s-body w-full rounded-xl border border-neutral-200 px-4 py-3 text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  @apply appearance-none pr-10;
+  @apply bg-neutral-0;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-size: 1.25rem 1.25rem;
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+
+  &:hover:not(:disabled) {
+    @apply border-neutral-200 bg-neutral-50;
+  }
+
+  &:focus:not(:disabled) {
+    @apply border-primary;
+    @apply bg-neutral-0;
+    box-shadow: 0 0 0 4px rgba(80, 150, 242, 0.1);
+  }
+}
+
+/* Textarea */
+.textarea-field {
+  @apply s-body w-full rounded-xl border border-neutral-200 px-4 py-3 text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  @apply bg-neutral-0;
+  @apply min-h-[100px] resize-y;
+
+  &::placeholder {
+    @apply text-neutral-400;
+  }
+
+  &:hover:not(:disabled) {
+    @apply border-neutral-200 bg-neutral-50;
+  }
+
+  &:focus:not(:disabled) {
+    @apply border-primary;
+    @apply bg-neutral-0;
+    box-shadow: 0 0 0 4px rgba(80, 150, 242, 0.1);
+  }
+}
+
+/* Checkbox */
+@utility checkbox-field {
+  @apply bg-neutral-0 relative h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-neutral-300 transition-all duration-300;
+
+  &:checked {
+    @apply bg-primary border-primary;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M20.2929 6.29289C20.6834 6.68342 20.6834 7.31658 20.2929 7.70711L10.2929 17.7071C9.90237 18.0976 9.2692 18.0976 8.87868 17.7071L3.70711 12.5355C3.31658 12.145 3.31658 11.5118 3.70711 11.1213C4.09763 10.7308 4.7308 10.7308 5.12132 11.1213L9.58579 15.5858L18.8787 6.29289C19.2692 5.90237 19.9024 5.90237 20.2929 6.29289Z'/%3e%3c/svg%3e");
+    background-size: 80%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  &:hover:not(:checked) {
+    @apply border-primary/50;
+  }
+
+  &:disabled {
+    @apply cursor-not-allowed border-neutral-200 bg-neutral-100 opacity-50;
+  }
+}
+
+.checkbox-wrapper {
+  @apply flex items-start;
+}
+
+.checkbox-label {
+  @apply inline-flex items-center gap-2.5 cursor-pointer select-none;
+}
+
+.checkbox-text {
+  @apply text-sm text-neutral-700;
+}
+
+/* Radio */
+@utility radio-field {
+  @apply bg-neutral-0 relative h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-full border border-neutral-300 transition-all duration-300;
+
+  &:checked {
+    @apply border-primary;
+  }
+
+  &:checked::after {
+    content: "";
+    @apply bg-primary absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full;
+  }
+
+  &:hover:not(:checked) {
+    @apply border-primary/50;
+  }
+
+  &:disabled {
+    @apply cursor-not-allowed border-neutral-200 bg-neutral-100 opacity-50;
+  }
+}
+
+.radio-wrapper {
+  @apply flex items-start;
+}
+
+.radio-label {
+  @apply inline-flex items-center gap-2.5 cursor-pointer select-none;
+}
+
+.radio-text {
+  @apply text-sm text-neutral-700;
+}
+
+/* Switch / Toggle */
+.switch {
+  @apply focus:ring-primary relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors duration-300 ease-in-out focus:ring-2 focus:ring-offset-2 focus:outline-none;
+  background-color: var(--color-neutral-200);
+
+  &.checked {
+    background-color: var(--color-primary);
+  }
+
+  .switch-dot {
+    @apply bg-neutral-0 inline-block h-4 w-4 transform rounded-full transition duration-300 ease-in-out;
+    transform: translateX(4px);
+  }
+
+  /* Checked state LTR */
+  &.checked .switch-dot {
+    transform: translateX(24px);
+  }
+
+  /* RTL Support */
+  [dir="rtl"] & .switch-dot {
+    transform: translateX(-4px);
+  }
+
+  [dir="rtl"] &.checked .switch-dot {
+    transform: translateX(-24px);
+  }
+}
+
+.form-switch {
+  @apply relative inline-flex min-h-5 cursor-pointer items-center gap-2 select-none;
+}
+
+.form-switch__input {
+  @apply sr-only;
+}
+
+.form-switch__track {
+  @apply relative inline-flex h-5 w-9 shrink-0 rounded-full bg-neutral-300 transition-colors duration-200 ease-in-out after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-neutral-0 after:shadow-sm after:transition-transform after:duration-200 after:ease-in-out after:content-[''];
+}
+
+.form-switch__input:checked + .form-switch__track {
+  @apply bg-primary;
+}
+
+.form-switch__input:checked + .form-switch__track::after {
+  transform: translateX(1rem);
+}
+
+.form-switch__input:focus-visible + .form-switch__track {
+  @apply ring-primary/30 ring-2 ring-offset-2 ring-offset-neutral-0;
+}
+
+.form-switch__input:disabled + .form-switch__track {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.form-switch:has(.form-switch__input:disabled) {
+  @apply cursor-not-allowed;
+}
+
+.form-switch__label {
+  @apply text-sm font-medium text-neutral-600;
+}
+
+[dir="rtl"] .form-switch__track::after {
+  @apply right-0.5 left-auto;
+}
+
+[dir="rtl"] .form-switch__input:checked + .form-switch__track::after {
+  transform: translateX(-1rem);
+}
+
+/* Input Group */
+@utility input-group {
+  @apply relative flex w-full items-center;
+
+  .input-icon-left {
+    @apply pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-neutral-400;
+  }
+
+  .input-icon-right {
+    @apply absolute end-4 top-1/2 z-10 -translate-y-1/2 cursor-pointer text-neutral-400 hover:text-neutral-600;
+  }
+}
+
+.input-field.has-icon-left {
+  @apply ps-10;
+}
+
+.input-field.has-icon-right {
+  @apply pe-10;
+}
+
+/* Form Label */
+@utility form-label {
+  @apply mb-2 block text-sm font-medium text-neutral-700;
+
+  .required {
+    @apply text-error ms-1;
+  }
+}
+
+/* Form Hint */
+@utility form-hint {
+  @apply mt-1 text-xs text-neutral-500;
+}
+
+/* Form Error */
+@utility form-error {
+  @apply text-error mt-1 text-xs;
+}
+
+/* File Upload */
+.file-upload-zone {
+  @apply relative flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 px-6 py-8 text-center transition-all duration-300;
+
+  &:hover {
+    @apply border-primary/40 bg-primary/5;
+  }
+
+  &.dragover {
+    @apply border-primary bg-primary/10;
+  }
+}
+
+.file-upload-content {
+  @apply flex flex-col items-center gap-2;
+}
+
+.file-upload-icon {
+  @apply text-3xl text-neutral-400;
+
+  .file-upload-zone:hover & {
+    @apply text-primary;
+  }
+
+  .file-upload-zone.dragover & {
+    @apply text-primary;
+  }
+}
+
+.file-upload-text {
+  @apply text-sm text-neutral-500;
+}
+
+.file-upload-link {
+  @apply font-semibold text-primary hover:underline;
+}
+
+.file-upload-input {
+  @apply hidden;
+}

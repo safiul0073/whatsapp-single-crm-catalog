@@ -1,0 +1,12 @@
+{
+    "name": "Media",
+    "alias": "media",
+    "description": "Media library",
+    "version": "1.0.0",
+    "priority": 134,
+    "providers": [
+        "App\\Modules\\Media\\Providers\\MediaServiceProvider"
+    ],
+    "requires": [],
+    "active": true
+}

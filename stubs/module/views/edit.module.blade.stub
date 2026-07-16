@@ -1,0 +1,24 @@
+<x-layouts.{{ panelLower }} :title="__('Edit {{ singularName }}')">
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <h1 class="heading-4 text-neutral-950">{{ __('Edit {{ singularName }}') }}</h1>
+            <x-ui.button variant="outline" href="{{ route('{{ panelLower }}.{{ lowerName }}.index') }}">
+                <i class="ph ph-arrow-left"></i> {{ __('Back') }}
+            </x-ui.button>
+        </div>
+
+        <div class="section-card">
+            <form method="POST" action="{{ route('{{ panelLower }}.{{ lowerName }}.update', ${{ variableName }}) }}" class="space-y-4 max-w-2xl">
+                @csrf
+                @method('PUT')
+                <x-forms.input :label="__('Name')" name="name" :value="${{ variableName }}->name" required />
+                <x-forms.textarea :label="__('Description')" name="description" :value="${{ variableName }}->description" />
+                <x-forms.toggle :label="__('Active')" name="is_active" :checked="${{ variableName }}->is_active" />
+                <div class="flex items-center gap-3 pt-4 border-t border-neutral-100">
+                    <x-forms.submit :label="__('Update {{ singularName }}')" />
+                    <x-ui.button variant="ghost" href="{{ route('{{ panelLower }}.{{ lowerName }}.index') }}">{{ __('Cancel') }}</x-ui.button>
+                </div>
+            </form>
+        </div>
+    </div>
+</x-layouts.{{ panelLower }}>

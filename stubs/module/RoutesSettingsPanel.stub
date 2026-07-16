@@ -1,0 +1,7 @@
+<?php
+
+use App\Modules\{{ studlyName }}\Http\Controllers\{{ panelStudly }}\{{ studlyName }}Controller;
+use Illuminate\Support\Facades\Route;
+
+Route::get('{{ lowerName }}', [{{ studlyName }}Controller::class, 'index'])->name('{{ lowerName }}.index');
+Route::put('{{ lowerName }}', [{{ studlyName }}Controller::class, 'update'])->name('{{ lowerName }}.update');

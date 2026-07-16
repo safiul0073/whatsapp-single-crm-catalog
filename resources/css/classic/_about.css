@@ -1,0 +1,134 @@
+/* ==========================================================================
+   ABOUT
+   ========================================================================== */
+@layer components {
+  /* --- About page (standalone) hero grid bg --- */
+  .about-page-grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(80% 60% at 50% 0%, #000 30%, transparent 90%);
+    mask-image: radial-gradient(80% 60% at 50% 0%, #000 30%, transparent 90%);
+  }
+
+  /* --- About page hero CTA buttons --- */
+  .about-hero-cta-primary {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms;
+  }
+  .about-hero-cta-primary:hover {
+    transform: translateY(-1px);
+  }
+  .about-hero-cta-ghost {
+    transition: background-color 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms;
+  }
+  .about-hero-cta-ghost:hover {
+    @apply bg-white/10 border-white/30;
+  }
+
+  /* --- Value card hover --- */
+  .about-value-card {
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms, border-color 240ms;
+  }
+  .about-value-card:hover {
+    transform: translateY(-2px);
+    @apply border-border-strong shadow-md;
+  }
+  .about-value-icon {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-value-card:hover .about-value-icon {
+    transform: rotate(-6deg) scale(1.08);
+  }
+
+  /* --- Team card: per-department hover glow --- */
+  .about-team-card[data-department="engineering"] { --hover-glow: rgba(33, 72, 255, 0.14); --hover-border: var(--color-brand-blue, #2148ff); }
+  .about-team-card[data-department="design"]      { --hover-glow: rgba(139, 66, 245, 0.14); --hover-border: #8b42f5; }
+  .about-team-card[data-department="product"]     { --hover-glow: rgba(0, 200, 117, 0.14);  --hover-border: var(--color-brand-green, #00c875); }
+  .about-team-card[data-department="marketing"]   { --hover-glow: rgba(234, 108, 40, 0.14); --hover-border: #ea6c28; }
+
+  .about-team-card {
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-team-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--hover-border);
+    box-shadow: 0 12px 28px -10px var(--hover-glow), 0 4px 10px -5px var(--hover-glow);
+  }
+
+  .about-team-img {
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-team-card:hover .about-team-img {
+    transform: scale(1.06);
+  }
+
+
+  /* --- Social link hover --- */
+  .about-social-link {
+    transition: all 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-social-link:hover {
+    @apply bg-brand-blue border-brand-blue text-white;
+  }
+
+  /* --- Responsive about page --- */
+  @media (max-width: 640px) {
+    .about-page-grid-bg {
+      mask-image: radial-gradient(90% 50% at 50% 0%, #000 20%, transparent 80%);
+    }
+  }
+
+  .aboutv2-grid-bg {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--color-brand-navy-deep) 7%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-brand-navy-deep) 7%, transparent) 1px, transparent 1px);
+    background-size: 96px 160px;
+    -webkit-mask-image: radial-gradient(80% 70% at 50% 0%, #000 30%, transparent 90%);
+    mask-image: radial-gradient(80% 70% at 50% 0%, #000 30%, transparent 90%);
+  }
+
+  .aboutv2-eyebrow-pulse {
+    @apply w-1.5 h-1.5 rounded-pill bg-brand-blue animate-aboutv2-pulse;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-blue) 20%, transparent);
+  }
+
+  .aboutv2-accent {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--color-brand-blue) 0%, var(--color-brand-blue-electric) 30%, var(--color-brand-green) 100%);
+  }
+
+  .aboutv2-metric-card {
+    @apply transition-[transform,box-shadow] duration-200;
+  }
+  .aboutv2-metric-card:hover {
+    @apply -translate-y-0.5;
+    box-shadow:
+      0 26px 50px -22px color-mix(in srgb, var(--color-brand-navy-ink) 22%, transparent),
+      0 8px 16px -8px color-mix(in srgb, var(--color-brand-navy-ink) 8%, transparent);
+  }
+
+  /* --- About rotating expertise badge --- */
+  .aboutv2-badge-ring {
+    animation: aboutv2-badge-spin 26s linear infinite;
+  }
+  @keyframes aboutv2-badge-spin {
+    to { transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aboutv2-badge-ring { animation: none; }
+  }
+
+  .is-active .is-active-num { @apply text-brand-blue; }
+  .is-active .is-active-name { @apply text-brand-navy-ink; }
+  .is-active .is-active-meta { @apply text-brand-blue font-semibold; }
+
+  .aboutv2-anchor-num-text {
+    @apply bg-clip-text text-transparent animate-aboutv2-anchor-sweep;
+    background-image: linear-gradient(135deg, var(--color-brand-blue) 0%, var(--color-brand-blue-electric) 30%, var(--color-brand-green) 100%);
+    background-size: 220% 100%;
+    background-position: 100% 0;
+  }
+}

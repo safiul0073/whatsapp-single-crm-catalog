@@ -1,0 +1,1 @@
+{"name":"Chatbots","alias":"chatbots","description":"Claude-powered WhatsApp chatbots and smart replies","version":"1.0.0","priority":52,"providers":["App\\Modules\\Chatbots\\Providers\\ChatbotsServiceProvider"],"requires":["ai-settings","knowledge-bases","inbox"],"active":true}

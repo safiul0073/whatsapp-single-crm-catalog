@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Tables;
+
+use App\Modules\Shared\Support\Tables\TableAction;
+use App\Modules\Shared\Support\Tables\TableBulkAction;
+use App\Modules\Shared\Support\Tables\TableColumn;
+use App\Modules\Shared\Support\Tables\TableDefinition;
+
+class {{ studlyName }}Table
+{
+    public static function make(): TableDefinition
+    {
+        $prefix = self::routePrefix();
+
+        return TableDefinition::make('{{ lowerName }}')
+            ->searchPlaceholder('Search {{ lowerName }}...')
+            ->exportUrl(route("{$prefix}.{{ lowerName }}.export"))
+            ->columns([
+                TableColumn::select('id', 'Select'),
+                TableColumn::text('name', 'Name')
+                    ->sortable()
+                    ->link(fn ($record) => route("{$prefix}.{{ lowerName }}.edit", $record))
+                    ->cellClass('text-sm font-medium text-neutral-900'),
+                TableColumn::booleanBadge('is_active', 'Status')
+                    ->sortable(sortBy: 'is_active'),
+                TableColumn::date('created_at', 'Created')
+                    ->sortable()
+                    ->cellClass('text-sm text-neutral-500'),
+            ])
+            ->actions([
+                TableAction::link('view', fn ($record) => route("{$prefix}.{{ lowerName }}.show", $record), 'View')
+                    ->icon('eye'),
+                TableAction::link('edit', fn ($record) => route("{$prefix}.{{ lowerName }}.edit", $record), 'Edit')
+                    ->icon('pencil-simple'),
+                TableAction::toggleStatus(fn ($record) => route("{$prefix}.{{ lowerName }}.toggle-status", $record))
+                    ->icon('power')
+                    ->activeLabel('Deactivate')
+                    ->inactiveLabel('Activate')
+                    ->confirmTitle(fn ($record) => $record->is_active ? __('Deactivate {{ singularName }}?') : __('Activate {{ singularName }}?'))
+                    ->confirmMessage(fn ($record) => $record->is_active
+                        ? __('Are you sure you want to deactivate this {{ singularName }}?')
+                        : __('Are you sure you want to activate this {{ singularName }}?')),
+                TableAction::delete(href: fn ($record) => route("{$prefix}.{{ lowerName }}.destroy", $record))
+                    ->icon('trash')
+                    ->confirmTitle(__('Delete {{ singularName }}?'))
+                    ->confirmMessage(__('Are you sure you want to delete this {{ singularName }}? This action cannot be undone.')),
+            ])
+            ->bulkActions(
+                TableBulkAction::make('{{ lowerName }}')
+                    ->deleteAction(route("{$prefix}.{{ lowerName }}.bulk-delete"))
+                    ->toggleAction(route("{$prefix}.{{ lowerName }}.bulk-toggle-status"))
+                    ->exportAction(route("{$prefix}.{{ lowerName }}.export"))
+            );
+    }
+
+    protected static function routePrefix(): string
+    {
+        if (! app()->bound('current.panel')) {
+            return 'admin';
+        }
+
+        $panel = app('current.panel');
+
+        return is_array($panel) ? ($panel['key'] ?? 'admin') : 'admin';
+    }
+}

@@ -1,0 +1,76 @@
+/* ==========================================================================
+   STATS
+   ========================================================================== */
+
+/* Section — padding with clamp only (bg moved inline) */
+.stats-section {
+  padding: clamp(96px, 12vw, 160px) 0;
+}
+
+/* Background — complex gradient */
+.stats-bg {
+  background: radial-gradient(60% 80% at 50% 30%, rgba(33, 72, 255, 0.1), transparent 70%), linear-gradient(180deg, #eaf1ff 0%, #dde7f8 100%);
+}
+
+/* Background tint — complex gradient + mix-blend-mode */
+.stats-bg-tint {
+  background:
+    radial-gradient(80% 70% at 50% 50%, rgba(15, 15, 73, 0) 0%, rgba(15, 15, 73, 0.18) 100%),
+    linear-gradient(135deg, rgba(33, 72, 255, 0.28) 0%, rgba(15, 15, 73, 0.34) 55%, rgba(22, 199, 132, 0.18) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* Background grid — background-image grid + mask-image */
+.stats-bg-grid {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 96px 96px;
+  -webkit-mask-image: radial-gradient(75% 65% at 50% 40%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(75% 65% at 50% 40%, #000 30%, transparent 95%);
+}
+
+/* Fade overlays — gradient backgrounds */
+.stats-bg-fade--top {
+  background: linear-gradient(180deg, #fff, transparent);
+}
+.stats-bg-fade--bot {
+  background: linear-gradient(0deg, #fff, transparent);
+}
+
+/* Card — custom-easing transition only */
+.stats-card {
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Card hover — transform + shadow */
+.stats-card:hover {
+  @apply -translate-y-[3px];
+  box-shadow: var(--shadow-stats-card-hover);
+}
+
+/* Green card overrides */
+.stats-card--green > div:first-child > span {
+  background: rgba(255, 255, 255, 0.32);
+}
+.stats-card--green .stats-card-range {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Responsive — grid collapse */
+@media (max-width: 1100px) {
+  .stats-grid-cards {
+    grid-column: 1 / -1;
+  }
+  .stats-grid-spacer {
+    display: none;
+  }
+}
+@media (max-width: 880px) {
+  .stats-grid-cards {
+    grid-template-columns: 1fr;
+  }
+  .stats-card {
+    min-height: 240px;
+  }
+}

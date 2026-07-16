@@ -1,0 +1,23 @@
+/* ==========================================================================
+   CONTACT PAGE
+   ========================================================================== */
+@layer components {
+  /* --- Service interest chips --- */
+  .contact-chip-label {
+    @apply cursor-pointer;
+  }
+  .contact-chip {
+    @apply inline-flex items-center rounded-lg border border-border-default bg-white px-3 py-1.5 font-mono text-micro font-medium text-text-muted transition-colors duration-150 select-none;
+  }
+  .contact-chip-label:hover .contact-chip {
+    @apply border-brand-blue text-brand-blue;
+  }
+
+  /* --- Submit button hover --- */
+  .contact-submit-btn {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms;
+  }
+  .contact-submit-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+}

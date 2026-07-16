@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Modules\{{ studlyName }}\Providers;
+
+use App\Modules\{{ studlyName }}\Services\{{ studlyName }}Service;
+use Illuminate\Support\ServiceProvider;
+
+class {{ studlyName }}ServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->singleton({{ studlyName }}Service::class);
+    }
+
+    public function boot(): void
+    {
+        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+    }
+}

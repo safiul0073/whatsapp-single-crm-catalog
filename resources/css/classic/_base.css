@@ -1,0 +1,15 @@
+/* ========================================================================== */
+@layer base {
+  html,
+  body {
+    @apply font-body text-body leading-body text-text-default bg-bg-soft antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display text-text-strong tracking-heading leading-heading m-0;
+  }
+}

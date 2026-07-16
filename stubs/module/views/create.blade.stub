@@ -1,0 +1,28 @@
+<x-layouts.{{ panelLower }} title="{{ __('Create {{ singularName }}') }}">
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <h1 class="heading-4 text-neutral-950">{{ __('Create {{ singularName }}') }}</h1>
+            <x-ui.button variant="outline" href="{{ route('{{ panelLower }}.{{ kebabName }}.index') }}">
+                <i class="ph ph-arrow-left"></i> {{ __('Back') }}
+            </x-ui.button>
+        </div>
+
+        <form method="POST" action="{{ route('{{ panelLower }}.{{ kebabName }}.store') }}">
+            @csrf
+            <div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                <div class="section-card space-y-4">
+                    <h4 class="text-sm font-bold tracking-wider text-neutral-500 uppercase">{{ __('{{ singularName }} Details') }}</h4>
+                    <div class="space-y-4">
+                        <x-forms.input :label="__('Name')" name="name" required :placeholder="__('Enter name')" />
+                        <x-forms.textarea :label="__('Description')" name="description" :placeholder="__('Enter description')" />
+                        <x-forms.toggle :label="__('Active')" name="is_active" :checked="true" />
+                    </div>
+                    <div class="flex items-center gap-3 pt-4 border-t border-neutral-100">
+                        <x-forms.submit :label="__('Save')" />
+                        <x-ui.button variant="ghost" href="{{ route('{{ panelLower }}.{{ kebabName }}.index') }}">{{ __('Cancel') }}</x-ui.button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</x-layouts.{{ panelLower }}>

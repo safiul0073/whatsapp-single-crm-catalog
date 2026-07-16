@@ -1,0 +1,1 @@
+{"name":"KnowledgeBases","alias":"knowledge-bases","description":"Knowledge sources and chunks for AI chatbot answers","version":"1.0.0","priority":51,"providers":["App\\Modules\\KnowledgeBases\\Providers\\KnowledgeBasesServiceProvider"],"requires":[],"active":true}
