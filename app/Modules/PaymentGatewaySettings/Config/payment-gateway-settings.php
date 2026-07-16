@@ -55,21 +55,21 @@ return [
                 'type' => 'text',
                 'label' => 'Publishable Key',
                 'hint' => 'Your Stripe publishable key (pk_...)',
-                'default' => 'pk_test_51RHJLCQs0ndKLBTwqpAxnFe7KojNi0VMxlgkcF0Cdno8gEhARVwz84MAWjZFnlGlgxGDMZswXIVHioZzTc38K73t00VxKv7YXI',
+                'default' => '',
                 'rules' => 'nullable|string|max:255',
             ],
             'stripe_secret_key' => [
                 'type' => 'password',
                 'label' => 'Secret Key',
                 'hint' => 'Your Stripe secret key (sk_...)',
-                'default' => 'STRIPE_SECRET_KEY_PLACEHOLDER',
+                'default' => '',
                 'rules' => 'nullable|string|max:255',
             ],
             'stripe_webhook_secret' => [
                 'type' => 'password',
                 'label' => 'Webhook Secret',
                 'hint' => 'Webhook signing secret (whsec_...)',
-                'default' => 'whsec_72f96562a6230290c41df5e349411937b1569c7a35b674e8f616e7bead80dbd7',
+                'default' => '',
                 'rules' => 'nullable|string|max:255',
             ],
             'stripe_supported_currencies' => [
@@ -146,7 +146,7 @@ return [
                 'type' => 'password',
                 'label' => 'Client Secret',
                 'hint' => 'Your PayPal REST API client secret',
-                'default' => 'EGeAZRUh38aRlF1khvDYBk_0lebv36ijlmhoU8vdnpUiSNME-avF8tuyaplmrM-Bo73RKj9Y9yCJiWZd',
+                'default' => '',
                 'rules' => 'nullable|string|max:255',
             ],
             'paypal_sandbox' => [
