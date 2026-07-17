@@ -69,10 +69,21 @@ function configureGlobalConfirm(trigger) {
   if (!modal) return;
 
   const title = trigger.dataset.confirmTitle || "Confirm Action";
-  const message = trigger.dataset.confirmMessage || "Please confirm this action.";
+  const message = trigger.dataset.confirmMessage || trigger.dataset.confirmBody || "Please confirm this action.";
   const action = trigger.dataset.confirmAction || "";
   const method = trigger.dataset.confirmMethod || "POST";
-  const buttonText = trigger.dataset.confirmButton || "Confirm";
+  const buttonText = trigger.dataset.confirmButton || trigger.dataset.confirmLabel || "Confirm";
+  let formId = trigger.dataset.confirmForm || "";
+
+  if (!formId && !action) {
+    const form = trigger.closest("form");
+    if (form) {
+      if (!form.id) {
+        form.id = `confirm-form-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      formId = form.id;
+    }
+  }
 
   const titleEl = modal.querySelector("[data-confirm-title]");
   const messageEl = modal.querySelector("[data-confirm-message]");
@@ -82,9 +93,15 @@ function configureGlobalConfirm(trigger) {
   if (titleEl) titleEl.textContent = title;
   if (messageEl) messageEl.textContent = message;
   if (buttonEl) {
-    buttonEl.dataset.confirmAction = action;
-    buttonEl.dataset.confirmMethod = method;
-    delete buttonEl.dataset.confirmForm;
+    if (formId) {
+      buttonEl.dataset.confirmForm = formId;
+      delete buttonEl.dataset.confirmAction;
+      delete buttonEl.dataset.confirmMethod;
+    } else {
+      buttonEl.dataset.confirmAction = action;
+      buttonEl.dataset.confirmMethod = method;
+      delete buttonEl.dataset.confirmForm;
+    }
   }
   if (buttonLabelEl) buttonLabelEl.textContent = buttonText;
 }
@@ -126,6 +143,14 @@ export function closeAllModals() {
 
 // Event delegation — registered on document immediately (no DOMContentLoaded needed)
 document.addEventListener("click", (e) => {
+  const confirmTrigger = e.target.closest("[data-confirm]");
+  if (confirmTrigger && !confirmTrigger.closest("[data-confirm-btn]")) {
+    e.preventDefault();
+    configureGlobalConfirm(confirmTrigger);
+    openModal("globalConfirmModal");
+    return;
+  }
+
   const submitTrigger = e.target.closest("[data-submit-action]");
   if (submitTrigger) {
     e.preventDefault();

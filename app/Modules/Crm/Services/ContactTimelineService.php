@@ -69,6 +69,7 @@ class ContactTimelineService
             ->latest()
             ->limit(30)
             ->get()
+            ->toBase()
             ->map(fn (CrmActivity $activity): array => [
                 'id' => 'activity-'.$activity->id,
                 'type' => $activity->type->value,
@@ -83,6 +84,7 @@ class ContactTimelineService
             ->latest()
             ->limit(20)
             ->get()
+            ->toBase()
             ->map(fn (Message $message): array => [
                 'id' => 'message-'.$message->id,
                 'type' => 'message_'.$message->direction,

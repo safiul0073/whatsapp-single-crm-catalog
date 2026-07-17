@@ -264,6 +264,8 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('chat-message--grouped', false)
         ->assertSee('chat-bubble__meta', false)
         ->assertSee('inbox-composer__input', false)
+        ->assertSee('inbox-composer__actions', false)
+        ->assertSee('inbox-composer__field', false)
         ->assertSee('generateAiReply()', false)
         ->assertSee('ph-sparkle', false)
         ->assertSee('aiReply', false)
@@ -271,7 +273,12 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('toggleAutomatedReply', false)
         ->assertSee('automation', false)
         ->assertSee('data-commerce-help="inbox"', false)
-        ->assertSee('Send catalog or products from WhatsApp.');
+        ->assertSee('Send catalog or products from WhatsApp.')
+        ->assertSee('toggleCrmPanel()', false)
+        ->assertSee('closeCrmPanel()', false)
+        ->assertSee('Hide CRM profile')
+        ->assertSee('Open CRM profile')
+        ->assertSee('crmPanelOpen && activeConversation?.contact_id && routes.crm', false);
 
     $content = $response->getContent();
 

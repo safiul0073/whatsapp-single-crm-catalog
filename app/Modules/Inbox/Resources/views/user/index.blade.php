@@ -133,8 +133,16 @@
             <a :href="contactUrl(activeConversation.contact_id)" class="row-action" x-show="activeConversation.contact_id" aria-label="{{ __('Open contact') }}">
               <i class="ph ph-user-circle text-base"></i>
             </a>
-            <button type="button" class="row-action" x-show="activeConversation.contact_id && routes.crm" @click="crmPanelOpen = !crmPanelOpen" aria-label="{{ __('Toggle CRM profile') }}">
-              <i class="ph ph-address-book-tabs text-base"></i>
+            <button
+              type="button"
+              class="row-action"
+              :class="{ 'bg-primary/10 text-primary': crmPanelOpen }"
+              x-show="activeConversation.contact_id && routes.crm"
+              @click="toggleCrmPanel()"
+              :aria-label="crmPanelOpen ? '{{ __('Hide CRM profile') }}' : '{{ __('Open CRM profile') }}'"
+              :title="crmPanelOpen ? '{{ __('Hide CRM profile') }}' : '{{ __('Open CRM profile') }}'"
+            >
+              <i class="ph text-base" :class="crmPanelOpen ? 'ph-sidebar-simple' : 'ph-address-book-tabs'"></i>
             </button>
             <button type="button" class="row-action" x-show="activeConversation.provider === 'whatsapp' && routes.commerceCatalog" @click="openCommerceDrawer()" :disabled="sending" aria-label="{{ __('Open WhatsApp products') }}">
               <i class="ph ph-shopping-bag-open text-base"></i>
@@ -243,27 +251,32 @@
               @change="selectAttachment($event)"
               :disabled="!attachmentsSupported()"
             >
-            <button
-              type="button"
-              class="inbox-composer__icon"
-              :disabled="sending || !hasChannel || !recipientReady || !canReply || !attachmentsSupported()"
-              @click="$refs.attachmentInput.click()"
-              aria-label="{{ __('Attach file') }}"
-            >
-              <i class="ph ph-paperclip text-lg"></i>
-            </button>
-            <button
-              type="button"
-              class="inbox-composer__icon"
-              :disabled="sending || aiGenerating || !activeConversation?.id || !hasChannel || !recipientReady || !canReply"
-              @click="generateAiReply()"
-              aria-label="{{ __('Generate AI reply') }}"
-              title="{{ __('Generate AI reply') }}"
-            >
-              <i class="ph text-lg" :class="aiGenerating ? 'ph-circle-notch animate-spin' : 'ph-sparkle'"></i>
-            </button>
+            <div class="inbox-composer__actions" aria-label="{{ __('Message tools') }}">
+              <button
+                type="button"
+                class="inbox-composer__icon"
+                :disabled="sending || !hasChannel || !recipientReady || !canReply || !attachmentsSupported()"
+                @click="$refs.attachmentInput.click()"
+                aria-label="{{ __('Attach file') }}"
+                title="{{ __('Attach image, video, audio, or document') }}"
+              >
+                <i class="ph ph-paperclip text-xl"></i>
+                <span class="sr-only">{{ __('Attach file') }}</span>
+              </button>
+              <button
+                type="button"
+                class="inbox-composer__icon inbox-composer__icon--ai"
+                :disabled="sending || aiGenerating || !activeConversation?.id || !hasChannel || !recipientReady || !canReply"
+                @click="generateAiReply()"
+                aria-label="{{ __('Generate AI reply') }}"
+                title="{{ __('Generate AI reply') }}"
+              >
+                <i class="ph text-xl" :class="aiGenerating ? 'ph-circle-notch animate-spin' : 'ph-sparkle'"></i>
+                <span class="sr-only">{{ __('Generate AI reply') }}</span>
+              </button>
+            </div>
             <label for="composer" class="sr-only">{{ __('Message') }}</label>
-            <div class="min-w-0 flex-1">
+            <div class="inbox-composer__field">
               <div class="inbox-composer__attachment" x-show="attachment" x-cloak>
                 <template x-if="attachmentPreviewUrl">
                   <img :src="attachmentPreviewUrl" alt="" class="h-12 w-12 rounded-lg object-cover">
@@ -281,8 +294,8 @@
                   <i class="ph ph-x text-base"></i>
                 </button>
               </div>
-              <p class="mb-2 text-xs text-body" x-show="activeConversation && !attachmentsSupported()" x-cloak>{{ __('This channel supports text replies only.') }}</p>
-              <p class="mb-2 text-xs text-warning" x-show="activeConversation && !canReply" x-cloak x-text="activeConversation?.reply_disabled_reason || @js(__('Replies are disabled for this conversation.'))"></p>
+              <p class="inbox-composer__notice" x-show="activeConversation && !attachmentsSupported()" x-cloak>{{ __('This channel supports text replies only.') }}</p>
+              <p class="inbox-composer__notice text-warning" x-show="activeConversation && !canReply" x-cloak x-text="activeConversation?.reply_disabled_reason || @js(__('Replies are disabled for this conversation.'))"></p>
               <textarea
                 id="composer"
                 name="message"
@@ -297,10 +310,13 @@
             <button
               type="submit"
               class="inbox-composer__send"
+              :class="{ 'is-ready': composer.trim() || attachment }"
               :disabled="sending || (!composer.trim() && !attachment) || !hasChannel || !recipientReady || !canReply"
               aria-label="{{ __('Send message') }}"
+              title="{{ __('Send message') }}"
             >
-              <i class="ph text-lg" :class="sending ? 'ph-circle-notch animate-spin' : 'ph-paper-plane-tilt'"></i>
+              <i class="ph text-xl" :class="sending ? 'ph-circle-notch animate-spin' : 'ph-paper-plane-tilt'"></i>
+              <span class="sr-only">{{ __('Send message') }}</span>
             </button>
           </form>
         </div>
@@ -315,10 +331,10 @@
       </div>
     </section>
 
-    <aside class="inbox__crm" :class="{ 'is-open': crmPanelOpen }" x-cloak>
+    <aside class="inbox__crm" :class="{ 'is-open': crmPanelOpen && activeConversation?.contact_id && routes.crm }" x-cloak>
       <header class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <div><p class="font-semibold text-title">{{ __('Contact CRM') }}</p><p class="text-xs text-body">{{ __('Profile and follow-up') }}</p></div>
-        <button type="button" class="row-action 2xl:hidden" @click="crmPanelOpen = false" aria-label="{{ __('Close CRM profile') }}"><i class="ph ph-x"></i></button>
+        <button type="button" class="row-action" @click="closeCrmPanel()" aria-label="{{ __('Close CRM profile') }}" title="{{ __('Close CRM profile') }}"><i class="ph ph-x"></i></button>
       </header>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">

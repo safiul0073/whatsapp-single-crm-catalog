@@ -24,6 +24,7 @@ use App\Modules\Crm\Services\LeadAssignmentService;
 use App\Modules\Crm\Services\PipelineService;
 use App\Modules\Crm\Services\TaskService;
 use App\Modules\Inbox\Models\Conversation;
+use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Jobs\ProcessChannelWebhookJob;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -155,6 +156,16 @@ it('loads workspace CRM profile data in the contact sidebar', function (): void 
     $lead = app(CRMLeadService::class)->createOrUpdate($workspace->id, $contact->id, ['conversation_id' => $conversation->id, 'title' => 'Sidebar opportunity']);
     app(CRMLeadService::class)->addNote($workspace->id, $lead->id, 'Sidebar note', $user);
     app(TaskService::class)->create($workspace->id, ['lead_id' => $lead->id, 'contact_id' => $contact->id, 'assigned_to' => $user->id, 'title' => 'Sidebar task', 'priority' => 'normal', 'due_at' => now()->addHour()], $user);
+    Message::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'conversation_id' => $conversation->id,
+        'contact_id' => $contact->id,
+        'direction' => 'inbound',
+        'type' => 'text',
+        'body' => 'Sidebar message',
+        'status' => 'received',
+    ]);
 
     $this->withoutMiddleware()
         ->actingAs($user)
@@ -164,7 +175,8 @@ it('loads workspace CRM profile data in the contact sidebar', function (): void 
         ->assertJsonPath('crm.contact.tags.0.name', 'VIP')
         ->assertJsonPath('crm.current_lead.title', 'Sidebar opportunity')
         ->assertJsonPath('crm.tasks.0.title', 'Sidebar task')
-        ->assertJsonFragment(['description' => 'Sidebar note']);
+        ->assertJsonFragment(['description' => 'Sidebar note'])
+        ->assertJsonFragment(['description' => 'Sidebar message']);
 });
 
 it('turns an attributed WhatsApp campaign reply into a tagged CRM lead when enabled', function (): void {

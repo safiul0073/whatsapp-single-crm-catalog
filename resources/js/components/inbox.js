@@ -43,6 +43,7 @@ Alpine.data("liveInbox", (config) => ({
   crmForm: { pipeline_id: '', stage_id: '', title: '', value: '', description: '', assigned_to: '', priority: 'normal', due_at: '', lost_reason: '' },
 
   async init() {
+    this.crmPanelOpen = this.shouldOpenCrmPanelByDefault();
     await this.refreshConversations();
 
     if (this.initialContactId) {
@@ -59,6 +60,42 @@ Alpine.data("liveInbox", (config) => ({
         this.loadThread(this.activeConversation.id, true);
       }
     }, 4000);
+  },
+
+  shouldOpenCrmPanelByDefault() {
+    const preference = window.localStorage?.getItem("inbox.crmPanelOpen");
+    if (preference === "closed") {
+      return false;
+    }
+
+    if (preference === "open") {
+      return true;
+    }
+
+    return window.matchMedia?.("(min-width: 1536px)")?.matches ?? false;
+  },
+
+  openCrmPanel() {
+    if (!this.activeConversation?.contact_id || !this.routes.crm) {
+      return;
+    }
+
+    this.crmPanelOpen = true;
+    window.localStorage?.setItem("inbox.crmPanelOpen", "open");
+  },
+
+  closeCrmPanel() {
+    this.crmPanelOpen = false;
+    window.localStorage?.setItem("inbox.crmPanelOpen", "closed");
+  },
+
+  toggleCrmPanel() {
+    if (this.crmPanelOpen) {
+      this.closeCrmPanel();
+      return;
+    }
+
+    this.openCrmPanel();
   },
 
   async refreshConversations(silent = false) {
@@ -461,7 +498,7 @@ Alpine.data("liveInbox", (config) => ({
 
   openCrmAction(action) {
     this.crmAction = action;
-    this.crmPanelOpen = true;
+    this.openCrmPanel();
     this.sendError = '';
   },
 
