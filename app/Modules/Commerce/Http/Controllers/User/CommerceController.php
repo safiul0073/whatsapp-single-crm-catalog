@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Requests\AudienceRequest;
 use App\Modules\Commerce\Http\Requests\BrandRequest;
+use App\Modules\Commerce\Http\Requests\BulkDeleteCommerceRequest;
 use App\Modules\Commerce\Http\Requests\CatalogRequest;
 use App\Modules\Commerce\Http\Requests\CategoryRequest;
 use App\Modules\Commerce\Http\Requests\CommerceSettingsRequest;
@@ -39,6 +40,8 @@ use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Services\MediaService;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -167,6 +170,16 @@ class CommerceController extends Controller implements HasMiddleware
         return back()->with('success', __('Product deleted.'));
     }
 
+    public function bulkDestroyProducts(BulkDeleteCommerceRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $products = $this->bulkRecords(Product::class, $workspace->id, $request->validated('ids'));
+
+        Product::query()->whereKey($products->modelKeys())->delete();
+
+        return back()->with('success', trans_choice(':count product deleted.|:count products deleted.', $products->count(), ['count' => $products->count()]));
+    }
+
     public function storeCategory(CategoryRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
@@ -214,6 +227,20 @@ class CommerceController extends Controller implements HasMiddleware
         return back()->with('success', __('Category deleted.'));
     }
 
+    public function bulkDestroyCategories(BulkDeleteCommerceRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $categories = $this->bulkRecords(Category::class, $workspace->id, $request->validated('ids'))->loadCount(['products', 'children']);
+
+        if ($categories->contains(fn (Category $category): bool => $category->products_count > 0 || $category->children_count > 0)) {
+            throw ValidationException::withMessages(['ids' => __('Move products and child categories before deleting the selected categories.')]);
+        }
+
+        Category::query()->whereKey($categories->modelKeys())->delete();
+
+        return back()->with('success', trans_choice(':count category deleted.|:count categories deleted.', $categories->count(), ['count' => $categories->count()]));
+    }
+
     public function brands(Request $request): View
     {
         $workspace = $this->workspaces->current($request->user());
@@ -227,6 +254,7 @@ class CommerceController extends Controller implements HasMiddleware
             'storeRoute' => route('user.commerce.brands.store'),
             'updateRouteName' => 'user.commerce.brands.update',
             'destroyRouteName' => 'user.commerce.brands.destroy',
+            'bulkDestroyRoute' => route('user.commerce.brands.bulk-destroy'),
             'routeParameter' => 'brand',
             'maxLength' => 120,
             'helpKey' => 'brands',
@@ -263,6 +291,20 @@ class CommerceController extends Controller implements HasMiddleware
         return back()->with('success', __('Brand deleted.'));
     }
 
+    public function bulkDestroyBrands(BulkDeleteCommerceRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $brands = $this->bulkRecords(Brand::class, $workspace->id, $request->validated('ids'))->loadCount('products');
+
+        if ($brands->contains(fn (Brand $brand): bool => $brand->products_count > 0)) {
+            throw ValidationException::withMessages(['ids' => __('Move products before deleting the selected brands.')]);
+        }
+
+        Brand::query()->whereKey($brands->modelKeys())->delete();
+
+        return back()->with('success', trans_choice(':count brand deleted.|:count brands deleted.', $brands->count(), ['count' => $brands->count()]));
+    }
+
     public function audiences(Request $request): View
     {
         $workspace = $this->workspaces->current($request->user());
@@ -276,6 +318,7 @@ class CommerceController extends Controller implements HasMiddleware
             'storeRoute' => route('user.commerce.audiences.store'),
             'updateRouteName' => 'user.commerce.audiences.update',
             'destroyRouteName' => 'user.commerce.audiences.destroy',
+            'bulkDestroyRoute' => route('user.commerce.audiences.bulk-destroy'),
             'routeParameter' => 'audience',
             'maxLength' => 80,
             'helpKey' => 'audiences',
@@ -310,6 +353,20 @@ class CommerceController extends Controller implements HasMiddleware
         $audience->delete();
 
         return back()->with('success', __('Audience deleted.'));
+    }
+
+    public function bulkDestroyAudiences(BulkDeleteCommerceRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $audiences = $this->bulkRecords(Audience::class, $workspace->id, $request->validated('ids'))->loadCount('products');
+
+        if ($audiences->contains(fn (Audience $audience): bool => $audience->products_count > 0)) {
+            throw ValidationException::withMessages(['ids' => __('Move products before deleting the selected audiences.')]);
+        }
+
+        Audience::query()->whereKey($audiences->modelKeys())->delete();
+
+        return back()->with('success', trans_choice(':count audience deleted.|:count audiences deleted.', $audiences->count(), ['count' => $audiences->count()]));
     }
 
     public function catalog(Request $request): View
@@ -460,6 +517,24 @@ class CommerceController extends Controller implements HasMiddleware
     protected function assertWorkspace(Request $request, int $workspaceId): void
     {
         abort_unless($this->workspaces->current($request->user())?->id === $workspaceId, 404);
+    }
+
+    /**
+     * @param  class-string<Model>  $model
+     * @param  array<int, int|string>  $ids
+     * @return EloquentCollection<int, Model>
+     */
+    protected function bulkRecords(string $model, int $workspaceId, array $ids): EloquentCollection
+    {
+        $uniqueIds = collect($ids)->map(fn (int|string $id): int => (int) $id)->unique()->values();
+        $records = $model::query()
+            ->where('workspace_id', $workspaceId)
+            ->whereIn('id', $uniqueIds)
+            ->get();
+
+        abort_unless($records->count() === $uniqueIds->count(), 404);
+
+        return $records;
     }
 
     /**

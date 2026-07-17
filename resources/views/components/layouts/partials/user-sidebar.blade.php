@@ -13,53 +13,31 @@
 
     $groups = [
         [
-            'label' => __('Account'),
+            'label' => __('Workspace'),
             'items' => [
                 ['label' => __('Dashboard'), 'route' => 'user.dashboard', 'active' => 'user.dashboard', 'icon' => 'ph-house', 'permission' => 'workspace.view'],
-            ],
-        ],
-        [
-            'label' => __('Commerce'),
-            'items' => [
-                ['label' => __('Products'), 'route' => 'user.commerce.products.index', 'active' => 'user.commerce.products.*', 'icon' => 'ph-t-shirt', 'permission' => 'commerce.view'],
-                ['label' => __('Categories'), 'route' => 'user.commerce.categories.index', 'active' => 'user.commerce.categories.*', 'icon' => 'ph-tree-structure', 'permission' => 'commerce.view'],
-                ['label' => __('Brands'), 'route' => 'user.commerce.brands.index', 'active' => 'user.commerce.brands.*', 'icon' => 'ph-seal-check', 'permission' => 'commerce.view'],
-                ['label' => __('Audiences'), 'route' => 'user.commerce.audiences.index', 'active' => 'user.commerce.audiences.*', 'icon' => 'ph-users-three', 'permission' => 'commerce.view'],
-                ['label' => __('Orders'), 'route' => 'user.commerce.orders.index', 'active' => 'user.commerce.orders.*', 'icon' => 'ph-package', 'permission' => 'commerce.view'],
-                ['label' => __('Meta Catalog'), 'route' => 'user.commerce.catalog', 'active' => 'user.commerce.catalog*', 'icon' => 'ph-storefront', 'permission' => 'commerce.manage'],
-            ],
-        ],
-        [
-            'label' => __('Inbox'),
-            'items' => [
                 ['label' => __('Inbox'), 'route' => 'user.inbox.index', 'active' => 'user.inbox.*', 'icon' => 'ph-chat-text', 'permission' => 'inbox.view|inbox.assigned_only'],
-                ['label' => __('Channel Setup'), 'route' => 'user.whatsapp-cloud.channel-setup', 'active' => 'user.whatsapp-cloud.*', 'icon' => 'ph-gear-six', 'permission' => 'channels.manage'],
             ],
         ],
         [
-            'label' => __('Messaging'),
-            'items' => [
-                ['label' => __('Templates'), 'route' => 'user.message-templates.index', 'active' => 'user.message-templates.*', 'icon' => 'ph-file-text', 'permission' => null],
-                ['label' => __('Auto Replies'), 'route' => 'user.auto-replies.index', 'active' => 'user.auto-replies.*', 'icon' => 'ph-arrow-bend-up-left', 'permission' => 'automations.manage'],
-            ],
-        ],
-        [
-            'label' => __('Contacts'),
+            'label' => __('Customers'),
             'items' => [
                 ['label' => __('Contacts'), 'route' => 'user.contacts.index', 'active' => 'user.contacts.*', 'icon' => 'ph-users-three', 'permission' => 'contacts.view'],
-                ['label' => __('Leads'), 'route' => 'user.leads.index', 'active' => 'user.leads.*', 'icon' => 'ph-user-focus', 'permission' => 'leads.view'],
-                ['label' => __('CRM'), 'route' => 'user.crm.index', 'active' => 'user.crm.*', 'icon' => 'ph-kanban', 'permission' => null],
+                ['label' => __('CRM'), 'route' => 'user.crm.index', 'active' => 'user.crm.*', 'icon' => 'ph-kanban', 'permission' => 'crm.view'],
+                ['label' => __('Generated Leads'), 'route' => 'user.leads.index', 'active' => 'user.leads.*', 'icon' => 'ph-user-focus', 'permission' => 'leads.view'],
                 ['label' => __('Groups'), 'route' => 'user.groups.index', 'active' => ['user.groups.*', 'user.segments.*'], 'icon' => 'ph-folders', 'permission' => 'contacts.manage'],
             ],
         ],
         [
-            'label' => __('Broadcasting'),
+            'label' => __('Campaigns'),
             'items' => [
                 ['label' => __('Campaigns'), 'route' => 'user.campaigns.index', 'active' => 'user.campaigns.*', 'icon' => 'ph-paper-plane-tilt', 'permission' => 'campaigns.view'],
+                ['label' => __('Templates'), 'route' => 'user.message-templates.index', 'active' => 'user.message-templates.*', 'icon' => 'ph-file-text', 'permission' => 'templates.manage'],
+                ['label' => __('Auto Replies'), 'route' => 'user.auto-replies.index', 'active' => 'user.auto-replies.*', 'icon' => 'ph-arrow-bend-up-left', 'permission' => 'automations.manage'],
             ],
         ],
         [
-            'label' => __('Automation & AI'),
+            'label' => __('Automation'),
             'items' => [
                 ['label' => __('Automations'), 'route' => 'user.automations.index', 'active' => 'user.automations.*', 'icon' => 'ph-flow-arrow', 'permission' => 'automations.manage'],
                 ['label' => __('Chatbots'), 'route' => 'user.chatbots.index', 'active' => ['user.chatbots.index', 'user.chatbots.create', 'user.chatbots.config', 'user.chatbots.store', 'user.chatbots.update', 'user.chatbots.toggle', 'user.chatbots.destroy', 'user.chatbots.test'], 'icon' => 'ph-robot', 'permission' => 'chatbots.manage'],
@@ -68,11 +46,33 @@
             ],
         ],
         [
+            'label' => __('Commerce'),
+            'items' => [
+                ['label' => __('Orders'), 'route' => 'user.commerce.orders.index', 'active' => 'user.commerce.orders.*', 'icon' => 'ph-package', 'permission' => 'commerce.view'],
+                ['label' => __('Products'), 'route' => 'user.commerce.products.index', 'active' => 'user.commerce.products.*', 'icon' => 'ph-t-shirt', 'permission' => 'commerce.view'],
+                ['label' => __('Meta Catalog'), 'route' => 'user.commerce.catalog', 'active' => 'user.commerce.catalog*', 'icon' => 'ph-storefront', 'permission' => 'commerce.manage'],
+                ['label' => __('Categories'), 'route' => 'user.commerce.categories.index', 'active' => 'user.commerce.categories.*', 'icon' => 'ph-tree-structure', 'permission' => 'commerce.view'],
+                ['label' => __('Brands'), 'route' => 'user.commerce.brands.index', 'active' => 'user.commerce.brands.*', 'icon' => 'ph-seal-check', 'permission' => 'commerce.view'],
+                ['label' => __('Audiences'), 'route' => 'user.commerce.audiences.index', 'active' => 'user.commerce.audiences.*', 'icon' => 'ph-users-three', 'permission' => 'commerce.view'],
+            ],
+        ],
+        [
+            'label' => __('Channels'),
+            'items' => [
+                ['label' => __('WhatsApp Cloud'), 'route' => 'user.whatsapp-cloud.channel-setup', 'active' => 'user.whatsapp-cloud.*', 'icon' => 'ph-whatsapp-logo', 'permission' => 'channels.manage'],
+                ['label' => __('Telegram'), 'route' => 'user.telegram.index', 'active' => 'user.telegram.*', 'icon' => 'ph-telegram-logo', 'permission' => 'telegram.manage'],
+                ['label' => __('Email'), 'route' => 'user.email.index', 'active' => 'user.email.*', 'icon' => 'ph-envelope-simple', 'permission' => 'email.manage'],
+                ['label' => __('SMS'), 'route' => 'user.sms.index', 'active' => 'user.sms.*', 'icon' => 'ph-chat-text', 'permission' => 'sms.manage'],
+            ],
+        ],
+        [
             'label' => __('Account'),
             'items' => [
-                ['label' => __('Activity Log'), 'route' => 'user.audit-log.index', 'active' => 'user.audit-log.*', 'icon' => 'ph-list-magnifying-glass', 'permission' => 'workspace.view'],
+                ['label' => __('Subscription'), 'route' => 'user.subscription.show', 'active' => 'user.subscription.*', 'icon' => 'ph-credit-card', 'permission' => 'subscription.manage'],
                 ['label' => __('Media'), 'route' => 'user.media.index', 'active' => 'user.media.*', 'icon' => 'ph-image-square', 'permission' => 'workspace.view'],
+                ['label' => __('Activity Log'), 'route' => 'user.audit-log.index', 'active' => 'user.audit-log.*', 'icon' => 'ph-list-magnifying-glass', 'permission' => 'workspace.view'],
                 ['label' => __('Support'), 'route' => 'user.support-tickets.index', 'active' => 'user.support-tickets.*', 'icon' => 'ph-question', 'permission' => 'workspace.view'],
+                ['label' => __('Notifications'), 'route' => 'user.system-notifications.index', 'active' => 'user.system-notifications.*', 'icon' => 'ph-bell', 'permission' => 'workspace.view', 'badge' => 'notifications'],
             ],
         ],
     ];
@@ -128,26 +128,17 @@
                     <a href="{{ route($item['route']) }}"
                         class="app-nav__link {{ request()->routeIs(...(array) $item['active']) ? 'is-active' : '' }}"
                         aria-label="{{ $item['label'] }}">
-                        <i class="ph {{ $item['icon'] }} text-xl"></i>
+                        <span class="relative inline-grid place-items-center">
+                            <i class="ph {{ $item['icon'] }} text-xl"></i>
+                            @if (($item['badge'] ?? null) === 'notifications' && ($sidebarUnreadCount ?? 0) > 0)
+                                <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-error"></span>
+                            @endif
+                        </span>
                         <span>{{ $item['label'] }}</span>
                     </a>
                 @endforeach
             </div>
         @endforeach
-
-        @if (Route::has('user.system-notifications.index'))
-            <a href="{{ route('user.system-notifications.index') }}"
-                class="app-nav__link {{ request()->routeIs('user.system-notifications.*') ? 'is-active' : '' }}"
-                aria-label="{{ __('Notifications') }}">
-                <span class="relative inline-grid place-items-center">
-                    <i class="ph ph-bell text-xl"></i>
-                    @if (($sidebarUnreadCount ?? 0) > 0)
-                        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-error"></span>
-                    @endif
-                </span>
-                <span>{{ __('Notifications') }}</span>
-            </a>
-        @endif
     </nav>
 
     <div class="app-sidebar__user">

@@ -7,7 +7,6 @@
   >
     <aside class="inbox__rail">
       <div class="p-3">
-        @include('commerce::user.partials.help', ['helpKey' => 'inbox', 'compact' => true])
         <p class="app-nav__group pt-1!">{{ __('Views') }}</p>
         <nav class="flex flex-col gap-0.5">
           <button type="button" class="inbox-view" :class="{ 'is-active': status === 'all' }" @click="setStatus('all')">
@@ -323,6 +322,8 @@
       </header>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+        @include('commerce::user.partials.help', ['helpKey' => 'inbox', 'compact' => true, 'minimal' => true])
+
         <p class="text-sm text-body" x-show="crmLoading">{{ __('Loading CRM details...') }}</p>
         <template x-if="crm?.contact">
           <div class="space-y-5">

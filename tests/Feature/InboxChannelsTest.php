@@ -253,7 +253,7 @@ it('only shows conversations and filters for connected inbox channels', function
 it('renders failed outbound message status in the error color', function (): void {
     [$user] = inboxChannelContext();
 
-    $this->withoutMiddleware()
+    $response = $this->withoutMiddleware()
         ->actingAs($user)
         ->get(route('user.inbox.index'))
         ->assertOk()
@@ -269,7 +269,15 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('aiReply', false)
         ->assertSee('Auto reply')
         ->assertSee('toggleAutomatedReply', false)
-        ->assertSee('automation', false);
+        ->assertSee('automation', false)
+        ->assertSee('data-commerce-help="inbox"', false)
+        ->assertSee('Send catalog or products from WhatsApp.');
+
+    $content = $response->getContent();
+
+    expect(strpos($content, 'data-commerce-help="inbox"'))
+        ->toBeGreaterThan(strpos($content, 'class="inbox__crm"'))
+        ->toBeLessThan(strpos($content, 'id="commerceHelpInbox"'));
 });
 
 it('generates an ai reply draft from platform ai without sending a message', function (): void {

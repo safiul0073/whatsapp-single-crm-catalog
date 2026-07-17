@@ -1,5 +1,13 @@
 <x-layouts.user :title="$title">
-    <div class="space-y-6">
+    <div
+        class="space-y-6"
+        x-data="{
+            selectedRecords: [],
+            recordIds: @js($records->filter(fn ($record) => $record->products_count === 0)->pluck('id')->map(fn ($id) => (string) $id)->values()),
+            toggleAllRecords(event) { this.selectedRecords = event.target.checked ? [...this.recordIds] : [] },
+            allRecordsSelected() { return this.recordIds.length > 0 && this.selectedRecords.length === this.recordIds.length },
+        }"
+    >
         <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-semibold text-primary">{{ __('Product setup') }}</p>
@@ -48,14 +56,31 @@
             </section>
 
             <section class="section-card">
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <h2 class="heading-5 text-title">{{ __('All :items', ['items' => strtolower($title)]) }}</h2>
                         <p class="text-sm text-body">{{ trans_choice(':count record|:count records', $records->count(), ['count' => $records->count()]) }}</p>
                     </div>
-                    <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
-                        <i class="ph {{ $icon }} text-xl"></i>
-                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form method="POST" action="{{ $bulkDestroyRoute }}" x-show="selectedRecords.length > 0" x-cloak>
+                            @csrf
+                            @method('DELETE')
+                            <template x-for="id in selectedRecords" :key="id">
+                                <input type="hidden" name="ids[]" :value="id">
+                            </template>
+                            <button type="submit" class="btn btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="{{ __('Delete selected :items?', ['items' => strtolower($title)]) }}" data-confirm-body="{{ __('Only records without products can be deleted. Selected records will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error">
+                                <i class="ph ph-trash"></i>
+                                <span x-text="'{{ __('Delete selected') }} (' + selectedRecords.length + ')'"></span>
+                            </button>
+                        </form>
+                        <label class="check-row min-h-10 px-3 py-2">
+                            <input type="checkbox" class="app-checkbox" :checked="allRecordsSelected()" @change="toggleAllRecords($event)" :disabled="recordIds.length === 0">
+                            <span class="text-sm font-medium text-title">{{ __('Select unused') }}</span>
+                        </label>
+                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
+                            <i class="ph {{ $icon }} text-xl"></i>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="mt-5 space-y-3">
@@ -63,6 +88,7 @@
                         <article class="rounded-2xl border border-border p-4" x-data="{ editing: false }">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-3">
+                                    <input type="checkbox" class="app-checkbox" value="{{ $record->id }}" x-model="selectedRecords" aria-label="{{ __('Select :name', ['name' => $record->name]) }}" @disabled($record->products_count > 0)>
                                     <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                                         <i class="ph {{ $icon }} text-xl"></i>
                                     </span>
@@ -81,7 +107,7 @@
                                     <form method="POST" action="{{ route($destroyRouteName, [$routeParameter => $record]) }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="row-action text-error" aria-label="{{ __('Delete :name', ['name' => $record->name]) }}" @disabled($record->products_count > 0)>
+                                        <button type="submit" class="row-action text-error" aria-label="{{ __('Delete :name', ['name' => $record->name]) }}" data-confirm data-confirm-title="{{ __('Delete :item?', ['item' => $singular]) }}" data-confirm-body="{{ __('Only records without products can be deleted. This record will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error" @disabled($record->products_count > 0)>
                                             <i class="ph ph-trash"></i>
                                         </button>
                                     </form>

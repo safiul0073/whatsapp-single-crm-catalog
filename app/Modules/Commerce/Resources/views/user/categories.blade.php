@@ -1,5 +1,13 @@
 <x-layouts.user :title="__('Product categories')">
-    <div class="space-y-6">
+    <div
+        class="space-y-6"
+        x-data="{
+            selectedCategories: [],
+            categoryIds: @js($categories->filter(fn ($category) => $category->products_count === 0 && $category->children_count === 0)->pluck('id')->map(fn ($id) => (string) $id)->values()),
+            toggleAllCategories(event) { this.selectedCategories = event.target.checked ? [...this.categoryIds] : [] },
+            allCategoriesSelected() { return this.categoryIds.length > 0 && this.selectedCategories.length === this.categoryIds.length },
+        }"
+    >
         <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-semibold text-primary">{{ __('Store organization') }}</p>
@@ -57,14 +65,31 @@
             </section>
 
             <section class="section-card">
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <h2 class="heading-5 text-title">{{ __('All categories') }}</h2>
                         <p class="text-sm text-body">{{ trans_choice(':count category|:count categories', $categories->count(), ['count' => $categories->count()]) }}</p>
                     </div>
-                    <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
-                        <i class="ph ph-tree-structure text-xl"></i>
-                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form method="POST" action="{{ route('user.commerce.categories.bulk-destroy') }}" x-show="selectedCategories.length > 0" x-cloak>
+                            @csrf
+                            @method('DELETE')
+                            <template x-for="id in selectedCategories" :key="id">
+                                <input type="hidden" name="ids[]" :value="id">
+                            </template>
+                            <button type="submit" class="btn btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="{{ __('Delete selected categories?') }}" data-confirm-body="{{ __('Only empty categories can be deleted. Selected categories will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error">
+                                <i class="ph ph-trash"></i>
+                                <span x-text="'{{ __('Delete selected') }} (' + selectedCategories.length + ')'"></span>
+                            </button>
+                        </form>
+                        <label class="check-row min-h-10 px-3 py-2">
+                            <input type="checkbox" class="app-checkbox" :checked="allCategoriesSelected()" @change="toggleAllCategories($event)" :disabled="categoryIds.length === 0">
+                            <span class="text-sm font-medium text-title">{{ __('Select empty') }}</span>
+                        </label>
+                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
+                            <i class="ph ph-tree-structure text-xl"></i>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="mt-5 space-y-3">
@@ -72,6 +97,7 @@
                         <article class="rounded-2xl border border-border p-4" x-data="{ editing: false }">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-3">
+                                    <input type="checkbox" class="app-checkbox" value="{{ $category->id }}" x-model="selectedCategories" aria-label="{{ __('Select :category', ['category' => $category->name]) }}" @disabled($category->products_count > 0 || $category->children_count > 0)>
                                     <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl {{ $category->parent_id ? 'bg-section text-body' : 'bg-primary/10 text-primary' }}">
                                         <i class="ph {{ $category->parent_id ? 'ph-folder-notch' : 'ph-folder' }} text-xl"></i>
                                     </span>
@@ -96,7 +122,7 @@
                                     <form method="POST" action="{{ route('user.commerce.categories.destroy', $category) }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="row-action text-error" aria-label="{{ __('Delete :category', ['category' => $category->name]) }}" @disabled($category->products_count > 0 || $category->children_count > 0)>
+                                        <button type="submit" class="row-action text-error" aria-label="{{ __('Delete :category', ['category' => $category->name]) }}" data-confirm data-confirm-title="{{ __('Delete category?') }}" data-confirm-body="{{ __('Only empty categories can be deleted. This category will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error" @disabled($category->products_count > 0 || $category->children_count > 0)>
                                             <i class="ph ph-trash"></i>
                                         </button>
                                     </form>

@@ -53,7 +53,7 @@ function chatbotAiCreditPlan(int $workspaceId, int $credits, int $used = 0): Sub
     );
 }
 
-it('shows website widgets and ai providers in the automation ai sidebar group', function (): void {
+it('shows website widgets in the automation sidebar group', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
 
     Permission::findOrCreate('chatbots.manage', 'web');
@@ -64,11 +64,11 @@ it('shows website widgets and ai providers in the automation ai sidebar group', 
     $html = view('components.layouts.partials.user-sidebar')->render();
 
     expect($html)
-        ->toContain('Automation &amp; AI')
+        ->toContain('>Automation<')
         ->toContain(route('user.chatbots.widgets.index'))
         ->toContain('Website Widgets')
-        ->toContain(route('user.chatbots.ai-providers.index'))
-        ->toContain('AI Providers')
+        ->not->toContain('ai-providers')
+        ->not->toContain('AI Providers')
         ->not->toContain('user.chat-widget.index');
 });
 

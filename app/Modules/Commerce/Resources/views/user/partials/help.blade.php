@@ -149,18 +149,35 @@
     $modalId = 'commerceHelp'.str($helpKey)->studly()->toString();
 @endphp
 
-<div class="flex flex-col gap-3 rounded-xl bg-primary/5 px-4 py-3 {{ ($compact ?? false) ? '' : 'sm:flex-row sm:items-center sm:justify-between' }}" data-commerce-help="{{ $helpKey }}">
-    <div class="flex min-w-0 items-start gap-3">
-        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-lg"></i></span>
-        <div class="min-w-0">
-            <p class="text-sm font-semibold text-title">{{ $topic['title'] }}</p>
-            <p class="text-xs leading-5 text-body">{{ $topic['summary'] }}</p>
+@if ($minimal ?? false)
+    <div class="mb-4 rounded-lg border border-neutral-200 bg-section p-3" data-commerce-help="{{ $helpKey }}">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-2.5">
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-base"></i></span>
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold text-title">{{ $topic['title'] }}</p>
+                    <p class="truncate text-xs text-body">{{ __('Send catalog or products from WhatsApp.') }}</p>
+                </div>
+            </div>
+            <button type="button" class="row-action shrink-0" data-modal-open="{{ $modalId }}" aria-label="{{ __('Open help') }}">
+                <i class="ph ph-question text-base"></i>
+            </button>
         </div>
     </div>
-    <button type="button" class="btn btn-sm btn-outline shrink-0 {{ ($compact ?? false) ? 'w-full justify-center' : '' }}" data-modal-open="{{ $modalId }}">
-        <i class="ph ph-question text-base"></i> {{ __('Help') }}
-    </button>
-</div>
+@else
+    <div class="flex flex-col gap-3 rounded-xl bg-primary/5 px-4 py-3 {{ ($compact ?? false) ? '' : 'sm:flex-row sm:items-center sm:justify-between' }}" data-commerce-help="{{ $helpKey }}">
+        <div class="flex min-w-0 items-start gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-lg"></i></span>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-title">{{ $topic['title'] }}</p>
+                <p class="text-xs leading-5 text-body">{{ $topic['summary'] }}</p>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline shrink-0 {{ ($compact ?? false) ? 'w-full justify-center' : '' }}" data-modal-open="{{ $modalId }}">
+            <i class="ph ph-question text-base"></i> {{ __('Help') }}
+        </button>
+    </div>
+@endif
 
 @push('modals')
     <div class="modal" id="{{ $modalId }}" data-modal>

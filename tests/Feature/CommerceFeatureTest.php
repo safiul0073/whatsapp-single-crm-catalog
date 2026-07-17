@@ -170,6 +170,123 @@ it('manages table-backed brands and audiences on separate pages', function (): v
         ->and($audience->workspace_id)->toBe($context['workspace']->id);
 });
 
+it('deletes products individually and in bulk inside the active workspace', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user']);
+
+    $single = Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Single Delete Shirt',
+        'slug' => 'single-delete-shirt',
+        'status' => 'draft',
+    ]);
+    $bulkOne = Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Bulk Delete Shirt',
+        'slug' => 'bulk-delete-shirt',
+        'status' => 'draft',
+    ]);
+    $bulkTwo = Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Bulk Delete Jacket',
+        'slug' => 'bulk-delete-jacket',
+        'status' => 'draft',
+    ]);
+
+    $this->delete(route('user.commerce.products.destroy', $single))->assertRedirect();
+    $this->delete(route('user.commerce.products.bulk-destroy'), ['ids' => [$bulkOne->id, $bulkTwo->id]])->assertRedirect();
+
+    $this->assertDatabaseMissing('commerce_products', ['id' => $single->id]);
+    $this->assertDatabaseMissing('commerce_products', ['id' => $bulkOne->id]);
+    $this->assertDatabaseMissing('commerce_products', ['id' => $bulkTwo->id]);
+});
+
+it('deletes empty categories brands and audiences individually and in bulk', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user']);
+
+    $singleCategory = Category::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Single Category', 'slug' => 'single-category']);
+    $bulkCategories = Category::query()->insert([
+        ['workspace_id' => $context['workspace']->id, 'name' => 'Bulk Category One', 'slug' => 'bulk-category-one', 'created_at' => now(), 'updated_at' => now()],
+        ['workspace_id' => $context['workspace']->id, 'name' => 'Bulk Category Two', 'slug' => 'bulk-category-two', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+    $categoryIds = Category::query()->where('workspace_id', $context['workspace']->id)->where('slug', 'like', 'bulk-category-%')->pluck('id')->all();
+
+    $singleBrand = Brand::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Single Brand', 'slug' => 'single-brand']);
+    $bulkBrand = Brand::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Bulk Brand', 'slug' => 'bulk-brand']);
+    $singleAudience = Audience::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Single Audience', 'slug' => 'single-audience']);
+    $bulkAudience = Audience::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Bulk Audience', 'slug' => 'bulk-audience']);
+
+    expect($bulkCategories)->toBeTrue();
+
+    $this->delete(route('user.commerce.categories.destroy', $singleCategory))->assertRedirect();
+    $this->delete(route('user.commerce.categories.bulk-destroy'), ['ids' => $categoryIds])->assertRedirect();
+    $this->delete(route('user.commerce.brands.destroy', $singleBrand))->assertRedirect();
+    $this->delete(route('user.commerce.brands.bulk-destroy'), ['ids' => [$bulkBrand->id]])->assertRedirect();
+    $this->delete(route('user.commerce.audiences.destroy', $singleAudience))->assertRedirect();
+    $this->delete(route('user.commerce.audiences.bulk-destroy'), ['ids' => [$bulkAudience->id]])->assertRedirect();
+
+    $this->assertDatabaseMissing('commerce_categories', ['id' => $singleCategory->id]);
+    foreach ($categoryIds as $categoryId) {
+        $this->assertDatabaseMissing('commerce_categories', ['id' => $categoryId]);
+    }
+    $this->assertDatabaseMissing('commerce_brands', ['id' => $singleBrand->id]);
+    $this->assertDatabaseMissing('commerce_brands', ['id' => $bulkBrand->id]);
+    $this->assertDatabaseMissing('commerce_audiences', ['id' => $singleAudience->id]);
+    $this->assertDatabaseMissing('commerce_audiences', ['id' => $bulkAudience->id]);
+});
+
+it('blocks bulk deletion of in-use taxonomy records and records from other workspaces', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user']);
+
+    $category = Category::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Assigned Category', 'slug' => 'assigned-category']);
+    $brand = Brand::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Assigned Brand', 'slug' => 'assigned-brand']);
+    $audience = Audience::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Assigned Audience', 'slug' => 'assigned-audience']);
+
+    Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'category_id' => $category->id,
+        'brand_id' => $brand->id,
+        'audience_id' => $audience->id,
+        'name' => 'Assigned Product',
+        'slug' => 'assigned-product',
+        'status' => 'draft',
+    ]);
+
+    $this->from(route('user.commerce.categories.index'))
+        ->delete(route('user.commerce.categories.bulk-destroy'), ['ids' => [$category->id]])
+        ->assertRedirect(route('user.commerce.categories.index'))
+        ->assertSessionHasErrors('ids');
+    $this->from(route('user.commerce.brands.index'))
+        ->delete(route('user.commerce.brands.bulk-destroy'), ['ids' => [$brand->id]])
+        ->assertRedirect(route('user.commerce.brands.index'))
+        ->assertSessionHasErrors('ids');
+    $this->from(route('user.commerce.audiences.index'))
+        ->delete(route('user.commerce.audiences.bulk-destroy'), ['ids' => [$audience->id]])
+        ->assertRedirect(route('user.commerce.audiences.index'))
+        ->assertSessionHasErrors('ids');
+
+    $otherContext = commerceContext();
+    $otherProduct = Product::query()->create([
+        'workspace_id' => $otherContext['workspace']->id,
+        'name' => 'Other Workspace Product',
+        'slug' => 'other-workspace-product',
+        'status' => 'draft',
+    ]);
+
+    $this->delete(route('user.commerce.products.bulk-destroy'), ['ids' => [$otherProduct->id]])->assertNotFound();
+});
+
 it('seeds one hundred realistic products with more than forty five live images', function (): void {
     $context = commerceContext();
 
@@ -182,8 +299,10 @@ it('seeds one hundred realistic products with more than forty five live images',
         ->and(ProductVariant::query()->where('workspace_id', $context['workspace']->id)->where('sku', 'like', 'DEMO-%')->count())->toBe(400)
         ->and($images)->toHaveCount(60)
         ->and($images->every(fn (Media $media): bool => str_starts_with($media->path, 'https://')))->toBeTrue()
+        ->and($images->every(fn (Media $media): bool => filled($media->alt) && str_contains($media->path, 'loremflickr.com/960/1200')))->toBeTrue()
         ->and($images->first()->url)->toBe($images->first()->path)
-        ->and($products->every(fn (Product $product): bool => filled($product->brand_id) && filled($product->audience_id) && filled($product->primary_media_id)))->toBeTrue();
+        ->and($products->pluck('name')->all())->toContain('Premium Double-Face Wool Blend Coat')
+        ->and($products->every(fn (Product $product): bool => filled($product->brand_id) && filled($product->audience_id) && filled($product->primary_media_id) && str_contains((string) $product->description, 'WhatsApp catalog selling')))->toBeTrue();
 
     Permission::findOrCreate('commerce.view', 'web');
     $context['user']->givePermissionTo('commerce.view');
