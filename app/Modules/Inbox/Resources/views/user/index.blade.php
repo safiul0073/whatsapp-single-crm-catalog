@@ -287,30 +287,6 @@
               @change="selectAttachment($event)"
               :disabled="!attachmentsSupported()"
             >
-            <div class="inbox-composer__actions" aria-label="{{ __('Message tools') }}">
-              <button
-                type="button"
-                class="inbox-composer__icon"
-                :disabled="sending || !hasChannel || !recipientReady || !canReply || !attachmentsSupported()"
-                @click="$refs.attachmentInput.click()"
-                aria-label="{{ __('Attach file') }}"
-                title="{{ __('Attach image, video, audio, or document') }}"
-              >
-                <i class="ph ph-paperclip text-xl"></i>
-                <span class="sr-only">{{ __('Attach file') }}</span>
-              </button>
-              <button
-                type="button"
-                class="inbox-composer__icon inbox-composer__icon--ai"
-                :disabled="sending || aiGenerating || !activeConversation?.id || !hasChannel || !recipientReady || !canReply"
-                @click="generateAiReply()"
-                aria-label="{{ __('Generate AI reply') }}"
-                title="{{ __('Generate AI reply') }}"
-              >
-                <i class="ph text-xl" :class="aiGenerating ? 'ph-circle-notch animate-spin' : 'ph-sparkle'"></i>
-                <span class="sr-only">{{ __('Generate AI reply') }}</span>
-              </button>
-            </div>
             <label for="composer" class="sr-only">{{ __('Message') }}</label>
             <div class="inbox-composer__field">
               <div class="inbox-composer__attachment" x-show="attachment" x-cloak>
@@ -332,16 +308,42 @@
               </div>
               <p class="inbox-composer__notice" x-show="activeConversation && !attachmentsSupported()" x-cloak>{{ __('This channel supports text replies only.') }}</p>
               <p class="inbox-composer__notice text-warning" x-show="activeConversation && !canReply" x-cloak x-text="activeConversation?.reply_disabled_reason || @js(__('Replies are disabled for this conversation.'))"></p>
-              <textarea
-                id="composer"
-                name="message"
-                rows="1"
-                placeholder="{{ __('Type a message or add a caption...') }}"
-                class="inbox-composer__input"
-                x-model="composer"
-                :disabled="sending || !hasChannel || !recipientReady || !canReply"
-                @keydown.enter.prevent="sendMessage()"
-              ></textarea>
+              <div class="inbox-composer__input-row">
+                <div class="inbox-composer__actions" aria-label="{{ __('Message tools') }}">
+                  <button
+                    type="button"
+                    class="inbox-composer__icon"
+                    :disabled="sending || !hasChannel || !recipientReady || !canReply || !attachmentsSupported()"
+                    @click="$refs.attachmentInput.click()"
+                    aria-label="{{ __('Attach file') }}"
+                    title="{{ __('Attach image, video, audio, or document') }}"
+                  >
+                    <i class="ph ph-paperclip text-xl"></i>
+                    <span class="sr-only">{{ __('Attach file') }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inbox-composer__icon inbox-composer__icon--ai"
+                    :disabled="sending || aiGenerating || !activeConversation?.id || !hasChannel || !recipientReady || !canReply"
+                    @click="generateAiReply()"
+                    aria-label="{{ __('Generate AI reply') }}"
+                    title="{{ __('Generate AI reply') }}"
+                  >
+                    <i class="ph text-xl" :class="aiGenerating ? 'ph-circle-notch animate-spin' : 'ph-sparkle'"></i>
+                    <span class="sr-only">{{ __('Generate AI reply') }}</span>
+                  </button>
+                </div>
+                <textarea
+                  id="composer"
+                  name="message"
+                  rows="1"
+                  placeholder="{{ __('Type a message or add a caption...') }}"
+                  class="inbox-composer__input"
+                  x-model="composer"
+                  :disabled="sending || !hasChannel || !recipientReady || !canReply"
+                  @keydown.enter.prevent="sendMessage()"
+                ></textarea>
+              </div>
             </div>
             <button
               type="submit"

@@ -503,15 +503,15 @@
 }
 
 .inbox-composer {
-  @apply flex items-center gap-1.5 border-t border-neutral-200 bg-neutral-0/95 px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.035)] backdrop-blur sm:px-4;
+  @apply flex items-end gap-2 border-t border-neutral-200 bg-neutral-0/95 px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.035)] backdrop-blur sm:px-4;
 }
 
 .inbox-composer__actions {
-  @apply flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-section/80 p-0.5 shadow-sm;
+  @apply flex shrink-0 items-center gap-1;
 }
 
 .inbox-composer__icon {
-  @apply grid h-11 w-11 shrink-0 place-items-center rounded-full bg-neutral-0 text-body shadow-sm transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:bg-transparent disabled:text-neutral-300 disabled:shadow-none;
+  @apply grid h-11 w-11 shrink-0 place-items-center rounded-full text-body transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:text-neutral-300;
 }
 
 .inbox-composer__icon--ai {
@@ -519,7 +519,11 @@
 }
 
 .inbox-composer__field {
-  @apply min-w-0 flex-1 rounded-full border border-neutral-200 bg-neutral-0 px-4 py-0.5 shadow-sm transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10;
+  @apply min-w-0 flex-1 rounded-full border border-neutral-200 bg-neutral-0 px-1 py-1 shadow-sm transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10;
+}
+
+.inbox-composer__input-row {
+  @apply flex min-h-12 items-center gap-1;
 }
 
 .inbox-composer__attachment {
@@ -527,15 +531,15 @@
 }
 
 .inbox-composer__notice {
-  @apply mb-2 text-xs text-body;
+  @apply mx-3 mb-2 text-xs text-body;
 }
 
 .inbox-composer__input {
-  @apply min-h-10 max-h-28 w-full resize-none border-0 bg-transparent px-0 py-2 text-sm leading-6 text-title outline-none placeholder:text-neutral-500 disabled:text-neutral-400;
+  @apply min-h-11 max-h-28 w-full resize-none border-0 bg-transparent px-2 py-2.5 text-sm leading-6 text-title outline-none placeholder:text-neutral-500 disabled:text-neutral-400;
 }
 
 .inbox-composer__send {
-  @apply grid h-11 w-11 shrink-0 place-items-center rounded-full bg-neutral-200 text-neutral-500 shadow-sm transition hover:bg-neutral-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400 disabled:shadow-none;
+  @apply grid h-12 w-12 shrink-0 place-items-center rounded-full bg-neutral-200 text-neutral-500 shadow-sm transition hover:bg-neutral-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400 disabled:shadow-none;
 }
 
 .inbox-composer__send.is-ready {
