@@ -24,6 +24,7 @@ use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -478,6 +479,10 @@ class CampaignService
 
     protected function ensurePlanAllowsProvider(int $workspaceId, string $provider): void
     {
+        if (! Schema::hasTable('subscriptions') || ! Schema::hasTable('plans')) {
+            return;
+        }
+
         $subscription = Subscription::query()->with('plan')->where('workspace_id', $workspaceId)->latest()->first();
         $allowed = data_get($subscription?->plan?->limits, 'allowed_channels');
 
