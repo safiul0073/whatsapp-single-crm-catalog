@@ -458,11 +458,24 @@ class CommerceController extends Controller implements HasMiddleware
     public function conversationProducts(Request $request, Conversation $conversation): JsonResponse
     {
         $this->assertWorkspace($request, $conversation->workspace_id);
+        $catalog = Catalog::query()
+            ->where('workspace_id', $conversation->workspace_id)
+            ->where('channel_account_id', $conversation->channel_account_id)
+            ->where('is_active', true)
+            ->first();
         $products = Product::query()->with(['primaryMedia', 'gallery.media', 'variants' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock'])])->where('workspace_id', $conversation->workspace_id)->where('status', 'active')->when($request->filled('q'), fn ($query) => $query->where('name', 'like', '%'.$request->string('q')->toString().'%'))->orderBy('name')->limit(50)->get();
 
         return response()->json([
             'session_active' => $conversation->session_expires_at?->isFuture() ?? false,
             'session_expires_at' => $conversation->session_expires_at?->toIso8601String(),
+            'catalog' => [
+                'connected' => $catalog !== null && filled($catalog->meta_catalog_id),
+                'ready' => $catalog !== null && filled($catalog->meta_catalog_id) && $catalog->last_successful_at !== null,
+                'mode' => $catalog?->sync_mode,
+                'status' => $catalog?->last_sync_status,
+                'item_count' => $catalog?->last_item_count ?? 0,
+                'last_successful_at' => $catalog?->last_successful_at?->toIso8601String(),
+            ],
             'products' => $products->map(fn (Product $product): array => [
                 'id' => $product->id,
                 'name' => $product->name,

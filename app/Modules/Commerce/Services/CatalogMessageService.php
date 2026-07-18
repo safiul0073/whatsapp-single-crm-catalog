@@ -69,7 +69,7 @@ class CatalogMessageService
             throw ValidationException::withMessages(['catalog' => 'A connected WhatsApp conversation is required.']);
         }
         if (! $conversation->session_expires_at || $conversation->session_expires_at->isPast()) {
-            throw ValidationException::withMessages(['catalog' => 'The 24-hour WhatsApp service window has expired. Send an approved catalog template first.']);
+            throw ValidationException::withMessages(['catalog' => 'The 24-hour WhatsApp service window has expired. Send an approved template, then wait for the buyer to reply before sending interactive products.']);
         }
     }
 

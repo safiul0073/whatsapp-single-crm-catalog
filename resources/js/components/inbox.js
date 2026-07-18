@@ -22,6 +22,8 @@ Alpine.data("liveInbox", (config) => ({
   canReply: true,
   telegramOptIn: null,
   threadOpen: false,
+  railCollapsed: false,
+  listCollapsed: false,
   sendError: "",
   pollTimer: null,
   routes: config.routes || {},
@@ -40,9 +42,15 @@ Alpine.data("liveInbox", (config) => ({
   commerceSelected: [],
   commerceSessionActive: false,
   commerceSessionExpiresAt: null,
+  commerceCatalogReady: false,
+  commerceCatalogStatus: null,
+  commerceNotice: '',
+  commerceNoticeTone: 'warning',
   crmForm: { pipeline_id: '', stage_id: '', title: '', value: '', description: '', assigned_to: '', priority: 'normal', due_at: '', lost_reason: '' },
 
   async init() {
+    this.railCollapsed = this.storedBoolean("inbox.railCollapsed");
+    this.listCollapsed = this.storedBoolean("inbox.listCollapsed");
     this.crmPanelOpen = this.shouldOpenCrmPanelByDefault();
     await this.refreshConversations();
 
@@ -60,6 +68,39 @@ Alpine.data("liveInbox", (config) => ({
         this.loadThread(this.activeConversation.id, true);
       }
     }, 4000);
+  },
+
+  storedBoolean(key, fallback = false) {
+    const value = window.localStorage?.getItem(key);
+
+    if (value === "true") {
+      return true;
+    }
+
+    if (value === "false") {
+      return false;
+    }
+
+    return fallback;
+  },
+
+  persistBoolean(key, value) {
+    window.localStorage?.setItem(key, value ? "true" : "false");
+  },
+
+  toggleRail() {
+    this.railCollapsed = !this.railCollapsed;
+    this.persistBoolean("inbox.railCollapsed", this.railCollapsed);
+  },
+
+  toggleConversationList() {
+    this.listCollapsed = !this.listCollapsed;
+    this.persistBoolean("inbox.listCollapsed", this.listCollapsed);
+  },
+
+  openConversationList() {
+    this.listCollapsed = false;
+    this.persistBoolean("inbox.listCollapsed", false);
   },
 
   shouldOpenCrmPanelByDefault() {
@@ -309,6 +350,12 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   async sendCommerceCatalog() {
+    const blockedMessage = this.commerceBlockedMessage();
+    if (blockedMessage) {
+      this.notifyCommerce(blockedMessage);
+      return;
+    }
+
     if (this.sending || !this.activeConversation?.id || !this.routes.commerceCatalog) return;
     this.sending = true;
     this.sendError = "";
@@ -316,9 +363,12 @@ Alpine.data("liveInbox", (config) => ({
       const url = this.routes.commerceCatalog.replace("__CONVERSATION__", this.activeConversation.id);
       const response = await window.axios.post(url, {}, { headers: { Accept: "application/json", "X-CSRF-TOKEN": this.csrfToken() } });
       this.messages = this.decorateMessages([...this.messages, response.data.message]);
+      this.notifyCommerce('The complete Meta catalog was sent to the buyer.', 'success');
+      this.commerceDrawerOpen = false;
       this.scrollToBottom();
     } catch (error) {
       this.sendError = this.errorMessage(error, "Catalog message failed to send.");
+      this.notifyCommerce(this.sendError, 'error');
     } finally {
       this.sending = false;
     }
@@ -326,6 +376,7 @@ Alpine.data("liveInbox", (config) => ({
 
   async openCommerceDrawer() {
     if (!this.activeConversation?.id || !this.routes.commerceProducts) return;
+    this.commerceNotice = '';
     this.commerceDrawerOpen = true;
     await this.loadCommerceProducts();
   },
@@ -341,11 +392,50 @@ Alpine.data("liveInbox", (config) => ({
       this.commerceProducts = response.data.products || [];
       this.commerceSessionActive = Boolean(response.data.session_active);
       this.commerceSessionExpiresAt = response.data.session_expires_at;
+      this.commerceCatalogReady = Boolean(response.data.catalog?.ready);
+      this.commerceCatalogStatus = response.data.catalog || null;
     } catch (error) {
       this.sendError = this.errorMessage(error, 'Products could not be loaded.');
     } finally {
       this.commerceLoading = false;
     }
+  },
+
+  async checkCommerceReadiness() {
+    await this.loadCommerceProducts();
+
+    const blockedMessage = this.commerceBlockedMessage();
+    if (blockedMessage) {
+      this.notifyCommerce(blockedMessage);
+      return;
+    }
+
+    this.notifyCommerce('The buyer session and Meta catalog are ready for product messages.', 'success');
+  },
+
+  commerceBlockedMessage() {
+    if (!this.commerceSessionActive) {
+      return 'The buyer must reply to your WhatsApp message before you can send catalog products.';
+    }
+
+    if (!this.commerceCatalogStatus?.connected) {
+      return 'Connect a Meta catalog to this WhatsApp channel before sending products.';
+    }
+
+    if (!this.commerceCatalogReady) {
+      return 'Wait for Meta to successfully fetch or synchronize the catalog before sending products.';
+    }
+
+    return '';
+  },
+
+  notifyCommerce(message, tone = 'warning') {
+    this.commerceNotice = message;
+    this.commerceNoticeTone = tone;
+    this.sendError = tone === 'error' ? message : '';
+
+    const title = tone === 'success' ? 'WhatsApp store' : tone === 'error' ? 'Send failed' : 'Action required';
+    window.showToast?.(title, message, tone);
   },
 
   toggleCommerceVariant(variantId) {
@@ -359,7 +449,11 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   async sendCommerceSelection() {
-    if (this.commerceSelected.length === 0) return;
+    if (this.commerceSelected.length === 0) {
+      this.notifyCommerce('Select at least one product variant before sending a selection.', 'info');
+      return;
+    }
+
     await this.sendCommerceRequest('commerceProductList', { variant_ids: this.commerceSelected }, 'Product selection failed to send.');
   },
 
@@ -368,7 +462,13 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   async sendCommerceRequest(routeKey, payload, fallback) {
-    if (this.sending || !this.commerceSessionActive || !this.routes[routeKey]) return;
+    const blockedMessage = this.commerceBlockedMessage();
+    if (blockedMessage) {
+      this.notifyCommerce(blockedMessage);
+      return;
+    }
+
+    if (this.sending || !this.routes[routeKey]) return;
     this.sending = true;
     this.sendError = '';
     try {
@@ -377,9 +477,11 @@ Alpine.data("liveInbox", (config) => ({
       this.messages = this.decorateMessages([...this.messages, response.data.message]);
       this.commerceSelected = [];
       this.commerceDrawerOpen = false;
+      this.notifyCommerce('Your WhatsApp product message was sent successfully.', 'success');
       this.scrollToBottom();
     } catch (error) {
       this.sendError = this.errorMessage(error, fallback);
+      this.notifyCommerce(this.sendError, 'error');
     } finally {
       this.sending = false;
     }

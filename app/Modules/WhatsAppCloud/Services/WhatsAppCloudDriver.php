@@ -447,14 +447,35 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
     public function testConnection(ChannelAccount $account): array
     {
+        $businessAccountId = (string) $account->provider_account_id;
+        $token = (string) $account->credential('access_token');
+
+        if (blank($businessAccountId)) {
+            return [
+                'ok' => false,
+                'provider' => $this->provider(),
+                'error' => 'WhatsApp Business Account ID is missing. Edit the channel and add the WABA ID.',
+            ];
+        }
+
+        if (blank($token)) {
+            return [
+                'ok' => false,
+                'provider' => $this->provider(),
+                'error' => 'WhatsApp access token is missing. Edit the channel and add a valid permanent access token.',
+            ];
+        }
+
         $response = $this->client->phoneNumbers(
-            (string) $account->provider_account_id,
-            (string) $account->credential('access_token')
+            $businessAccountId,
+            $token
         );
 
         return [
             'ok' => $response->successful(),
             'provider' => $this->provider(),
+            'error' => $response->successful() ? null : ($response->json('error.message') ?: 'WhatsApp connection test failed. Check the WABA ID and access token.'),
+            'error_code' => $response->json('error.code'),
             'response' => $response->json(),
         ];
     }

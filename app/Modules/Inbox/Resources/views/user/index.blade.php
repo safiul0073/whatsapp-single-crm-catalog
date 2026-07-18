@@ -1,40 +1,53 @@
 <x-layouts.user :title="__('Inbox')">
   <div
     class="inbox"
+    :class="{ 'is-rail-collapsed': railCollapsed, 'is-list-collapsed': listCollapsed }"
     x-data="liveInbox(@js($inboxConfig))"
     x-init="init()"
     @keydown.window.escape="threadOpen = false"
   >
     <aside class="inbox__rail">
       <div class="p-3">
-        <p class="app-nav__group pt-1!">{{ __('Views') }}</p>
+        <div class="inbox__rail-header">
+          <span class="inbox__rail-title">{{ __('Inbox') }}</span>
+          <button
+            type="button"
+            class="row-action"
+            @click="toggleRail()"
+            :aria-label="railCollapsed ? '{{ __('Expand views panel') }}' : '{{ __('Collapse views panel') }}'"
+            :title="railCollapsed ? '{{ __('Expand views panel') }}' : '{{ __('Collapse views panel') }}'"
+          >
+            <i class="ph text-base" :class="railCollapsed ? 'ph-caret-double-right' : 'ph-caret-double-left'"></i>
+          </button>
+        </div>
+        <p class="app-nav__group inbox__rail-heading pt-1!">{{ __('Views') }}</p>
         <nav class="flex flex-col gap-0.5">
-          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'all' }" @click="setStatus('all')">
-            <span class="flex items-center gap-2.5"><i class="ph ph-tray text-lg"></i>{{ __('All chats') }}</span>
+          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'all' }" @click="setStatus('all')" title="{{ __('All chats') }}">
+            <span class="flex items-center gap-2.5"><i class="ph ph-tray text-lg"></i><span class="inbox__rail-label">{{ __('All chats') }}</span></span>
             <span class="badge badge-soft" x-text="counts.all ?? 0"></span>
           </button>
-          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'open' }" @click="setStatus('open')">
-            <span class="flex items-center gap-2.5"><i class="ph ph-chat-circle-text text-lg"></i>{{ __('Open') }}</span>
+          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'open' }" @click="setStatus('open')" title="{{ __('Open') }}">
+            <span class="flex items-center gap-2.5"><i class="ph ph-chat-circle-text text-lg"></i><span class="inbox__rail-label">{{ __('Open') }}</span></span>
             <span class="badge badge-success" x-text="counts.open ?? 0"></span>
           </button>
-          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'resolved' }" @click="setStatus('resolved')">
-            <span class="flex items-center gap-2.5"><i class="ph ph-check-circle text-lg"></i>{{ __('Resolved') }}</span>
+          <button type="button" class="inbox-view" :class="{ 'is-active': status === 'resolved' }" @click="setStatus('resolved')" title="{{ __('Resolved') }}">
+            <span class="flex items-center gap-2.5"><i class="ph ph-check-circle text-lg"></i><span class="inbox__rail-label">{{ __('Resolved') }}</span></span>
             <span class="badge badge-soft" x-text="counts.resolved ?? 0"></span>
           </button>
         </nav>
 
-        <p class="app-nav__group">{{ __('Channel') }}</p>
+        <p class="app-nav__group inbox__rail-heading">{{ __('Channel') }}</p>
         <div class="space-y-2">
           <template x-for="channel in channels" :key="channel.value">
-            <button type="button" class="inbox-view w-full" :class="{ 'is-active': provider === channel.value }" @click="setProvider(channel.value)">
+            <button type="button" class="inbox-view w-full" :class="{ 'is-active': provider === channel.value }" @click="setProvider(channel.value)" :title="channel.label">
               <span class="flex min-w-0 items-center gap-2.5">
                 <i class="ph text-lg" :class="[channel.icon, channel.connected ? 'text-success' : 'text-neutral-400']"></i>
-                <span class="truncate font-semibold" x-text="channel.label"></span>
+                <span class="inbox__rail-label truncate font-semibold" x-text="channel.label"></span>
               </span>
               <span class="badge" :class="channel.connected ? 'badge-success' : 'badge-soft'" x-text="channel.count"></span>
             </button>
           </template>
-          <div class="rounded-lg border border-neutral-200 bg-neutral-0 p-3 text-sm">
+          <div class="inbox__rail-helper rounded-lg border border-neutral-200 bg-neutral-0 p-3 text-sm">
             <p class="text-xs text-body" x-show="hasChannel">{{ __('Selected channel is ready for replies.') }}</p>
             <p class="text-xs text-error" x-show="!hasChannel">{{ __('Connect this channel before sending replies.') }}</p>
           </div>
@@ -44,6 +57,18 @@
 
     <section class="inbox__list" :class="{ 'hidden lg:flex': threadOpen }">
       <div class="border-b border-neutral-200 p-3">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <p class="text-sm font-semibold text-title">{{ __('Conversations') }}</p>
+          <button
+            type="button"
+            class="row-action hidden lg:grid"
+            @click="toggleConversationList()"
+            aria-label="{{ __('Collapse conversations') }}"
+            title="{{ __('Collapse conversations') }}"
+          >
+            <i class="ph ph-caret-double-left text-base"></i>
+          </button>
+        </div>
         <form class="relative" role="search" @submit.prevent="refreshConversations()">
           <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400"></i>
           <input
@@ -115,6 +140,17 @@
           <header class="flex items-center gap-3 border-b border-neutral-200 bg-neutral-0 px-4 py-3">
             <button type="button" class="row-action lg:hidden" @click="threadOpen = false" aria-label="{{ __('Back to conversations') }}">
               <i class="ph ph-arrow-left text-base"></i>
+            </button>
+            <button
+              type="button"
+              class="row-action hidden lg:grid"
+              x-show="listCollapsed"
+              x-cloak
+              @click="openConversationList()"
+              aria-label="{{ __('Open conversations') }}"
+              title="{{ __('Open conversations') }}"
+            >
+              <i class="ph ph-list text-base"></i>
             </button>
             <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary" x-text="activeConversation.initials"></span>
             <div class="min-w-0 flex-1">
@@ -323,6 +359,16 @@
       </template>
 
       <div class="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center" x-show="!activeConversation">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm mb-4 hidden lg:inline-flex"
+          x-show="listCollapsed"
+          x-cloak
+          @click="openConversationList()"
+        >
+          <i class="ph ph-list"></i>
+          {{ __('Open conversations') }}
+        </button>
         <span class="grid h-14 w-14 place-items-center rounded-xl bg-primary/10 text-primary">
           <i class="ph ph-chats-circle text-3xl"></i>
         </span>
@@ -418,17 +464,88 @@
       <aside class="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-neutral-0 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="commerceDrawerTitle">
         <header class="flex items-start justify-between gap-3 border-b border-border p-4"><div><p class="text-sm font-semibold text-primary">{{ __('WhatsApp store') }}</p><h2 id="commerceDrawerTitle" class="heading-5 text-title">{{ __('Send products') }}</h2><p class="text-xs text-body">{{ __('Send the full catalog, one variant, a curated selection, or a product video.') }}</p></div><button type="button" class="row-action" @click="commerceDrawerOpen = false" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button></header>
         <div class="border-b border-border p-4">
-          <div class="rounded-xl p-3 text-sm" :class="commerceSessionActive ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'"><div class="flex items-start gap-2"><i class="ph" :class="commerceSessionActive ? 'ph-clock-countdown' : 'ph-warning-circle'"></i><div><p class="font-semibold" x-text="commerceSessionActive ? '{{ __('24-hour session active') }}' : '{{ __('Service window expired') }}'"></p><p class="text-xs" x-text="commerceSessionActive ? '{{ __('Interactive products can be sent now.') }}' : '{{ __('Send an approved catalog template before sending interactive products.') }}'"></p></div></div></div>
-          <div class="mt-3 flex gap-2"><input class="form-input" type="search" x-model="commerceQuery" @keydown.enter.prevent="loadCommerceProducts()" placeholder="{{ __('Search products') }}"><button type="button" class="btn btn-outline" @click="loadCommerceProducts()"><i class="ph ph-magnifying-glass"></i></button><button type="button" class="btn btn-primary whitespace-nowrap" @click="sendCommerceCatalog()" :disabled="sending || !commerceSessionActive">{{ __('Full catalog') }}</button></div>
+          <div class="p-3 text-sm" :class="commerceSessionActive ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'">
+            <div class="flex items-start gap-2">
+              <i class="ph mt-0.5" :class="commerceSessionActive ? 'ph-clock-countdown' : 'ph-warning-circle'"></i>
+              <div class="min-w-0 flex-1">
+                <p class="font-semibold" x-text="commerceSessionActive ? '{{ __('24-hour session active') }}' : '{{ __('Waiting for buyer reply') }}'"></p>
+                <p class="text-xs" x-text="commerceSessionActive ? '{{ __('Interactive products can be sent now.') }}' : '{{ __('Sending a template or text does not reopen the service window. The buyer must reply first.') }}'"></p>
+                <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 disabled:pointer-events-none disabled:opacity-50" x-show="!commerceSessionActive" @click="checkCommerceReadiness()" :disabled="commerceLoading">
+                  <i class="ph ph-arrow-clockwise"></i>
+                  <span x-text="commerceLoading ? '{{ __('Checking…') }}' : '{{ __('Check again after buyer replies') }}'"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2 flex items-start gap-2 bg-warning/10 p-3 text-sm text-warning" x-show="commerceCatalogStatus && !commerceCatalogReady">
+            <i class="ph ph-storefront mt-0.5"></i>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">{{ __('Catalog is not synchronized') }}</p>
+              <p class="text-xs" x-text="commerceCatalogStatus?.connected ? '{{ __('Meta has not successfully fetched or synchronized these products yet.') }}' : '{{ __('Connect a Meta catalog to this WhatsApp channel first.') }}'"></p>
+              <a href="{{ route('user.commerce.catalog') }}" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2">
+                {{ __('Open Meta Catalog setup') }}
+                <i class="ph ph-arrow-up-right"></i>
+              </a>
+            </div>
+          </div>
+
+          <div class="mt-2 flex items-start gap-2 p-3 text-sm" x-show="commerceNotice" x-cloak :class="commerceNoticeTone === 'success' ? 'bg-success/10 text-success' : commerceNoticeTone === 'error' ? 'bg-error/10 text-error' : commerceNoticeTone === 'info' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'">
+            <i class="ph mt-0.5" :class="commerceNoticeTone === 'success' ? 'ph-check-circle' : commerceNoticeTone === 'error' ? 'ph-x-circle' : commerceNoticeTone === 'info' ? 'ph-info' : 'ph-warning-circle'"></i>
+            <p class="min-w-0 flex-1 text-xs font-medium" x-text="commerceNotice"></p>
+            <button type="button" class="text-current opacity-60 transition hover:opacity-100" @click="commerceNotice = ''" aria-label="{{ __('Dismiss message') }}"><i class="ph ph-x"></i></button>
+          </div>
+
+          <div class="mt-3 flex items-center gap-3 bg-primary/5 p-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><i class="ph ph-storefront text-xl"></i></span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-title">{{ __('Share complete catalog') }}</p>
+              <p class="text-xs text-body">{{ __('Opens the synchronized Meta catalog in WhatsApp so the buyer can browse every available product.') }}</p>
+            </div>
+            <button type="button" class="btn btn-primary shrink-0 whitespace-nowrap disabled:opacity-50" @click="sendCommerceCatalog()" :disabled="sending"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send catalog') }}</button>
+          </div>
+
+          <div class="mt-3 flex gap-2">
+            <input class="form-input" type="search" x-model="commerceQuery" @keydown.enter.prevent="loadCommerceProducts()" placeholder="{{ __('Search products') }}">
+            <button type="button" class="btn btn-outline" @click="loadCommerceProducts()" :disabled="commerceLoading" :class="commerceLoading ? 'pointer-events-none opacity-50' : ''" aria-label="{{ __('Search products') }}"><i class="ph ph-magnifying-glass"></i></button>
+          </div>
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto p-4">
           <p class="py-8 text-center text-sm text-body" x-show="commerceLoading">{{ __('Loading products…') }}</p>
           <div class="space-y-4" x-show="!commerceLoading">
-            <template x-for="product in commerceProducts" :key="product.id"><article class="overflow-hidden rounded-2xl border border-border"><div class="flex gap-3 p-3"><div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-section"><img x-show="product.image" :src="product.image" :alt="product.name" class="h-full w-full object-cover"><span x-show="!product.image" class="grid h-full place-items-center text-2xl text-neutral-300"><i class="ph ph-t-shirt"></i></span></div><div class="min-w-0 flex-1"><p class="truncate font-semibold text-title" x-text="product.name"></p><p class="text-xs text-body" x-text="`${product.variants.length} variants`"></p><div class="mt-2 flex flex-wrap gap-2"><template x-for="video in product.videos" :key="video.id"><button type="button" class="btn btn-sm btn-outline" @click="sendCommerceVideo(video.id)" :disabled="sending || !commerceSessionActive"><i class="ph ph-video"></i> {{ __('Send video') }}</button></template></div></div></div><div class="divide-y divide-border border-t border-border"><template x-for="variant in product.variants" :key="variant.id"><div class="flex items-center gap-3 p-3"><input type="checkbox" :checked="commerceSelected.includes(variant.id)" @change="toggleCommerceVariant(variant.id)" :aria-label="`Select ${product.name} ${variant.label}`"><div class="min-w-0 flex-1"><p class="truncate text-sm font-medium text-title" x-text="variant.label || product.name"></p><p class="text-xs text-body"><span x-text="new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(variant.price)"></span> · <span x-text="variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'"></span></p></div><button type="button" class="btn btn-sm btn-outline" @click="sendCommerceProduct(variant.id)" :disabled="sending || !commerceSessionActive">{{ __('Send') }}</button></div></template></div></article></template>
+            <template x-for="product in commerceProducts" :key="product.id">
+              <article class="overflow-hidden rounded-2xl bg-neutral-0 shadow-sm ring-1 ring-neutral-200/70">
+                <div class="flex gap-3 bg-section/60 p-3">
+                  <div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+                    <img x-show="product.image" :src="product.image" :alt="product.name" class="h-full w-full object-cover">
+                    <span x-show="!product.image" class="grid h-full place-items-center text-2xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate font-semibold text-title" x-text="product.name"></p>
+                    <p class="text-xs text-body" x-text="`${product.variants.length} variants`"></p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <template x-for="video in product.videos" :key="video.id"><button type="button" class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceVideo(video.id)" :disabled="sending"><i class="ph ph-video"></i> {{ __('Send video') }}</button></template>
+                    </div>
+                  </div>
+                </div>
+                <div class="divide-y divide-border-soft">
+                  <template x-for="variant in product.variants" :key="variant.id">
+                    <div class="flex items-center gap-3 p-3 transition hover:bg-primary/5">
+                      <input type="checkbox" :checked="commerceSelected.includes(variant.id)" @change="toggleCommerceVariant(variant.id)" :aria-label="`Select ${product.name} ${variant.label}`">
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-title" x-text="variant.label || product.name"></p>
+                        <p class="text-xs text-body"><span x-text="new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(variant.price)"></span> · <span x-text="variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'"></span></p>
+                      </div>
+                      <button type="button" class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceProduct(variant.id)" :disabled="sending"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send') }}</button>
+                    </div>
+                  </template>
+                </div>
+              </article>
+            </template>
             <p class="py-8 text-center text-sm text-body" x-show="commerceProducts.length === 0">{{ __('No active products match your search.') }}</p>
           </div>
         </div>
-        <footer class="flex items-center justify-between gap-3 border-t border-border bg-section p-4"><p class="text-sm text-body"><strong class="text-title" x-text="commerceSelected.length"></strong> {{ __('selected') }}</p><button type="button" class="btn btn-primary" @click="sendCommerceSelection()" :disabled="commerceSelected.length === 0 || sending || !commerceSessionActive"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send selection') }}</button></footer>
+        <footer class="flex items-center justify-between gap-3 bg-section p-4 shadow-[0_-4px_16px_rgba(16,24,40,0.06)]"><div><p class="text-sm text-body"><strong class="text-title" x-text="commerceSelected.length"></strong> {{ __('selected') }}</p><p class="text-xs text-warning" x-show="!commerceSessionActive">{{ __('Click send to see what action is required.') }}</p></div><button type="button" class="btn btn-primary disabled:opacity-50" @click="sendCommerceSelection()" :disabled="sending"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send selection') }}</button></footer>
       </aside>
     </div>
   </div>

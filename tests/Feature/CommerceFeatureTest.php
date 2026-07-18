@@ -506,6 +506,59 @@ it('persists an outbound product attempt once when the same send is retried', fu
         ->and(CommerceMessageAttempt::query()->count())->toBe(1);
 });
 
+it('reports the customer service window and catalog readiness to the inbox drawer', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo('commerce.view');
+    $context['conversation']->update(['session_expires_at' => null]);
+    commerceProduct($context['workspace']->id);
+    $catalog = Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $context['channel']->id,
+        'meta_catalog_id' => 'catalog-readiness',
+        'feed_token' => str_repeat('r', 64),
+        'sync_mode' => 'feed',
+    ]);
+
+    $this->actingAs($context['user'])
+        ->getJson(route('user.commerce.conversations.products', $context['conversation']))
+        ->assertSuccessful()
+        ->assertJsonPath('session_active', false)
+        ->assertJsonPath('catalog.connected', true)
+        ->assertJsonPath('catalog.ready', false)
+        ->assertJsonPath('catalog.item_count', 0);
+
+    $catalog->update([
+        'last_sync_status' => 'completed',
+        'last_successful_at' => now(),
+        'last_item_count' => 2,
+    ]);
+
+    $this->getJson(route('user.commerce.conversations.products', $context['conversation']))
+        ->assertSuccessful()
+        ->assertJsonPath('catalog.ready', true)
+        ->assertJsonPath('catalog.item_count', 2);
+});
+
+it('requires a buyer reply before sending interactive catalog products', function (): void {
+    $context = commerceContext();
+    $context['conversation']->update(['session_expires_at' => null]);
+    $product = commerceProduct($context['workspace']->id);
+    Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $context['channel']->id,
+        'meta_catalog_id' => 'catalog-expired-session',
+        'feed_token' => str_repeat('e', 64),
+    ]);
+    $channels = Mockery::mock(ChannelManager::class);
+    $channels->shouldNotReceive('sendMessage');
+
+    (new CatalogMessageService($channels))->sendProduct(
+        $context['conversation']->fresh(['channelAccount', 'contact']),
+        $product->variants->first()->id,
+    );
+})->throws(ValidationException::class, 'wait for the buyer to reply');
+
 it('creates one immutable order for duplicate WhatsApp cart webhooks', function (): void {
     $context = commerceContext();
     $product = commerceProduct($context['workspace']->id);

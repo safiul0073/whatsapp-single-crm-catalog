@@ -10,6 +10,19 @@ use App\Modules\Blogs\Http\Controllers\BlogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('storage-link', function () {
+    $target = storage_path('app/public');
+    $link = public_path('storage');
+
+    if (file_exists($link)) {
+        return "The 'public/storage' directory already exists.";
+    }
+
+    symlink($target, $link);
+
+    return 'The [public/storage] directory has been linked.';
+})->name('storage.link');
+
 Route::get('/', [FrontendPageController::class, 'home'])->name('home');
 Route::get('frontend/theme/{theme}.css', [FrontendPageController::class, 'themeCss'])
     ->where('theme', '[A-Za-z0-9_-]+')

@@ -362,6 +362,14 @@
   @apply hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-neutral-0 xl:flex;
 }
 
+.inbox__rail-header {
+  @apply flex items-center justify-between gap-2 pb-2;
+}
+
+.inbox__rail-title {
+  @apply truncate text-sm font-semibold text-title;
+}
+
 .inbox__list {
   @apply flex w-full shrink-0 flex-col overflow-hidden border-r border-neutral-200 bg-neutral-0 lg:w-80;
 }
@@ -376,6 +384,37 @@
 
 .inbox__crm.is-open {
   @apply flex;
+}
+
+.inbox.is-rail-collapsed .inbox__rail {
+  @apply xl:w-16;
+}
+
+.inbox.is-rail-collapsed .inbox__rail-header {
+  @apply justify-center;
+}
+
+.inbox.is-rail-collapsed .inbox__rail-title,
+.inbox.is-rail-collapsed .inbox__rail-label,
+.inbox.is-rail-collapsed .inbox__rail-heading,
+.inbox.is-rail-collapsed .inbox__rail-helper {
+  @apply hidden;
+}
+
+.inbox.is-rail-collapsed .inbox__rail .inbox-view {
+  @apply relative h-11 justify-center px-2;
+}
+
+.inbox.is-rail-collapsed .inbox__rail .inbox-view > span:first-child {
+  @apply justify-center;
+}
+
+.inbox.is-rail-collapsed .inbox__rail .badge {
+  @apply absolute -top-1 -right-1 min-w-4 px-1 text-[10px];
+}
+
+.inbox.is-list-collapsed .inbox__list {
+  @apply lg:hidden;
 }
 
 .inbox.show-thread .inbox__list {

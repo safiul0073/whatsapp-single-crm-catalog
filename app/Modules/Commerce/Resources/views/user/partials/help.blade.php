@@ -112,7 +112,7 @@
                 __('Send gallery video separately with an optional caption.'),
                 __('When the buyer submits the WhatsApp cart, continue in Commerce Orders.'),
             ],
-            'tip' => __('If the 24-hour window has expired, send an approved catalog template before interactive product messages.'),
+            'tip' => __('If the 24-hour window has expired, send an approved template and wait for the buyer to reply. Only the buyer’s inbound message reopens interactive product messaging.'),
             'nextLabel' => __('View orders'),
             'nextUrl' => route('user.commerce.orders.index'),
         ],
