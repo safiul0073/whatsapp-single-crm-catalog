@@ -281,6 +281,7 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('Auto reply')
         ->assertSee('toggleAutomatedReply', false)
         ->assertSee('automation', false)
+        ->assertSee('syncCrmStageForPipeline($event.target.value)', false)
         ->assertSee('data-commerce-help="inbox"', false)
         ->assertSee('Send catalog or products from WhatsApp.')
         ->assertSee('Share complete catalog')

@@ -585,7 +585,8 @@ Alpine.data("liveInbox", (config) => ({
       this.crmPermissions = response.data.permissions || this.crmPermissions;
       const defaultPipeline = this.crm?.pipelines?.find((pipeline) => pipeline.is_default) || this.crm?.pipelines?.[0];
       this.crmForm.pipeline_id = this.crm?.current_lead?.pipeline_id || defaultPipeline?.id || '';
-      this.crmForm.stage_id = this.crm?.current_lead?.stage_id || defaultPipeline?.stages?.[0]?.id || '';
+      this.crmForm.stage_id = this.crm?.current_lead?.stage_id || '';
+      this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
       this.crmForm.assigned_to = this.crm?.current_lead?.assigned_to || '';
     } catch (error) {
       this.sendError = this.errorMessage(error, 'Unable to load CRM details.');
@@ -598,8 +599,21 @@ Alpine.data("liveInbox", (config) => ({
     return this.crm?.pipelines?.find((pipeline) => String(pipeline.id) === String(this.crmForm.pipeline_id))?.stages || [];
   },
 
+  syncCrmStageForPipeline(pipelineId) {
+    this.crmForm.pipeline_id = pipelineId || '';
+    const stages = this.crmStages();
+    const selectedStageBelongsToPipeline = stages.some((stage) => String(stage.id) === String(this.crmForm.stage_id));
+
+    if (!selectedStageBelongsToPipeline) {
+      this.crmForm.stage_id = stages[0]?.id || '';
+    }
+  },
+
   openCrmAction(action) {
     this.crmAction = action;
+    if (['create', 'stage'].includes(action)) {
+      this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
+    }
     this.openCrmPanel();
     this.sendError = '';
   },
@@ -608,6 +622,15 @@ Alpine.data("liveInbox", (config) => ({
     if (this.crmSaving || !this.crm?.contact) {
       return;
     }
+
+    if (this.crmAction === 'create') {
+      this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
+      if (!this.crmForm.pipeline_id || !this.crmForm.stage_id) {
+        this.sendError = 'Choose a pipeline that has at least one stage before creating a lead.';
+        return;
+      }
+    }
+
     this.crmSaving = true;
     this.sendError = '';
     const lead = this.crm.current_lead;

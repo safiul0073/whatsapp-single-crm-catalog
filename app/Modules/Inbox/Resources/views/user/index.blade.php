@@ -422,7 +422,7 @@
               <div class="flex items-center justify-between"><p class="text-sm font-semibold text-title" x-text="crmAction.replace('_', ' ')"></p><button type="button" class="row-action" @click="crmAction = ''"><i class="ph ph-x"></i></button></div>
               <div x-show="crmAction === 'create'">
                 <label class="form-label" for="crmPipeline">{{ __('Pipeline') }}</label>
-                <select id="crmPipeline" class="form-input" x-model="crmForm.pipeline_id" @change="crmForm.stage_id = crmStages()[0]?.id || ''"><template x-for="pipeline in crm.pipelines" :key="pipeline.id"><option :value="pipeline.id" x-text="pipeline.name"></option></template></select>
+                <select id="crmPipeline" class="form-input" x-model="crmForm.pipeline_id" @change="syncCrmStageForPipeline($event.target.value)"><template x-for="pipeline in crm.pipelines" :key="pipeline.id"><option :value="pipeline.id" x-text="pipeline.name"></option></template></select>
               </div>
               <div x-show="['create', 'stage'].includes(crmAction)">
                 <label class="form-label" for="crmStage">{{ __('Stage') }}</label>
