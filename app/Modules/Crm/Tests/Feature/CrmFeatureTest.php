@@ -37,6 +37,7 @@ use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -177,6 +178,25 @@ it('loads workspace CRM profile data in the contact sidebar', function (): void 
         ->assertJsonPath('crm.tasks.0.title', 'Sidebar task')
         ->assertJsonFragment(['description' => 'Sidebar note'])
         ->assertJsonFragment(['description' => 'Sidebar message']);
+});
+
+it('validates duplicate stage names in the same pipeline before saving', function (): void {
+    [$user, $workspace] = crmTestContext();
+    Permission::findOrCreate('crm.manage', 'web');
+    $user->givePermissionTo('crm.manage');
+    $pipeline = app(PipelineService::class)->ensureDefaultForWorkspace($workspace->id);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->from(route('user.crm.index'))
+        ->post(route('user.crm.stages.store', $pipeline), [
+            'name' => 'New',
+            'color' => '#075E54',
+        ])
+        ->assertRedirect(route('user.crm.index'))
+        ->assertSessionHasErrors('name');
+
+    expect($pipeline->stages()->where('name', 'New')->count())->toBe(1);
 });
 
 it('turns an attributed WhatsApp campaign reply into a tagged CRM lead when enabled', function (): void {
