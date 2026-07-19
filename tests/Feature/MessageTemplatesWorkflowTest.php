@@ -230,6 +230,30 @@ it('creates updates and deletes a user template', function (): void {
     expect(MessageTemplate::query()->whereKey($template->id)->exists())->toBeFalse();
 });
 
+it('opens an existing template by id without checking workspace ownership', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    app(WorkspaceResolver::class)->current($user);
+    $otherUser = User::factory()->create(['email_verified_at' => now()]);
+    $otherWorkspace = app(WorkspaceResolver::class)->current($otherUser);
+
+    $template = MessageTemplate::query()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'imported_template',
+        'language' => 'en_US',
+        'category' => 'utility',
+        'status' => 'draft',
+        'components' => [['type' => 'BODY', 'text' => 'Imported template body']],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('user.message-templates.edit', $template))
+        ->assertOk()
+        ->assertSee('Edit Template')
+        ->assertSee('imported_template')
+        ->assertSee('Imported template body');
+});
+
 it('renders a compact centered live preview for whatsapp and telegram templates', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
     messageTemplateChannel($user);

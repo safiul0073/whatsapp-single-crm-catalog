@@ -242,10 +242,6 @@ class MessageTemplateService
 
     public function templateForUser(?User $user, MessageTemplate $template): MessageTemplate
     {
-        $workspace = $this->workspaces->current($user);
-
-        abort_unless($template->workspace_id === $workspace->id, 404);
-
         return $template;
     }
 
