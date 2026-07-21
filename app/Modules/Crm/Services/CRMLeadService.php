@@ -26,16 +26,15 @@ class CRMLeadService
     {
         return DB::transaction(function () use ($workspaceId, $contactId, $data, $actor): CrmLead {
             $contact = Contact::query()->where('workspace_id', $workspaceId)->lockForUpdate()->findOrFail($contactId);
-            $pipeline = filled($data['pipeline_id'] ?? null)
-                ? $this->pipelines->pipelineForWorkspace($workspaceId, (int) $data['pipeline_id'])
-                : $this->pipelines->ensureDefaultForWorkspace($workspaceId);
             $stage = filled($data['stage_id'] ?? null)
                 ? $this->pipelines->stageForWorkspace($workspaceId, (int) $data['stage_id'])
-                : $pipeline->stages()->orderBy('position')->firstOrFail();
-
-            if ($stage->pipeline_id !== $pipeline->id) {
-                throw ValidationException::withMessages(['stage_id' => __('The selected stage does not belong to this pipeline.')]);
-            }
+                : null;
+            $pipeline = $stage
+                ? $this->pipelines->pipelineForWorkspace($workspaceId, (int) $stage->pipeline_id)
+                : (filled($data['pipeline_id'] ?? null)
+                    ? $this->pipelines->pipelineForWorkspace($workspaceId, (int) $data['pipeline_id'])
+                    : $this->pipelines->ensureDefaultForWorkspace($workspaceId));
+            $stage ??= $pipeline->stages()->orderBy('position')->firstOrFail();
 
             $conversation = $this->conversation($workspaceId, $contact->id, $data['conversation_id'] ?? null);
             $conversationId = $conversation?->id;
@@ -52,7 +51,7 @@ class CRMLeadService
             $payload = [
                 'conversation_id' => $conversationId ?: $lead?->conversation_id,
                 'campaign_id' => $campaignId ?: $lead?->campaign_id,
-                'stage_id' => $data['stage_id'] ?? $lead?->stage_id ?? $stage->id,
+                'stage_id' => $stage->id,
                 'title' => $data['title'] ?? $lead?->title ?? ($contact->name ?: $contact->phone ?: __('New lead')),
                 'value' => array_key_exists('value', $data) ? $data['value'] : $lead?->value,
                 'source' => $data['source'] ?? $lead?->source?->value ?? ($conversation?->provider === 'whatsapp' ? CrmLeadSource::WhatsApp->value : CrmLeadSource::Manual->value),

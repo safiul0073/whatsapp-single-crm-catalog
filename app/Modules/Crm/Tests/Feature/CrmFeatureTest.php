@@ -112,6 +112,24 @@ it('creates one open lead per contact and pipeline and records CRM work', functi
         ->and(CrmActivity::query()->where('workspace_id', $workspace->id)->where('lead_id', $lead->id)->count())->toBeGreaterThanOrEqual(6);
 });
 
+it('creates a lead using the selected stage pipeline when the submitted pipeline is stale', function (): void {
+    [$user, $workspace, $contact, $conversation] = crmTestContext();
+    $defaultPipeline = app(PipelineService::class)->ensureDefaultForWorkspace($workspace->id);
+    $targetPipeline = app(PipelineService::class)->create($workspace->id, ['name' => 'Imported Pipeline']);
+    $targetStage = app(PipelineService::class)->createStage($workspace->id, $targetPipeline->id, ['name' => 'Imported Stage']);
+
+    $lead = app(CRMLeadService::class)->createOrUpdate($workspace->id, $contact->id, [
+        'conversation_id' => $conversation->id,
+        'pipeline_id' => $defaultPipeline->id,
+        'stage_id' => $targetStage->id,
+        'title' => 'Inbox lead',
+    ], $user);
+
+    expect($lead->pipeline_id)->toBe($targetPipeline->id)
+        ->and($lead->stage_id)->toBe($targetStage->id)
+        ->and($lead->title)->toBe('Inbox lead');
+});
+
 it('assigns only active workspace members and supports won lost history', function (): void {
     [$owner, $workspace, $contact] = crmTestContext();
     $agent = User::factory()->create(['email_verified_at' => now()]);
