@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -31,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureProductionUrl();
+
         // Super admin bypasses all permission checks
         Gate::before(function ($user, $ability) {
             return $user instanceof Admin && $user->hasRole('super-admin') ? true : null;
@@ -75,6 +78,25 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->configureRateLimiting();
+    }
+
+    protected function configureProductionUrl(): void
+    {
+        if (config('app.env') !== 'production') {
+            return;
+        }
+
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if ($appUrl === '') {
+            return;
+        }
+
+        URL::forceRootUrl($appUrl);
+
+        if (str_starts_with($appUrl, 'https://')) {
+            URL::forceScheme('https');
+        }
     }
 
     /**

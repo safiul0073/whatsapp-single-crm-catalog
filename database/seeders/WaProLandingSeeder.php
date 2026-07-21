@@ -67,13 +67,13 @@ class WaProLandingSeeder extends Seeder
                     'heading_accent' => 'right.',
                     'subheading' => "Bulk sends. Chatbots. Real results.\nLive in minutes.",
                     'cta_primary_text' => 'Start for free',
-                    'cta_primary_url' => route('login'),
+                    'cta_primary_url' => '/login',
                     'cta_secondary_text' => 'Watch a tour',
-                    'cta_secondary_url' => route('frontend.page', 'features'),
+                    'cta_secondary_url' => '/features',
                     'images' => [
-                        ['url' => asset('assets/wapro/images/hero-tedy-1.webp'), 'alt' => 'A team collaborating on customer messaging'],
-                        ['url' => asset('assets/wapro/images/hero-tedy-2.webp'), 'alt' => 'Two colleagues reviewing campaign results'],
-                        ['url' => asset('assets/wapro/images/hero-tedy-3.webp'), 'alt' => 'A happy customer support team'],
+                        ['url' => '/assets/wapro/images/hero-tedy-1.webp', 'alt' => 'A team collaborating on customer messaging'],
+                        ['url' => '/assets/wapro/images/hero-tedy-2.webp', 'alt' => 'Two colleagues reviewing campaign results'],
+                        ['url' => '/assets/wapro/images/hero-tedy-3.webp', 'alt' => 'A happy customer support team'],
                     ],
                 ],
             ],
@@ -101,14 +101,14 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Everything you need to run WhatsApp at scale',
                     'subheading' => 'Each module supports a real operational job — from outreach and automation to contacts and reporting.',
                     'modules' => [
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.9 4.7a2 2 0 0 0 2 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>', 'label' => 'Bulk Campaigns', 'description' => 'Launch high-volume WhatsApp campaigns to segmented audiences with timing and delivery under control.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', 'label' => 'Auto Reply', 'description' => 'Trigger automatic responses for inbound messages, off-hours support and lead capture by keyword.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v3h1a2 2 0 0 1 0 4h-1v3a2 2 0 0 1-2 2h-3v1a2 2 0 0 1-4 0v-1H7a2 2 0 0 1-2-2v-3H4a2 2 0 0 1 0-4h1V7a2 2 0 0 1 2-2h3V4a2 2 0 0 1 2-2z"/></svg>', 'label' => 'AI Smart Reply', 'description' => 'Generate fast, context-aware replies so agents handle conversations with less manual effort.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8V4m0 4a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a4 4 0 0 0-4-4zM9 14h.01M15 14h.01"/></svg>', 'label' => 'Chatbot', 'description' => 'Build conversational flows that qualify leads and move contacts to the next step automatically.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>', 'label' => 'Contacts', 'description' => 'Manage lists, segments and campaign targets from one structured database built for WhatsApp.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>', 'label' => 'Export Participants', 'description' => 'Extract participants from WhatsApp groups for outreach, qualification and audience building.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z"/></svg>', 'label' => 'Profile Info', 'description' => 'Review WhatsApp profile details quickly to enrich lead context and improve handoff quality.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
-                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 14l3-3 3 3 5-6"/></svg>', 'label' => 'Reports', 'description' => 'Track campaign output, reply activity and workflow performance with operational reporting.', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features')],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.9 4.7a2 2 0 0 0 2 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>', 'label' => 'Bulk Campaigns', 'description' => 'Launch high-volume WhatsApp campaigns to segmented audiences with timing and delivery under control.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', 'label' => 'Auto Reply', 'description' => 'Trigger automatic responses for inbound messages, off-hours support and lead capture by keyword.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v3h1a2 2 0 0 1 0 4h-1v3a2 2 0 0 1-2 2h-3v1a2 2 0 0 1-4 0v-1H7a2 2 0 0 1-2-2v-3H4a2 2 0 0 1 0-4h1V7a2 2 0 0 1 2-2h3V4a2 2 0 0 1 2-2z"/></svg>', 'label' => 'AI Smart Reply', 'description' => 'Generate fast, context-aware replies so agents handle conversations with less manual effort.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8V4m0 4a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a4 4 0 0 0-4-4zM9 14h.01M15 14h.01"/></svg>', 'label' => 'Chatbot', 'description' => 'Build conversational flows that qualify leads and move contacts to the next step automatically.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>', 'label' => 'Contacts', 'description' => 'Manage lists, segments and campaign targets from one structured database built for WhatsApp.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>', 'label' => 'Export Participants', 'description' => 'Extract participants from WhatsApp groups for outreach, qualification and audience building.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z"/></svg>', 'label' => 'Profile Info', 'description' => 'Review WhatsApp profile details quickly to enrich lead context and improve handoff quality.', 'link_text' => 'Learn more', 'link_url' => '/features'],
+                        ['icon_svg' => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 14l3-3 3 3 5-6"/></svg>', 'label' => 'Reports', 'description' => 'Track campaign output, reply activity and workflow performance with operational reporting.', 'link_text' => 'Learn more', 'link_url' => '/features'],
                     ],
                 ],
             ],
@@ -122,7 +122,7 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Visual insights for data-driven campaigns',
                     'subheading' => 'See delivery, read and reply rates across every campaign and device.',
                     'cta_text' => 'See all features',
-                    'cta_url' => route('frontend.page', 'features'),
+                    'cta_url' => '/features',
                     'stats' => ['sent' => '104.7k', 'change' => '+78%', 'read' => '86%', 'ctr' => '11.4%', 'failed' => '0.04%'],
                     'recipients' => [
                         ['name' => 'Aisha Rahman', 'status' => 'Replied'],
@@ -162,9 +162,9 @@ class WaProLandingSeeder extends Seeder
                     'eyebrow' => 'Use cases',
                     'heading' => 'For growth, support & daily operations',
                     'cases' => [
-                        ['eyebrow' => 'Growth', 'title' => 'Outbound Marketing', 'description' => 'Build segmented lists, run bulk campaigns, track responses, and improve conversion using report data.', 'bullets' => ['Segmented lists & reusable audiences', 'Bulk campaigns with delivery tracking'], 'layout_direction' => 'text_left', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features'), 'mockup_data' => ['campaign_name' => 'Campaign · Spring Sale', 'status' => 'Sent', 'stats' => [['value' => '42.1k', 'label' => 'Sent'], ['value' => '86%', 'label' => 'Read'], ['value' => '11.4%', 'label' => 'Replies']]]],
-                        ['eyebrow' => 'Support', 'title' => 'Inbound Automation', 'description' => 'Use chatbots and auto-replies to handle repetitive conversations without keeping agents on every message.', 'bullets' => ['Keyword auto-replies, 24/7', 'Chatbot flows that qualify leads'], 'layout_direction' => 'text_right', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features'), 'mockup_data' => ['bot_name' => 'Auto-reply bot', 'status' => 'online', 'messages' => ['Hi! Is the House Blend back in stock? ☕', 'Yes! Reply ORDER to grab a bag ✅', 'Order placed — shipping today 🎉']]],
-                        ['eyebrow' => 'Operations', 'title' => 'Performance Visibility', 'description' => 'Use profile lookups, reports and participant export to move from scattered chats to measurable workflows.', 'bullets' => ['Exportable reports for the whole team', 'Participant export for new growth loops'], 'layout_direction' => 'text_left', 'link_text' => 'Learn more', 'link_url' => route('frontend.page', 'features'), 'mockup_data' => ['delivered' => '104.7k', 'change' => '+78%']],
+                        ['eyebrow' => 'Growth', 'title' => 'Outbound Marketing', 'description' => 'Build segmented lists, run bulk campaigns, track responses, and improve conversion using report data.', 'bullets' => ['Segmented lists & reusable audiences', 'Bulk campaigns with delivery tracking'], 'layout_direction' => 'text_left', 'link_text' => 'Learn more', 'link_url' => '/features', 'mockup_data' => ['campaign_name' => 'Campaign · Spring Sale', 'status' => 'Sent', 'stats' => [['value' => '42.1k', 'label' => 'Sent'], ['value' => '86%', 'label' => 'Read'], ['value' => '11.4%', 'label' => 'Replies']]]],
+                        ['eyebrow' => 'Support', 'title' => 'Inbound Automation', 'description' => 'Use chatbots and auto-replies to handle repetitive conversations without keeping agents on every message.', 'bullets' => ['Keyword auto-replies, 24/7', 'Chatbot flows that qualify leads'], 'layout_direction' => 'text_right', 'link_text' => 'Learn more', 'link_url' => '/features', 'mockup_data' => ['bot_name' => 'Auto-reply bot', 'status' => 'online', 'messages' => ['Hi! Is the House Blend back in stock? ☕', 'Yes! Reply ORDER to grab a bag ✅', 'Order placed — shipping today 🎉']]],
+                        ['eyebrow' => 'Operations', 'title' => 'Performance Visibility', 'description' => 'Use profile lookups, reports and participant export to move from scattered chats to measurable workflows.', 'bullets' => ['Exportable reports for the whole team', 'Participant export for new growth loops'], 'layout_direction' => 'text_left', 'link_text' => 'Learn more', 'link_url' => '/features', 'mockup_data' => ['delivered' => '104.7k', 'change' => '+78%']],
                     ],
                 ],
             ],
@@ -180,12 +180,12 @@ class WaProLandingSeeder extends Seeder
                     'show_yearly_toggle' => true,
                     'yearly_save_text' => 'Save 20%',
                     'plans' => [
-                        ['name' => 'Starter', 'description' => 'Perfect for WhatsApp automation beginners.', 'monthly_price' => '0', 'yearly_price' => '0', 'features' => ['10,000 messages / month', 'Auto reply & chatbot', '1 WhatsApp number', 'Basic reports'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Start for free', 'cta_url' => route('login')],
-                        ['name' => 'Growth', 'description' => 'For teams running WhatsApp at scale.', 'monthly_price' => '29', 'yearly_price' => '23', 'features' => ['100,000 messages / month', 'AI smart reply & content', '5 WhatsApp numbers', 'Advanced reports & export', 'Team members & roles'], 'highlighted' => true, 'badge' => 'Most popular', 'cta_text' => 'Choose Growth', 'cta_url' => route('login')],
+                        ['name' => 'Starter', 'description' => 'Perfect for WhatsApp automation beginners.', 'monthly_price' => '0', 'yearly_price' => '0', 'features' => ['10,000 messages / month', 'Auto reply & chatbot', '1 WhatsApp number', 'Basic reports'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Start for free', 'cta_url' => '/login'],
+                        ['name' => 'Growth', 'description' => 'For teams running WhatsApp at scale.', 'monthly_price' => '29', 'yearly_price' => '23', 'features' => ['100,000 messages / month', 'AI smart reply & content', '5 WhatsApp numbers', 'Advanced reports & export', 'Team members & roles'], 'highlighted' => true, 'badge' => 'Most popular', 'cta_text' => 'Choose Growth', 'cta_url' => '/login'],
                     ],
                     'footer_text' => 'Need more?',
                     'footer_link_text' => 'Compare all plans →',
-                    'footer_link_url' => route('frontend.page', 'pricing'),
+                    'footer_link_url' => '/pricing',
                 ],
             ],
             [
@@ -214,10 +214,10 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Build your WhatsApp workflow on one system',
                     'subheading' => 'Launch campaigns, automate replies, manage contacts, and track performance from one workspace.',
                     'cta_primary_text' => 'Create your workspace',
-                    'cta_primary_url' => route('login'),
+                    'cta_primary_url' => '/login',
                     'cta_secondary_text' => 'View pricing',
-                    'cta_secondary_url' => route('frontend.page', 'pricing'),
-                    'background_image' => asset('assets/wapro/images/hero-tedy-1.webp'),
+                    'cta_secondary_url' => '/pricing',
+                    'background_image' => '/assets/wapro/images/hero-tedy-1.webp',
                 ],
             ],
             [
@@ -230,9 +230,9 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'One platform for everything you do on WhatsApp',
                     'subheading' => 'Campaigns, automation, a shared inbox, contacts, and reporting — built for the way teams run WhatsApp at scale.',
                     'cta_primary_text' => 'Start for free',
-                    'cta_primary_url' => route('login'),
+                    'cta_primary_url' => '/login',
                     'cta_secondary_text' => 'See pricing',
-                    'cta_secondary_url' => route('frontend.page', 'pricing'),
+                    'cta_secondary_url' => '/pricing',
                 ],
             ],
             [
@@ -250,7 +250,7 @@ class WaProLandingSeeder extends Seeder
                         'Live delivered / read / replied tracking',
                     ],
                     'cta_text' => 'Launch a campaign',
-                    'cta_url' => route('login'),
+                    'cta_url' => '/login',
                     'visual_cards' => [
                         [
                             'type' => 'stats',
@@ -298,7 +298,7 @@ class WaProLandingSeeder extends Seeder
                         'AI smart replies from your knowledge base',
                     ],
                     'cta_text' => 'Build an automation',
-                    'cta_url' => route('login'),
+                    'cta_url' => '/login',
                     'visual_cards' => [
                         [
                             'type' => 'rule',
@@ -374,10 +374,10 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Put every WhatsApp module to work today',
                     'subheading' => 'Start free, connect your number, and send your first campaign in minutes.',
                     'cta_primary_text' => 'Create your workspace',
-                    'cta_primary_url' => route('login'),
+                    'cta_primary_url' => '/login',
                     'cta_secondary_text' => 'View pricing',
-                    'cta_secondary_url' => route('frontend.page', 'pricing'),
-                    'background_image' => asset('assets/wapro/images/hero-tedy-2.webp'),
+                    'cta_secondary_url' => '/pricing',
+                    'background_image' => '/assets/wapro/images/hero-tedy-2.webp',
                 ],
             ],
             [
@@ -407,9 +407,9 @@ class WaProLandingSeeder extends Seeder
                     ],
                     'yearly_save_text' => 'Save 20%',
                     'plans' => [
-                        ['name' => 'Starter', 'description' => 'Perfect for WhatsApp automation beginners.', 'monthly_price' => '0', 'yearly_price' => '0', 'features' => ['10,000 messages / month', 'Auto reply & chatbot', '1 WhatsApp number', 'Basic reports'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Start for free', 'cta_url' => route('login')],
-                        ['name' => 'Growth', 'description' => 'For teams running WhatsApp at scale.', 'monthly_price' => '29', 'yearly_price' => '23', 'features' => ['100,000 messages / month', 'AI smart reply & content', '5 WhatsApp numbers', 'Advanced reports & export', 'Team members & roles'], 'highlighted' => true, 'badge' => 'Most popular', 'cta_text' => 'Choose Growth', 'cta_url' => route('login')],
-                        ['name' => 'Scale', 'description' => 'For high-volume senders and agencies.', 'monthly_price' => '79', 'yearly_price' => '63', 'features' => ['Unlimited messages', 'Everything in Growth', '20 WhatsApp numbers', 'API access & webhooks', 'Priority support'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Choose Scale', 'cta_url' => route('login')],
+                        ['name' => 'Starter', 'description' => 'Perfect for WhatsApp automation beginners.', 'monthly_price' => '0', 'yearly_price' => '0', 'features' => ['10,000 messages / month', 'Auto reply & chatbot', '1 WhatsApp number', 'Basic reports'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Start for free', 'cta_url' => '/login'],
+                        ['name' => 'Growth', 'description' => 'For teams running WhatsApp at scale.', 'monthly_price' => '29', 'yearly_price' => '23', 'features' => ['100,000 messages / month', 'AI smart reply & content', '5 WhatsApp numbers', 'Advanced reports & export', 'Team members & roles'], 'highlighted' => true, 'badge' => 'Most popular', 'cta_text' => 'Choose Growth', 'cta_url' => '/login'],
+                        ['name' => 'Scale', 'description' => 'For high-volume senders and agencies.', 'monthly_price' => '79', 'yearly_price' => '63', 'features' => ['Unlimited messages', 'Everything in Growth', '20 WhatsApp numbers', 'API access & webhooks', 'Priority support'], 'highlighted' => false, 'badge' => '', 'cta_text' => 'Choose Scale', 'cta_url' => '/login'],
                     ],
                     'footer_text' => 'All plans include a 14-day money-back guarantee. Prices in USD, excluding tax.',
                 ],
@@ -498,10 +498,10 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Try every feature free for 14 days',
                     'subheading' => 'No credit card required. Connect your number and send your first campaign in minutes.',
                     'cta_primary_text' => 'Create your workspace',
-                    'cta_primary_url' => route('login'),
+                    'cta_primary_url' => '/login',
                     'cta_secondary_text' => 'Talk to sales',
-                    'cta_secondary_url' => route('frontend.page', 'contact'),
-                    'background_image' => asset('assets/wapro/images/hero-tedy-1.webp'),
+                    'cta_secondary_url' => '/contact',
+                    'background_image' => '/assets/wapro/images/hero-tedy-1.webp',
                 ],
             ],
             [
@@ -557,9 +557,9 @@ class WaProLandingSeeder extends Seeder
                     'cta_subtitle' => 'Our team is happy to help. Start a conversation and we\'ll get back to you within a few hours on business days.',
                     'icon_class' => 'ph-headset',
                     'cta_primary_text' => 'Contact us',
-                    'cta_primary_url' => route('frontend.page', 'contact'),
+                    'cta_primary_url' => '/contact',
                     'cta_secondary_text' => 'Start free',
-                    'cta_secondary_url' => route('login'),
+                    'cta_secondary_url' => '/login',
                 ],
             ],
             [
@@ -572,9 +572,9 @@ class WaProLandingSeeder extends Seeder
                     'heading' => 'Still have a question?',
                     'subheading' => "Our team is happy to help. Start a conversation and we'll get back to you within a few hours on business days.",
                     'cta_primary_text' => 'Contact us',
-                    'cta_primary_url' => route('frontend.page', 'contact'),
+                    'cta_primary_url' => '/contact',
                     'cta_secondary_text' => 'Start free',
-                    'cta_secondary_url' => route('login'),
+                    'cta_secondary_url' => '/login',
                 ],
             ],
             [
@@ -912,13 +912,13 @@ class WaProLandingSeeder extends Seeder
         /** @var MenuService $menus */
         $menus = app(MenuService::class);
 
-        $homeUrl = route('home');
-        $featuresUrl = route('frontend.page', 'features');
-        $faqsUrl = route('frontend.page', 'faqs');
-        $blogUrl = route('blog.index');
-        $contactUrl = route('frontend.page', 'contact');
-        $registerUrl = route('login');
-        $loginUrl = route('login');
+        $homeUrl = '/';
+        $featuresUrl = '/features';
+        $faqsUrl = '/faqs';
+        $blogUrl = '/blog';
+        $contactUrl = '/contact';
+        $registerUrl = '/login';
+        $loginUrl = '/login';
         $privacyPolicy = Page::query()->where('slug', 'privacy-policy')->first();
         $termsAndConditions = Page::query()->where('slug', 'terms-and-conditions')->first();
         $cookiePolicy = Page::query()->where('slug', 'cookie-policy')->first();
