@@ -72,6 +72,23 @@ Route::get('contact', [FrontendPageController::class, 'show'])->defaults('slug',
 Route::get('support', [FrontendPageController::class, 'show'])->defaults('slug', 'support')->name('support');
 Route::get('blog', [FrontendPageController::class, 'show'])->defaults('slug', 'blog')->name('blog.index');
 Route::get('blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('public/{path?}', function (Request $request, ?string $path = null) {
+    $path = trim((string) $path, '/');
+    $configuredHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    if ($path === '' || in_array($path, array_filter([$request->getHost(), $configuredHost]), true)) {
+        return redirect()->route('home', status: 301);
+    }
+
+    return redirect()->to('/'.$path, 301);
+})->where('path', '.*');
+Route::get('{duplicatedHost}', function (Request $request, string $duplicatedHost) {
+    $configuredHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    abort_unless(in_array($duplicatedHost, array_filter([$request->getHost(), $configuredHost]), true), 404);
+
+    return redirect()->route('home', status: 301);
+})->where('duplicatedHost', '[A-Za-z0-9.-]+\.[A-Za-z]{2,}');
 Route::get('{slug}', [FrontendPageController::class, 'show'])
     ->where('slug', '^(?!admin$|dashboard$|login$|register$|pricing$|forgot-password$|reset-password$|locale$|storage$).+')
     ->name('frontend.page');
