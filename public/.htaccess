@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Canonicalize duplicated host paths from shared hosting rewrites.
+    RewriteCond %{REQUEST_URI} ^/([^/]+)/?$
+    RewriteCond %1 =%{HTTP_HOST}
+    RewriteRule ^ / [L,R=301]
+
     # Canonicalize accidental /public URLs on shared hosting.
     RewriteCond %{REQUEST_URI} ^/public/([^/]+)/?$
     RewriteCond %1 =%{HTTP_HOST}

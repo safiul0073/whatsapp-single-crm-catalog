@@ -6,18 +6,28 @@ use Illuminate\Http\Request;
 define('LARAVEL_START', microtime(true));
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$queryString = $_SERVER['QUERY_STRING'] ?? '';
+
+if (trim($requestPath, '/') === $httpHost) {
+    $location = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+        .'://'.$httpHost.'/'
+        .($queryString !== '' ? "?{$queryString}" : '');
+
+    header("Location: {$location}", true, 301);
+    exit;
+}
 
 if (str_starts_with($requestPath, '/public')) {
     $targetPath = substr($requestPath, strlen('/public')) ?: '/';
     $targetPath = '/'.ltrim($targetPath, '/');
 
-    if (trim($targetPath, '/') === ($_SERVER['HTTP_HOST'] ?? '')) {
+    if (trim($targetPath, '/') === $httpHost) {
         $targetPath = '/';
     }
 
-    $queryString = $_SERVER['QUERY_STRING'] ?? '';
     $location = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-        .'://'.($_SERVER['HTTP_HOST'] ?? 'localhost')
+        .'://'.$httpHost
         .$targetPath
         .($queryString !== '' ? "?{$queryString}" : '');
 
