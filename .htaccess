@@ -1,8 +1,23 @@
 <IfModule mod_rewrite.c>
    RewriteEngine On
+
    # Force SSL
    RewriteCond %{HTTPS} !=on
    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+   # Fix cached/bad shared-hosting URLs.
+   RewriteCond %{REQUEST_URI} ^/([^/]+)/?$
+   RewriteCond %1 =%{HTTP_HOST}
+   RewriteRule ^ / [L,R=301]
+
+   RewriteCond %{REQUEST_URI} ^/public/([^/]+)/?$
+   RewriteCond %1 =%{HTTP_HOST}
+   RewriteRule ^public/.*$ / [L,R=301]
+
+   RewriteCond %{REQUEST_URI} ^/public/?(.*)$
+   RewriteRule ^public/?(.*)$ /$1 [L,R=301]
+
    # Remove public folder form URL
+   RewriteCond %{REQUEST_URI} !^/public/
    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

@@ -5,19 +5,6 @@
 
     RewriteEngine On
 
-    # Canonicalize duplicated host paths from shared hosting rewrites.
-    RewriteCond %{REQUEST_URI} ^/([^/]+)/?$
-    RewriteCond %1 =%{HTTP_HOST}
-    RewriteRule ^ / [L,R=301]
-
-    # Canonicalize accidental /public URLs on shared hosting.
-    RewriteCond %{REQUEST_URI} ^/public/([^/]+)/?$
-    RewriteCond %1 =%{HTTP_HOST}
-    RewriteRule ^ / [L,R=301]
-
-    RewriteCond %{REQUEST_URI} ^/public/?(.*)$
-    RewriteRule ^(.*)$ /$1 [L,R=301]
-
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

@@ -5,36 +5,6 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$queryString = $_SERVER['QUERY_STRING'] ?? '';
-
-if (trim($requestPath, '/') === $httpHost) {
-    $location = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-        .'://'.$httpHost.'/'
-        .($queryString !== '' ? "?{$queryString}" : '');
-
-    header("Location: {$location}", true, 301);
-    exit;
-}
-
-if (str_starts_with($requestPath, '/public')) {
-    $targetPath = substr($requestPath, strlen('/public')) ?: '/';
-    $targetPath = '/'.ltrim($targetPath, '/');
-
-    if (trim($targetPath, '/') === $httpHost) {
-        $targetPath = '/';
-    }
-
-    $location = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-        .'://'.$httpHost
-        .$targetPath
-        .($queryString !== '' ? "?{$queryString}" : '');
-
-    header("Location: {$location}", true, 301);
-    exit;
-}
-
 foreach (['SCRIPT_NAME', 'PHP_SELF'] as $serverKey) {
     if (isset($_SERVER[$serverKey])) {
         $_SERVER[$serverKey] = str_replace('/public/index.php', '/index.php', $_SERVER[$serverKey]);
