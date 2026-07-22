@@ -141,9 +141,9 @@ class CrmController extends Controller
     public function storePipeline(StoreCrmPipelineRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        $this->pipelines->create($workspace->id, $request->validated());
+        $pipeline = $this->pipelines->create($workspace->id, $request->validated());
 
-        return back()->with('status', __('Pipeline created.'));
+        return redirect()->route('user.crm.index', ['pipeline' => $pipeline->id])->with('status', __('Pipeline created.'));
     }
 
     public function updatePipeline(StoreCrmPipelineRequest $request, int $pipeline): RedirectResponse
@@ -159,7 +159,7 @@ class CrmController extends Controller
         $workspace = $this->workspaces->current($request->user());
         $this->pipelines->delete($workspace->id, $pipeline);
 
-        return back()->with('status', __('Pipeline deleted.'));
+        return redirect()->route('user.crm.index')->with('status', __('Pipeline deleted.'));
     }
 
     public function storeStage(StoreCrmStageRequest $request, int $pipeline): RedirectResponse

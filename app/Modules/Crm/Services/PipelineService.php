@@ -38,19 +38,7 @@ class PipelineService
                 'is_default' => true,
             ]);
 
-            foreach ([
-                ['name' => 'New', 'color' => '#1FAA53'],
-                ['name' => 'Contacted', 'color' => '#F59E0B'],
-                ['name' => 'Qualified', 'color' => '#6366F1'],
-                ['name' => 'Proposal', 'color' => '#075E54'],
-            ] as $position => $stage) {
-                $pipeline->stages()->create([
-                    'workspace_id' => $workspaceId,
-                    'name' => $stage['name'],
-                    'color' => $stage['color'],
-                    'position' => $position,
-                ]);
-            }
+            $this->createDefaultStages($pipeline, $workspaceId);
 
             return $pipeline->load('stages');
         });
@@ -79,11 +67,15 @@ class PipelineService
                 CrmPipeline::query()->where('workspace_id', $workspaceId)->update(['is_default' => false]);
             }
 
-            return CrmPipeline::query()->create([
+            $pipeline = CrmPipeline::query()->create([
                 'workspace_id' => $workspaceId,
                 'name' => $data['name'],
                 'is_default' => (bool) ($data['is_default'] ?? false),
             ]);
+
+            $this->createDefaultStages($pipeline, $workspaceId);
+
+            return $pipeline->load('stages');
         });
     }
 
@@ -185,5 +177,22 @@ class PipelineService
     public function stageForWorkspace(int $workspaceId, int $stageId): CrmStage
     {
         return CrmStage::query()->where('workspace_id', $workspaceId)->findOrFail($stageId);
+    }
+
+    protected function createDefaultStages(CrmPipeline $pipeline, int $workspaceId): void
+    {
+        foreach ([
+            ['name' => 'New', 'color' => '#1FAA53'],
+            ['name' => 'Contacted', 'color' => '#F59E0B'],
+            ['name' => 'Qualified', 'color' => '#6366F1'],
+            ['name' => 'Proposal', 'color' => '#075E54'],
+        ] as $position => $stage) {
+            $pipeline->stages()->create([
+                'workspace_id' => $workspaceId,
+                'name' => $stage['name'],
+                'color' => $stage['color'],
+                'position' => $position,
+            ]);
+        }
     }
 }

@@ -18,6 +18,7 @@ use App\Modules\Crm\Enums\CrmTaskStatus;
 use App\Modules\Crm\Jobs\SendCrmTaskRemindersJob;
 use App\Modules\Crm\Models\CrmActivity;
 use App\Modules\Crm\Models\CrmLead;
+use App\Modules\Crm\Models\CrmPipeline;
 use App\Modules\Crm\Models\CrmTask;
 use App\Modules\Crm\Services\CRMLeadService;
 use App\Modules\Crm\Services\LeadAssignmentService;
@@ -215,6 +216,66 @@ it('validates duplicate stage names in the same pipeline before saving', functio
         ->assertSessionHasErrors('name');
 
     expect($pipeline->stages()->where('name', 'New')->count())->toBe(1);
+});
+
+it('creates custom pipelines with default stages and opens the new board', function (): void {
+    [$user, $workspace] = crmTestContext();
+    Permission::findOrCreate('crm.manage', 'web');
+    $user->givePermissionTo('crm.manage');
+
+    $response = $this->withoutMiddleware()
+        ->actingAs($user)
+        ->from(route('user.crm.index'))
+        ->post(route('user.crm.pipelines.store'), [
+            'name' => 'Enterprise Sales',
+        ]);
+
+    $pipeline = CrmPipeline::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('name', 'Enterprise Sales')
+        ->firstOrFail();
+
+    $response->assertRedirect(route('user.crm.index', ['pipeline' => $pipeline->id]));
+
+    expect($pipeline->stages()->orderBy('position')->pluck('name')->all())->toBe([
+        'New',
+        'Contacted',
+        'Qualified',
+        'Proposal',
+    ]);
+});
+
+it('validates duplicate pipeline names before saving', function (): void {
+    [$user, $workspace] = crmTestContext();
+    Permission::findOrCreate('crm.manage', 'web');
+    $user->givePermissionTo('crm.manage');
+    app(PipelineService::class)->ensureDefaultForWorkspace($workspace->id);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->from(route('user.crm.index'))
+        ->post(route('user.crm.pipelines.store'), [
+            'name' => 'Sales Pipeline',
+        ])
+        ->assertRedirect(route('user.crm.index'))
+        ->assertSessionHasErrors('name');
+
+    expect(CrmPipeline::query()->where('workspace_id', $workspace->id)->where('name', 'Sales Pipeline')->count())->toBe(1);
+});
+
+it('redirects to the default CRM board after deleting a pipeline', function (): void {
+    [$user, $workspace] = crmTestContext();
+    Permission::findOrCreate('crm.manage', 'web');
+    $user->givePermissionTo('crm.manage');
+    $pipeline = app(PipelineService::class)->create($workspace->id, ['name' => 'Temporary Pipeline']);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->from(route('user.crm.index', ['pipeline' => $pipeline->id]))
+        ->delete(route('user.crm.pipelines.destroy', $pipeline))
+        ->assertRedirect(route('user.crm.index'));
+
+    expect(CrmPipeline::query()->whereKey($pipeline->id)->exists())->toBeFalse();
 });
 
 it('turns an attributed WhatsApp campaign reply into a tagged CRM lead when enabled', function (): void {
