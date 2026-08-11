@@ -10,6 +10,8 @@ use App\Modules\Campaigns\Enums\CampaignStatus;
 use App\Modules\Campaigns\Jobs\PrepareCampaignRecipientsJob;
 use App\Modules\Campaigns\Jobs\SendCampaignRecipientJob;
 use App\Modules\Campaigns\Models\Campaign;
+use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Services\CommerceTemplatePayloadService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Models\ContactGroup;
 use App\Modules\Contacts\Models\ContactTag;
@@ -38,6 +40,7 @@ class CampaignService
         protected CampaignReportService $reports,
         protected ChannelManager $channels,
         protected AutomationDispatcher $automations,
+        protected CommerceTemplatePayloadService $commerceTemplates,
     ) {}
 
     public function listForUser(?User $user): LengthAwarePaginator
@@ -75,6 +78,14 @@ class CampaignService
             'automations' => Automation::query()
                 ->where('workspace_id', $workspace->id)
                 ->latest()
+                ->get(),
+            'commerceVariants' => ProductVariant::query()
+                ->with(['product.category'])
+                ->where('workspace_id', $workspace->id)
+                ->whereIn('status', ['active', 'out_of_stock'])
+                ->whereHas('product', fn ($query) => $query->where('status', 'active'))
+                ->orderBy('id')
+                ->limit(200)
                 ->get(),
             'contacts' => Contact::query()
                 ->where('workspace_id', $workspace->id)
@@ -147,7 +158,7 @@ class CampaignService
             'message_subject' => $messageType === 'custom' ? ($data['message_subject'] ?? null) : null,
             'message_body' => $messageType === 'custom' ? ($data['message_body'] ?? null) : null,
             'variables' => $data['variables'] ?? [],
-            'settings' => $data['settings'] ?? [],
+            'settings' => $this->commerceTemplates->settingsFromRequest($workspace->id, $data['settings'] ?? []),
             'scheduled_at' => $scheduledAt,
             'queued_at' => $status !== CampaignStatus::Draft ? now() : null,
             'started_at' => $status === CampaignStatus::Sending ? now() : null,
@@ -203,7 +214,7 @@ class CampaignService
             'message_subject' => $messageType === 'custom' ? ($data['message_subject'] ?? null) : null,
             'message_body' => $messageType === 'custom' ? ($data['message_body'] ?? null) : null,
             'variables' => $data['variables'] ?? [],
-            'settings' => $data['settings'] ?? [],
+            'settings' => $this->commerceTemplates->settingsFromRequest($campaign->workspace_id, $data['settings'] ?? []),
             'scheduled_at' => $scheduledAt,
             'queued_at' => $status !== CampaignStatus::Draft ? now() : null,
             'started_at' => $status === CampaignStatus::Sending ? now() : null,
@@ -534,15 +545,21 @@ class CampaignService
                 ]);
             }
 
-            $templateExists = MessageTemplate::query()
+            $template = MessageTemplate::query()
                 ->where('workspace_id', $workspaceId)
                 ->where('provider', $provider)
                 ->whereKey($data['message_template_id'])
-                ->exists();
+                ->first();
 
-            if (! $templateExists) {
+            if (! $template) {
                 throw ValidationException::withMessages([
                     'message_template_id' => 'Select a template for the selected sender.',
+                ]);
+            }
+
+            if ($template->template_kind === 'multi_product' && blank(data_get($data, 'settings.commerce.variant_ids'))) {
+                throw ValidationException::withMessages([
+                    'settings.commerce.variant_ids' => 'Select products for a multi-product WhatsApp template.',
                 ]);
             }
 

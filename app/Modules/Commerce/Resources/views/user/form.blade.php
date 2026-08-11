@@ -26,7 +26,7 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 @if($isEdit && $product->status === 'active')
-                    <x-ui.button variant="outline" href="{{ route('commerce.products.public', $product->slug) }}" target="_blank"><i class="ph ph-arrow-square-out"></i> {{ __('Preview') }}</x-ui.button>
+                    <x-ui.button variant="outline" href="{{ route('commerce.products.public', ['workspace' => $product->workspace->slug, 'product' => $product->slug]) }}" target="_blank"><i class="ph ph-arrow-square-out"></i> {{ __('Preview') }}</x-ui.button>
                 @endif
                 <x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Save and exit') }}</x-ui.button>
             </div>

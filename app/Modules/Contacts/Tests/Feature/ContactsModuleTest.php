@@ -38,8 +38,15 @@ it('shows the csv upload drop zone in the import modal', function (): void {
         ->assertSee(route('user.contacts.export'), false)
         ->assertSee('Custom fields')
         ->assertSee('custom_fields[website]', false)
+        ->assertSee('Contact details')
+        ->assertSee('WhatsApp opted in')
+        ->assertSee('modal modal-xl', false)
+        ->assertSee('modal__panel--contact', false)
+        ->assertSee('Create a reachable WhatsApp contact with optional CRM context.', false)
         ->assertSee('Phone country code')
-        ->assertSee('sm:grid-cols-[10rem_minmax(0,1fr)]', false)
+        ->assertSee('sm:grid-cols-[8.5rem_minmax(0,1fr)]', false)
+        ->assertSee('placeholder="1712345678"', false)
+        ->assertSee('lg:grid-cols-[minmax(26rem,1fr)_20rem]', false)
         ->assertSee(':class="{ \'is-active\': step === 1 }"', false);
 });
 

@@ -17,12 +17,14 @@ class CatalogDiagnosticsService
             $this->check('channel_connected', $channel?->status?->value === 'connected', 'WhatsApp channel is connected.'),
             $this->check('access_token', filled($channel?->credential('access_token')), 'Encrypted access token is available.'),
             $this->check('catalog_id', filled($catalog->meta_catalog_id), 'Meta catalog ID is configured.'),
+            $this->check('currency', preg_match('/^[A-Z]{3}$/', strtoupper((string) $catalog->currency)) === 1, 'Catalog currency is a valid ISO currency code.'),
             $this->check('https_app_url', str_starts_with((string) config('app.url'), 'https://'), 'Application URL uses public HTTPS.'),
         ];
 
         $variants = ProductVariant::query()->with(['product.primaryMedia'])->where('workspace_id', $catalog->workspace_id)->where('status', 'active')->whereHas('product', fn ($query) => $query->where('status', 'active'))->get();
         $checks[] = $this->check('active_items', $variants->isNotEmpty(), 'At least one active catalog item exists.');
         $checks[] = $this->check('public_images', $variants->every(fn ($variant): bool => str_starts_with((string) ($variant->media?->url ?? $variant->product->primaryMedia?->url), 'https://')), 'All active items have public HTTPS images.');
+        $checks[] = $this->check('sync_freshness', ! $catalog->last_successful_at || $catalog->last_successful_at->greaterThan(now()->subDays(7)), 'Catalog sync is fresh or has not run yet.');
 
         if ($probeMeta && filled($catalog->meta_catalog_id) && filled($channel?->credential('access_token'))) {
             $response = $this->meta->catalog((string) $catalog->meta_catalog_id, (string) $channel->credential('access_token'));

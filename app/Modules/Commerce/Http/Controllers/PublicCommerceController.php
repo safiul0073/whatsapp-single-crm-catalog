@@ -4,13 +4,29 @@ namespace App\Modules\Commerce\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\Catalog;
+use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\CatalogFeedService;
-use Illuminate\View\View;
+use App\Modules\Frontend\Models\Page;
+use App\Modules\Frontend\Services\ActiveThemeResolver;
+use App\Modules\Frontend\Services\FrontendPageService;
+use App\Modules\Frontend\Services\PageRenderService;
+use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PublicCommerceController extends Controller
 {
+    public function __construct(
+        protected FrontendPageService $pages,
+        protected ActiveThemeResolver $activeThemeResolver,
+        protected PageRenderService $renderer
+    ) {}
+
     public function feed(string $token, CatalogFeedService $feeds): StreamedResponse
     {
         $catalog = Catalog::query()->where('feed_token', $token)->where('is_active', true)->firstOrFail();
@@ -18,12 +34,205 @@ class PublicCommerceController extends Controller
         return $feeds->response($catalog);
     }
 
-    public function product(string $product): View
+    public function directory(): ViewContract
     {
-        $record = Product::query()->with(['primaryMedia', 'gallery.media', 'variants.media'])->where('slug', $product)->where('status', 'active')->firstOrFail();
+        $workspaces = Workspace::query()
+            ->whereHas('products', fn (Builder $query): Builder => $query->where('status', 'active'))
+            ->orderBy('name')
+            ->paginate(24);
+
+        $payload = $this->frontendPayload(
+            title: 'Shops',
+            metaDescription: 'Browse merchant storefronts available for WhatsApp ordering.'
+        );
+        $payload['workspaces'] = $workspaces;
+
+        return view('commerce::public.directory', $payload);
+    }
+
+    public function products(Request $request): ViewContract
+    {
+        $categoryId = $request->integer('category');
+        $subcategoryId = $request->integer('subcategory');
+        $categoryTree = $this->publicCategoryTree();
+        $categoryIds = $this->filteredCategoryIds($categoryId, $subcategoryId, $categoryTree);
+
+        $products = Product::query()
+            ->with(['workspace', 'primaryMedia', 'category.parent', 'brandRecord'])
+            ->withMin([
+                'variants as starting_price' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
+            ], 'price')
+            ->withSum([
+                'variants as stock_total' => fn (Builder $query): Builder => $query->where('status', 'active'),
+            ], 'stock_quantity')
+            ->where('status', 'active')
+            ->whereHas('workspace', fn (Builder $query): Builder => $query->where('settings->commerce->shop_enabled', true)->orWhereNull('settings->commerce->shop_enabled'))
+            ->when($categoryIds !== [], fn (Builder $query): Builder => $query->whereIn('category_id', $categoryIds))
+            ->latest('id')
+            ->cursorPaginate(12)
+            ->withQueryString();
+
+        $payload = $this->frontendPayload(
+            title: 'Products',
+            metaDescription: 'Browse active products from available WhatsApp storefronts.'
+        );
+        $payload['products'] = $products;
+        $payload['categories'] = $categoryTree;
+        $payload['selectedCategoryId'] = $categoryId;
+        $payload['selectedSubcategoryId'] = $subcategoryId;
+        $payload['currency'] = 'USD';
+
+        return view('commerce::public.products', $payload);
+    }
+
+    public function index(Workspace $workspace): ViewContract
+    {
+        abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
+
+        $products = Product::query()
+            ->with(['primaryMedia', 'category', 'brandRecord'])
+            ->withCount([
+                'variants' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
+            ])
+            ->withMin([
+                'variants as starting_price' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
+            ], 'price')
+            ->withSum([
+                'variants as stock_total' => fn (Builder $query): Builder => $query->where('status', 'active'),
+            ], 'stock_quantity')
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'active')
+            ->orderByDesc('published_at')
+            ->latest('id')
+            ->paginate(12);
+
+        $payload = $this->frontendPayload(
+            title: (string) data_get($workspace->settings, 'commerce.storefront_title', $workspace->name),
+            metaDescription: (string) data_get($workspace->settings, 'commerce.storefront_description', 'Browse active products available for WhatsApp ordering.')
+        );
+        $payload['products'] = $products;
+        $payload['workspace'] = $workspace;
+        $payload['currency'] = $this->currencyFor($workspace);
+
+        return view('commerce::public.index', $payload);
+    }
+
+    public function legacyProduct(string $product): RedirectResponse
+    {
+        $matches = Product::query()
+            ->with('workspace')
+            ->where('slug', $product)
+            ->where('status', 'active')
+            ->limit(2)
+            ->get();
+
+        abort_unless($matches->count() === 1, 404);
+
+        $record = $matches->first();
+
+        return redirect()->route('commerce.products.public', [
+            'workspace' => $record->workspace->slug,
+            'product' => $record->slug,
+        ], 301);
+    }
+
+    public function product(Workspace $workspace, Product $product): ViewContract
+    {
+        abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
+        abort_unless($product->workspace_id === $workspace->id, 404);
+
+        $record = Product::query()
+            ->with([
+                'primaryMedia',
+                'category',
+                'brandRecord',
+                'gallery.media',
+                'variants' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock'])->orderBy('price'),
+                'variants.media',
+            ])
+            ->whereKey($product->id)
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'active')
+            ->firstOrFail();
         $catalog = Catalog::query()->with('channelAccount')->where('workspace_id', $record->workspace_id)->where('is_active', true)->first();
         $phone = preg_replace('/\D+/', '', (string) $catalog?->channelAccount?->provider_display_id);
+        $payload = $this->frontendPayload(
+            title: $record->name,
+            metaDescription: str($record->description)->limit(155)->toString()
+        );
+        $payload['product'] = $record;
+        $payload['whatsappPhone'] = $phone;
+        $payload['workspace'] = $workspace;
+        $payload['currency'] = $catalog?->currency ?: $this->currencyFor($workspace);
 
-        return view('commerce::public.product', ['product' => $record, 'whatsappPhone' => $phone]);
+        return view('commerce::public.product', $payload);
+    }
+
+    protected function currencyFor(Workspace $workspace): string
+    {
+        return strtoupper((string) data_get($workspace->settings, 'commerce.currency', 'USD'));
+    }
+
+    protected function frontendPayload(string $title, string $metaDescription): array
+    {
+        $page = $this->pages->findBySlug('shop') ?? new Page([
+            'title' => $title,
+            'slug' => 'shop',
+            'status' => 'published',
+            'default_layout' => 'default',
+            'meta_title' => $title,
+            'meta_description' => $metaDescription,
+        ]);
+
+        return $this->renderer->payload($page, $this->activeThemeResolver->resolve());
+    }
+
+    protected function publicCategoryTree(): Collection
+    {
+        $activeCategoryIds = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('category_id')
+            ->distinct()
+            ->pluck('category_id');
+
+        $parentCategoryIds = Category::query()
+            ->whereIn('id', $activeCategoryIds)
+            ->whereNotNull('parent_id')
+            ->pluck('parent_id');
+
+        $visibleCategoryIds = $activeCategoryIds->merge($parentCategoryIds)->unique()->values();
+
+        return Category::query()
+            ->with(['children' => fn ($query) => $query
+                ->where('is_active', true)
+                ->whereIn('id', $activeCategoryIds)
+                ->orderBy('name')])
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->whereIn('id', $visibleCategoryIds)
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function filteredCategoryIds(int $categoryId, int $subcategoryId, Collection $categoryTree): array
+    {
+        if ($subcategoryId > 0) {
+            return [$subcategoryId];
+        }
+
+        if ($categoryId <= 0) {
+            return [];
+        }
+
+        $category = $categoryTree->firstWhere('id', $categoryId);
+
+        if (! $category) {
+            return [];
+        }
+
+        return collect([$category->id])
+            ->merge($category->children->pluck('id'))
+            ->map(fn ($id): int => (int) $id)
+            ->all();
     }
 }

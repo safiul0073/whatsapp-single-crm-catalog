@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\FrontendPageController;
 use App\Modules\Blogs\Http\Controllers\BlogController;
+use App\Modules\Commerce\Http\Controllers\PublicCommerceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +73,7 @@ Route::get('contact', [FrontendPageController::class, 'show'])->defaults('slug',
 Route::get('support', [FrontendPageController::class, 'show'])->defaults('slug', 'support')->name('support');
 Route::get('blog', [FrontendPageController::class, 'show'])->defaults('slug', 'blog')->name('blog.index');
 Route::get('blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('products', [PublicCommerceController::class, 'products'])->name('commerce.products.shortcut');
 Route::get('public/{path?}', function (Request $request, ?string $path = null) {
     $path = trim((string) $path, '/');
     $configuredHost = parse_url((string) config('app.url'), PHP_URL_HOST);

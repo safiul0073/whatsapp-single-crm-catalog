@@ -12,6 +12,8 @@ use App\Modules\Campaigns\Models\CampaignRecipient;
 use App\Modules\Campaigns\Services\CampaignRecipientService;
 use App\Modules\Campaigns\Services\CampaignReportService;
 use App\Modules\Campaigns\Services\CampaignService;
+use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Models\ContactGroup;
@@ -31,6 +33,7 @@ use App\Modules\PlansSubscriptions\Models\Subscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
@@ -152,6 +155,29 @@ function campaignDoctorPayload(ChannelAccount $channel, ContactGroup $group, arr
         'schedule' => 'draft',
         'timezone' => 'Asia/Dhaka',
     ], $overrides);
+}
+
+function campaignCommerceVariant(int $workspaceId): ProductVariant
+{
+    $product = Product::query()->create([
+        'workspace_id' => $workspaceId,
+        'name' => 'Campaign Commerce Jacket',
+        'slug' => 'campaign-commerce-jacket',
+        'brand' => 'WaPro',
+        'description' => 'A synced product for campaign templates.',
+        'status' => 'active',
+    ]);
+
+    return ProductVariant::query()->create([
+        'workspace_id' => $workspaceId,
+        'product_id' => $product->id,
+        'sku' => 'CMP-JKT-001',
+        'meta_retailer_id' => 'meta-cmp-jkt-001',
+        'attributes' => ['size' => 'M'],
+        'price' => 79.95,
+        'stock_quantity' => 4,
+        'status' => 'active',
+    ]);
 }
 
 it('returns an ai campaign doctor report for premium plans', function (): void {
@@ -796,6 +822,249 @@ it('builds whatsapp template runtime parameters from approved template formats',
             ],
         ],
     ]);
+});
+
+it('builds whatsapp catalog and multi-product template runtime commerce buttons', function (): void {
+    [, $workspace] = campaignUserContext();
+    $channel = campaignChannel($workspace->id, 'whatsapp');
+    $contact = campaignContact($workspace->id);
+    $variant = campaignCommerceVariant($workspace->id);
+
+    $catalogTemplate = MessageTemplate::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'catalog_offer',
+        'language' => 'en_US',
+        'category' => 'marketing',
+        'status' => 'approved',
+        'template_kind' => 'catalog',
+        'components' => [
+            ['type' => 'BODY', 'text' => 'Browse this catalog offer.'],
+            ['type' => 'BUTTONS', 'buttons' => [['type' => 'CATALOG', 'text' => 'View catalog']]],
+        ],
+    ]);
+    $catalogCampaign = Campaign::query()->create([
+        'workspace_id' => $workspace->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'message_type' => 'template',
+        'message_template_id' => $catalogTemplate->id,
+        'uuid' => (string) Str::uuid(),
+        'name' => 'Catalog template campaign',
+        'status' => CampaignStatus::Sending->value,
+        'audience_type' => 'groups',
+        'send_rate_per_minute' => 60,
+        'settings' => [
+            'commerce' => [
+                'thumbnail_product_retailer_id' => $variant->meta_retailer_id,
+            ],
+        ],
+    ]);
+
+    $mpmTemplate = MessageTemplate::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'multi_product_offer',
+        'language' => 'en_US',
+        'category' => 'marketing',
+        'status' => 'approved',
+        'template_kind' => 'multi_product',
+        'components' => [
+            ['type' => 'BODY', 'text' => 'Choose from these products.'],
+            ['type' => 'BUTTONS', 'buttons' => [['type' => 'MPM', 'text' => 'View items']]],
+        ],
+    ]);
+    $mpmCampaign = Campaign::query()->create([
+        'workspace_id' => $workspace->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'message_type' => 'template',
+        'message_template_id' => $mpmTemplate->id,
+        'uuid' => (string) Str::uuid(),
+        'name' => 'MPM template campaign',
+        'status' => CampaignStatus::Sending->value,
+        'audience_type' => 'groups',
+        'send_rate_per_minute' => 60,
+        'settings' => [
+            'commerce' => [
+                'thumbnail_product_retailer_id' => $variant->meta_retailer_id,
+                'sections' => [[
+                    'title' => 'Products',
+                    'product_items' => [['product_retailer_id' => $variant->meta_retailer_id]],
+                ]],
+            ],
+        ],
+    ]);
+    $recipient = CampaignRecipient::query()->create([
+        'workspace_id' => $workspace->id,
+        'campaign_id' => $catalogCampaign->id,
+        'contact_id' => $contact->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'uuid' => (string) Str::uuid(),
+        'to' => $contact->phone,
+        'recipient_address' => $contact->phone,
+        'status' => CampaignRecipientStatus::Queued->value,
+        'queued_at' => now(),
+    ]);
+
+    $catalogPayload = app(CampaignRecipientService::class)->buildPayload($catalogCampaign->fresh(), $recipient->fresh());
+    $mpmPayload = app(CampaignRecipientService::class)->buildPayload($mpmCampaign->fresh(), $recipient->fresh());
+
+    expect(data_get($catalogPayload, 'meta_payload.template.components.0'))->toBe([
+        'type' => 'button',
+        'sub_type' => 'CATALOG',
+        'index' => '0',
+        'parameters' => [[
+            'type' => 'action',
+            'action' => ['thumbnail_product_retailer_id' => 'meta-cmp-jkt-001'],
+        ]],
+    ])->and(data_get($mpmPayload, 'meta_payload.template.components.0'))->toBe([
+        'type' => 'button',
+        'sub_type' => 'MPM',
+        'index' => '0',
+        'parameters' => [[
+            'type' => 'action',
+            'action' => [
+                'thumbnail_product_retailer_id' => 'meta-cmp-jkt-001',
+                'sections' => [[
+                    'title' => 'Products',
+                    'product_items' => [['product_retailer_id' => 'meta-cmp-jkt-001']],
+                ]],
+            ],
+        ]],
+    ]);
+});
+
+it('validates selected synced variants for multi-product campaign creation', function (): void {
+    Queue::fake();
+
+    [$user, $workspace] = campaignUserContext();
+    $channel = campaignChannel($workspace->id, 'whatsapp');
+    $contact = campaignContact($workspace->id);
+    $group = campaignGroupWithContacts($workspace->id, [$contact]);
+    $variant = campaignCommerceVariant($workspace->id);
+    $template = MessageTemplate::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'campaign_mpm_template',
+        'language' => 'en_US',
+        'category' => 'marketing',
+        'status' => 'approved',
+        'template_kind' => 'multi_product',
+        'components' => [
+            ['type' => 'BODY', 'text' => 'Pick your product.'],
+            ['type' => 'BUTTONS', 'buttons' => [['type' => 'MPM', 'text' => 'View items']]],
+        ],
+    ]);
+
+    app(CampaignService::class)->create($user, [
+        'name' => 'MPM commerce campaign',
+        'channel_account_id' => $channel->id,
+        'message_type' => 'template',
+        'message_template_id' => $template->id,
+        'audience_type' => 'groups',
+        'audience_ids' => [$group->id],
+        'schedule' => 'draft',
+        'timezone' => 'Asia/Dhaka',
+        'settings' => [
+            'commerce' => [
+                'variant_ids' => [$variant->id],
+            ],
+        ],
+    ]);
+
+    $campaign = Campaign::query()->where('name', 'MPM commerce campaign')->firstOrFail();
+
+    expect(data_get($campaign->settings, 'commerce.thumbnail_product_retailer_id'))->toBe('meta-cmp-jkt-001')
+        ->and(data_get($campaign->settings, 'commerce.sections.0.product_items.0.product_retailer_id'))->toBe('meta-cmp-jkt-001');
+
+    app(CampaignService::class)->create($user, [
+        'name' => 'Invalid MPM commerce campaign',
+        'channel_account_id' => $channel->id,
+        'message_type' => 'template',
+        'message_template_id' => $template->id,
+        'audience_type' => 'groups',
+        'audience_ids' => [$group->id],
+        'schedule' => 'draft',
+        'timezone' => 'Asia/Dhaka',
+    ]);
+})->throws(ValidationException::class, 'Select products for a multi-product WhatsApp template.');
+
+it('persists outbound whatsapp commerce template sends with provider message ids', function (): void {
+    [, $workspace] = campaignUserContext();
+    $channel = campaignChannel($workspace->id, 'whatsapp');
+    $contact = campaignContact($workspace->id);
+    $variant = campaignCommerceVariant($workspace->id);
+    $template = MessageTemplate::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'send_mpm_template',
+        'language' => 'en_US',
+        'category' => 'marketing',
+        'status' => 'approved',
+        'template_kind' => 'multi_product',
+        'components' => [
+            ['type' => 'BODY', 'text' => 'Pick your product.'],
+            ['type' => 'BUTTONS', 'buttons' => [['type' => 'MPM', 'text' => 'View items']]],
+        ],
+    ]);
+    $campaign = Campaign::query()->create([
+        'workspace_id' => $workspace->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'message_type' => 'template',
+        'message_template_id' => $template->id,
+        'uuid' => (string) Str::uuid(),
+        'name' => 'Send MPM campaign',
+        'status' => CampaignStatus::Sending->value,
+        'audience_type' => 'groups',
+        'send_rate_per_minute' => 60,
+        'settings' => [
+            'commerce' => [
+                'thumbnail_product_retailer_id' => $variant->meta_retailer_id,
+                'sections' => [[
+                    'title' => 'Products',
+                    'product_items' => [['product_retailer_id' => $variant->meta_retailer_id]],
+                ]],
+            ],
+        ],
+    ]);
+    $recipient = CampaignRecipient::query()->create([
+        'workspace_id' => $workspace->id,
+        'campaign_id' => $campaign->id,
+        'contact_id' => $contact->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'uuid' => (string) Str::uuid(),
+        'to' => $contact->phone,
+        'recipient_address' => $contact->phone,
+        'status' => CampaignRecipientStatus::Queued->value,
+        'queued_at' => now(),
+    ]);
+    $channels = Mockery::mock(ChannelManager::class);
+    $channels->shouldReceive('sendMessage')
+        ->once()
+        ->withArgs(fn (ChannelAccount $account, array $recipientPayload, array $payload): bool => $account->is($channel)
+            && $recipientPayload['to'] === $contact->phone
+            && data_get($payload, 'meta_payload.template.components.0.sub_type') === 'MPM')
+        ->andReturn([
+            'ok' => true,
+            'status' => 'sent',
+            'provider_message_id' => 'wamid.mpm.1',
+            'response' => ['messages' => [['id' => 'wamid.mpm.1']]],
+        ]);
+    $this->app->instance(ChannelManager::class, $channels);
+
+    (new SendCampaignRecipientJob($recipient->id))->handle(
+        app(ChannelManager::class),
+        app(CampaignRecipientService::class),
+        app(CampaignReportService::class),
+    );
+
+    expect($recipient->fresh()->provider_message_id)->toBe('wamid.mpm.1')
+        ->and(Message::query()->where('provider_message_id', 'wamid.mpm.1')->exists())->toBeTrue()
+        ->and(Message::query()->where('provider_message_id', 'wamid.mpm.1')->first()->whatsapp_message_id)->toBe('wamid.mpm.1');
 });
 
 it('resolves whatsapp header media from the stored media record when no url is persisted', function (): void {

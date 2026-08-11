@@ -2,6 +2,7 @@
 
 namespace App\Modules\Workspaces\Http\Requests\User;
 
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Shared\Support\PermissionRegistrar;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -10,12 +11,17 @@ class UpdateRolePermissionsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('team.manage') === true;
+        $workspace = app(WorkspaceResolver::class)->current($this->user());
+
+        return $workspace?->isOwner($this->user()) === true;
     }
 
     public function rules(): array
     {
-        $permissions = app(PermissionRegistrar::class)->permissionsForGuard('web');
+        $permissions = collect(app(PermissionRegistrar::class)->permissionsForGuard('web'))
+            ->reject(fn (string $permission): bool => in_array($permission, ['team.manage', 'team.manage.staff_only'], true))
+            ->values()
+            ->all();
 
         return [
             'permissions' => ['nullable', 'array'],

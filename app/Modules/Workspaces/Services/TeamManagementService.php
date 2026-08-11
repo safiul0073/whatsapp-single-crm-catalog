@@ -12,6 +12,7 @@ use App\Modules\Workspaces\Mail\TeamInvitationMail;
 use App\Modules\Workspaces\Mail\TeamMemberWelcomeMail;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceInvitation;
+use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -89,18 +90,16 @@ class TeamManagementService
         return $limit === null ? null : (int) $limit;
     }
 
-    public function rolePermissionMatrix(): array
+    public function rolePermissionMatrix(Workspace $workspace): array
     {
         $permissionGroups = $this->workspacePermissionGroups();
 
         $roles = collect(WorkspaceMemberRole::cases())
-            ->mapWithKeys(function (WorkspaceMemberRole $role): array {
-                $spatieRole = $this->spatieRoleFor($role)->loadMissing('permissions');
-
+            ->mapWithKeys(function (WorkspaceMemberRole $role) use ($workspace): array {
                 return [
                     $role->value => [
                         'label' => $role->label(),
-                        'permissions' => $spatieRole->permissions->pluck('name')->values()->all(),
+                        'permissions' => $this->permissionsForRole($workspace, $role),
                     ],
                 ];
             })
@@ -112,13 +111,11 @@ class TeamManagementService
         ];
     }
 
-    public function rolePermissionDetails(WorkspaceMemberRole $role): array
+    public function rolePermissionDetails(Workspace $workspace, WorkspaceMemberRole $role): array
     {
-        $spatieRole = $this->spatieRoleFor($role)->loadMissing('permissions');
-
         return [
             'label' => $role->label(),
-            'permissions' => $spatieRole->permissions->pluck('name')->values()->all(),
+            'permissions' => $this->permissionsForRole($workspace, $role),
             'groups' => $this->workspacePermissionGroups(),
         ];
     }
@@ -126,7 +123,7 @@ class TeamManagementService
     /**
      * @param  array<string>  $permissions
      */
-    public function updateRolePermissions(WorkspaceMemberRole $role, array $permissions): void
+    public function updateRolePermissions(Workspace $workspace, WorkspaceMemberRole $role, array $permissions): void
     {
         $allowedPermissions = $this->workspacePermissionCatalog()->pluck('name')->all();
         $permissionNames = collect($permissions)
@@ -135,19 +132,43 @@ class TeamManagementService
             ->values()
             ->all();
 
-        $this->spatieRoleFor($role)->syncPermissions($permissionNames);
+        DB::transaction(function () use ($workspace, $role, $permissionNames): void {
+            WorkspaceRolePermission::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('role', $role->value)
+                ->delete();
+
+            foreach ($permissionNames as $permissionName) {
+                WorkspaceRolePermission::query()->create([
+                    'workspace_id' => $workspace->id,
+                    'role' => $role->value,
+                    'permission_name' => $permissionName,
+                ]);
+            }
+
+            $settings = $workspace->settings ?? [];
+            $customRoles = collect(data_get($settings, 'custom_role_permissions', []))
+                ->push($role->value)
+                ->unique()
+                ->values()
+                ->all();
+
+            data_set($settings, 'custom_role_permissions', $customRoles);
+            $workspace->forceFill(['settings' => $settings])->save();
+        });
 
         app(SpatiePermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     public function createMember(Workspace $workspace, array $data, User $actor): User
     {
+        $this->ensureOwner($workspace, $actor);
+
         if (! $this->canAddMember($workspace)) {
             throw new HttpException(403, __('This workspace has reached its team member limit.'));
         }
 
         $role = WorkspaceMemberRole::from($data['role']);
-        $this->ensureCanManageRole($actor, $role);
 
         $user = User::query()->create([
             'first_name' => $data['first_name'],
@@ -167,11 +188,11 @@ class TeamManagementService
 
     public function updateMember(Workspace $workspace, User $member, array $data, User $actor): User
     {
+        $this->ensureOwner($workspace, $actor);
         $this->ensureNotOwner($workspace, $member);
         $this->ensureNotSelf($actor, $member);
 
         $currentRole = $this->resolveRole($member->pivot->role);
-        $this->ensureCanManageRole($actor, $currentRole);
 
         $member->update([
             'first_name' => $data['first_name'] ?? $member->first_name,
@@ -181,7 +202,6 @@ class TeamManagementService
 
         if (isset($data['role'])) {
             $newRole = $this->resolveRole($data['role']);
-            $this->ensureCanManageRole($actor, $newRole);
 
             if ($currentRole !== $newRole) {
                 $workspace->members()->updateExistingPivot($member->id, ['role' => $newRole->value]);
@@ -194,11 +214,9 @@ class TeamManagementService
 
     public function removeMember(Workspace $workspace, User $member, User $actor): void
     {
+        $this->ensureOwner($workspace, $actor);
         $this->ensureNotOwner($workspace, $member);
         $this->ensureNotSelf($actor, $member);
-
-        $role = $this->resolveRole($member->pivot->role);
-        $this->ensureCanManageRole($actor, $role);
 
         $workspace->members()->detach($member->id);
         $this->syncWorkspaceRolesFromMemberships($member);
@@ -206,12 +224,13 @@ class TeamManagementService
 
     public function inviteMember(Workspace $workspace, array $data, User $actor): WorkspaceInvitation
     {
+        $this->ensureOwner($workspace, $actor);
+
         if (! $this->canAddMember($workspace)) {
             throw new HttpException(403, __('This workspace has reached its team member limit.'));
         }
 
         $role = WorkspaceMemberRole::from($data['role']);
-        $this->ensureCanManageRole($actor, $role);
 
         $existingUser = User::query()->where('email', $data['email'])->first();
 
@@ -239,6 +258,8 @@ class TeamManagementService
 
     public function resendInvite(WorkspaceInvitation $invitation, User $actor): WorkspaceInvitation
     {
+        $this->ensureOwner($invitation->workspace, $actor);
+
         if ($invitation->isAccepted() || $invitation->isExpired()) {
             throw new HttpException(422, __('This invitation is no longer valid.'));
         }
@@ -250,8 +271,10 @@ class TeamManagementService
         return $invitation;
     }
 
-    public function revokeInvite(WorkspaceInvitation $invitation): void
+    public function revokeInvite(WorkspaceInvitation $invitation, User $actor): void
     {
+        $this->ensureOwner($invitation->workspace, $actor);
+
         if ($invitation->isAccepted()) {
             throw new HttpException(422, __('This invitation has already been accepted.'));
         }
@@ -352,11 +375,58 @@ class TeamManagementService
 
     protected function spatieRoleFor(WorkspaceMemberRole $role): Role
     {
-        return match ($role) {
+        $spatieRole = match ($role) {
             WorkspaceMemberRole::Administrator => Role::findOrCreate('workspace-administrator', 'web'),
             WorkspaceMemberRole::Manager => Role::findOrCreate('workspace-manager', 'web'),
             WorkspaceMemberRole::Staff => Role::findOrCreate('workspace-staff', 'web'),
         };
+
+        if ($spatieRole->permissions()->doesntExist()) {
+            $spatieRole->syncPermissions($this->defaultPermissionsFor($role));
+        }
+
+        return $spatieRole;
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected function defaultPermissionsFor(WorkspaceMemberRole $role): array
+    {
+        $availablePermissions = $this->workspacePermissionCatalog()->pluck('name');
+
+        $defaults = match ($role) {
+            WorkspaceMemberRole::Administrator => $availablePermissions->all(),
+            WorkspaceMemberRole::Manager => [
+                'workspace.view',
+                'contacts.view',
+                'contacts.manage',
+                'leads.view',
+                'leads.manage',
+                'campaigns.view',
+                'campaigns.create',
+                'templates.manage',
+                'inbox.view',
+                'inbox.reply',
+                'inbox.assign',
+                'reports.view',
+                'automations.manage',
+            ],
+            WorkspaceMemberRole::Staff => [
+                'workspace.view',
+                'contacts.view',
+                'leads.view',
+                'campaigns.view',
+                'inbox.view',
+                'inbox.assigned_only',
+                'inbox.reply',
+            ],
+        };
+
+        return $availablePermissions
+            ->intersect($defaults)
+            ->values()
+            ->all();
     }
 
     protected function workspacePermissionGroups(): array
@@ -375,6 +445,7 @@ class TeamManagementService
     {
         return collect(app(ModulePermissionRegistrar::class)->permissions())
             ->filter(fn (array $permission): bool => $permission['guard'] === 'web')
+            ->reject(fn (array $permission): bool => in_array($permission['name'], ['team.manage', 'team.manage.staff_only'], true))
             ->map(fn (array $permission): array => [
                 'name' => $permission['name'],
                 'module' => $permission['module'],
@@ -382,6 +453,34 @@ class TeamManagementService
             ])
             ->sortBy('name')
             ->values();
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected function permissionsForRole(Workspace $workspace, WorkspaceMemberRole $role): array
+    {
+        if ($this->hasCustomPermissionSet($workspace, $role)) {
+            return WorkspaceRolePermission::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('role', $role->value)
+                ->pluck('permission_name')
+                ->values()
+                ->all();
+        }
+
+        return $this->spatieRoleFor($role)
+            ->loadMissing('permissions')
+            ->permissions
+            ->pluck('name')
+            ->reject(fn (string $permission): bool => in_array($permission, ['team.manage', 'team.manage.staff_only'], true))
+            ->values()
+            ->all();
+    }
+
+    protected function hasCustomPermissionSet(Workspace $workspace, WorkspaceMemberRole $role): bool
+    {
+        return in_array($role->value, data_get($workspace->settings, 'custom_role_permissions', []), true);
     }
 
     protected function ensureNotOwner(Workspace $workspace, User $member): void
@@ -398,17 +497,13 @@ class TeamManagementService
         }
     }
 
-    protected function ensureCanManageRole(User $actor, WorkspaceMemberRole $role): void
+    protected function ensureOwner(Workspace $workspace, User $actor): void
     {
-        if ($actor->can('team.manage')) {
+        if ($workspace->isOwner($actor)) {
             return;
         }
 
-        if ($actor->can('team.manage.staff_only') && $role === WorkspaceMemberRole::Staff) {
-            return;
-        }
-
-        throw new HttpException(403, __('You do not have permission to manage this role.'));
+        throw new HttpException(403, __('Only the workspace owner can manage team members.'));
     }
 
     public function resolveRole(WorkspaceMemberRole|string $role): WorkspaceMemberRole

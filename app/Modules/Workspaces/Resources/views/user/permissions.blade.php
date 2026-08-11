@@ -41,7 +41,7 @@
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 class="heading-4">{{ __('Permissions') }}</h3>
-                    <p class="m-text mt-1">{{ __('Changes apply to every workspace member with this role.') }}</p>
+                    <p class="m-text mt-1">{{ __('Changes apply to every member with this role in the current workspace.') }}</p>
                 </div>
                 <button type="submit" class="btn-sm btn-primary">
                     <i class="ph ph-floppy-disk text-base"></i>

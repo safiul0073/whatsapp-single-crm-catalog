@@ -7,6 +7,7 @@ use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Shared\Support\PermissionRegistrar;
 use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Models\Workspace;
+use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Models\Role;
 
@@ -21,6 +22,11 @@ class WorkspacePermissionResolver
      * @var array<string, array<string>>
      */
     protected array $rolePermissions = [];
+
+    /**
+     * @var array<string, array<string>|null>
+     */
+    protected array $workspaceRolePermissions = [];
 
     public function __construct(
         protected WorkspaceResolver $workspaces,
@@ -43,13 +49,17 @@ class WorkspacePermissionResolver
             return true;
         }
 
+        if ($this->isOwnerOnlyAbility($ability)) {
+            return false;
+        }
+
         $role = $this->activeWorkspaceRole($workspace, $user);
 
         if (! $role) {
             return false;
         }
 
-        return in_array($ability, $this->permissionsForRole($role), true);
+        return in_array($ability, $this->permissionsForRole($workspace, $role), true);
     }
 
     protected function activeWorkspaceRole(Workspace $workspace, User $user): ?WorkspaceMemberRole
@@ -70,7 +80,44 @@ class WorkspacePermissionResolver
     /**
      * @return array<string>
      */
-    protected function permissionsForRole(WorkspaceMemberRole $role): array
+    protected function permissionsForRole(Workspace $workspace, WorkspaceMemberRole $role): array
+    {
+        $workspacePermissions = $this->workspacePermissionsForRole($workspace, $role);
+
+        if ($workspacePermissions !== null) {
+            return $workspacePermissions;
+        }
+
+        return $this->defaultPermissionsForRole($role);
+    }
+
+    /**
+     * @return array<string>|null
+     */
+    protected function workspacePermissionsForRole(Workspace $workspace, WorkspaceMemberRole $role): ?array
+    {
+        if (! $this->hasCustomPermissionSet($workspace, $role)) {
+            return null;
+        }
+
+        $cacheKey = "{$workspace->id}:{$role->value}";
+
+        if (array_key_exists($cacheKey, $this->workspaceRolePermissions)) {
+            return $this->workspaceRolePermissions[$cacheKey];
+        }
+
+        return $this->workspaceRolePermissions[$cacheKey] = WorkspaceRolePermission::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('role', $role->value)
+            ->pluck('permission_name')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected function defaultPermissionsForRole(WorkspaceMemberRole $role): array
     {
         $roleName = $this->spatieRoleName($role);
 
@@ -84,9 +131,63 @@ class WorkspacePermissionResolver
             ->with('permissions')
             ->first();
 
-        return $this->rolePermissions[$roleName] = $spatieRole
-            ? $spatieRole->permissions->pluck('name')->values()->all()
-            : [];
+        if (! $spatieRole || $spatieRole->permissions->isEmpty()) {
+            return $this->rolePermissions[$roleName] = $this->defaultPermissionsForRoleName($roleName);
+        }
+
+        return $this->rolePermissions[$roleName] = $spatieRole->permissions->pluck('name')->values()->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected function defaultPermissionsForRoleName(string $roleName): array
+    {
+        $availablePermissions = Collection::make($this->webPermissions());
+
+        $defaults = match ($roleName) {
+            'workspace-administrator' => $availablePermissions->all(),
+            'workspace-manager' => [
+                'workspace.view',
+                'contacts.view',
+                'contacts.manage',
+                'leads.view',
+                'leads.manage',
+                'campaigns.view',
+                'campaigns.create',
+                'templates.manage',
+                'inbox.view',
+                'inbox.reply',
+                'inbox.assign',
+                'reports.view',
+                'automations.manage',
+            ],
+            'workspace-staff' => [
+                'workspace.view',
+                'contacts.view',
+                'leads.view',
+                'campaigns.view',
+                'inbox.view',
+                'inbox.assigned_only',
+                'inbox.reply',
+            ],
+            default => [],
+        };
+
+        return $availablePermissions
+            ->intersect($defaults)
+            ->values()
+            ->all();
+    }
+
+    protected function hasCustomPermissionSet(Workspace $workspace, WorkspaceMemberRole $role): bool
+    {
+        return in_array($role->value, data_get($workspace->settings, 'custom_role_permissions', []), true);
+    }
+
+    protected function isOwnerOnlyAbility(string $ability): bool
+    {
+        return in_array($ability, ['team.manage', 'team.manage.staff_only'], true);
     }
 
     protected function spatieRoleName(WorkspaceMemberRole $role): string

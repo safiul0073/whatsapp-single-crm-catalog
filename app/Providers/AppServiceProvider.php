@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\User;
 use App\Modules\Frontend\Models\FrontendSection;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
+use App\Modules\Workspaces\Services\WorkspacePermissionResolver;
 use App\Services\WidgetRegistry;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -39,7 +40,9 @@ class AppServiceProvider extends ServiceProvider
             return $user instanceof Admin && $user->hasRole('super-admin') ? true : null;
         });
 
-        Gate::before(fn ($user, $ability): ?bool => $user instanceof User ? true : null);
+        Gate::before(fn ($user, $ability): ?bool => $user instanceof User
+            ? app(WorkspacePermissionResolver::class)->can($user, $ability)
+            : null);
 
         View::composer('components.layouts.partials.user-sidebar', function ($view) {
             $user = Auth::guard('web')->user();

@@ -66,7 +66,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.index', [
             'products' => Product::query()
-                ->with(['category', 'primaryMedia'])
+                ->with(['category', 'primaryMedia', 'workspace'])
                 ->withCount('variants')
                 ->withMin('variants as starting_price', 'price')
                 ->withSum('variants as stock_total', 'stock_quantity')
@@ -382,7 +382,9 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
         $channel = ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->findOrFail($request->integer('channel_account_id'));
-        Catalog::query()->updateOrCreate(['workspace_id' => $workspace->id, 'channel_account_id' => $channel->id], ['meta_catalog_id' => $request->string('meta_catalog_id')->toString(), 'sync_mode' => $request->string('sync_mode')->toString(), 'readiness_state' => 'checking', 'feed_token' => Catalog::query()->where('channel_account_id', $channel->id)->value('feed_token') ?: Str::random(64), 'is_active' => $request->boolean('is_active', true)]);
+        $currency = strtoupper($request->string('currency', 'USD')->toString());
+        Catalog::query()->updateOrCreate(['workspace_id' => $workspace->id, 'channel_account_id' => $channel->id], ['meta_catalog_id' => $request->string('meta_catalog_id')->toString(), 'sync_mode' => $request->string('sync_mode')->toString(), 'currency' => $currency, 'readiness_state' => 'checking', 'feed_token' => Catalog::query()->where('channel_account_id', $channel->id)->value('feed_token') ?: Str::random(64), 'is_active' => $request->boolean('is_active', true)]);
+        $workspace->update(['settings' => array_replace_recursive($workspace->settings ?? [], ['commerce' => ['shop_enabled' => $request->boolean('shop_enabled', true), 'currency' => $currency, 'storefront_title' => $request->string('storefront_title', $workspace->name)->toString(), 'storefront_description' => $request->string('storefront_description', 'Browse products and order directly on WhatsApp.')->toString(), 'default_channel_account_id' => $channel->id]])]);
 
         return back()->with('success', __('Catalog connection saved.'));
     }

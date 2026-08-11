@@ -5,6 +5,7 @@ namespace App\Modules\Campaigns\Services;
 use App\Modules\Campaigns\Enums\CampaignRecipientStatus;
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\Campaigns\Models\CampaignRecipient;
+use App\Modules\Commerce\Services\CommerceTemplatePayloadService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
 
 class CampaignRecipientService
 {
-    public function __construct(protected TemplateVariableMapper $variables) {}
+    public function __construct(protected TemplateVariableMapper $variables, protected CommerceTemplatePayloadService $commerceTemplates) {}
 
     public function createForContact(Campaign $campaign, Contact $contact): CampaignRecipient
     {
@@ -210,6 +211,15 @@ class CampaignRecipientService
         $variables = $campaign->variables ?? [];
 
         $mappedComponents = $this->mapTemplateComponents($runtimeComponents, $components, $contact, $variables);
+        $commerceComponent = match ($template?->template_kind) {
+            'catalog' => $this->commerceTemplates->catalogButtonComponent($campaign),
+            'multi_product' => $this->commerceTemplates->multiProductButtonComponent($campaign),
+            default => null,
+        };
+
+        if ($commerceComponent !== null) {
+            $mappedComponents[] = $commerceComponent;
+        }
         $body = $this->renderWhatsAppTemplatePreview($components, $contact, $variables);
 
         $metaTemplate = [

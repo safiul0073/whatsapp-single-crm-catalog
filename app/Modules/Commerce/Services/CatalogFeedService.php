@@ -16,7 +16,9 @@ class CatalogFeedService
         $variants = $this->activeVariants($catalog->workspace_id);
         $catalog->forceFill(['last_item_count' => $variants->count(), 'last_successful_at' => now(), 'last_sync_status' => 'completed', 'last_sync_summary' => ['successful' => $variants->count(), 'failed' => 0], 'last_error' => null])->save();
 
-        return response()->streamDownload(function () use ($variants): void {
+        $currency = strtoupper((string) ($catalog->currency ?: 'USD'));
+
+        return response()->streamDownload(function () use ($variants, $currency): void {
             $stream = fopen('php://output', 'w');
             fputcsv($stream, ['id', 'title', 'description', 'availability', 'condition', 'price', 'link', 'image_link', 'additional_image_link', 'brand', 'item_group_id', 'color', 'size', 'gender', 'age_group', 'material', 'pattern']);
             foreach ($variants as $variant) {
@@ -27,7 +29,7 @@ class CatalogFeedService
                     $payload['description'],
                     $payload['availability'],
                     $payload['condition'],
-                    number_format((float) $variant->price, 2, '.', '').' USD',
+                    number_format((float) $variant->price, 2, '.', '').' '.$currency,
                     $payload['url'],
                     $payload['image_url'],
                     implode(',', $payload['additional_image_urls']),
@@ -47,7 +49,7 @@ class CatalogFeedService
 
     public function itemPayload(ProductVariant $variant): array
     {
-        $variant->loadMissing(['product.primaryMedia', 'product.gallery.media', 'media']);
+        $variant->loadMissing(['product.primaryMedia', 'product.gallery.media', 'product.workspace', 'media']);
         $attributes = $variant->attributes ?? [];
         $primary = $variant->media?->url ?? $variant->product->primaryMedia?->url;
         $additional = $variant->product->gallery
@@ -66,8 +68,8 @@ class CatalogFeedService
             'availability' => $variant->stock_quantity > 0 && $variant->status === 'active' ? 'in stock' : 'out of stock',
             'condition' => $variant->product->condition,
             'price' => (int) round((float) $variant->price * 100),
-            'currency' => 'USD',
-            'url' => URL::route('commerce.products.public', ['product' => $variant->product->slug]),
+            'currency' => $variant->product->workspace?->settings['commerce']['currency'] ?? 'USD',
+            'url' => URL::route('commerce.products.public', ['workspace' => $variant->product->workspace->slug, 'product' => $variant->product->slug]),
             'image_url' => $primary,
             'additional_image_urls' => $additional,
             'brand' => $variant->product->brand ?: config('app.name'),
@@ -85,6 +87,7 @@ class CatalogFeedService
     {
         return ProductVariant::query()
             ->with(['product.primaryMedia', 'product.gallery.media', 'media'])
+            ->with('product.workspace')
             ->where('workspace_id', $workspaceId)
             ->whereIn('status', ['active', 'out_of_stock'])
             ->whereHas('product', fn ($query) => $query->where('status', 'active'))

@@ -21,6 +21,7 @@ use App\Modules\Telegram\Services\TelegramBotProvider;
 use App\Modules\Telegram\Services\TelegramOptInService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -233,6 +234,106 @@ it('receives telegram webhooks through the channel webhook code', function (): v
             ->where('provider', 'telegram')
             ->exists())->toBeFalse();
 });
+
+it('downloads inbound telegram media and exposes attachment metadata in inbox json', function (array $telegramMessage, string $filePath, string $contentType, string $expectedType): void {
+    $user = User::factory()->create();
+    $workspace = telegramWorkspaceFor($user);
+    $channel = connectedTelegramChannel($workspace->id);
+
+    Storage::fake('public');
+    Http::fake([
+        'https://api.telegram.org/bot123456:test-token/getFile*' => Http::response([
+            'ok' => true,
+            'result' => ['file_path' => $filePath],
+        ]),
+        'https://api.telegram.org/file/bot123456:test-token/'.$filePath => Http::response('telegram-file-bytes', 200, [
+            'Content-Type' => $contentType,
+        ]),
+    ]);
+
+    $this->postJson(route('webhooks.channels.account.receive', [
+        'provider' => 'telegram',
+        'webhookCode' => $channel->webhook_code,
+    ]), [
+        'update_id' => 9201,
+        'message' => array_merge([
+            'message_id' => 701,
+            'from' => ['id' => 777, 'username' => 'media_user'],
+            'chat' => ['id' => 777, 'type' => 'private'],
+        ], $telegramMessage),
+    ])->assertOk();
+
+    $message = Message::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('channel_account_id', $channel->id)
+        ->where('provider', 'telegram')
+        ->where('provider_message_id', '701')
+        ->firstOrFail();
+
+    expect($message->type)->toBe($expectedType)
+        ->and(data_get($message->payload, 'attachment.type'))->toBe($expectedType)
+        ->and(data_get($message->payload, 'attachment.mime_type'))->toBe($contentType);
+
+    Storage::disk('public')->assertExists(data_get($message->payload, 'attachment.path'));
+
+    $this->withoutMiddleware(EnsureOnboardingComplete::class)
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $message->conversation_id))
+        ->assertOk()
+        ->assertJsonPath('messages.0.type', $expectedType)
+        ->assertJsonPath('messages.0.attachment.type', $expectedType);
+})->with([
+    'photo' => [
+        [
+            'caption' => 'Telegram photo caption',
+            'photo' => [
+                ['file_id' => 'photo-small', 'file_size' => 100],
+                ['file_id' => 'photo-large', 'file_size' => 1000],
+            ],
+        ],
+        'photos/photo-large.jpg',
+        'image/jpeg',
+        'image',
+    ],
+    'document' => [
+        [
+            'document' => [
+                'file_id' => 'document-file',
+                'file_name' => 'telegram-invoice.pdf',
+                'mime_type' => 'application/pdf',
+                'file_size' => 1200,
+            ],
+        ],
+        'documents/telegram-invoice.pdf',
+        'application/pdf',
+        'document',
+    ],
+    'video' => [
+        [
+            'caption' => 'Telegram video caption',
+            'video' => [
+                'file_id' => 'video-file',
+                'mime_type' => 'video/mp4',
+                'file_size' => 2000,
+            ],
+        ],
+        'videos/video-file.mp4',
+        'video/mp4',
+        'video',
+    ],
+    'voice' => [
+        [
+            'voice' => [
+                'file_id' => 'voice-file',
+                'mime_type' => 'audio/ogg',
+                'file_size' => 900,
+            ],
+        ],
+        'voice/voice-file.ogg',
+        'audio/ogg',
+        'audio',
+    ],
+]);
 
 it('rejects channel webhook codes that do not match the provider', function (): void {
     $user = User::factory()->create();

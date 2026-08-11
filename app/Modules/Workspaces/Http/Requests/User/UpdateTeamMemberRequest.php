@@ -3,6 +3,7 @@
 namespace App\Modules\Workspaces\Http\Requests\User;
 
 use App\Models\User;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +12,9 @@ class UpdateTeamMemberRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('team.manage') || $this->user()?->can('team.manage.staff_only');
+        $workspace = app(WorkspaceResolver::class)->current($this->user());
+
+        return $workspace?->isOwner($this->user()) === true;
     }
 
     public function rules(): array

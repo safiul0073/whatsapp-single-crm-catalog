@@ -20,6 +20,7 @@ class FrontendMenuSeeder extends Seeder
         $home = Page::query()->where('slug', 'home')->first();
         $about = Page::query()->where('slug', 'about')->first();
         $blogUrl = route('blog.index');
+        $productsUrl = route('commerce.products.shortcut');
 
         if (! $home || ! $about) {
             return;
@@ -58,6 +59,15 @@ class FrontendMenuSeeder extends Seeder
                         'item_type' => 'external',
                         'label' => 'Blog',
                         'url' => $blogUrl,
+                        'target' => '_self',
+                        'is_visible' => true,
+                    ],
+                    [
+                        'temp_key' => 'products-link',
+                        'depth' => 0,
+                        'item_type' => 'external',
+                        'label' => 'Products',
+                        'url' => $productsUrl,
                         'target' => '_self',
                         'is_visible' => true,
                     ],
@@ -111,6 +121,15 @@ class FrontendMenuSeeder extends Seeder
                         'item_type' => 'external',
                         'label' => 'Blog',
                         'url' => $blogUrl,
+                        'target' => '_self',
+                        'is_visible' => true,
+                    ],
+                    [
+                        'temp_key' => 'products-link',
+                        'depth' => 0,
+                        'item_type' => 'external',
+                        'label' => 'Products',
+                        'url' => $productsUrl,
                         'target' => '_self',
                         'is_visible' => true,
                     ],
@@ -227,6 +246,15 @@ class FrontendMenuSeeder extends Seeder
                         'target' => '_self',
                         'is_visible' => true,
                     ],
+                    [
+                        'temp_key' => 'mobile-products',
+                        'depth' => 0,
+                        'item_type' => 'external',
+                        'label' => 'Products',
+                        'url' => $productsUrl,
+                        'target' => '_self',
+                        'is_visible' => true,
+                    ],
                 ], JSON_THROW_ON_ERROR),
             ])
             : $menus->create([
@@ -260,6 +288,15 @@ class FrontendMenuSeeder extends Seeder
                         'item_type' => 'external',
                         'label' => 'Blog',
                         'url' => $blogUrl,
+                        'target' => '_self',
+                        'is_visible' => true,
+                    ],
+                    [
+                        'temp_key' => 'mobile-products',
+                        'depth' => 0,
+                        'item_type' => 'external',
+                        'label' => 'Products',
+                        'url' => $productsUrl,
                         'target' => '_self',
                         'is_visible' => true,
                     ],

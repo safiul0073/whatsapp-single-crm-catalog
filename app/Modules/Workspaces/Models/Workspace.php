@@ -3,6 +3,7 @@
 namespace App\Modules\Workspaces\Models;
 
 use App\Models\User;
+use App\Modules\Commerce\Models\Product;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Enums\WorkspaceStatus;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +40,16 @@ class Workspace extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(WorkspaceInvitation::class);
+    }
+
+    public function rolePermissions(): HasMany
+    {
+        return $this->hasMany(WorkspaceRolePermission::class);
+    }
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
     }
 
     public function activeMembers(): BelongsToMany

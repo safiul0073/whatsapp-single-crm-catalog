@@ -340,192 +340,256 @@
         </div>
 
     @push('modals')
-    <div class="modal" id="editContact" data-modal
+    <div class="modal modal-xl" id="editContact" data-modal
       x-data="contactForm()"
       @modal-open.window="if ($event.detail.id === 'editContact') initForm($event.detail.contact)"
     >
       <div class="modal__backdrop" data-modal-close></div>
       <div
-        class="modal__panel"
+        class="modal__panel modal__panel--contact"
         role="dialog"
         aria-modal="true"
         aria-labelledby="editContactTitle"
       >
-        <div class="flex items-center justify-between gap-3">
-          <h3 id="editContactTitle" class="heading-4" x-text="editing ? 'Edit Contact' : 'New Contact'">Contact</h3>
-          <button type="button" class="row-action" data-modal-close aria-label="Close">
-            <i class="ph ph-x text-base"></i>
-          </button>
+        <div class="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-0 px-4 py-3 sm:px-5">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex min-w-0 items-start gap-3">
+              <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <i class="ph text-lg" :class="editing ? 'ph-user-circle-gear' : 'ph-user-plus'"></i>
+              </span>
+              <div class="min-w-0">
+                <h3 id="editContactTitle" class="heading-4" x-text="editing ? 'Edit contact' : 'Add contact'">Contact</h3>
+                <p class="m-text mt-1" x-text="editing ? 'Update profile, audience lists, and WhatsApp consent.' : 'Create a reachable WhatsApp contact with optional CRM context.'"></p>
+              </div>
+            </div>
+            <button type="button" class="row-action shrink-0" data-modal-close aria-label="Close">
+              <i class="ph ph-x text-base"></i>
+            </button>
+          </div>
         </div>
-        <form class="mt-4 space-y-4" x-ref="form" :action="action" method="POST" @submit="applyPhoneCode()">
+
+        <form class="flex max-h-[calc(100dvh-7rem)] flex-col" x-ref="form" :action="action" method="POST" @submit="applyPhoneCode()">
           @csrf
           <input type="hidden" name="_method" x-model="method" />
           <input type="hidden" name="id" x-model="contactId" />
-          <div>
-            <div>
-              <label for="contactName" class="form-label">Name <span class="text-error">*</span></label>
-              <input id="contactName" name="name" type="text" required x-model="form.name" class="form-input" />
-            </div>
-          </div>
-          <div>
-            <div>
-              <label for="contactPhone" class="form-label">WhatsApp number <span class="text-error">*</span></label>
-              <div class="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
-                <select x-model="form.phone_code" class="form-input min-w-0" aria-label="Phone country code" @change="applyPhoneCode()">
-                  <template x-for="country in phoneCountries" :key="country.code">
-                    <option :value="country.dial" x-text="country.label"></option>
+          <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <div class="grid gap-4 lg:grid-cols-[minmax(26rem,1fr)_20rem]">
+              <div class="space-y-4">
+                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                  <div class="mb-3 flex items-center gap-2">
+                    <span class="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <i class="ph ph-identification-card text-base"></i>
+                    </span>
+                    <div>
+                      <h4 class="text-sm font-semibold text-title">Contact details</h4>
+                      <p class="form-hint">Core identity and location for segmentation.</p>
+                    </div>
+                  </div>
+
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                      <label for="contactName" class="form-label">Name <span class="text-error">*</span></label>
+                      <input id="contactName" name="name" type="text" required x-model="form.name" class="form-input !h-11 !rounded-xl text-sm" placeholder="e.g. Nusrat Ahmed" />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                      <label for="contactPhone" class="form-label">WhatsApp number <span class="text-error">*</span></label>
+                      <div class="grid gap-2 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+                        <select x-model="form.phone_code" class="form-input min-w-0 !h-11 !rounded-xl text-sm" aria-label="Phone country code" @change="applyPhoneCode()">
+                          <template x-for="country in phoneCountries" :key="country.code">
+                            <option :value="country.dial" x-text="country.label"></option>
+                          </template>
+                        </select>
+                        <input id="contactPhone" name="phone" type="tel" required x-model="form.phone" placeholder="1712345678" class="form-input min-w-0 !h-11 !rounded-xl text-sm" @blur="applyPhoneCode()" />
+                      </div>
+                      <p class="form-hint">Choose a country code, then enter the number. The prefix is added automatically.</p>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                      <label for="contactEmail" class="form-label">Email</label>
+                      <input id="contactEmail" name="email" type="email" x-model="form.email" class="form-input !h-11 !rounded-xl text-sm" placeholder="name@example.com" />
+                    </div>
+
+                    <div>
+                      <label for="contactCity" class="form-label">City</label>
+                      <input id="contactCity" name="city" type="text" x-model="form.city" class="form-input !h-11 !rounded-xl text-sm" placeholder="Dhaka" />
+                    </div>
+
+                    <div>
+                      <label for="contactCountry" class="form-label">Country</label>
+                      <select id="contactCountry" name="country" x-model="form.country" class="form-input !h-11 !rounded-xl text-sm">
+                        <option value="">Select country...</option>
+                        <option value="BD">Bangladesh (+880)</option>
+                        <option value="US">United States (+1)</option>
+                        <option value="GB">United Kingdom (+44)</option>
+                        <option value="IN">India (+91)</option>
+                        <option value="PK">Pakistan (+92)</option>
+                        <option value="LK">Sri Lanka (+94)</option>
+                        <option value="NP">Nepal (+977)</option>
+                        <option value="MY">Malaysia (+60)</option>
+                        <option value="SG">Singapore (+65)</option>
+                        <option value="PH">Philippines (+63)</option>
+                        <option value="ID">Indonesia (+62)</option>
+                        <option value="TH">Thailand (+66)</option>
+                        <option value="VN">Vietnam (+84)</option>
+                        <option value="AE">UAE (+971)</option>
+                        <option value="SA">Saudi Arabia (+966)</option>
+                        <option value="KW">Kuwait (+965)</option>
+                        <option value="QA">Qatar (+974)</option>
+                        <option value="OM">Oman (+968)</option>
+                        <option value="BH">Bahrain (+973)</option>
+                        <option value="TR">Turkey (+90)</option>
+                        <option value="EG">Egypt (+20)</option>
+                        <option value="NG">Nigeria (+234)</option>
+                        <option value="KE">Kenya (+254)</option>
+                        <option value="ZA">South Africa (+27)</option>
+                        <option value="MA">Morocco (+212)</option>
+                        <option value="DE">Germany (+49)</option>
+                        <option value="FR">France (+33)</option>
+                        <option value="IT">Italy (+39)</option>
+                        <option value="ES">Spain (+34)</option>
+                        <option value="NL">Netherlands (+31)</option>
+                        <option value="SE">Sweden (+46)</option>
+                        <option value="NO">Norway (+47)</option>
+                        <option value="AU">Australia (+61)</option>
+                        <option value="CN">China (+86)</option>
+                        <option value="JP">Japan (+81)</option>
+                        <option value="KR">South Korea (+82)</option>
+                        <option value="RU">Russia (+7)</option>
+                        <option value="BR">Brazil (+55)</option>
+                        <option value="MX">Mexico (+52)</option>
+                        <option value="AR">Argentina (+54)</option>
+                        <option value="CL">Chile (+56)</option>
+                        <option value="CO">Colombia (+57)</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                  <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                        <i class="ph ph-brackets-curly text-base"></i>
+                      </span>
+                      <div>
+                        <h4 class="text-sm font-semibold text-title">Custom fields</h4>
+                        <p class="form-hint">Use values in shortcodes like @{{ website }} and @{{ custom.order_id }}.</p>
+                      </div>
+                    </div>
+                    <button type="button" class="btn-sm btn-outline" @click="addCustomField()">
+                      <i class="ph ph-plus text-base"></i>
+                      Add field
+                    </button>
+                  </div>
+
+                  <div>
+                    <label for="contactWebsite" class="form-label">Website</label>
+                    <input id="contactWebsite" name="custom_fields[website]" type="text" x-model="form.custom_fields.website" placeholder="example.com" class="form-input !h-11 !rounded-xl text-sm" />
+                  </div>
+
+                  <div class="mt-2 space-y-2">
+                    <template x-for="(field, index) in form.custom_field_rows" :key="field.id">
+                      <div class="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_2.5rem]">
+                        <input type="text" class="form-input !h-10 !rounded-xl text-sm" x-model="field.key" placeholder="order_id" aria-label="Custom field name" />
+                        <input type="text" class="form-input !h-10 !rounded-xl text-sm" :name="field.key ? `custom_fields[${field.key}]` : ''" x-model="field.value" placeholder="A-100" aria-label="Custom field value" />
+                        <button type="button" class="row-action" aria-label="Remove custom field" @click="removeCustomField(index)">
+                          <i class="ph ph-trash text-base"></i>
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                </section>
+              </div>
+
+              <aside class="space-y-4">
+                <section class="rounded-lg border border-neutral-200 bg-section p-3.5">
+                  <div class="flex items-center gap-3">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary" x-text="(form.name || 'NA').slice(0, 2).toUpperCase()"></span>
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-title" x-text="form.name || 'New contact'"></p>
+                      <p class="truncate text-xs text-body" x-text="form.phone || 'WhatsApp number required'"></p>
+                    </div>
+                  </div>
+                  <label class="mt-3 flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-3">
+                    <input type="checkbox" name="opt_in_status" value="subscribed" class="app-checkbox mt-0.5" x-bind:checked="form.opt_in_status === 'subscribed'"
+                      @change="form.opt_in_status = $event.target.checked ? 'subscribed' : 'unknown'" />
+                    <span>
+                      <span class="block text-sm font-semibold text-title">WhatsApp opted in</span>
+                      <span class="mt-0.5 block text-xs leading-5 text-body">Enable campaign and inbox messaging for this contact.</span>
+                    </span>
+                  </label>
+                </section>
+
+                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 class="text-sm font-semibold text-title">Tags</h4>
+                      <p class="form-hint">Label contacts for filters and campaigns.</p>
+                    </div>
+                    <span class="badge badge-soft" x-text="form.tag_ids.length"></span>
+                  </div>
+                  <div class="flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1">
+                    <template x-for="tag in availableTags" :key="tag.id">
+                      <button
+                        type="button"
+                        @click="toggleTag(tag.id)"
+                        class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
+                        :class="form.tag_ids.includes(tag.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
+                      >
+                        <span x-show="form.tag_ids.includes(tag.id)">
+                          <i class="ph ph-check text-xs"></i>
+                        </span>
+                        <span
+                          x-show="tag.color"
+                          class="inline-block h-2 w-2 shrink-0 rounded-full bg-primary"
+                        ></span>
+                        <span x-text="tag.name"></span>
+                      </button>
+                    </template>
+                    <p x-show="availableTags.length === 0" class="text-xs text-neutral-400">No tags yet. Create one in the Tags page.</p>
+                  </div>
+                  <template x-for="tagId in form.tag_ids" :key="tagId">
+                    <input type="hidden" name="tag_ids[]" :value="tagId" />
                   </template>
-                </select>
-                <input id="contactPhone" name="phone" type="tel" required x-model="form.phone" placeholder="+8801712345678" class="form-input min-w-0" @blur="applyPhoneCode()" />
-              </div>
-              <p class="form-hint">Choose a country code, then enter the full WhatsApp number.</p>
-            </div>
-          </div>
-          <div>
-            <label for="contactEmail" class="form-label">Email</label>
-            <input id="contactEmail" name="email" type="email" x-model="form.email" class="form-input" />
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label for="contactCity" class="form-label">City</label>
-              <input id="contactCity" name="city" type="text" x-model="form.city" class="form-input" />
-            </div>
-            <div>
-              <label for="contactCountry" class="form-label">Country</label>
-              <select id="contactCountry" name="country" x-model="form.country" class="form-input">
-                <option value="">Select country…</option>
-                <option value="BD">Bangladesh (+880)</option>
-                <option value="US">United States (+1)</option>
-                <option value="GB">United Kingdom (+44)</option>
-                <option value="IN">India (+91)</option>
-                <option value="PK">Pakistan (+92)</option>
-                <option value="LK">Sri Lanka (+94)</option>
-                <option value="NP">Nepal (+977)</option>
-                <option value="MY">Malaysia (+60)</option>
-                <option value="SG">Singapore (+65)</option>
-                <option value="PH">Philippines (+63)</option>
-                <option value="ID">Indonesia (+62)</option>
-                <option value="TH">Thailand (+66)</option>
-                <option value="VN">Vietnam (+84)</option>
-                <option value="AE">UAE (+971)</option>
-                <option value="SA">Saudi Arabia (+966)</option>
-                <option value="KW">Kuwait (+965)</option>
-                <option value="QA">Qatar (+974)</option>
-                <option value="OM">Oman (+968)</option>
-                <option value="BH">Bahrain (+973)</option>
-                <option value="TR">Turkey (+90)</option>
-                <option value="EG">Egypt (+20)</option>
-                <option value="NG">Nigeria (+234)</option>
-                <option value="KE">Kenya (+254)</option>
-                <option value="ZA">South Africa (+27)</option>
-                <option value="MA">Morocco (+212)</option>
-                <option value="DE">Germany (+49)</option>
-                <option value="FR">France (+33)</option>
-                <option value="IT">Italy (+39)</option>
-                <option value="ES">Spain (+34)</option>
-                <option value="NL">Netherlands (+31)</option>
-                <option value="SE">Sweden (+46)</option>
-                <option value="NO">Norway (+47)</option>
-                <option value="AU">Australia (+61)</option>
-                <option value="CN">China (+86)</option>
-                <option value="JP">Japan (+81)</option>
-                <option value="KR">South Korea (+82)</option>
-                <option value="RU">Russia (+7)</option>
-                <option value="BR">Brazil (+55)</option>
-                <option value="MX">Mexico (+52)</option>
-                <option value="AR">Argentina (+54)</option>
-                <option value="CL">Chile (+56)</option>
-                <option value="CO">Colombia (+57)</option>
-              </select>
-            </div>
-          </div>
-          <section class="rounded-xl border border-neutral-200 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h4 class="text-sm font-semibold text-title">Custom fields</h4>
-                <p class="form-hint">These values power shortcodes like @{{ website }} and @{{ custom.order_id }}.</p>
-              </div>
-              <button type="button" class="btn-sm btn-outline" @click="addCustomField()">
-                <i class="ph ph-plus text-base"></i>
-                Add field
-              </button>
-            </div>
+                </section>
 
-            <div class="mt-3">
-              <label for="contactWebsite" class="form-label">Website</label>
-              <input id="contactWebsite" name="custom_fields[website]" type="text" x-model="form.custom_fields.website" placeholder="example.com" class="form-input" />
+                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 class="text-sm font-semibold text-title">Groups</h4>
+                      <p class="form-hint">Add this contact to audience lists.</p>
+                    </div>
+                    <span class="badge badge-soft" x-text="form.group_ids.length"></span>
+                  </div>
+                  <div class="flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1">
+                    <template x-for="group in availableGroups" :key="group.id">
+                      <button
+                        type="button"
+                        @click="toggleGroup(group.id)"
+                        class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
+                        :class="form.group_ids.includes(group.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
+                      >
+                        <span x-show="form.group_ids.includes(group.id)">
+                          <i class="ph ph-check text-xs"></i>
+                        </span>
+                        <i class="ph ph-rows shrink-0 text-xs"></i>
+                        <span x-text="group.name"></span>
+                      </button>
+                    </template>
+                    <p x-show="availableGroups.length === 0" class="text-xs text-neutral-400">No groups yet. Create one in the Groups page.</p>
+                  </div>
+                  <template x-for="groupId in form.group_ids" :key="groupId">
+                    <input type="hidden" name="group_ids[]" :value="groupId" />
+                  </template>
+                </section>
+              </aside>
             </div>
+          </div>
 
-            <div class="mt-3 space-y-2">
-              <template x-for="(field, index) in form.custom_field_rows" :key="field.id">
-                <div class="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_2.5rem]">
-                  <input type="text" class="form-input" x-model="field.key" placeholder="order_id" />
-                  <input type="text" class="form-input" :name="field.key ? `custom_fields[${field.key}]` : ''" x-model="field.value" placeholder="A-100" />
-                  <button type="button" class="row-action" aria-label="Remove custom field" @click="removeCustomField(index)">
-                    <i class="ph ph-trash text-base"></i>
-                  </button>
-                </div>
-              </template>
-            </div>
-          </section>
-          <div>
-            <label class="form-label">Tags</label>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <template x-for="tag in availableTags" :key="tag.id">
-                <button
-                  type="button"
-                  @click="toggleTag(tag.id)"
-                  class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
-                  :class="form.tag_ids.includes(tag.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
-                >
-                  <span x-show="form.tag_ids.includes(tag.id)">
-                    <i class="ph ph-check text-xs"></i>
-                  </span>
-                  <span
-                    x-show="tag.color"
-                    class="inline-block h-2 w-2 rounded-full shrink-0"
-                    :style="'background-color: ' + tag.color"
-                  ></span>
-                  <span x-text="tag.name"></span>
-                </button>
-              </template>
-              <p x-show="availableTags.length === 0" class="text-xs text-neutral-400">No tags yet. Create one in the Tags page.</p>
-            </div>
-            <template x-for="tagId in form.tag_ids" :key="tagId">
-              <input type="hidden" name="tag_ids[]" :value="tagId" />
-            </template>
-          </div>
-          <div>
-            <label class="form-label">Groups</label>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <template x-for="group in availableGroups" :key="group.id">
-                <button
-                  type="button"
-                  @click="toggleGroup(group.id)"
-                  class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
-                  :class="form.group_ids.includes(group.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
-                >
-                  <span x-show="form.group_ids.includes(group.id)">
-                    <i class="ph ph-check text-xs"></i>
-                  </span>
-                  <i class="ph ph-rows text-xs shrink-0"></i>
-                  <span x-text="group.name"></span>
-                </button>
-              </template>
-              <p x-show="availableGroups.length === 0" class="text-xs text-neutral-400">No groups yet. Create one in the Groups page.</p>
-            </div>
-            <template x-for="groupId in form.group_ids" :key="groupId">
-              <input type="hidden" name="group_ids[]" :value="groupId" />
-            </template>
-          </div>
-          <label class="flex items-center gap-2.5">
-            <input type="checkbox" name="opt_in_status" value="subscribed" class="app-checkbox" x-bind:checked="form.opt_in_status === 'subscribed'"
-              @change="form.opt_in_status = $event.target.checked ? 'subscribed' : 'unknown'" />
-            <span class="text-sm text-body">Contact has opted in to WhatsApp</span>
-          </label>
-          <div class="flex items-center gap-3 pt-1">
-            <button type="submit" class="btn btn-primary flex-1" x-text="editing ? 'Save Changes' : 'Save Contact'">Save Contact</button>
-            <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+          <div class="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-neutral-200 bg-neutral-0 px-4 py-3 shadow-[0_-8px_20px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-end sm:px-5">
+            <button type="button" class="btn btn-outline justify-center !h-11 !rounded-xl" data-modal-close>Cancel</button>
+            <button type="submit" class="btn btn-primary justify-center !h-11 !rounded-xl sm:min-w-44" x-text="editing ? 'Save changes' : 'Save contact'">Save Contact</button>
           </div>
         </form>
       </div>
@@ -1085,8 +1149,8 @@
           contactId: '',
           method: 'POST',
           action: '{{ route("user.contacts.store") }}',
-          availableTags: @json($tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])),
-          availableGroups: @json($groups->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])),
+          availableTags: @js($tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])),
+          availableGroups: @js($groups->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])),
           phoneCountries: [
             { code: 'BD', dial: '+880', label: 'BD +880' },
             { code: 'US', dial: '+1', label: 'US +1' },

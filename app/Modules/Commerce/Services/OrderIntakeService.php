@@ -25,6 +25,7 @@ class OrderIntakeService
 
             $providerCatalogId = (string) data_get($message, 'order.catalog_id', '');
             $catalog = Catalog::query()->where('workspace_id', $account->workspace_id)->where('channel_account_id', $account->id)->first();
+            $currency = strtoupper((string) ($catalog?->currency ?: 'USD'));
             $issues = [];
             $subtotal = 0.0;
             $items = [];
@@ -40,7 +41,7 @@ class OrderIntakeService
                 } elseif ($variant->status !== 'active') {
                     $issues[] = "Inactive variant: {$retailerId}";
                 }
-                if ($providerCurrency !== 'USD') {
+                if ($providerCurrency !== $currency) {
                     $issues[] = "Unsupported currency for {$retailerId}: {$providerCurrency}";
                 }
                 $unitPrice = $variant ? (float) $variant->price : $providerPrice;
@@ -62,7 +63,7 @@ class OrderIntakeService
                 'provider_message_id' => $providerMessageId,
                 'provider_catalog_id' => $providerCatalogId,
                 'status' => $issues === [] ? 'requested' : 'needs_details',
-                'currency' => 'USD',
+                'currency' => $currency,
                 'subtotal' => $subtotal,
                 'issues' => $issues,
                 'provider_payload' => $message,

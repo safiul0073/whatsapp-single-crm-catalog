@@ -62,7 +62,9 @@ class InboxController extends Controller
 
     public function show(Request $request, InboxService $inbox, string $conversation): JsonResponse
     {
-        return response()->json($inbox->conversationForUser($request->user(), $conversation));
+        return response()->json($inbox->conversationForUser($request->user(), $conversation, [
+            'before_id' => $request->query('before_id'),
+        ]));
     }
 
     public function storeMessage(SendInboxMessageRequest $request, InboxService $inbox, string $conversation): JsonResponse

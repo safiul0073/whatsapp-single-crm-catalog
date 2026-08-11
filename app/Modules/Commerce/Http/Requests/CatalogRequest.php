@@ -13,6 +13,15 @@ class CatalogRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['channel_account_id' => ['required', 'integer'], 'meta_catalog_id' => ['required', 'string', 'max:120'], 'sync_mode' => ['required', 'in:feed,api'], 'is_active' => ['nullable', 'boolean']];
+        return [
+            'channel_account_id' => ['required', 'integer'],
+            'meta_catalog_id' => ['required', 'string', 'max:120'],
+            'sync_mode' => ['required', 'in:feed,api'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'is_active' => ['nullable', 'boolean'],
+            'shop_enabled' => ['nullable', 'boolean'],
+            'storefront_title' => ['nullable', 'string', 'max:120'],
+            'storefront_description' => ['nullable', 'string', 'max:300'],
+        ];
     }
 }

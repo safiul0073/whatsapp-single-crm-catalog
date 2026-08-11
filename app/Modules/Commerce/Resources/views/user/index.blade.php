@@ -108,7 +108,7 @@
                                     <td class="px-5 py-3.5">
                                         <div class="flex justify-end gap-2">
                                             @if ($product->status === 'active')
-                                                <a href="{{ route('commerce.products.public', $product->slug) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
+                                                <a href="{{ route('commerce.products.public', ['workspace' => $product->workspace->slug, 'product' => $product->slug]) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
                                             @endif
                                             <a href="{{ route('user.commerce.products.edit', $product) }}" class="row-action" aria-label="{{ __('Manage :product', ['product' => $product->name]) }}" title="{{ __('Manage product') }}"><i class="ph ph-pencil-simple"></i></a>
                                             <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">

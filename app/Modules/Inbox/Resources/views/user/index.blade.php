@@ -205,6 +205,12 @@
               <span class="rounded-full bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
             </div>
             <div class="mx-auto flex w-full max-w-4xl flex-col gap-1.5">
+              <div class="flex justify-center pb-2" x-show="hasOlderMessages && !threadLoading" x-cloak>
+                <button type="button" class="btn-sm btn-outline" @click="loadOlderMessages()" :disabled="olderMessagesLoading">
+                  <i class="ph ph-arrow-up text-base"></i>
+                  <span x-text="olderMessagesLoading ? '{{ __('Loading...') }}' : '{{ __('Load older messages') }}'"></span>
+                </button>
+              </div>
               <template x-for="message in messages" :key="message.id">
                 <div>
                   <div class="chat-date-separator" x-show="message.show_date_separator">
@@ -225,7 +231,13 @@
                               <img :src="message.attachment.url" :alt="message.attachment.name">
                             </a>
                           </template>
-                          <template x-if="message.attachment.type !== 'image'">
+                          <template x-if="message.attachment.type === 'video'">
+                            <video :src="message.attachment.url" controls preload="metadata" class="chat-attachment chat-attachment--image max-h-72 w-full"></video>
+                          </template>
+                          <template x-if="message.attachment.type === 'audio'">
+                            <audio :src="message.attachment.url" controls preload="metadata" class="w-full"></audio>
+                          </template>
+                          <template x-if="!['image', 'video', 'audio'].includes(message.attachment.type)">
                             <a :href="message.attachment.url" target="_blank" class="chat-attachment chat-attachment--file">
                               <span class="chat-attachment__icon">
                                 <i class="ph text-lg" :class="attachmentIcon(message.attachment.type)"></i>

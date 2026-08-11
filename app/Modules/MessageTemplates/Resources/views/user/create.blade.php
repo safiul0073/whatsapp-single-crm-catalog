@@ -45,6 +45,8 @@
             $type = match ($button['type'] ?? '') {
                 'URL' => 'url',
                 'PHONE_NUMBER' => 'phone_number',
+                'CATALOG' => 'catalog',
+                'MPM' => 'mpm',
                 'CALLBACK' => 'callback',
                 default => 'quick_reply',
             };
@@ -249,6 +251,12 @@
                     @if ($isWhatsApp)
                     <button type="button" class="btn-sm btn-outline" @click="addButton('phone_number')" :disabled="!canAddPhone">
                         <i class="ph ph-plus text-base"></i>Phone
+                    </button>
+                    <button type="button" class="btn-sm btn-outline" @click="addButton('catalog')" :disabled="!canAddCommerce">
+                        <i class="ph ph-plus text-base"></i>Catalog
+                    </button>
+                    <button type="button" class="btn-sm btn-outline" @click="addButton('mpm')" :disabled="!canAddCommerce">
+                        <i class="ph ph-plus text-base"></i>Products
                     </button>
                     @else
                     <button type="button" class="btn-sm btn-outline" @click="addButton('callback')" :disabled="buttons.length >= 10">

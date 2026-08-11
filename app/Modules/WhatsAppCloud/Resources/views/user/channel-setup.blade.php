@@ -5,6 +5,7 @@
   $displayBusinessId = data_get($channel?->settings, 'business_id');
   $displayPhoneNumberId = $channel?->provider_phone_id;
   $displayVerifyToken = $channel?->webhook_verify_token;
+  $catalogs = $catalogs ?? collect();
   $validationErrors = $errors ?? session('errors');
   $embeddedSignup = $embeddedSignup ?? ['enabled' => false, 'app_id' => '', 'config_id' => '', 'graph_api_version' => 'v20.0'];
   $connectableChannelProviders = collect($channelProviders)
@@ -63,6 +64,38 @@
             {{ $validationErrors->first() }}
           </div>
         @endif
+
+        <section class="card mt-6 p-5">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-neutral-400">Production health</p>
+              <h3 class="mt-1 font-title text-lg font-bold text-title">WhatsApp Cloud readiness</h3>
+              <p class="m-text mt-1">Verify the settings required for live inbox, campaigns, templates, webhooks, catalog sync, and commerce orders.</p>
+            </div>
+            <span class="badge badge-soft">{{ $embeddedSignup['graph_api_version'] ?? 'v24.0' }}</span>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            @foreach ([
+              ['label' => 'Access token', 'ok' => filled($channel?->credential('access_token')), 'detail' => filled($channel?->credential('access_token')) ? 'Configured' : 'Missing'],
+              ['label' => 'WABA ID', 'ok' => filled($displayWabaId), 'detail' => $displayWabaId ?: 'Missing'],
+              ['label' => 'Phone number ID', 'ok' => filled($displayPhoneNumberId), 'detail' => $displayPhoneNumberId ?: 'Missing'],
+              ['label' => 'Webhook URL', 'ok' => filled($webhookUrl ?? null), 'detail' => $webhookUrl ?? 'Missing'],
+              ['label' => 'Approved templates', 'ok' => ($approvedTemplatesCount ?? 0) > 0, 'detail' => (string) ($approvedTemplatesCount ?? 0)],
+              ['label' => 'Active catalogs', 'ok' => $catalogs->isNotEmpty(), 'detail' => (string) $catalogs->count()],
+            ] as $item)
+              <div class="rounded-xl border border-neutral-100 bg-section p-3">
+                <div class="flex items-start gap-2">
+                  <i class="ph {{ $item['ok'] ? 'ph-check-circle text-success' : 'ph-warning-circle text-warning' }} mt-0.5 text-lg"></i>
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-title">{{ $item['label'] }}</p>
+                    <p class="mt-0.5 truncate text-xs text-body">{{ $item['detail'] }}</p>
+                  </div>
+                </div>
+              </div>
+            @endforeach
+          </div>
+        </section>
 
         @if ($connectedCount === 0)
           <section class="card mt-6 overflow-hidden p-0">

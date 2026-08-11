@@ -33,7 +33,6 @@ class Module extends BasePanelModule
                 'workspace.manage' => 'Manage workspace',
                 'workspace.edit' => 'Edit workspace details',
                 'team.manage' => 'Manage workspace team members',
-                'team.manage.staff_only' => 'Manage Staff team members only',
                 'subscription.manage' => 'Manage subscriptions and billing',
                 'billing.view' => 'View billing information',
                 'channels.manage' => 'Manage messaging channels',

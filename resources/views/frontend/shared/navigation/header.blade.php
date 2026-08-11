@@ -1,6 +1,23 @@
 @php
-    $headerItems = $resolvedMenus['header']['items'] ?? [];
-    $mobileItems = $resolvedMenus['mobile']['items'] ?? [];
+    $productsUrl = route('commerce.products.shortcut');
+    $appendProductsLink = function (array $items) use ($productsUrl): array {
+        $hasProductsLink = collect($items)->contains(fn (array $item): bool => ($item['url'] ?? null) === $productsUrl);
+
+        if (! $hasProductsLink) {
+            $items[] = [
+                'label' => __('Products'),
+                'url' => $productsUrl,
+                'target' => '_self',
+                'is_visible' => true,
+                'children' => [],
+            ];
+        }
+
+        return $items;
+    };
+
+    $headerItems = $appendProductsLink($resolvedMenus['header']['items'] ?? []);
+    $mobileItems = $appendProductsLink($resolvedMenus['mobile']['items'] ?? []);
 @endphp
 
 <header class="site-header">

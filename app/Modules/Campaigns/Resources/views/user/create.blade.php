@@ -3,6 +3,7 @@
         $channels = $channels ?? collect();
         $templates = $templates ?? collect();
         $automations = $automations ?? collect();
+        $commerceVariants = $commerceVariants ?? collect();
         $contacts = $contacts ?? collect();
         $tags = $tags ?? collect();
         $groups = $groups ?? collect();
@@ -28,6 +29,14 @@
             'category' => ucfirst((string) $template->category),
             'language' => $template->language ?? 'en_US',
             'body' => (string) data_get(collect($template->components ?? [])->firstWhere('type', 'BODY'), 'text', ''),
+            'kind' => $template->template_kind ?? 'standard',
+        ])->values();
+        $commerceVariantOptions = $commerceVariants->map(fn ($variant) => [
+            'id' => $variant->id,
+            'retailer_id' => $variant->meta_retailer_id,
+            'name' => trim($variant->product->name.' '.collect($variant->attributes ?? [])->implode(' / ')),
+            'category' => $variant->product->category?->name ?? __('Products'),
+            'price' => (float) $variant->price,
         ])->values();
         $automationOptions = $automations->map(fn ($automation) => [
             'id' => $automation->id,
@@ -82,6 +91,8 @@
             templates: @js($templateOptions),
             automations: @js($automationOptions),
             contacts: @js($contactOptions),
+            commerceVariants: @js($commerceVariantOptions),
+            initialCommerce: @js(old('settings.commerce', $campaign?->settings['commerce'] ?? [])),
             initialChannel: @js((string) $initialChannel),
             initialMode: @js($initialMode),
             initialSchedule: @js($initialSchedule),
@@ -257,6 +268,42 @@
                             <option :value="template.id" x-text="`${template.name} · ${template.category} · ${template.language}`"></option>
                         </template>
                     </select>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4" x-show="messageType === 'template' && provider === 'whatsapp' && selectedTemplate && selectedTemplate.kind !== 'standard'" x-cloak>
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h4 class="font-semibold text-title">{{ __('WhatsApp commerce content') }}</h4>
+                            <p class="form-hint mt-1">{{ __('Choose synced catalog items for this approved catalog or multi-product template.') }}</p>
+                        </div>
+                        <span class="badge badge-soft" x-text="selectedTemplate?.kind === 'multi_product' ? '{{ __('Multi-product') }}' : '{{ __('Catalog') }}'"></span>
+                    </div>
+
+                    <div class="mt-4">
+                        <label for="commerce_thumbnail" class="form-label">{{ __('Thumbnail product') }}</label>
+                        <select id="commerce_thumbnail" name="settings[commerce][thumbnail_product_retailer_id]" class="form-input" x-model="commerce.thumbnail_product_retailer_id">
+                            <option value="">{{ __('Use first catalog product') }}</option>
+                            <template x-for="variant in commerceVariants" :key="variant.id">
+                                <option :value="variant.retailer_id" x-text="`${variant.name} · ${variant.retailer_id}`"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="mt-4" x-show="selectedTemplate?.kind === 'multi_product'">
+                        <p class="form-label">{{ __('Products') }}</p>
+                        <div class="mt-2 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                            <template x-for="variant in commerceVariants" :key="variant.id">
+                                <label class="check-row bg-neutral-0">
+                                    <input type="checkbox" name="settings[commerce][variant_ids][]" class="app-checkbox" :value="variant.id" x-model="commerce.variant_ids">
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-semibold text-title" x-text="variant.name"></span>
+                                        <span class="block truncate text-xs text-neutral-400" x-text="`${variant.category} · ${variant.retailer_id}`"></span>
+                                    </span>
+                                </label>
+                            </template>
+                        </div>
+                        <p class="form-hint mt-2">{{ __('Meta supports up to 30 products grouped into up to 10 sections. The app groups by product category.') }}</p>
+                    </div>
                 </div>
 
                 <div class="mt-5" x-show="messageType === 'automation'">
@@ -564,6 +611,7 @@
                     templates: config.templates,
                     automations: config.automations,
                     contacts: config.contacts,
+                    commerceVariants: config.commerceVariants || [],
                     doctor: {
                         loading: false,
                         report: null,
@@ -578,6 +626,10 @@
                     subject: config.initialSubject || '',
                     audienceType: config.initialAudience || 'groups',
                     contactSearch: '',
+                    commerce: {
+                        thumbnail_product_retailer_id: config.initialCommerce?.thumbnail_product_retailer_id || '',
+                        variant_ids: (config.initialCommerce?.variant_ids || []).map((id) => String(id)),
+                    },
                     templateId: @js((string) old('message_template_id', $campaign?->message_template_id ?? '')),
                     automationId: @js((string) old('automation_id', $campaign?->automation_id ?? '')),
                     init() {

@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Services;
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\MarketingChannels\Contracts\MarketingChannelDriver;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
 use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -332,6 +333,7 @@ class TelegramBotProvider implements MarketingChannelDriver
         if ($message) {
             $text = (string) data_get($message, 'text', '');
             $startToken = null;
+            $normalizedPayload = $this->inboundMessagePayload($account, $message);
 
             if (preg_match('/^\/start(?:@\S+)?\s+([A-Za-z0-9_-]{8,64})$/', trim($text), $matches) === 1) {
                 $startToken = $matches[1];
@@ -346,7 +348,7 @@ class TelegramBotProvider implements MarketingChannelDriver
                 'body' => $text !== '' ? $text : data_get($message, 'caption'),
                 'start_token' => $startToken,
                 'contact' => data_get($message, 'contact'),
-                'payload' => $message,
+                'payload' => $normalizedPayload,
             ];
         }
 
@@ -413,5 +415,20 @@ class TelegramBotProvider implements MarketingChannelDriver
             'url' => $button['url'] ?? null,
             'callback_data' => $button['callback_data'] ?? null,
         ])], $buttons);
+    }
+
+    protected function inboundMessagePayload(ChannelAccount $account, array $message): array
+    {
+        $payload = $message;
+        $attachment = app(InboundMessageAttachmentService::class)->forTelegram($account, $message);
+
+        if ($attachment) {
+            $payload['attachment'] = $attachment;
+            $payload['type'] = $attachment['type'];
+        } else {
+            $payload['type'] = 'text';
+        }
+
+        return $payload;
     }
 }

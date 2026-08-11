@@ -3,6 +3,7 @@
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\WhatsAppCloud\Services\WhatsAppCloudClient;
 use App\Modules\WhatsAppCloud\Services\WhatsAppCloudDriver;
+use App\Modules\WhatsAppCloud\Services\WhatsAppMessagePayloadBuilder;
 use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Http\Client\Response;
 
@@ -10,7 +11,7 @@ it('returns helpful whatsapp connection validation errors before calling meta', 
     $client = Mockery::mock(WhatsAppCloudClient::class);
     $client->shouldNotReceive('phoneNumbers');
 
-    $driver = new WhatsAppCloudDriver($client);
+    $driver = new WhatsAppCloudDriver($client, new WhatsAppMessagePayloadBuilder);
 
     $missingWaba = $driver->testConnection(new ChannelAccount([
         'provider' => 'whatsapp',
@@ -40,7 +41,7 @@ it('returns the meta error message when whatsapp connection test fails', functio
             ],
         ], JSON_THROW_ON_ERROR))));
 
-    $driver = new WhatsAppCloudDriver($client);
+    $driver = new WhatsAppCloudDriver($client, new WhatsAppMessagePayloadBuilder);
     $result = $driver->testConnection(new ChannelAccount([
         'provider' => 'whatsapp',
         'provider_account_id' => 'waba-123',

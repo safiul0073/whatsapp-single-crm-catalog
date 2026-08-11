@@ -10,7 +10,7 @@ class WhatsAppSettingsService
     protected const CACHE_KEY = 'whatsapp_cloud_settings';
 
     protected array $defaults = [
-        'whatsapp_graph_api_version' => 'v20.0',
+        'whatsapp_graph_api_version' => 'v24.0',
         'whatsapp_meta_app_id' => '',
         'whatsapp_meta_app_secret' => '',
         'whatsapp_default_verify_token' => '',
@@ -49,7 +49,9 @@ class WhatsAppSettingsService
 
     public function graphApiVersion(): string
     {
-        return trim((string) $this->get('whatsapp_graph_api_version', 'v20.0'), '/');
+        $version = trim((string) $this->get('whatsapp_graph_api_version', 'v24.0'), '/');
+
+        return preg_match('/^v\d+\.\d+$/', $version) === 1 ? $version : 'v24.0';
     }
 
     public function webhookBaseUrl(): ?string

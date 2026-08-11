@@ -3,6 +3,7 @@
 namespace App\Modules\WhatsAppCloud\Services;
 
 use App\Models\User;
+use App\Modules\Commerce\Models\Catalog;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
@@ -55,6 +56,11 @@ class ChannelSetupService
                 ->where('provider', 'whatsapp')
                 ->where('status', MessageTemplateStatus::Approved->value)
                 ->count(),
+            'catalogs' => Catalog::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('is_active', true)
+                ->latest()
+                ->get(),
             'webhookUrl' => $this->webhookUrlForProvider('whatsapp'),
             'webhookUrls' => collect(array_keys($providers))->mapWithKeys(fn (string $provider): array => [$provider => $this->webhookUrlForProvider($provider)])->all(),
             'embeddedSignup' => $this->embeddedSignupConfig(),

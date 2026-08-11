@@ -10,6 +10,7 @@ use App\Modules\Workspaces\Mail\TeamInvitationMail;
 use App\Modules\Workspaces\Mail\TeamMemberWelcomeMail;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceInvitation;
+use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
@@ -95,6 +96,7 @@ function addMember(Workspace $workspace, WorkspaceMemberRole $role): User
         WorkspaceMemberRole::Staff => 'workspace-staff',
     };
 
+    Role::findOrCreate($spatieRole, 'web');
     $user->assignRole($spatieRole);
 
     return $user;
@@ -174,7 +176,7 @@ it('enforces the team seat limit when adding members', function (): void {
         ->assertForbidden();
 });
 
-it('allows manager to add staff but not administrators', function (): void {
+it('prevents managers from adding team members', function (): void {
     $owner = User::factory()->create();
     $workspace = setupWorkspace($owner);
 
@@ -189,7 +191,7 @@ it('allows manager to add staff but not administrators', function (): void {
             'password_confirmation' => 'password123',
             'role' => WorkspaceMemberRole::Staff->value,
         ])
-        ->assertRedirect(route('user.workspaces.team'));
+        ->assertForbidden();
 
     $this->actingAs($manager)
         ->post(route('user.workspaces.team.store'), [
@@ -276,11 +278,23 @@ it('allows owner to update role permissions from a member permission page', func
         ])
         ->assertRedirect(route('user.workspaces.team.permissions', $member));
 
-    $role = Role::findByName('workspace-staff', 'web');
+    $this->assertDatabaseHas('workspace_role_permissions', [
+        'workspace_id' => $workspace->id,
+        'role' => WorkspaceMemberRole::Staff->value,
+        'permission_name' => 'workspace.view',
+    ]);
+    $this->assertDatabaseHas('workspace_role_permissions', [
+        'workspace_id' => $workspace->id,
+        'role' => WorkspaceMemberRole::Staff->value,
+        'permission_name' => 'contacts.view',
+    ]);
+    $this->assertDatabaseMissing('workspace_role_permissions', [
+        'workspace_id' => $workspace->id,
+        'role' => WorkspaceMemberRole::Staff->value,
+        'permission_name' => 'reports.view',
+    ]);
 
-    expect($role->hasPermissionTo('workspace.view'))->toBeTrue()
-        ->and($role->hasPermissionTo('contacts.view'))->toBeTrue()
-        ->and($role->hasPermissionTo('reports.view'))->toBeFalse();
+    expect($workspace->fresh()->settings['custom_role_permissions'])->toContain(WorkspaceMemberRole::Staff->value);
 });
 
 it('hides sidebar items for permissions missing from the active workspace role', function (): void {
@@ -326,7 +340,7 @@ it('uses the active workspace role instead of an owned workspace role', function
         ->assertForbidden();
 });
 
-it('allows an active workspace manager to manage staff only even when they own another workspace', function (): void {
+it('prevents an active workspace manager from managing staff even when they own another workspace', function (): void {
     $owner = User::factory()->create();
     $workspace = setupWorkspace($owner);
 
@@ -350,7 +364,7 @@ it('allows an active workspace manager to manage staff only even when they own a
             'password_confirmation' => 'password123',
             'role' => WorkspaceMemberRole::Staff->value,
         ])
-        ->assertRedirect(route('user.workspaces.team'));
+        ->assertForbidden();
 
     $this->actingAs($manager)
         ->withSession(['active_workspace_id' => $workspace->id])
@@ -363,6 +377,57 @@ it('allows an active workspace manager to manage staff only even when they own a
             'role' => WorkspaceMemberRole::Administrator->value,
         ])
         ->assertForbidden();
+});
+
+it('keeps role permission edits scoped to the active workspace', function (): void {
+    $firstOwner = User::factory()->create();
+    $firstWorkspace = setupWorkspace($firstOwner);
+    $firstStaff = addMember($firstWorkspace, WorkspaceMemberRole::Staff);
+
+    $secondOwner = User::factory()->create();
+    $secondWorkspace = setupWorkspace($secondOwner);
+    $secondStaff = addMember($secondWorkspace, WorkspaceMemberRole::Staff);
+
+    $this->actingAs($firstOwner)
+        ->withSession(['active_workspace_id' => $firstWorkspace->id])
+        ->put(route('user.workspaces.team.permissions.update', $firstStaff), [
+            'permissions' => [
+                'workspace.view',
+                'templates.manage',
+            ],
+        ])
+        ->assertRedirect(route('user.workspaces.team.permissions', $firstStaff));
+
+    expect(WorkspaceRolePermission::query()
+        ->where('workspace_id', $firstWorkspace->id)
+        ->where('role', WorkspaceMemberRole::Staff->value)
+        ->pluck('permission_name')
+        ->all())->toEqualCanonicalizing(['workspace.view', 'templates.manage']);
+
+    expect(WorkspaceRolePermission::query()
+        ->where('workspace_id', $secondWorkspace->id)
+        ->where('role', WorkspaceMemberRole::Staff->value)
+        ->exists())->toBeFalse();
+
+    $this->actingAs($firstStaff)
+        ->withSession(['active_workspace_id' => $firstWorkspace->id])
+        ->get(route('user.message-templates.index'))
+        ->assertOk();
+
+    $this->actingAs($secondStaff)
+        ->withSession(['active_workspace_id' => $secondWorkspace->id])
+        ->get(route('user.message-templates.index'))
+        ->assertForbidden();
+});
+
+it('allows workspace owner all workspace permissions', function (): void {
+    $owner = User::factory()->create();
+    $workspace = setupWorkspace($owner);
+
+    $this->actingAs($owner)
+        ->withSession(['active_workspace_id' => $workspace->id])
+        ->get(route('user.message-templates.index'))
+        ->assertOk();
 });
 
 it('keeps sidebar and route middleware aligned with the active workspace role', function (): void {

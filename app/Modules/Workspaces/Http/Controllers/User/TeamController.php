@@ -61,7 +61,10 @@ class TeamController extends Controller
 
     public function updateRolePermissions(UpdateRolePermissionsRequest $request, string $role): RedirectResponse
     {
+        $workspace = $this->workspaces->current($request->user());
+
         $this->team->updateRolePermissions(
+            $workspace,
             WorkspaceMemberRole::from($role),
             $request->validated('permissions') ?? []
         );
@@ -80,7 +83,7 @@ class TeamController extends Controller
             'workspace' => $workspace,
             'member' => $member,
             'role' => $role,
-            'rolePermissions' => $this->team->rolePermissionDetails($role),
+            'rolePermissions' => $this->team->rolePermissionDetails($workspace, $role),
         ]);
     }
 
@@ -90,7 +93,7 @@ class TeamController extends Controller
         $member = $this->resolveWorkspaceMember($workspace, $member);
         $role = $this->team->resolveRole($member->pivot->role);
 
-        $this->team->updateRolePermissions($role, $request->validated('permissions') ?? []);
+        $this->team->updateRolePermissions($workspace, $role, $request->validated('permissions') ?? []);
 
         return redirect()->route('user.workspaces.team.permissions', $member)
             ->with('success', __('Role permissions updated successfully.'));
@@ -127,7 +130,7 @@ class TeamController extends Controller
 
     public function revokeInvite(Request $request, WorkspaceInvitation $invitation): RedirectResponse
     {
-        $this->team->revokeInvite($invitation);
+        $this->team->revokeInvite($invitation, $request->user());
 
         return redirect()->route('user.workspaces.team')
             ->with('success', __('Invitation revoked successfully.'));

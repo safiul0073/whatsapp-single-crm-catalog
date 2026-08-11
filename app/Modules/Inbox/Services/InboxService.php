@@ -29,6 +29,8 @@ use Illuminate\Validation\ValidationException;
 
 class InboxService
 {
+    protected const MESSAGE_PAGE_SIZE = 50;
+
     public function __construct(
         protected WorkspaceResolver $workspaces,
         protected ChannelManager $channels,
@@ -88,11 +90,11 @@ class InboxService
         ];
     }
 
-    public function conversationForUser(?User $user, string|int $conversationId): array
+    public function conversationForUser(?User $user, string|int $conversationId, array $filters = []): array
     {
         $conversation = $this->conversationModelForUser($user, $conversationId);
 
-        return $this->threadPayload($conversation);
+        return $this->threadPayload($conversation, $filters);
     }
 
     public function conversationModelForUser(?User $user, string|int $conversationId): Conversation
@@ -336,19 +338,37 @@ class InboxService
             && $user->can('contacts.assigned_only');
     }
 
-    protected function threadPayload(Conversation $conversation): array
+    protected function threadPayload(Conversation $conversation, array $filters = []): array
     {
         $conversation->loadMissing(['contact.tags', 'channelAccount']);
+        $beforeId = filled($filters['before_id'] ?? null) ? (int) $filters['before_id'] : null;
+        $latestMessage = Message::query()
+            ->where('workspace_id', $conversation->workspace_id)
+            ->where('conversation_id', $conversation->id)
+            ->latest('id')
+            ->first();
 
         $messages = Message::query()
             ->where('workspace_id', $conversation->workspace_id)
             ->where('conversation_id', $conversation->id)
-            ->orderBy('id')
+            ->when($beforeId, fn (Builder $query) => $query->where('id', '<', $beforeId))
+            ->orderByDesc('id')
+            ->limit(self::MESSAGE_PAGE_SIZE + 1)
             ->get();
+        $hasOlderMessages = $messages->count() > self::MESSAGE_PAGE_SIZE;
+        $messages = $messages
+            ->take(self::MESSAGE_PAGE_SIZE)
+            ->sortBy('id')
+            ->values();
 
         return [
-            'conversation' => $this->formatConversation($conversation, $messages->last()),
+            'conversation' => $this->formatConversation($conversation, $latestMessage),
             'messages' => $messages->map(fn (Message $message): array => $this->formatMessage($message))->values()->all(),
+            'messages_page' => [
+                'per_page' => self::MESSAGE_PAGE_SIZE,
+                'has_more' => $hasOlderMessages,
+                'next_before_id' => $hasOlderMessages ? $messages->first()?->id : null,
+            ],
             'has_channel' => $this->hasReplyChannel((int) $conversation->workspace_id, (string) $conversation->provider),
             'recipient_ready' => $this->recipientReady($conversation),
             'telegram_opt_in' => $this->telegramOptInPayload($conversation),
@@ -523,6 +543,12 @@ class InboxService
             return filled($templateName)
                 ? __('Template: :name', ['name' => $templateName])
                 : __('WhatsApp template message');
+        }
+
+        $attachmentName = data_get($message->payload, 'attachment.name');
+
+        if (filled($attachmentName)) {
+            return (string) $attachmentName;
         }
 
         return '';

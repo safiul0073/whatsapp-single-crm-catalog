@@ -16,6 +16,7 @@ use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
+use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
@@ -26,7 +27,7 @@ use Illuminate\Validation\ValidationException;
 
 class WhatsAppCloudDriver implements MarketingChannelDriver
 {
-    public function __construct(protected WhatsAppCloudClient $client) {}
+    public function __construct(protected WhatsAppCloudClient $client, protected WhatsAppMessagePayloadBuilder $payloads) {}
 
     public function provider(): string
     {
@@ -38,7 +39,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         $phone = preg_replace('/\D+/', '', (string) ($recipient['phone'] ?? $recipient['to'] ?? ''));
         $token = (string) $account->credential('access_token');
 
-        $metaPayload = $payload['meta_payload'] ?? $this->messagePayload($phone, $payload);
+        $metaPayload = $payload['meta_payload'] ?? $this->payloads->build($phone, $payload);
         try {
             $response = $this->client->sendMessage((string) $account->provider_phone_id, $token, $metaPayload);
         } catch (\Throwable $exception) {
@@ -61,8 +62,13 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             'provider_message_id' => data_get($json, 'messages.0.id'),
             'status' => $response->successful() ? MessageStatus::Sent->value : MessageStatus::Failed->value,
             'error_code' => data_get($json, 'error.code'),
-            'error' => data_get($json, 'error.message'),
+            'error' => data_get($json, 'error.error_user_msg') ?: data_get($json, 'error.error_data.details') ?: data_get($json, 'error.message'),
             'response' => $json,
+            'rate_limit' => [
+                'business_use_case' => $response->header('x-business-use-case-usage'),
+                'app_usage' => $response->header('x-app-usage'),
+                'page_usage' => $response->header('x-page-usage'),
+            ],
         ];
     }
 
@@ -134,6 +140,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 ],
                 [
                     'provider' => $this->provider(),
+                    'template_kind' => $this->templateKind($template['components'] ?? []),
                     'category' => strtolower($template['category'] ?? 'marketing'),
                     'components' => $template['components'] ?? [],
                     'submission_payload' => $template,
@@ -174,95 +181,6 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             'connected' => $account->status === ChannelAccountStatus::Connected,
             'last_synced_at' => $account->last_synced_at,
             'has_credentials' => filled($account->credential('access_token')),
-        ];
-    }
-
-    protected function messagePayload(string $phone, array $payload): array
-    {
-        if (($payload['type'] ?? null) === 'catalog_message') {
-            return [
-                'messaging_product' => 'whatsapp',
-                'recipient_type' => 'individual',
-                'to' => $phone,
-                'type' => 'interactive',
-                'interactive' => [
-                    'type' => 'catalog_message',
-                    'body' => ['text' => (string) ($payload['body'] ?? 'Browse our catalog and add products to your cart.')],
-                    'action' => ['name' => 'catalog_message', 'parameters' => array_filter(['thumbnail_product_retailer_id' => $payload['thumbnail_product_retailer_id'] ?? null])],
-                    'footer' => ['text' => (string) ($payload['footer'] ?? 'Availability and international shipping are confirmed before payment.')],
-                ],
-            ];
-        }
-
-        if (($payload['type'] ?? null) === 'product') {
-            return [
-                'messaging_product' => 'whatsapp',
-                'recipient_type' => 'individual',
-                'to' => $phone,
-                'type' => 'interactive',
-                'interactive' => [
-                    'type' => 'product',
-                    'body' => ['text' => (string) ($payload['body'] ?? 'Product details')],
-                    'action' => ['catalog_id' => (string) $payload['catalog_id'], 'product_retailer_id' => (string) $payload['product_retailer_id']],
-                ],
-            ];
-        }
-
-        if (($payload['type'] ?? null) === 'product_list') {
-            return [
-                'messaging_product' => 'whatsapp',
-                'recipient_type' => 'individual',
-                'to' => $phone,
-                'type' => 'interactive',
-                'interactive' => [
-                    'type' => 'product_list',
-                    'header' => ['type' => 'text', 'text' => (string) ($payload['header'] ?? 'Our products')],
-                    'body' => ['text' => (string) ($payload['body'] ?? 'Select products to add to your cart.')],
-                    'action' => ['catalog_id' => (string) $payload['catalog_id'], 'sections' => $payload['sections'] ?? []],
-                ],
-            ];
-        }
-
-        if (($payload['type'] ?? null) === 'template') {
-            return [
-                'messaging_product' => 'whatsapp',
-                'to' => $phone,
-                'type' => 'template',
-                'template' => [
-                    'name' => $payload['template_name'],
-                    'language' => ['code' => $payload['language'] ?? 'en_US'],
-                    'components' => $payload['components'] ?? [],
-                ],
-            ];
-        }
-
-        if (in_array(($payload['type'] ?? null), ['image', 'video', 'audio', 'document'], true)) {
-            $type = (string) $payload['type'];
-            $media = [
-                'link' => (string) $payload['url'],
-            ];
-
-            if (filled($payload['caption'] ?? null) && in_array($type, ['image', 'video', 'document'], true)) {
-                $media['caption'] = (string) $payload['caption'];
-            }
-
-            if ($type === 'document' && filled($payload['filename'] ?? null)) {
-                $media['filename'] = (string) $payload['filename'];
-            }
-
-            return [
-                'messaging_product' => 'whatsapp',
-                'to' => $phone,
-                'type' => $type,
-                $type => $media,
-            ];
-        }
-
-        return [
-            'messaging_product' => 'whatsapp',
-            'to' => $phone,
-            'type' => 'text',
-            'text' => ['body' => (string) ($payload['body'] ?? '')],
         ];
     }
 
@@ -348,6 +266,9 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             ]
         );
 
+        $normalizedPayload = $this->inboundMessagePayload($account, $message);
+        $body = $this->inboundMessageBody($message);
+
         Message::query()->updateOrCreate(
             ['provider_message_id' => $message['id'] ?? Str::uuid()->toString()],
             [
@@ -357,9 +278,9 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 'channel_account_id' => $account->id,
                 'provider' => $this->provider(),
                 'direction' => 'inbound',
-                'type' => $message['type'] ?? 'text',
-                'body' => data_get($message, 'text.body'),
-                'payload' => $message,
+                'type' => data_get($normalizedPayload, 'type', $message['type'] ?? 'text'),
+                'body' => $body,
+                'payload' => $normalizedPayload,
                 'status' => MessageStatus::Received->value,
                 'whatsapp_message_id' => $message['id'] ?? null,
             ]
@@ -409,6 +330,21 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         };
 
         return MessageTemplateStatus::tryFrom($value)?->value ?? MessageTemplateStatus::Submitted->value;
+    }
+
+    protected function templateKind(array $components): string
+    {
+        $buttons = collect(data_get(collect($components)->firstWhere('type', 'BUTTONS'), 'buttons', []));
+
+        if ($buttons->contains(fn (array $button): bool => ($button['type'] ?? null) === 'MPM')) {
+            return 'multi_product';
+        }
+
+        if ($buttons->contains(fn (array $button): bool => ($button['type'] ?? null) === 'CATALOG')) {
+            return 'catalog';
+        }
+
+        return 'standard';
     }
 
     protected function refreshTemplateSummaryStatus(MessageTemplate $template): void
@@ -485,15 +421,14 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         $events = [];
 
         foreach ($this->messages($payload) as $message) {
+            $normalizedPayload = $this->inboundMessagePayload($account, $message);
+
             $events[] = [
                 'type' => 'message',
                 'provider_message_id' => $message['id'] ?? null,
                 'provider_contact_id' => $message['from'] ?? null,
-                'body' => data_get($message, 'text.body')
-                    ?: data_get($message, 'button.text')
-                    ?: data_get($message, 'interactive.button_reply.title')
-                    ?: data_get($message, 'interactive.list_reply.title'),
-                'payload' => $message,
+                'body' => $this->inboundMessageBody($message),
+                'payload' => $normalizedPayload,
             ];
         }
 
@@ -557,5 +492,33 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 'message_template_id' => 'This template is not approved for the selected WhatsApp Business Account.',
             ]);
         }
+    }
+
+    protected function inboundMessagePayload(ChannelAccount $account, array $message): array
+    {
+        $payload = $message;
+        $attachment = app(InboundMessageAttachmentService::class)->forWhatsApp($account, $message);
+
+        if ($attachment) {
+            $payload['attachment'] = $attachment;
+            $payload['type'] = $attachment['type'];
+        } elseif (blank($payload['type'] ?? null)) {
+            $payload['type'] = 'text';
+        }
+
+        return $payload;
+    }
+
+    protected function inboundMessageBody(array $message): ?string
+    {
+        $body = data_get($message, 'text.body')
+            ?: data_get($message, 'image.caption')
+            ?: data_get($message, 'document.caption')
+            ?: data_get($message, 'video.caption')
+            ?: data_get($message, 'button.text')
+            ?: data_get($message, 'interactive.button_reply.title')
+            ?: data_get($message, 'interactive.list_reply.title');
+
+        return filled($body) ? (string) $body : null;
     }
 }

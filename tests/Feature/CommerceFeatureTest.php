@@ -25,6 +25,7 @@ use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
+use App\Modules\WhatsAppCloud\Services\WhatsAppMessagePayloadBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -95,6 +96,117 @@ function commerceMedia(User $user, string $name, string $type = 'image'): Media
         'uploaded_by' => $user->id,
     ]);
 }
+
+it('renders a merchant public shop with only active products', function (): void {
+    $context = commerceContext();
+    $activeProduct = commerceProduct($context['workspace']->id);
+    $activeProduct->update(['name' => 'Public Performance Jacket', 'slug' => 'public-performance-jacket']);
+
+    Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Draft Hidden Jacket',
+        'slug' => 'draft-hidden-jacket',
+        'brand' => 'Dhaka Apparel',
+        'description' => 'This product should not be public.',
+        'condition' => 'new',
+        'audience' => 'adult',
+        'country_of_origin' => 'BD',
+        'status' => 'draft',
+    ]);
+
+    $this->get(route('commerce.products.index', $context['workspace']->slug))
+        ->assertOk()
+        ->assertSee($context['workspace']->name)
+        ->assertSee('Public Performance Jacket')
+        ->assertSee(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $activeProduct->slug]), false)
+        ->assertDontSee('Draft Hidden Jacket');
+});
+
+it('renders all active products with category and subcategory filters on the public products page', function (): void {
+    $context = commerceContext();
+    $parent = Category::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Outerwear',
+        'slug' => 'outerwear',
+        'is_active' => true,
+    ]);
+    $jackets = Category::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'parent_id' => $parent->id,
+        'name' => 'Jackets',
+        'slug' => 'jackets',
+        'is_active' => true,
+    ]);
+    $shirts = Category::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'parent_id' => $parent->id,
+        'name' => 'Shirts',
+        'slug' => 'shirts',
+        'is_active' => true,
+    ]);
+    $jacket = commerceProduct($context['workspace']->id);
+    $jacket->update(['name' => 'Public Filter Jacket', 'slug' => 'public-filter-jacket', 'category_id' => $jackets->id]);
+    $shirt = commerceProduct($context['workspace']->id);
+    $shirt->update(['name' => 'Public Filter Shirt', 'slug' => 'public-filter-shirt', 'category_id' => $shirts->id]);
+
+    $this->get(route('commerce.products.shortcut'))
+        ->assertOk()
+        ->assertSee('All active products')
+        ->assertSee('Outerwear')
+        ->assertSee('Jackets')
+        ->assertSee('Public Filter Jacket')
+        ->assertSee('Public Filter Shirt')
+        ->assertSee(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $jacket->slug]), false);
+
+    $this->get(route('commerce.products.shortcut', ['category' => $parent->id, 'subcategory' => $jackets->id]))
+        ->assertOk()
+        ->assertSee('Public Filter Jacket')
+        ->assertDontSee('Public Filter Shirt');
+});
+
+it('redirects the legacy product URL when the slug is unique', function (): void {
+    $context = commerceContext();
+    $product = commerceProduct($context['workspace']->id);
+    $product->update(['slug' => 'legacy-jacket']);
+
+    $this->get(route('commerce.products.legacy', $product->slug))
+        ->assertRedirect(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => 'legacy-jacket']));
+});
+
+it('renders a modern active public product detail page', function (): void {
+    $context = commerceContext();
+    $product = commerceProduct($context['workspace']->id);
+    $product->update(['name' => 'Modern Detail Jacket', 'slug' => 'modern-detail-jacket']);
+    $front = commerceMedia($context['user'], 'public-front');
+
+    app(ProductService::class)->updateGallery($product, [
+        ['id' => $front->id, 'alt_text' => 'Front view', 'is_primary' => true],
+    ]);
+
+    Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $context['channel']->id,
+        'meta_catalog_id' => 'catalog-public',
+        'feed_token' => str_repeat('b', 64),
+        'is_active' => true,
+    ]);
+
+    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->fresh()->slug]))
+        ->assertOk()
+        ->assertSee('Modern Detail Jacket')
+        ->assertSee('$49.95')
+        ->assertSee('Ask and order on WhatsApp')
+        ->assertSee('Front view')
+        ->assertSee('Choose a variant');
+});
+
+it('does not render inactive public product detail pages', function (string $status): void {
+    $context = commerceContext();
+    $product = commerceProduct($context['workspace']->id);
+    $product->update(['slug' => 'inactive-public-product-'.$status, 'status' => $status]);
+
+    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))->assertNotFound();
+})->with(['draft', 'archived']);
 
 it('shows commerce sidebar links to a permitted web user', function (): void {
     Permission::findOrCreate('commerce.view', 'web');
@@ -422,10 +534,10 @@ it('generates stable variant combinations from saved options', function (): void
         ->and($preview[0]['sku'])->not->toBeEmpty();
 });
 
-it('generates a Meta CSV feed with garment attributes and USD prices', function (): void {
+it('generates a Meta CSV feed with merchant URLs and configured currency prices', function (): void {
     $context = commerceContext();
-    commerceProduct($context['workspace']->id);
-    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-1', 'feed_token' => str_repeat('a', 64)]);
+    $product = commerceProduct($context['workspace']->id);
+    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-1', 'feed_token' => str_repeat('a', 64), 'currency' => 'BDT']);
 
     $response = app(CatalogFeedService::class)->response($catalog);
     ob_start();
@@ -433,9 +545,55 @@ it('generates a Meta CSV feed with garment attributes and USD prices', function 
     $csv = ob_get_clean();
 
     expect($csv)->toContain('meta-jkt-blk-m')
-        ->toContain('49.95 USD')
+        ->toContain('49.95 BDT')
+        ->toContain(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))
         ->toContain('Polyester')
         ->and($catalog->fresh()->last_item_count)->toBe(1);
+});
+
+it('builds WhatsApp Cloud catalog and multi-product template payloads', function (): void {
+    $builder = app(WhatsAppMessagePayloadBuilder::class);
+
+    $catalogPayload = $builder->build('+1 (415) 555-2671', [
+        'type' => 'catalog_message',
+        'body' => 'Browse our catalog.',
+        'thumbnail_product_retailer_id' => 'meta-jkt-blk-m',
+    ]);
+    $templatePayload = $builder->build('+1 (415) 555-2671', [
+        'type' => 'template',
+        'template_name' => 'multi_product_offer',
+        'language' => 'en_US',
+        'components' => [[
+            'type' => 'button',
+            'sub_type' => 'MPM',
+            'index' => '0',
+            'parameters' => [[
+                'type' => 'action',
+                'action' => [
+                    'thumbnail_product_retailer_id' => 'meta-jkt-blk-m',
+                    'sections' => [[
+                        'title' => 'Jackets',
+                        'product_items' => [['product_retailer_id' => 'meta-jkt-blk-m']],
+                    ]],
+                ],
+            ]],
+        ]],
+    ]);
+
+    expect($catalogPayload)->toMatchArray([
+        'messaging_product' => 'whatsapp',
+        'recipient_type' => 'individual',
+        'to' => '14155552671',
+        'type' => 'interactive',
+        'interactive' => [
+            'type' => 'catalog_message',
+            'action' => [
+                'name' => 'catalog_message',
+                'parameters' => ['thumbnail_product_retailer_id' => 'meta-jkt-blk-m'],
+            ],
+        ],
+    ])->and(data_get($templatePayload, 'template.components.0.sub_type'))->toBe('MPM')
+        ->and(data_get($templatePayload, 'template.components.0.parameters.0.action.sections.0.product_items.0.product_retailer_id'))->toBe('meta-jkt-blk-m');
 });
 
 it('includes additional gallery images in the Meta feed', function (): void {

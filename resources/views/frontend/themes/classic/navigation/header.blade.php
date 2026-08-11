@@ -14,6 +14,19 @@
     };
 
     $headerItems = $flatten($headerItemsRaw);
+    $productsUrl = route('commerce.products.shortcut');
+    $hasProductsLink = collect($headerItems)->contains(fn (array $item): bool => ($item['url'] ?? null) === $productsUrl);
+
+    if (! $hasProductsLink) {
+        $headerItems[] = [
+            'label' => __('Products'),
+            'url' => $productsUrl,
+            'target' => '_self',
+            'is_visible' => true,
+            'children' => [],
+        ];
+    }
+
     $isUserSignedIn = auth('web')->check();
 
 @endphp

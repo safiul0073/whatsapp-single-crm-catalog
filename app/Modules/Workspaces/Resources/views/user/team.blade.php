@@ -6,29 +6,16 @@
                 {{ __('People who can access this workspace and their roles.') }}
             </p>
         </div>
-        @can('team.manage')
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" class="btn-sm btn-outline" data-modal-open="addMember">
-                    <i class="ph ph-user-plus text-base"></i>
-                    {{ __('Add member') }}
-                </button>
-                <button type="button" class="btn-sm btn-primary" data-modal-open="inviteMember">
-                    <i class="ph ph-envelope-simple text-base"></i>
-                    {{ __('Invite member') }}
-                </button>
-            </div>
-        @elsecan('team.manage.staff_only')
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" class="btn-sm btn-outline" data-modal-open="addMember">
-                    <i class="ph ph-user-plus text-base"></i>
-                    {{ __('Add member') }}
-                </button>
-                <button type="button" class="btn-sm btn-primary" data-modal-open="inviteMember">
-                    <i class="ph ph-envelope-simple text-base"></i>
-                    {{ __('Invite member') }}
-                </button>
-            </div>
-        @endcan
+        <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-sm btn-outline" data-modal-open="addMember">
+                <i class="ph ph-user-plus text-base"></i>
+                {{ __('Add member') }}
+            </button>
+            <button type="button" class="btn-sm btn-primary" data-modal-open="inviteMember">
+                <i class="ph ph-envelope-simple text-base"></i>
+                {{ __('Invite member') }}
+            </button>
+        </div>
     </div>
 
     {{-- KPI summary --}}
@@ -117,53 +104,43 @@
                                     <p class="truncate text-xs text-neutral-400">{{ $member->email }}</p>
                                 </div>
                             </div>
-                            <span><span class="badge {{ $roleClass }}">{{ $role->label() }}</span></span>
+                            <span><span class="badge {{ $isOwner ? 'badge-deep' : $roleClass }}">{{ $isOwner ? __('Owner') : $role->label() }}</span></span>
                             <span><span class="badge badge-success">{{ $status->label() }}</span></span>
                             <span class="text-xs">{{ $member->last_login_at?->diffForHumans() ?? __('Never') }}</span>
                             <span class="flex items-center justify-end gap-1">
                                 @if (! $isOwner)
-                                    @can('team.manage')
-                                        <a href="{{ route('user.workspaces.team.permissions', $member) }}"
-                                            class="row-action"
-                                            aria-label="{{ __('Edit permissions for :name', ['name' => $member->name]) }}">
-                                            <i class="ph ph-shield-check text-lg"></i>
-                                        </a>
-                                    @endcan
+                                    <a href="{{ route('user.workspaces.team.permissions', $member) }}"
+                                        class="row-action"
+                                        aria-label="{{ __('Edit permissions for :name', ['name' => $member->name]) }}">
+                                        <i class="ph ph-shield-check text-lg"></i>
+                                    </a>
                                 @endif
                                 @if (! $isOwner && $member->id !== $authUser->id)
-                                    @canany(['team.manage', 'team.manage.staff_only'])
-                                        @php
-                                            $canEditThisMember = $authUser->can('team.manage')
-                                                || ($authUser->can('team.manage.staff_only') && $role === App\Modules\Workspaces\Enums\WorkspaceMemberRole::Staff);
-                                        @endphp
-                                        @if ($canEditThisMember)
-                                            <button type="button"
-                                                class="row-action"
-                                                data-modal-open="editMember"
-                                                data-id="{{ $member->id }}"
-                                                data-first-name="{{ $member->first_name }}"
-                                                data-last-name="{{ $member->last_name }}"
-                                                data-email="{{ $member->email }}"
-                                                data-role="{{ $role->value }}"
-                                                aria-label="{{ __('Edit :name', ['name' => $member->name]) }}">
-                                                <i class="ph ph-pencil-simple text-lg"></i>
-                                            </button>
-                                        @endif
-                                        <form method="POST" action="{{ route('user.workspaces.team.destroy', $member) }}" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="row-action text-error hover:text-error"
-                                                data-confirm
-                                                data-confirm-title="{{ __('Remove member?') }}"
-                                                data-confirm-body="{{ __(':name will lose access to this workspace immediately. This can\'t be undone.', ['name' => $member->name]) }}"
-                                                data-confirm-label="{{ __('Remove') }}"
-                                                data-confirm-variant="error"
-                                                aria-label="{{ __('Remove :name', ['name' => $member->name]) }}">
-                                                <i class="ph ph-trash text-lg"></i>
-                                            </button>
-                                        </form>
-                                    @endcanany
+                                    <button type="button"
+                                        class="row-action"
+                                        data-modal-open="editMember"
+                                        data-id="{{ $member->id }}"
+                                        data-first-name="{{ $member->first_name }}"
+                                        data-last-name="{{ $member->last_name }}"
+                                        data-email="{{ $member->email }}"
+                                        data-role="{{ $role->value }}"
+                                        aria-label="{{ __('Edit :name', ['name' => $member->name]) }}">
+                                        <i class="ph ph-pencil-simple text-lg"></i>
+                                    </button>
+                                    <form method="POST" action="{{ route('user.workspaces.team.destroy', $member) }}" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="row-action text-error hover:text-error"
+                                            data-confirm
+                                            data-confirm-title="{{ __('Remove member?') }}"
+                                            data-confirm-body="{{ __(':name will lose access to this workspace immediately. This can\'t be undone.', ['name' => $member->name]) }}"
+                                            data-confirm-label="{{ __('Remove') }}"
+                                            data-confirm-variant="error"
+                                            aria-label="{{ __('Remove :name', ['name' => $member->name]) }}">
+                                            <i class="ph ph-trash text-lg"></i>
+                                        </button>
+                                    </form>
                                 @endif
                             </span>
                         </div>
@@ -261,10 +238,8 @@
                         <div>
                             <label for="addRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                             <select id="addRole" name="role" required class="form-input">
-                                @can('team.manage')
-                                    <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                                    <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                                @endcan
+                                <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
+                                <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
                                 <option value="staff">{{ __('Staff') }} — {{ __('limited access') }}</option>
                             </select>
                         </div>
@@ -312,10 +287,8 @@
                         <div>
                             <label for="inviteRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                             <select id="inviteRole" name="role" required class="form-input">
-                                @can('team.manage')
-                                    <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                                    <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                                @endcan
+                                <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
+                                <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
                                 <option value="staff" selected>{{ __('Staff') }} — {{ __('limited access') }}</option>
                             </select>
                         </div>
@@ -372,10 +345,8 @@
                     <div>
                         <label for="editRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                         <select id="editRole" name="role" required class="form-input">
-                            @can('team.manage')
-                                <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                                <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                            @endcan
+                            <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
+                            <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
                             <option value="staff">{{ __('Staff') }} — {{ __('limited access') }}</option>
                         </select>
                     </div>

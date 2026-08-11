@@ -120,6 +120,10 @@ Alpine.data("messageTemplateEditor", (initialState = {}) => ({
     return this.buttons.length < 10 && !this.buttons.some((button) => button.type === "phone_number");
   },
 
+  get canAddCommerce() {
+    return this.buttons.length < 10 && !this.buttons.some((button) => ["catalog", "mpm"].includes(button.type));
+  },
+
   get mediaIcon() {
     return {
       image: "ph ph-image text-2xl",
@@ -237,6 +241,7 @@ Alpine.data("messageTemplateEditor", (initialState = {}) => ({
     if (this.buttons.length >= 10) return;
     if (type === "url" && !this.canAddUrl) return;
     if (type === "phone_number" && !this.canAddPhone) return;
+    if (["catalog", "mpm"].includes(type) && !this.canAddCommerce) return;
 
     this.buttons.push({
       id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
@@ -259,6 +264,8 @@ Alpine.data("messageTemplateEditor", (initialState = {}) => ({
       url: "Visit Website",
       phone_number: "Call Phone",
       callback: "Callback",
+      catalog: "View catalog",
+      mpm: "View items",
     }[type] || "Button";
   },
 
@@ -268,6 +275,8 @@ Alpine.data("messageTemplateEditor", (initialState = {}) => ({
       url: "ph ph-arrow-square-out text-base",
       phone_number: "ph ph-phone text-base",
       callback: "ph ph-cursor-click text-base",
+      catalog: "ph ph-storefront text-base",
+      mpm: "ph ph-shopping-bag-open text-base",
     }[type] || "ph ph-cursor-click text-base";
   },
 

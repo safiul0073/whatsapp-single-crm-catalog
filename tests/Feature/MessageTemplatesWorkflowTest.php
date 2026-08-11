@@ -230,6 +230,47 @@ it('creates updates and deletes a user template', function (): void {
     expect(MessageTemplate::query()->whereKey($template->id)->exists())->toBeFalse();
 });
 
+it('creates whatsapp catalog and multi-product message templates', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    messageTemplateChannel($user);
+
+    $this->actingAs($user)
+        ->post(route('user.message-templates.store'), [
+            'name' => 'catalog_offer_template',
+            'provider' => 'whatsapp',
+            'language' => 'en_US',
+            'category' => 'marketing',
+            'body' => 'Browse our current catalog.',
+            'buttons' => [
+                ['type' => 'catalog', 'text' => 'View catalog'],
+            ],
+            'submit_to_meta' => '0',
+        ])
+        ->assertRedirect(route('user.message-templates.index', ['provider' => 'whatsapp']));
+
+    $this->actingAs($user)
+        ->post(route('user.message-templates.store'), [
+            'name' => 'multi_product_offer_template',
+            'provider' => 'whatsapp',
+            'language' => 'en_US',
+            'category' => 'marketing',
+            'body' => 'Pick one of these products.',
+            'buttons' => [
+                ['type' => 'mpm', 'text' => 'View items'],
+            ],
+            'submit_to_meta' => '0',
+        ])
+        ->assertRedirect(route('user.message-templates.index', ['provider' => 'whatsapp']));
+
+    $catalogTemplate = MessageTemplate::query()->where('name', 'catalog_offer_template')->firstOrFail();
+    $mpmTemplate = MessageTemplate::query()->where('name', 'multi_product_offer_template')->firstOrFail();
+
+    expect($catalogTemplate->template_kind)->toBe('catalog')
+        ->and(data_get($catalogTemplate->components, '1.buttons.0.type'))->toBe('CATALOG')
+        ->and($mpmTemplate->template_kind)->toBe('multi_product')
+        ->and(data_get($mpmTemplate->components, '1.buttons.0.type'))->toBe('MPM');
+});
+
 it('opens an existing template by id without checking workspace ownership', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
     app(WorkspaceResolver::class)->current($user);

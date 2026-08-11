@@ -13,6 +13,7 @@ class MessageTemplate extends Model
     protected $fillable = [
         'workspace_id',
         'provider',
+        'template_kind',
         'channel_account_id',
         'provider_template_id',
         'name',

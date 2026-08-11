@@ -14,6 +14,9 @@ Alpine.data("liveInbox", (config) => ({
   attachmentPreviewUrl: "",
   loading: false,
   threadLoading: false,
+  olderMessagesLoading: false,
+  hasOlderMessages: false,
+  nextMessagesBeforeId: null,
   sending: false,
   aiGenerating: false,
   automationUpdating: false,
@@ -195,6 +198,7 @@ Alpine.data("liveInbox", (config) => ({
     this.provider = provider;
     this.activeConversation = null;
     this.messages = [];
+    this.updateMessagePage(null);
     this.threadOpen = false;
     await this.refreshConversations();
 
@@ -233,6 +237,7 @@ Alpine.data("liveInbox", (config) => ({
 
       this.activeConversation = response.data.conversation;
       this.messages = this.decorateMessages(response.data.messages || []);
+      this.updateMessagePage(response.data.messages_page);
       this.hasChannel = Boolean(response.data.has_channel);
       this.recipientReady = Boolean(response.data.recipient_ready ?? true);
       this.canReply = Boolean(response.data.conversation?.can_reply ?? true);
@@ -267,7 +272,12 @@ Alpine.data("liveInbox", (config) => ({
 
       const previousLastId = this.messages.at(-1)?.id;
       this.activeConversation = response.data.conversation;
-      this.messages = this.decorateMessages(response.data.messages || []);
+      this.messages = silent
+        ? this.decorateMessages(this.mergeMessages(this.messages, response.data.messages || []))
+        : this.decorateMessages(response.data.messages || []);
+      if (!silent) {
+        this.updateMessagePage(response.data.messages_page);
+      }
       this.hasChannel = Boolean(response.data.has_channel);
       this.recipientReady = Boolean(response.data.recipient_ready ?? true);
       this.canReply = Boolean(response.data.conversation?.can_reply ?? true);
@@ -289,6 +299,43 @@ Alpine.data("liveInbox", (config) => ({
       }
     } finally {
       this.threadLoading = false;
+    }
+  },
+
+  async loadOlderMessages() {
+    if (this.olderMessagesLoading || !this.activeConversation?.id || !this.nextMessagesBeforeId) {
+      return;
+    }
+
+    this.olderMessagesLoading = true;
+    const pane = this.$refs.messagesPane;
+    const previousHeight = pane?.scrollHeight || 0;
+
+    try {
+      const route = this.routes.conversation.replace(
+        "__CONVERSATION__",
+        this.activeConversation.id,
+      );
+      const url = new URL(route, window.location.origin);
+      url.searchParams.set("before_id", this.nextMessagesBeforeId);
+
+      const response = await window.axios.get(url.toString(), {
+        headers: { Accept: "application/json" },
+      });
+
+      this.activeConversation = response.data.conversation;
+      this.messages = this.decorateMessages(this.mergeMessages(response.data.messages || [], this.messages));
+      this.updateMessagePage(response.data.messages_page);
+
+      this.$nextTick(() => {
+        if (pane) {
+          pane.scrollTop = pane.scrollHeight - previousHeight;
+        }
+      });
+    } catch (error) {
+      this.sendError = this.errorMessage(error, "Unable to load older messages.");
+    } finally {
+      this.olderMessagesLoading = false;
     }
   },
 
@@ -560,6 +607,7 @@ Alpine.data("liveInbox", (config) => ({
 
       this.activeConversation = response.data.conversation;
       this.messages = this.decorateMessages(response.data.messages || this.messages);
+      this.updateMessagePage(response.data.messages_page);
       this.hasChannel = Boolean(response.data.has_channel);
       this.recipientReady = Boolean(response.data.recipient_ready ?? true);
       this.canReply = Boolean(response.data.conversation?.can_reply ?? true);
@@ -793,6 +841,22 @@ Alpine.data("liveInbox", (config) => ({
         ),
       };
     });
+  },
+
+  mergeMessages(...messageLists) {
+    const byId = new Map();
+    messageLists.flat().forEach((message) => {
+      if (message?.id) {
+        byId.set(String(message.id), message);
+      }
+    });
+
+    return Array.from(byId.values()).sort((first, second) => Number(first.id) - Number(second.id));
+  },
+
+  updateMessagePage(page) {
+    this.hasOlderMessages = Boolean(page?.has_more);
+    this.nextMessagesBeforeId = page?.next_before_id || null;
   },
 
   messageDate(message) {

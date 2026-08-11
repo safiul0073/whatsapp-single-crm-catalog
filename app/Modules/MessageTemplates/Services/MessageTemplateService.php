@@ -104,6 +104,7 @@ class MessageTemplateService
             ['workspace_id' => $workspace->id, 'provider' => $provider, 'name' => $data['name'], 'language' => $data['language']],
             [
                 'provider' => $provider,
+                'template_kind' => $this->templateKind($provider, $data['template_kind'] ?? null, $components),
                 'category' => $data['category'] ?? ($provider === 'telegram' ? 'utility' : 'marketing'),
                 'status' => $provider === 'telegram' ? MessageTemplateStatus::Approved->value : MessageTemplateStatus::Draft->value,
                 'body' => $data['body'],
@@ -162,6 +163,7 @@ class MessageTemplateService
 
         $template->update([
             'provider' => $provider,
+            'template_kind' => $this->templateKind($provider, $data['template_kind'] ?? null, $components),
             'name' => $data['name'],
             'language' => $data['language'],
             'category' => $data['category'] ?? ($provider === 'telegram' ? 'utility' : 'marketing'),
@@ -384,6 +386,14 @@ class MessageTemplateService
                         'text' => $button['text'],
                         'phone_number' => $button['phone_number'] ?? '',
                     ],
+                    'catalog' => [
+                        'type' => 'CATALOG',
+                        'text' => $button['text'] ?: 'View catalog',
+                    ],
+                    'mpm' => [
+                        'type' => 'MPM',
+                        'text' => $button['text'] ?: 'View items',
+                    ],
                     default => [
                         'type' => 'QUICK_REPLY',
                         'text' => $button['text'],
@@ -465,6 +475,24 @@ class MessageTemplateService
     protected function normalizeProvider(?string $provider): string
     {
         return in_array($provider, ['whatsapp', 'telegram'], true) ? $provider : 'whatsapp';
+    }
+
+    protected function templateKind(string $provider, ?string $requested, array $components): string
+    {
+        if ($provider !== 'whatsapp') {
+            return 'standard';
+        }
+
+        $buttons = collect(data_get(collect($components)->firstWhere('type', 'BUTTONS'), 'buttons', []));
+        if ($buttons->contains(fn (array $button): bool => ($button['type'] ?? null) === 'MPM')) {
+            return 'multi_product';
+        }
+
+        if ($buttons->contains(fn (array $button): bool => ($button['type'] ?? null) === 'CATALOG')) {
+            return 'catalog';
+        }
+
+        return in_array($requested, ['standard', 'catalog', 'multi_product'], true) ? $requested : 'standard';
     }
 
     protected function wabaTokenSources(int $workspaceId): SupportCollection

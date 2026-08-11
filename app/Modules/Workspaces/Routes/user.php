@@ -16,18 +16,15 @@ Route::middleware(['can:settings.view'])->group(function () {
     Route::post('workspaces/invitations/{invitation}/decline', [WorkspaceController::class, 'declineInvite'])->name('workspaces.invitations.decline');
 });
 
-Route::middleware(['permission:team.manage|team.manage.staff_only'])->group(function () {
+Route::middleware(['can:team.manage'])->group(function () {
     Route::get('team', [TeamController::class, 'index'])->name('workspaces.team');
     Route::post('team', [TeamController::class, 'store'])->name('workspaces.team.store');
     Route::put('team/roles/{role}/permissions', [TeamController::class, 'updateRolePermissions'])
         ->where('role', 'administrator|manager|staff')
-        ->middleware('can:team.manage')
         ->name('workspaces.team.roles.permissions.update');
     Route::get('team/{member}/permissions', [TeamController::class, 'permissions'])
-        ->middleware('can:team.manage')
         ->name('workspaces.team.permissions');
     Route::put('team/{member}/permissions', [TeamController::class, 'updateMemberPermissions'])
-        ->middleware('can:team.manage')
         ->name('workspaces.team.permissions.update');
     Route::put('team/{member}', [TeamController::class, 'update'])->name('workspaces.team.update');
     Route::delete('team/{member}', [TeamController::class, 'destroy'])->name('workspaces.team.destroy');

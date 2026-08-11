@@ -250,6 +250,66 @@ it('only shows conversations and filters for connected inbox channels', function
         ->assertJsonCount(0, 'conversations');
 });
 
+it('paginates conversation messages instead of returning the entire thread', function (): void {
+    [$user, $workspace] = inboxChannelContext();
+
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+    $contact = Contact::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Busy Customer',
+        'phone' => '+15555550123',
+    ]);
+    $conversation = Conversation::query()->create([
+        'workspace_id' => $workspace->id,
+        'channel_account_id' => $channel->id,
+        'provider' => 'whatsapp',
+        'provider_conversation_id' => $contact->phone,
+        'contact_id' => $contact->id,
+        'status' => 'open',
+        'labels' => [],
+    ]);
+
+    foreach (range(1, 55) as $number) {
+        Message::query()->create([
+            'workspace_id' => $workspace->id,
+            'channel_account_id' => $channel->id,
+            'provider' => 'whatsapp',
+            'conversation_id' => $conversation->id,
+            'contact_id' => $contact->id,
+            'direction' => $number % 2 === 0 ? 'outbound' : 'inbound',
+            'type' => 'text',
+            'body' => 'Message '.$number,
+            'status' => $number % 2 === 0 ? 'sent' : 'received',
+            'created_at' => now()->addSeconds($number),
+            'updated_at' => now()->addSeconds($number),
+        ]);
+    }
+
+    $latestPage = $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $conversation))
+        ->assertOk()
+        ->assertJsonCount(50, 'messages')
+        ->assertJsonPath('messages.0.body', 'Message 6')
+        ->assertJsonPath('messages.49.body', 'Message 55')
+        ->assertJsonPath('messages_page.per_page', 50)
+        ->assertJsonPath('messages_page.has_more', true)
+        ->assertJsonPath('conversation.last_message', 'Message 55');
+
+    $beforeId = $latestPage->json('messages_page.next_before_id');
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', ['conversation' => $conversation, 'before_id' => $beforeId]))
+        ->assertOk()
+        ->assertJsonCount(5, 'messages')
+        ->assertJsonPath('messages.0.body', 'Message 1')
+        ->assertJsonPath('messages.4.body', 'Message 5')
+        ->assertJsonPath('messages_page.has_more', false)
+        ->assertJsonPath('messages_page.next_before_id', null)
+        ->assertJsonPath('conversation.last_message', 'Message 55');
+});
+
 it('renders failed outbound message status in the error color', function (): void {
     [$user] = inboxChannelContext();
 
@@ -742,6 +802,197 @@ it('sends whatsapp image attachments with an optional caption from the inbox', f
     $message = Message::query()->where('provider_message_id', 'wamid.image')->firstOrFail();
 
     Storage::disk('public')->assertExists(data_get($message->payload, 'attachment.path'));
+});
+
+it('stores inbound whatsapp text messages from channel webhooks and exposes them in inbox json', function (): void {
+    [$user, $workspace] = inboxChannelContext();
+
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550123',
+                        'id' => 'wamid.text.1',
+                        'type' => 'text',
+                        'text' => ['body' => 'Hello from WhatsApp'],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $message = Message::query()->where('provider_message_id', 'wamid.text.1')->firstOrFail();
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $message->conversation_id))
+        ->assertOk()
+        ->assertJsonPath('messages.0.body', 'Hello from WhatsApp')
+        ->assertJsonPath('messages.0.attachment', null);
+});
+
+it('downloads inbound whatsapp image media and exposes attachment metadata in inbox json', function (): void {
+    [$user, $workspace] = inboxChannelContext();
+
+    Storage::fake('public');
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+
+    Http::fake([
+        'https://graph.facebook.com/v24.0/media-image-1*' => Http::response([
+            'url' => 'https://lookaside.example.test/whatsapp/media-image-1',
+        ]),
+        'https://lookaside.example.test/whatsapp/media-image-1' => Http::response('fake-image-bytes', 200, [
+            'Content-Type' => 'image/jpeg',
+        ]),
+    ]);
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550124',
+                        'id' => 'wamid.image.1',
+                        'type' => 'image',
+                        'image' => [
+                            'id' => 'media-image-1',
+                            'mime_type' => 'image/jpeg',
+                            'caption' => 'Photo caption',
+                        ],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $message = Message::query()->where('provider_message_id', 'wamid.image.1')->firstOrFail();
+
+    expect($message->type)->toBe('image')
+        ->and($message->body)->toBe('Photo caption')
+        ->and(data_get($message->payload, 'attachment.type'))->toBe('image')
+        ->and(data_get($message->payload, 'attachment.mime_type'))->toBe('image/jpeg');
+
+    Storage::disk('public')->assertExists(data_get($message->payload, 'attachment.path'));
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $message->conversation_id))
+        ->assertOk()
+        ->assertJsonPath('messages.0.type', 'image')
+        ->assertJsonPath('messages.0.body', 'Photo caption')
+        ->assertJsonPath('messages.0.attachment.type', 'image');
+});
+
+it('downloads inbound whatsapp document media and exposes attachment metadata in inbox json', function (): void {
+    [$user, $workspace] = inboxChannelContext();
+
+    Storage::fake('public');
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+
+    Http::fake([
+        'https://graph.facebook.com/v24.0/media-document-1*' => Http::response([
+            'url' => 'https://lookaside.example.test/whatsapp/media-document-1',
+        ]),
+        'https://lookaside.example.test/whatsapp/media-document-1' => Http::response('fake-document-bytes', 200, [
+            'Content-Type' => 'application/pdf',
+        ]),
+    ]);
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550125',
+                        'id' => 'wamid.document.1',
+                        'type' => 'document',
+                        'document' => [
+                            'id' => 'media-document-1',
+                            'mime_type' => 'application/pdf',
+                            'filename' => 'invoice.pdf',
+                        ],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $message = Message::query()->where('provider_message_id', 'wamid.document.1')->firstOrFail();
+
+    expect($message->type)->toBe('document')
+        ->and(data_get($message->payload, 'attachment.type'))->toBe('document')
+        ->and(data_get($message->payload, 'attachment.name'))->toEndWith('invoice.pdf');
+
+    Storage::disk('public')->assertExists(data_get($message->payload, 'attachment.path'));
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $message->conversation_id))
+        ->assertOk()
+        ->assertJsonPath('messages.0.type', 'document')
+        ->assertJsonPath('messages.0.attachment.type', 'document');
+});
+
+it('keeps inbound whatsapp media messages when provider media download fails', function (): void {
+    [$user, $workspace] = inboxChannelContext();
+
+    Storage::fake('public');
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+
+    Http::fake([
+        'https://graph.facebook.com/v24.0/media-broken-1*' => Http::response(['error' => ['message' => 'Not found']], 404),
+    ]);
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550127',
+                        'id' => 'wamid.broken.1',
+                        'type' => 'image',
+                        'image' => [
+                            'id' => 'media-broken-1',
+                            'mime_type' => 'image/jpeg',
+                            'caption' => 'Broken image caption',
+                        ],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $message = Message::query()->where('provider_message_id', 'wamid.broken.1')->firstOrFail();
+
+    expect($message->type)->toBe('image')
+        ->and($message->body)->toBe('Broken image caption')
+        ->and(data_get($message->payload, 'attachment'))->toBeNull();
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', $message->conversation_id))
+        ->assertOk()
+        ->assertJsonPath('messages.0.body', 'Broken image caption')
+        ->assertJsonPath('messages.0.attachment', null);
 });
 
 it('sends telegram image attachments with a caption from the inbox', function (): void {

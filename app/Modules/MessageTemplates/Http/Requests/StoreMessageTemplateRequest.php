@@ -17,6 +17,7 @@ class StoreMessageTemplateRequest extends FormRequest
         return [
             'name' => ['required', 'regex:/^[a-z0-9_]+$/', 'max:255'],
             'provider' => ['nullable', 'in:whatsapp,telegram'],
+            'template_kind' => ['nullable', 'in:standard,catalog,multi_product'],
             'language' => ['required', 'string', 'max:16'],
             'category' => ['nullable', 'in:marketing,utility,authentication'],
             'body' => ['required', 'string', 'max:1024'],
@@ -32,7 +33,7 @@ class StoreMessageTemplateRequest extends FormRequest
             'footer' => ['nullable', 'array'],
             'footer.text' => ['nullable', 'string', 'max:60'],
             'buttons' => ['nullable', 'array', 'max:10'],
-            'buttons.*.type' => ['required_with:buttons', 'in:quick_reply,url,phone_number,callback'],
+            'buttons.*.type' => ['required_with:buttons', 'in:quick_reply,url,phone_number,callback,catalog,mpm'],
             'buttons.*.text' => ['required_with:buttons', 'string', 'max:25'],
             'buttons.*.url' => ['nullable', 'string', 'max:2000'],
             'buttons.*.phone_number' => ['nullable', 'string', 'max:20'],
@@ -66,8 +67,8 @@ class StoreMessageTemplateRequest extends FormRequest
                     $validator->errors()->add("buttons.{$index}.type", 'Telegram buttons must be URL or callback buttons.');
                 }
 
-                if ($provider === 'whatsapp' && ! in_array($button['type'] ?? null, ['quick_reply', 'url', 'phone_number'], true)) {
-                    $validator->errors()->add("buttons.{$index}.type", 'WhatsApp buttons must be quick replies, website links, or phone calls.');
+                if ($provider === 'whatsapp' && ! in_array($button['type'] ?? null, ['quick_reply', 'url', 'phone_number', 'catalog', 'mpm'], true)) {
+                    $validator->errors()->add("buttons.{$index}.type", 'WhatsApp buttons must be quick replies, website links, phone calls, catalog, or multi-product buttons.');
                 }
 
                 if (($button['type'] ?? null) === 'url' && blank($button['url'] ?? null)) {
@@ -85,6 +86,10 @@ class StoreMessageTemplateRequest extends FormRequest
                     $validator->errors()->add("buttons.{$index}.phone_number", 'A phone number is required for call buttons.');
                 }
             });
+
+            if ($provider === 'whatsapp' && $buttons->whereIn('type', ['catalog', 'mpm'])->count() > 1) {
+                $validator->errors()->add('buttons', 'A WhatsApp template can include only one commerce button.');
+            }
 
             if ($provider === 'telegram') {
                 return;

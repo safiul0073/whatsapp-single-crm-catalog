@@ -11,7 +11,7 @@ class Catalog extends Model
 {
     protected $table = 'commerce_catalogs';
 
-    protected $fillable = ['workspace_id', 'channel_account_id', 'meta_catalog_id', 'feed_token', 'is_active', 'sync_mode', 'readiness_state', 'cart_enabled', 'catalog_visible', 'last_sync_status', 'last_sync_summary', 'last_item_count', 'last_fetched_at', 'last_successful_at', 'last_reconciled_at', 'last_error'];
+    protected $fillable = ['workspace_id', 'channel_account_id', 'meta_catalog_id', 'feed_token', 'is_active', 'sync_mode', 'currency', 'readiness_state', 'cart_enabled', 'catalog_visible', 'last_sync_status', 'last_sync_summary', 'last_item_count', 'last_fetched_at', 'last_successful_at', 'last_reconciled_at', 'last_error'];
 
     protected function casts(): array
     {

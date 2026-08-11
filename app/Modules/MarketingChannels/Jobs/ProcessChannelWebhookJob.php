@@ -314,9 +314,10 @@ class ProcessChannelWebhookJob implements ShouldQueue
     protected function createIdentityForMessage(ChannelAccount $account, array $event, string $providerContactId): ContactProviderIdentity
     {
         $username = $event['username'] ?? null;
+        $phone = $account->provider === 'whatsapp' ? $this->normalizePhone($providerContactId) : null;
         $name = filled($username)
             ? '@'.ltrim((string) $username, '@')
-            : $this->contactNameFor($account, $providerContactId);
+            : ($phone ?: $this->contactNameFor($account, $providerContactId));
 
         $contactData = [
             'workspace_id' => $account->workspace_id,
@@ -324,7 +325,11 @@ class ProcessChannelWebhookJob implements ShouldQueue
             'last_interaction_at' => now(),
         ];
 
-        if ($account->provider === 'telegram') {
+        if ($phone) {
+            $contactData['phone'] = $phone;
+        }
+
+        if (in_array($account->provider, ['telegram', 'whatsapp'], true)) {
             $contactData['opt_in_status'] = ContactOptInStatus::Subscribed->value;
             $contactData['opt_in_at'] = now();
         }
@@ -337,12 +342,24 @@ class ProcessChannelWebhookJob implements ShouldQueue
             'channel_account_id' => $account->id,
             'provider' => $account->provider,
             'provider_contact_id' => $providerContactId,
+            'address' => $phone,
             'username' => $username,
-            'identity_type' => $account->provider === 'telegram' ? 'telegram_user_id' : 'provider_user_id',
+            'identity_type' => match ($account->provider) {
+                'telegram' => 'telegram_user_id',
+                'whatsapp' => 'phone',
+                default => 'provider_user_id',
+            },
             'status' => 'active',
             'metadata' => $event['payload'] ?? [],
             'last_interaction_at' => now(),
         ]);
+    }
+
+    protected function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?: $phone;
+
+        return str_starts_with($digits, '+') ? $digits : '+'.$digits;
     }
 
     protected function telegramOptInIdentity(ChannelAccount $account, array $event): ?ContactProviderIdentity

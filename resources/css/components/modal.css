@@ -44,6 +44,10 @@
   @apply max-w-3xl;
 }
 
+.modal__panel--contact {
+  @apply w-[min(64rem,calc(100vw-2rem))] max-w-5xl overflow-hidden rounded-xl p-0;
+}
+
 /* Modal Sizes */
 .modal-sm .modal-content,
 .modal-sm .modal__panel {
