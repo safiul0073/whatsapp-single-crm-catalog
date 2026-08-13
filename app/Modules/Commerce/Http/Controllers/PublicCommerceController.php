@@ -11,6 +11,7 @@ use App\Modules\Frontend\Models\Page;
 use App\Modules\Frontend\Services\ActiveThemeResolver;
 use App\Modules\Frontend\Services\FrontendPageService;
 use App\Modules\Frontend\Services\PageRenderService;
+use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,8 +70,11 @@ class PublicCommerceController extends Controller
             ->whereHas('workspace', fn (Builder $query): Builder => $query->where('settings->commerce->shop_enabled', true)->orWhereNull('settings->commerce->shop_enabled'))
             ->when($categoryIds !== [], fn (Builder $query): Builder => $query->whereIn('category_id', $categoryIds))
             ->latest('id')
-            ->cursorPaginate(12)
+            ->paginate(12)
             ->withQueryString();
+
+        $workspaceIds = $products->pluck('workspace_id')->unique()->filter()->values()->all();
+        $workspacePhones = $this->resolveWorkspacePhones($workspaceIds);
 
         $payload = $this->frontendPayload(
             title: 'Products',
@@ -81,6 +85,7 @@ class PublicCommerceController extends Controller
         $payload['selectedCategoryId'] = $categoryId;
         $payload['selectedSubcategoryId'] = $subcategoryId;
         $payload['currency'] = 'USD';
+        $payload['workspacePhones'] = $workspacePhones;
 
         return view('commerce::public.products', $payload);
     }
@@ -104,7 +109,8 @@ class PublicCommerceController extends Controller
             ->where('status', 'active')
             ->orderByDesc('published_at')
             ->latest('id')
-            ->paginate(12);
+            ->paginate(12)
+            ->withQueryString();
 
         $payload = $this->frontendPayload(
             title: (string) data_get($workspace->settings, 'commerce.storefront_title', $workspace->name),
@@ -113,8 +119,62 @@ class PublicCommerceController extends Controller
         $payload['products'] = $products;
         $payload['workspace'] = $workspace;
         $payload['currency'] = $this->currencyFor($workspace);
+        $payload['whatsappPhone'] = $this->resolveWorkspaceWhatsAppPhone($workspace->id);
 
         return view('commerce::public.index', $payload);
+    }
+
+    protected function resolveWorkspacePhones(array $workspaceIds): array
+    {
+        if ($workspaceIds === []) {
+            return [];
+        }
+
+        $phones = [];
+
+        $catalogs = Catalog::query()
+            ->with('channelAccount')
+            ->whereIn('workspace_id', $workspaceIds)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($catalogs as $catalog) {
+            $rawPhone = $catalog->channelAccount?->provider_display_id;
+            if ($rawPhone) {
+                $cleaned = preg_replace('/\D+/', '', (string) $rawPhone);
+                if ($cleaned !== '' && ! isset($phones[$catalog->workspace_id])) {
+                    $phones[$catalog->workspace_id] = $cleaned;
+                }
+            }
+        }
+
+        $missing = array_diff($workspaceIds, array_keys($phones));
+
+        if ($missing !== []) {
+            $accounts = ChannelAccount::query()
+                ->whereIn('workspace_id', $missing)
+                ->where('provider', 'whatsapp')
+                ->where('status', 'connected')
+                ->get();
+
+            foreach ($accounts as $account) {
+                if ($account->provider_display_id) {
+                    $cleaned = preg_replace('/\D+/', '', (string) $account->provider_display_id);
+                    if ($cleaned !== '' && ! isset($phones[$account->workspace_id])) {
+                        $phones[$account->workspace_id] = $cleaned;
+                    }
+                }
+            }
+        }
+
+        return $phones;
+    }
+
+    protected function resolveWorkspaceWhatsAppPhone(int $workspaceId): ?string
+    {
+        $phones = $this->resolveWorkspacePhones([$workspaceId]);
+
+        return $phones[$workspaceId] ?? null;
     }
 
     public function legacyProduct(string $product): RedirectResponse

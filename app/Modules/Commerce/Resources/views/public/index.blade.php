@@ -21,7 +21,7 @@
                     <span>{{ __('Catalog') }}</span>
                     <h2 id="shop-products-heading">{{ __('Active products') }}</h2>
                 </div>
-                <p>{{ trans_choice(':count product available|:count products available', $products->total(), ['count' => $products->total()]) }}</p>
+                <p>{{ __('Showing :first–:last of :total products', ['first' => $products->firstItem() ?? 0, 'last' => $products->lastItem() ?? 0, 'total' => $products->total()]) }}</p>
             </div>
 
             @if ($products->isNotEmpty())
@@ -32,14 +32,26 @@
                             $stockTotal = (int) ($product->stock_total ?? 0);
                             $categoryName = $product->category?->name ?? __('Uncategorized');
                             $brandName = $product->brandRecord?->name ?? $product->brand;
+                            $productUrl = route('commerce.products.public', ['workspace' => $workspace->slug, 'product' => $product->slug]);
+                            $waText = rawurlencode(__('Hello! I am interested in ordering ":name" (:price) from :shop. Link: :url', [
+                                'name' => $product->name,
+                                'price' => $startingPrice !== null ? $currency.' '.number_format($startingPrice, 2) : __('Price on request'),
+                                'shop' => $workspace->name,
+                                'url' => $productUrl,
+                            ]));
+                            $waLink = $whatsappPhone ? "https://wa.me/{$whatsappPhone}?text={$waText}" : $productUrl;
                         @endphp
                         <article class="shop-card">
-                            <a href="{{ route('commerce.products.public', ['workspace' => $workspace->slug, 'product' => $product->slug]) }}" class="shop-card__media" aria-label="{{ __('View :product', ['product' => $product->name]) }}">
+                            <a href="{{ $productUrl }}" class="shop-card__media" aria-label="{{ __('View :product', ['product' => $product->name]) }}">
                                 @if ($product->primaryMedia)
                                     <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->primaryMedia->alt ?: $product->name }}" loading="lazy">
                                 @else
                                     <span><i class="ph ph-t-shirt"></i></span>
                                 @endif
+                                <span class="shop-card__badge {{ $stockTotal > 0 ? 'is-available' : 'is-limited' }}">
+                                    <i class="ph {{ $stockTotal > 0 ? 'ph-check-circle' : 'ph-clock' }}"></i>
+                                    {{ $stockTotal > 0 ? __('In stock') : __('Check availability') }}
+                                </span>
                             </a>
 
                             <div class="shop-card__body">
@@ -49,15 +61,19 @@
                                     @endif
                                     <span>{{ $categoryName }}</span>
                                 </div>
-                                <h3><a href="{{ route('commerce.products.public', ['workspace' => $workspace->slug, 'product' => $product->slug]) }}">{{ $product->name }}</a></h3>
+                                <h3><a href="{{ $productUrl }}">{{ $product->name }}</a></h3>
                                 @if ($product->description)
-                                    <p>{{ str($product->description)->limit(120) }}</p>
+                                    <p>{{ str($product->description)->limit(110) }}</p>
                                 @endif
                                 <div class="shop-card__footer">
-                                    <strong>{{ $startingPrice !== null ? __('From :currency :price', ['currency' => $currency, 'price' => number_format($startingPrice, 2)]) : __('Price on request') }}</strong>
-                                    <span class="{{ $stockTotal > 0 ? 'is-available' : 'is-limited' }}">
-                                        {{ $stockTotal > 0 ? __('In stock') : __('Check availability') }}
-                                    </span>
+                                    <div class="shop-card__price">
+                                        <span>{{ __('Starting price') }}</span>
+                                        <strong>{{ $startingPrice !== null ? $currency.' '.number_format($startingPrice, 2) : __('Price on request') }}</strong>
+                                    </div>
+                                    <a href="{{ $waLink }}" @if ($whatsappPhone) target="_blank" rel="noopener noreferrer" @endif class="shop-card__whatsapp-btn" aria-label="{{ __('Send WhatsApp message for :product', ['product' => $product->name]) }}">
+                                        <i class="ph ph-whatsapp-logo"></i>
+                                        <span>{{ __('Send WhatsApp Message') }}</span>
+                                    </a>
                                 </div>
                             </div>
                         </article>
@@ -66,7 +82,12 @@
 
                 @if ($products->hasPages())
                     <div class="shop-pagination">
-                        {{ $products->links() }}
+                        <div class="shop-pagination__info">
+                            {{ __('Showing page :current of :last (:total items)', ['current' => $products->currentPage(), 'last' => $products->lastPage(), 'total' => $products->total()]) }}
+                        </div>
+                        <div class="shop-pagination__links">
+                            {{ $products->links() }}
+                        </div>
                     </div>
                 @endif
             @else

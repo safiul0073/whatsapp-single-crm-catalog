@@ -146,28 +146,44 @@
   }
 
   .shop-card {
-    @apply overflow-hidden rounded-lg border border-border-soft bg-white shadow-sm transition-all duration-200;
+    @apply relative flex flex-col overflow-hidden rounded-xl border border-border-soft bg-white shadow-sm transition-all duration-300;
   }
 
   .shop-card:hover {
-    @apply -translate-y-1 shadow-xl;
+    @apply -translate-y-1.5 shadow-2xl border-brand-blue/30;
   }
 
   .shop-card__media {
-    @apply block aspect-[4/3] overflow-hidden bg-bg-soft;
+    @apply relative block aspect-[4/3] overflow-hidden bg-bg-soft;
   }
 
   .shop-card__media img {
-    @apply h-full w-full object-cover;
+    @apply h-full w-full object-cover transition-transform duration-500 ease-out;
   }
 
-  .shop-card__media > span,
+  .shop-card:hover .shop-card__media img {
+    @apply scale-105;
+  }
+
+  .shop-card__media > span:not(.shop-card__badge),
   .product-gallery__empty {
     @apply grid h-full place-items-center text-5xl text-text-light;
   }
 
+  .shop-card__badge {
+    @apply absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-md backdrop-blur-md;
+  }
+
+  .shop-card__badge.is-available {
+    @apply bg-emerald-500/90 text-white;
+  }
+
+  .shop-card__badge.is-limited {
+    @apply bg-amber-500/90 text-white;
+  }
+
   .shop-card__body {
-    @apply flex min-h-[250px] flex-col p-6;
+    @apply flex min-h-[260px] flex-1 flex-col p-6;
   }
 
   .shop-card__meta {
@@ -180,7 +196,7 @@
   }
 
   .shop-card h3 {
-    @apply mt-4 font-display text-xl font-extrabold leading-snug text-brand-navy-ink;
+    @apply mt-3 font-display text-xl font-extrabold leading-snug text-brand-navy-ink;
   }
 
   .shop-card h3 a {
@@ -188,34 +204,56 @@
   }
 
   .shop-card p {
-    @apply mt-3 line-clamp-3 flex-1 font-body text-sm leading-6 text-text-muted;
+    @apply mt-2.5 line-clamp-3 flex-1 font-body text-sm leading-6 text-text-muted;
   }
 
   .shop-card__footer {
-    @apply mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-5;
+    @apply mt-6 flex flex-col gap-4 border-t border-border-soft pt-4 sm:flex-row sm:items-center sm:justify-between;
   }
 
-  .shop-card__footer strong {
+  .shop-card__price {
+    @apply flex flex-col;
+  }
+
+  .shop-card__price span {
+    @apply text-[11px] font-bold uppercase tracking-wider text-text-light;
+  }
+
+  .shop-card__price strong {
     @apply font-display text-lg font-extrabold text-brand-navy-ink;
   }
 
-  .shop-card__footer span,
-  .product-stock {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em];
+  .shop-card__whatsapp-btn {
+    @apply inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition-all duration-200 hover:bg-[#20bd5a] hover:shadow-md hover:scale-[1.02] active:scale-[0.98];
   }
 
-  .shop-card__footer .is-available,
-  .product-stock.is-available {
-    @apply bg-success/10 text-success;
-  }
-
-  .shop-card__footer .is-limited,
-  .product-stock.is-limited {
-    @apply bg-warning/10 text-warning;
+  .shop-card__whatsapp-btn i {
+    @apply text-lg;
   }
 
   .shop-pagination {
-    @apply mt-10;
+    @apply mt-12 flex flex-col items-center justify-between gap-6 border-t border-border-soft pt-8 md:flex-row;
+  }
+
+  .shop-pagination__info {
+    @apply font-body text-sm font-semibold text-text-muted;
+  }
+
+  .shop-pagination__links nav {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+
+  .shop-pagination__links nav a,
+  .shop-pagination__links nav span {
+    @apply inline-flex h-10 min-w-10 items-center justify-center rounded-lg px-3 text-sm font-bold transition-all;
+  }
+
+  .shop-pagination__links nav a {
+    @apply border border-border-default bg-white text-text-muted hover:border-brand-blue hover:bg-tint-blue hover:text-brand-blue;
+  }
+
+  .shop-pagination__links nav span[aria-current="page"] {
+    @apply border border-brand-blue bg-brand-blue text-white shadow-sm;
   }
 
   .shop-empty {
