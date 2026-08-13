@@ -214,8 +214,26 @@ class PublicCommerceController extends Controller
             ->where('workspace_id', $workspace->id)
             ->where('status', 'active')
             ->firstOrFail();
-        $catalog = Catalog::query()->with('channelAccount')->where('workspace_id', $record->workspace_id)->where('is_active', true)->first();
-        $phone = preg_replace('/\D+/', '', (string) $catalog?->channelAccount?->provider_display_id);
+
+        $phone = $this->resolveWorkspaceWhatsAppPhone($workspace->id);
+
+        $relatedProducts = Product::query()
+            ->with(['workspace', 'primaryMedia', 'category', 'brandRecord'])
+            ->withMin([
+                'variants as starting_price' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
+            ], 'price')
+            ->withSum([
+                'variants as stock_total' => fn (Builder $query): Builder => $query->where('status', 'active'),
+            ], 'stock_quantity')
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'active')
+            ->where('id', '!=', $record->id)
+            ->latest('id')
+            ->take(4)
+            ->get();
+
+        $catalog = Catalog::query()->where('workspace_id', $record->workspace_id)->where('is_active', true)->first();
+
         $payload = $this->frontendPayload(
             title: $record->name,
             metaDescription: str($record->description)->limit(155)->toString()
@@ -224,6 +242,7 @@ class PublicCommerceController extends Controller
         $payload['whatsappPhone'] = $phone;
         $payload['workspace'] = $workspace;
         $payload['currency'] = $catalog?->currency ?: $this->currencyFor($workspace);
+        $payload['relatedProducts'] = $relatedProducts;
 
         return view('commerce::public.product', $payload);
     }

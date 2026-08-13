@@ -297,53 +297,69 @@
     @apply mt-5 max-w-3xl font-body text-lg leading-8 text-text-muted;
   }
 
-  .product-public__price-card {
-    @apply rounded-lg border border-border-soft bg-white p-6 shadow-sm;
+  /* Single Product Public Page */
+  .product-public__tags {
+    @apply flex flex-wrap items-center gap-2;
   }
 
-  .product-public__price-card span {
-    @apply bg-transparent p-0 text-text-light;
+  .product-public__store-tag {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-brand-blue;
   }
 
-  .product-public__price-card strong {
-    @apply mt-2 block font-display text-4xl font-extrabold text-brand-navy-ink;
+  .product-public__brand-tag {
+    @apply inline-flex items-center rounded-full bg-bg-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-text-muted;
   }
 
-  .product-public__price-card p {
-    @apply mt-3 text-sm leading-6;
+  .product-public__subtext {
+    @apply mt-3 max-w-3xl font-body text-base leading-7 text-text-muted;
   }
 
-  .product-public__body {
-    @apply bg-white py-12 md:py-16;
-  }
-
-  .product-public__grid {
-    @apply grid gap-8 lg:grid-cols-[1.15fr_0.85fr] xl:gap-12;
+  .product-gallery {
+    @apply space-y-4;
   }
 
   .product-gallery__stage {
-    @apply overflow-hidden rounded-lg border border-border-soft bg-bg-soft shadow-sm;
+    @apply relative aspect-square overflow-hidden rounded-2xl border border-border-soft bg-bg-soft shadow-sm;
   }
 
-  .product-gallery__stage > div {
-    @apply aspect-square;
+  .product-gallery__zoom-wrap {
+    @apply relative h-full w-full overflow-hidden select-none;
   }
 
-  .product-gallery__stage img,
-  .product-gallery__stage video {
-    @apply h-full w-full object-cover;
+  .product-gallery__image {
+    @apply h-full w-full object-cover transition-transform duration-200 ease-out;
+  }
+
+  .product-gallery__stage-actions {
+    @apply absolute bottom-4 right-4 z-20 flex items-center gap-2 pointer-events-auto;
+  }
+
+  .product-gallery__expand-btn {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/60 bg-white/90 px-3.5 py-1.5 text-xs font-extrabold text-brand-navy-ink shadow-md backdrop-blur-md transition hover:bg-white hover:scale-105;
+  }
+
+  .product-gallery__zoom-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3.5 py-1.5 text-xs font-semibold text-white backdrop-blur-md;
+  }
+
+  .product-gallery__stage-nav {
+    @apply absolute inset-x-3 top-1/2 z-20 flex -translate-y-1/2 justify-between pointer-events-none;
+  }
+
+  .product-gallery__nav-btn {
+    @apply grid h-10 w-10 place-items-center rounded-full border border-border-soft bg-white/90 text-brand-navy-ink shadow-md pointer-events-auto transition hover:bg-white hover:scale-110 active:scale-95;
   }
 
   .product-gallery__thumbs {
-    @apply mt-4 grid grid-cols-5 gap-3 sm:grid-cols-6;
+    @apply flex flex-wrap gap-3;
   }
 
   .product-gallery__thumbs button {
-    @apply aspect-square overflow-hidden rounded-lg border-2 border-transparent bg-bg-soft transition;
+    @apply aspect-square h-20 overflow-hidden rounded-xl border-2 border-transparent bg-bg-soft transition hover:border-brand-blue/50;
   }
 
   .product-gallery__thumbs button.is-active {
-    @apply border-brand-blue;
+    @apply border-brand-blue shadow-md scale-105;
   }
 
   .product-gallery__thumbs img {
@@ -351,99 +367,302 @@
   }
 
   .product-gallery__thumbs span {
-    @apply grid h-full place-items-center bg-brand-navy-ink text-2xl text-white;
+    @apply grid h-full place-items-center bg-brand-navy-ink text-xl text-white;
   }
 
-  .product-buy-box {
-    @apply h-fit space-y-5 rounded-lg border border-border-soft bg-white p-5 shadow-sm lg:sticky lg:top-24;
+  /* Fullscreen Lightbox Modal */
+  .product-lightbox {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8;
   }
 
-  .product-buy-box__price {
-    @apply flex flex-wrap items-end justify-between gap-4 border-b border-border-soft pb-5;
+  .product-lightbox__backdrop {
+    @apply fixed inset-0 bg-brand-navy-ink/90 backdrop-blur-xl;
   }
 
-  .product-buy-box__price span:first-child {
-    @apply block text-sm font-semibold text-text-muted;
+  .product-lightbox__dialog {
+    @apply relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl;
   }
 
-  .product-buy-box__price strong {
-    @apply mt-1 block font-display text-4xl font-extrabold text-brand-navy-ink;
+  .product-lightbox__header {
+    @apply flex items-center justify-between border-b border-border-soft px-6 py-4;
   }
 
-  .product-variants h2 {
+  .product-lightbox__header span {
+    @apply block text-xs font-bold uppercase tracking-wider text-text-light;
+  }
+
+  .product-lightbox__header strong {
     @apply font-display text-lg font-extrabold text-brand-navy-ink;
   }
 
-  .product-variants > div {
-    @apply mt-3 space-y-2;
+  .product-lightbox__header button {
+    @apply grid h-9 w-9 place-items-center rounded-full bg-bg-soft text-xl text-text-muted transition hover:bg-tint-blue hover:text-brand-blue;
   }
 
-  .product-variants button {
-    @apply flex w-full items-center justify-between gap-3 rounded-lg border border-border-default p-3 text-left transition hover:border-brand-blue;
+  .product-lightbox__stage {
+    @apply relative flex flex-1 items-center justify-center overflow-hidden bg-black/95 p-4 min-h-[420px];
   }
 
-  .product-variants button.is-active {
-    @apply border-brand-blue bg-tint-blue;
+  .product-lightbox__content {
+    @apply flex h-full max-h-[68vh] w-full items-center justify-center;
   }
 
-  .product-variants button > span {
-    @apply flex flex-wrap gap-2 text-sm text-text-muted;
+  .product-lightbox__content img {
+    @apply max-h-full max-w-full object-contain rounded-lg shadow-2xl;
   }
 
-  .product-variants button span span strong,
-  .product-variants button > strong {
+  .product-lightbox__content video {
+    @apply max-h-full max-w-full rounded-lg;
+  }
+
+  .product-lightbox__nav {
+    @apply absolute top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/20 text-2xl text-white backdrop-blur-md transition hover:bg-white/40;
+  }
+
+  .product-lightbox__nav--prev {
+    @apply left-4;
+  }
+
+  .product-lightbox__nav--next {
+    @apply right-4;
+  }
+
+  .product-lightbox__thumbs {
+    @apply flex items-center justify-center gap-2 overflow-x-auto border-t border-border-soft bg-white p-4;
+  }
+
+  .product-lightbox__thumbs button {
+    @apply aspect-square h-14 overflow-hidden rounded-lg border-2 border-transparent bg-bg-soft transition;
+  }
+
+  .product-lightbox__thumbs button.is-active {
+    @apply border-brand-blue scale-105;
+  }
+
+  .product-lightbox__thumbs img {
+    @apply h-full w-full object-cover;
+  }
+
+  /* Buy Box Sidebar */
+  .product-buy-box {
+    @apply h-fit space-y-6 rounded-2xl border border-border-soft bg-white p-6 shadow-lg lg:sticky lg:top-24;
+  }
+
+  .product-buy-box__header {
+    @apply flex flex-col gap-3 border-b border-border-soft pb-5 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .product-stock {
+    @apply inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider;
+  }
+
+  .product-stock.is-available {
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+  }
+
+  .product-stock.is-limited {
+    @apply bg-amber-50 text-amber-700 border border-amber-200;
+  }
+
+  .product-stock__dot {
+    @apply h-2 w-2 rounded-full bg-current animate-pulse;
+  }
+
+  .product-buy-box__price-tag {
+    @apply text-left sm:text-right;
+  }
+
+  .product-buy-box__label {
+    @apply block text-[11px] font-extrabold uppercase tracking-wider text-text-light;
+  }
+
+  .product-buy-box__amount strong {
+    @apply font-display text-3xl font-extrabold text-brand-navy-ink;
+  }
+
+  .product-buy-box__compare {
+    @apply ml-2 text-sm font-semibold text-text-light line-through;
+  }
+
+  .product-variants h2 {
+    @apply font-display text-sm font-extrabold uppercase tracking-wider text-brand-navy-ink;
+  }
+
+  .product-variants__grid {
+    @apply mt-3 space-y-2.5;
+  }
+
+  .product-variant-chip {
+    @apply flex w-full items-center justify-between gap-3 rounded-xl border border-border-default p-3.5 text-left transition hover:border-brand-blue/60 hover:bg-bg-soft;
+  }
+
+  .product-variant-chip.is-active {
+    @apply border-brand-blue bg-tint-blue/80 ring-2 ring-brand-blue/20;
+  }
+
+  .product-variant-chip__attrs {
+    @apply flex flex-wrap gap-2 text-xs text-text-muted;
+  }
+
+  .product-variant-chip__key {
+    @apply text-text-light;
+  }
+
+  .product-variant-chip__price {
+    @apply font-display text-sm font-extrabold text-brand-navy-ink;
+  }
+
+  /* Quantity Control */
+  .product-quantity {
+    @apply space-y-2 border-t border-border-soft pt-5;
+  }
+
+  .product-quantity label {
+    @apply block font-display text-sm font-extrabold uppercase tracking-wider text-brand-navy-ink;
+  }
+
+  .product-quantity__controls {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .product-quantity__controls button {
+    @apply grid h-10 w-10 place-items-center rounded-lg border border-border-default bg-white text-base text-brand-navy-ink transition hover:border-brand-blue hover:bg-tint-blue active:scale-95 disabled:opacity-40;
+  }
+
+  .product-quantity__controls input {
+    @apply h-10 w-16 rounded-lg border border-border-default text-center font-display font-extrabold text-brand-navy-ink focus:border-brand-blue focus:outline-none;
+  }
+
+  .product-quantity__total {
+    @apply text-sm font-bold text-text-muted;
+  }
+
+  .product-quantity__total strong {
     @apply text-brand-navy-ink;
   }
 
-  .product-info-panel {
-    @apply flex gap-3 rounded-lg bg-bg-soft p-4;
+  /* Direct WhatsApp Call-to-action */
+  .product-whatsapp-cta {
+    @apply flex min-h-[58px] w-full items-center justify-center gap-3.5 rounded-xl bg-gradient-to-r from-[#25D366] to-[#1da851] px-6 py-3.5 text-white shadow-lg shadow-[#25D366]/20 transition-all duration-300 hover:from-[#22bf5b] hover:to-[#199447] hover:shadow-xl hover:shadow-[#25D366]/30 hover:scale-[1.01] active:scale-[0.99];
   }
 
-  .product-info-panel i {
-    @apply mt-1 text-xl text-brand-blue;
+  .product-whatsapp-cta i {
+    @apply text-3xl;
   }
 
-  .product-info-panel strong {
-    @apply block font-display text-base font-extrabold text-brand-navy-ink;
+  .product-whatsapp-cta__text {
+    @apply text-left;
   }
 
-  .product-info-panel p {
-    @apply mt-1 text-sm leading-6 text-text-muted;
+  .product-whatsapp-cta__text strong {
+    @apply block font-display text-base font-extrabold leading-tight;
   }
 
-  .product-whatsapp {
-    @apply inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-brand-blue px-5 text-sm font-bold text-white transition hover:bg-primary-hover;
+  .product-whatsapp-cta__text span {
+    @apply block text-xs font-medium text-white/90;
   }
 
-  .product-whatsapp i {
-    @apply text-xl;
+  .product-whatsapp-cta--general {
+    @apply from-brand-navy-ink to-brand-navy-ink hover:from-brand-blue hover:to-brand-blue shadow-none;
   }
 
-  .product-facts {
-    @apply divide-y divide-border-soft rounded-lg border border-border-soft;
+  /* Trust Badges */
+  .product-trust-grid {
+    @apply grid grid-cols-1 gap-3 border-t border-border-soft pt-5 sm:grid-cols-3;
   }
 
-  .product-facts div {
-    @apply flex justify-between gap-4 px-4 py-3 text-sm;
+  .product-trust-item {
+    @apply flex items-start gap-2.5 rounded-xl bg-bg-soft p-3;
   }
 
-  .product-facts dt {
-    @apply text-text-muted;
+  .product-trust-item i {
+    @apply text-xl text-brand-blue mt-0.5;
   }
 
-  .product-facts dd {
-    @apply font-bold text-brand-navy-ink;
+  .product-trust-item strong {
+    @apply block font-display text-xs font-extrabold text-brand-navy-ink;
   }
 
-  .product-care {
-    @apply rounded-lg border border-border-soft p-4;
+  .product-trust-item p {
+    @apply mt-0.5 text-[11px] leading-4 text-text-light;
   }
 
-  .product-care summary {
-    @apply cursor-pointer font-display font-extrabold text-brand-navy-ink;
+  /* Specifications & Details Content */
+  .product-details-content {
+    @apply mt-12 border-t border-border-soft pt-12;
   }
 
-  .product-care p {
-    @apply mt-3 whitespace-pre-line text-sm leading-6 text-text-muted;
+  .product-details-tabs {
+    @apply grid gap-8 lg:grid-cols-2;
+  }
+
+  .product-spec-card {
+    @apply rounded-2xl border border-border-soft bg-white p-6 shadow-sm space-y-5;
+  }
+
+  .product-spec-card h2 {
+    @apply flex items-center gap-2 font-display text-xl font-extrabold text-brand-navy-ink border-b border-border-soft pb-4;
+  }
+
+  .product-spec-card h2 i {
+    @apply text-brand-blue;
+  }
+
+  .product-description-text {
+    @apply font-body text-base leading-8 text-text-muted whitespace-pre-line;
+  }
+
+  .product-facts-grid {
+    @apply divide-y divide-border-soft rounded-xl border border-border-soft;
+  }
+
+  .product-facts-grid div {
+    @apply flex justify-between gap-4 p-3.5 text-sm;
+  }
+
+  .product-facts-grid dt {
+    @apply font-medium text-text-muted;
+  }
+
+  .product-facts-grid dd {
+    @apply font-extrabold text-brand-navy-ink;
+  }
+
+  .product-care-box {
+    @apply rounded-xl bg-bg-soft p-4 border border-border-soft;
+  }
+
+  .product-care-box h3 {
+    @apply flex items-center gap-2 font-display text-sm font-extrabold text-brand-navy-ink;
+  }
+
+  .product-care-box h3 i {
+    @apply text-rose-500;
+  }
+
+  .product-care-box p {
+    @apply mt-2 text-sm leading-6 text-text-muted whitespace-pre-line;
+  }
+
+  /* Related Products Section */
+  .product-related-section {
+    @apply mt-16 border-t border-border-soft pt-12;
+  }
+
+  .product-related-heading {
+    @apply mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end;
+  }
+
+  .product-related-heading span {
+    @apply inline-flex items-center rounded-full bg-tint-blue px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-blue;
+  }
+
+  .product-related-heading h2 {
+    @apply mt-3 font-display text-2xl font-extrabold text-brand-navy-ink md:text-3xl;
+  }
+
+  .product-related-link {
+    @apply inline-flex items-center gap-2 font-body text-sm font-bold text-brand-blue transition hover:text-brand-navy-ink;
   }
 }
+
