@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Models\User;
-use App\Modules\Automations\Services\AutomationDispatcher;
 use App\Modules\Campaigns\Enums\CampaignRecipientStatus;
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\Campaigns\Services\CampaignRecipientService;
@@ -15,7 +14,6 @@ use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Jobs\ProcessChannelWebhookJob;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
-use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Telegram\Services\TelegramBotProvider;
 use App\Modules\Telegram\Services\TelegramOptInService;
@@ -456,7 +454,7 @@ it('links an existing contact when telegram receives a start token', function ()
         'status' => ChannelWebhookEventStatus::Pending->value,
     ]);
 
-    (new ProcessChannelWebhookJob($event->id))->handle(app(ChannelManager::class), app(AutomationDispatcher::class));
+    app()->call([(new ProcessChannelWebhookJob($event->id)), 'handle']);
 
     $identity = ContactProviderIdentity::query()
         ->where('workspace_id', $workspace->id)
@@ -500,7 +498,7 @@ it('links a shared telegram contact phone to the matching contact', function ():
         'status' => ChannelWebhookEventStatus::Pending->value,
     ]);
 
-    (new ProcessChannelWebhookJob($event->id))->handle(app(ChannelManager::class), app(AutomationDispatcher::class));
+    app()->call([(new ProcessChannelWebhookJob($event->id)), 'handle']);
 
     expect(ContactProviderIdentity::query()
         ->where('workspace_id', $workspace->id)
