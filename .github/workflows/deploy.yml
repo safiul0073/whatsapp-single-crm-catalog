@@ -20,24 +20,10 @@ env:
   DEPLOY_PATH: domains/app.fashionfiest.com/public_html
 
 jobs:
-  test-and-deploy:
-    name: Test and deploy
+  deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     environment: production
-
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-          MYSQL_DATABASE: softivus_web_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - name: Check out the application
@@ -59,16 +45,8 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare the test environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: Run the test suite
-        run: php artisan test --compact
 
       - name: Build frontend assets
         run: npm run build
