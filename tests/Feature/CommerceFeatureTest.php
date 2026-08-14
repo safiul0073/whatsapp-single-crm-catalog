@@ -194,10 +194,19 @@ it('renders a modern active public product detail page', function (): void {
     $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->fresh()->slug]))
         ->assertOk()
         ->assertSee('Modern Detail Jacket')
-        ->assertSee('$49.95')
-        ->assertSee('Ask and order on WhatsApp')
+        ->assertSee('49.95')
+        ->assertSee('JKT-BLK-M')
+        ->assertSee('Order on WhatsApp')
+        ->assertSee('https://wa.me/14155550100', false)
         ->assertSee('Front view')
-        ->assertSee('Choose a variant');
+        ->assertSee('Catalog')
+        ->assertDontSee('ADD TO SHOPPING CART')
+        ->assertDontSee('https://wa.me/?text=', false)
+        ->assertDontSee('Furniture')
+        ->assertDontSee('Payment:')
+        ->assertDontSee('EMI available')
+        ->assertDontSee('2 - 5 working days')
+        ->assertDontSee('Standard delivery timeline');
 });
 
 it('does not render inactive public product detail pages', function (string $status): void {
