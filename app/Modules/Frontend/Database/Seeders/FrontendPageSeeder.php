@@ -24,6 +24,7 @@ class FrontendPageSeeder extends Seeder
             'homepage-testimonials',
             'global-faq',
             'global-contact',
+            'homepage-products',
             'homepage-blog',
         ];
     }

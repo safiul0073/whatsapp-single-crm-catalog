@@ -19,6 +19,9 @@ use App\Modules\Commerce\Services\OrderIntakeService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\Frontend\Database\Seeders\FrontendPageSeeder;
+use App\Modules\Frontend\Database\Seeders\FrontendSectionSeeder;
+use App\Modules\Frontend\Database\Seeders\FrontendThemeSettingSeeder;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -164,6 +167,54 @@ it('renders all active products with category and subcategory filters on the pub
         ->assertDontSee('Public Filter Shirt');
 });
 
+it('renders active commerce products on the home page products section', function (): void {
+    $this->seed(FrontendThemeSettingSeeder::class);
+    $this->seed(FrontendSectionSeeder::class);
+    $this->seed(FrontendPageSeeder::class);
+
+    $context = commerceContext();
+    $activeProduct = commerceProduct($context['workspace']->id);
+    $activeProduct->update(['name' => 'Homepage Active Jacket', 'slug' => 'homepage-active-jacket']);
+    $front = commerceMedia($context['user'], 'homepage-active-front');
+    $front->update(['alt' => 'Homepage active front']);
+
+    app(ProductService::class)->updateGallery($activeProduct, [
+        ['id' => $front->id, 'alt_text' => 'Homepage active front', 'is_primary' => true],
+    ]);
+
+    Product::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'name' => 'Homepage Draft Jacket',
+        'slug' => 'homepage-draft-jacket',
+        'brand' => 'Dhaka Apparel',
+        'description' => 'This draft product should not render on the home page.',
+        'condition' => 'new',
+        'audience' => 'adult',
+        'country_of_origin' => 'BD',
+        'status' => 'draft',
+    ]);
+
+    Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $context['channel']->id,
+        'meta_catalog_id' => 'catalog-homepage',
+        'feed_token' => str_repeat('h', 64),
+        'is_active' => true,
+    ]);
+
+    $productUrl = route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $activeProduct->fresh()->slug]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('WhatsApp Catalog')
+        ->assertSee('Homepage Active Jacket')
+        ->assertSee('Homepage active front')
+        ->assertSee('USD 49.95')
+        ->assertSee($productUrl, false)
+        ->assertSee('https://wa.me/14155550100', false)
+        ->assertDontSee('Homepage Draft Jacket');
+});
+
 it('redirects the legacy product URL when the slug is unique', function (): void {
     $context = commerceContext();
     $product = commerceProduct($context['workspace']->id);
@@ -194,10 +245,19 @@ it('renders a modern active public product detail page', function (): void {
     $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->fresh()->slug]))
         ->assertOk()
         ->assertSee('Modern Detail Jacket')
-        ->assertSee('$49.95')
-        ->assertSee('Ask and order on WhatsApp')
+        ->assertSee('49.95')
+        ->assertSee('JKT-BLK-M')
+        ->assertSee('Order on WhatsApp')
+        ->assertSee('https://wa.me/14155550100', false)
         ->assertSee('Front view')
-        ->assertSee('Choose a variant');
+        ->assertSee('Catalog')
+        ->assertDontSee('ADD TO SHOPPING CART')
+        ->assertDontSee('https://wa.me/?text=', false)
+        ->assertDontSee('Furniture')
+        ->assertDontSee('Payment:')
+        ->assertDontSee('EMI available')
+        ->assertDontSee('2 - 5 working days')
+        ->assertDontSee('Standard delivery timeline');
 });
 
 it('does not render inactive public product detail pages', function (string $status): void {

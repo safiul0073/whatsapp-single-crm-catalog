@@ -207,6 +207,7 @@ class PublicCommerceController extends Controller
                 'category',
                 'brandRecord',
                 'gallery.media',
+                'options.values',
                 'variants' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock'])->orderBy('price'),
                 'variants.media',
             ])
@@ -216,6 +217,13 @@ class PublicCommerceController extends Controller
             ->firstOrFail();
 
         $phone = $this->resolveWorkspaceWhatsAppPhone($workspace->id);
+
+        $options = $record->options->map(fn ($option) => [
+            'id' => $option->id,
+            'name' => $option->name,
+            'code' => $option->code,
+            'values' => $option->values->pluck('value')->values()->all(),
+        ])->values();
 
         $relatedProducts = Product::query()
             ->with(['workspace', 'primaryMedia', 'category', 'brandRecord'])
@@ -242,6 +250,7 @@ class PublicCommerceController extends Controller
         $payload['whatsappPhone'] = $phone;
         $payload['workspace'] = $workspace;
         $payload['currency'] = $catalog?->currency ?: $this->currencyFor($workspace);
+        $payload['options'] = $options;
         $payload['relatedProducts'] = $relatedProducts;
 
         return view('commerce::public.product', $payload);
