@@ -325,6 +325,22 @@ class FrontendSectionSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Homepage Products',
+                'slug' => 'homepage-products',
+                'type' => 'home_products',
+                'status' => 'published',
+                'description' => 'Homepage commerce product preview section.',
+                'data' => [
+                    'eyebrow_text' => 'WhatsApp Catalog',
+                    'heading_line_one' => 'Latest',
+                    'heading_highlight' => 'products',
+                    'subheading' => 'Browse active products from connected storefronts and start a WhatsApp order with the store owner.',
+                    'cta_text' => 'View all products',
+                    'cta_link' => '/products',
+                    'product_limit' => 4,
+                ],
+            ],
+            [
                 'name' => 'Global FAQ',
                 'slug' => 'global-faq',
                 'type' => 'global_faq',
