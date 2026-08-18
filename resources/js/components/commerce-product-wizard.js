@@ -5,18 +5,138 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   options: config.options || [],
   variants: config.variants || [],
   colors: config.colors || [],
-  sizes: config.sizes || ['S', 'M', 'L', 'XL', 'XXL'],
+  sizes: config.sizes || ['1YRS', '2YRS', '4YRS', '6YRS', '8YRS', '10YRS', '12YRS', '14YRS'],
+  tierPrices: config.tierPrices || [],
+  featureHighlights: config.featureHighlights || [
+    { label: 'Premium Tech Fleece', icon: 'ph-t-shirt' },
+    { label: 'Full-Zip 2-Piece Set', icon: 'ph-arrows-out-line-vertical' },
+    { label: 'Kids to Older Kids', icon: 'ph-users-three' },
+    { label: 'Multiple Colors', icon: 'ph-palette' },
+    { label: 'USA True Size', icon: 'ph-ruler' },
+  ],
+  shippingCountries: config.shippingCountries || ['USA', 'Canada'],
+  countryInput: '',
+  specifications: config.specifications || [
+    { attribute: 'Material', value: 'Tech Fleece (Premium Quality)' },
+    { attribute: 'Fit', value: 'USA True-to-Size' },
+    { attribute: 'Set Includes', value: 'Hoodie + Jogger Pants' },
+    { attribute: 'Gender', value: 'Unisex (Boys & Girls)' },
+    { attribute: 'Season', value: 'All Season' },
+    { attribute: 'MOQ', value: '40 Set' },
+    { attribute: 'Shipping', value: 'USA & Canada (6-10 Working Days)' },
+  ],
+  variantPresets: config.variantPresets || [],
+  basePrice: config.basePrice || 0,
+  productSlug: config.productSlug || 'PROD',
   customSize: '',
   previewUrl: config.previewUrl || null,
   dirty: false,
   loadingVariants: false,
 
+  // Track which color index we're picking media for (null = general gallery)
+  _colorPickerIndex: null,
+
+  // Track which color's image management modal is open
+  editingColorIndex: null,
+
   init() {
+    'use strict';
     window.addEventListener('beforeunload', (event) => {
       if (!this.dirty) return;
       event.preventDefault();
       event.returnValue = '';
     });
+
+    // Listen for media-picker:selected events from the bridge element
+    const bridge = document.getElementById('commerceMediaPickerBridge');
+    if (bridge) {
+      bridge.addEventListener('media-picker:selected', (e) => {
+        const media = e.detail?.media;
+        if (!media) return;
+        const items = Array.isArray(media) ? media : [media];
+
+        if (this._colorPickerIndex !== null && this._colorPickerIndex !== undefined) {
+          this.addMediaToColor(this._colorPickerIndex, items);
+          this._colorPickerIndex = null;
+        } else {
+          this.addMedia(items);
+        }
+      });
+    }
+  },
+
+  openMediaPicker() {
+    'use strict';
+    this._colorPickerIndex = null;
+    const trigger = document.querySelector('#commerceMediaPickerBridge [data-media-picker-trigger]');
+    if (trigger) {
+      trigger.click();
+    }
+  },
+
+  openMediaPickerForColor(colorIndex) {
+    'use strict';
+    this._colorPickerIndex = colorIndex;
+    const trigger = document.querySelector('#commerceMediaPickerBridge [data-media-picker-trigger]');
+    if (trigger) {
+      trigger.click();
+    }
+  },
+
+  getColorSwatchUrl(col) {
+    'use strict';
+    if (col.swatch_image_url) return col.swatch_image_url;
+    if (col.swatch_media_id) {
+      const match = this.gallery.find((g) => String(g.id) === String(col.swatch_media_id));
+      if (match) return match.url;
+    }
+    return null;
+  },
+
+
+  addTierPrice() {
+    this.tierPrices.push({ min_quantity: '', max_quantity: '', unit_price: '', discount_percentage: '' });
+    this.dirty = true;
+  },
+
+  removeTierPrice(index) {
+    this.tierPrices.splice(index, 1);
+    this.dirty = true;
+  },
+
+  addFeatureHighlight() {
+    this.featureHighlights.push({ label: 'New Feature', icon: 'ph-check-circle' });
+    this.dirty = true;
+  },
+
+  removeFeatureHighlight(index) {
+    this.featureHighlights.splice(index, 1);
+    this.dirty = true;
+  },
+
+  addShippingCountry() {
+    if (!this.countryInput || !this.countryInput.trim()) return;
+    const c = this.countryInput.trim();
+    if (!this.shippingCountries.includes(c)) {
+      this.shippingCountries.push(c);
+      this.dirty = true;
+    }
+    this.countryInput = '';
+  },
+
+  removeShippingCountry(index) {
+    this.shippingCountries.splice(index, 1);
+    this.dirty = true;
+  },
+
+  addSpecification() {
+    this.specifications.push({ attribute: '', value: '' });
+    this.dirty = true;
+  },
+
+  removeSpecification(index) {
+    this.specifications.splice(index, 1);
+    this.dirty = true;
   },
 
   addMedia(items, defaultColorId = null) {
@@ -52,6 +172,8 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     if (!items || !items.length || !this.colors[colorIndex]) return;
     const colorObj = this.colors[colorIndex];
     const colorIdentifier = colorObj.id ? String(colorObj.id) : `idx_${colorIndex}`;
+    const colorHex = colorObj.hex_code || '';
+    const colorName = colorObj.name || colorHex;
 
     this.addMedia(items, colorIdentifier);
 
@@ -61,11 +183,11 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     }
 
     // Auto-update variants matching this color
-    const colorName = colorObj.name || colorObj.hex_code;
     this.variants.forEach((v) => {
       if (
         (v.color_id && String(v.color_id) === String(colorObj.id)) ||
-        (v.attributes?.color && String(v.attributes.color).toLowerCase() === String(colorName).toLowerCase())
+        (v.attributes?.color && String(v.attributes.color).toLowerCase() === String(colorHex).toLowerCase()) ||
+        (v.attributes?.color && colorName && String(v.attributes.color).toLowerCase() === String(colorName).toLowerCase())
       ) {
         if (!v.media_id) {
           v.media_id = items[0].id;
@@ -95,13 +217,15 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     if (!this.colors[colorIndex]) return;
     const colorObj = this.colors[colorIndex];
     colorObj.swatch_media_id = mediaId;
+    const colorHex = colorObj.hex_code || '';
+    const colorName = colorObj.name || colorHex;
 
     // Auto-update variants matching this color
-    const colorName = colorObj.name || colorObj.hex_code;
     this.variants.forEach((v) => {
       if (
         (v.color_id && String(v.color_id) === String(colorObj.id)) ||
-        (v.attributes?.color && String(v.attributes.color).toLowerCase() === String(colorName).toLowerCase())
+        (v.attributes?.color && String(v.attributes.color).toLowerCase() === String(colorHex).toLowerCase()) ||
+        (v.attributes?.color && colorName && String(v.attributes.color).toLowerCase() === String(colorName).toLowerCase())
       ) {
         v.media_id = mediaId;
       }
@@ -242,6 +366,65 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     } finally {
       this.loadingVariants = false;
     }
+  },
+
+  addVariant(colorObj = null) {
+    const defaultOption = this.variantPresets[0] ? (this.variantPresets[0].sku_suffix || this.variantPresets[0].name) : (this.sizes[0] || 'M');
+    const colorVal = colorObj ? (colorObj.hex_code || colorObj.name || '') : '';
+    const colorId = colorObj?.id || null;
+    const mediaId = colorObj?.swatch_media_id || null;
+    const price = (parseFloat(this.basePrice) || 0) + (this.variantPresets[0] ? parseFloat(this.variantPresets[0].price_delta || 0) : 0);
+    const sku = `${this.productSlug ? this.productSlug.toUpperCase() : 'PROD'}-${defaultOption}`;
+
+    this.variants.push({
+      id: null,
+      color_id: colorId,
+      size: defaultOption,
+      media_id: mediaId,
+      sku: sku,
+      stock_quantity: 0,
+      price: price > 0 ? price.toFixed(2) : '0.00',
+      status: 'active',
+      attributes: {
+        ...(colorVal ? { color: colorVal } : {}),
+        size: defaultOption,
+      },
+    });
+    this.dirty = true;
+  },
+
+  removeVariant(index) {
+    this.variants.splice(index, 1);
+    this.dirty = true;
+  },
+
+  onVariantOptionSelect(variantIndex, selectedVal) {
+    const variant = this.variants[variantIndex];
+    if (!variant) return;
+
+    variant.size = selectedVal;
+    if (!variant.attributes) {
+      variant.attributes = {};
+    }
+    variant.attributes.size = selectedVal;
+
+    // Find preset to calculate price and SKU suffix
+    const preset = this.variantPresets.find((p) => (p.sku_suffix && p.sku_suffix.toLowerCase() === selectedVal.toLowerCase()) || p.name.toLowerCase() === selectedVal.toLowerCase());
+    const suffix = preset?.sku_suffix || selectedVal;
+
+    // Update SKU if matching pattern
+    const baseSkuPrefix = this.productSlug ? this.productSlug.toUpperCase() : 'PROD';
+    variant.sku = `${baseSkuPrefix}-${suffix}`;
+
+    // Apply price delta if not manually customized
+    if (preset && parseFloat(preset.price_delta) !== 0) {
+      const calculated = (parseFloat(this.basePrice) || 0) + parseFloat(preset.price_delta || 0);
+      if (calculated > 0) {
+        variant.price = calculated.toFixed(2);
+      }
+    }
+
+    this.dirty = true;
   },
 
   markSaved() {

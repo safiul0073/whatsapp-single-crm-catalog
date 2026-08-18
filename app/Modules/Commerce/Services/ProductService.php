@@ -174,7 +174,7 @@ class ProductService
             $colorId = null;
             $colorMediaId = null;
             if (isset($attributes['color']) && $product->colors->isNotEmpty()) {
-                $colorMatch = $product->colors->first(fn (ProductColor $c) => Str::lower($c->name) === Str::lower($attributes['color']) || Str::lower($c->hex_code) === Str::lower($attributes['color']));
+                $colorMatch = $product->colors->first(fn (ProductColor $c) => (filled($c->hex_code) && Str::lower($c->hex_code) === Str::lower($attributes['color'])) || (filled($c->name) && Str::lower($c->name) === Str::lower($attributes['color'])));
                 $colorId = $colorMatch?->id;
                 $colorMediaId = $colorMatch?->swatch_media_id;
             }
@@ -361,15 +361,32 @@ class ProductService
             'primary_media_id' => $data['primary_media_id'] ?? $product?->primary_media_id,
             'name' => $data['name'],
             'slug' => $this->uniqueSlug($workspaceId, (string) ($data['slug'] ?? $data['name']), $product?->id),
+            'sku' => $data['sku'] ?? $product?->sku,
+            'visibility' => $data['visibility'] ?? $product?->visibility ?? 'published',
             'brand' => $brandName,
+            'short_description' => $data['short_description'] ?? null,
             'description' => $data['description'] ?? null,
             'care_information' => $data['care_information'] ?? null,
+            'features' => $data['features'] ?? $product?->features,
+            'feature_highlights' => $data['feature_highlights'] ?? $product?->feature_highlights,
+            'shipping_countries' => $data['shipping_countries'] ?? $product?->shipping_countries,
+            'specifications' => $data['specifications'] ?? $product?->specifications,
+            'fit' => $data['fit'] ?? $product?->fit ?? 'USA True-to-Size',
+            'set_includes' => $data['set_includes'] ?? $product?->set_includes,
+            'gender' => $data['gender'] ?? $product?->gender ?? 'Unisex (Boys & Girls)',
+            'season' => $data['season'] ?? $product?->season ?? 'All Season',
+            'shipping_info' => $data['shipping_info'] ?? $product?->shipping_info ?? 'USA & Canada Shipping',
+            'delivery_time' => $data['delivery_time'] ?? $product?->delivery_time ?? '6–10 Working Days Delivery',
+            'moq' => array_key_exists('moq', $data) ? (int) $data['moq'] : ($product?->moq ?? 1),
+            'rating' => array_key_exists('rating', $data) ? (float) $data['rating'] : ($product?->rating ?? 5.00),
+            'reviews_count' => array_key_exists('reviews_count', $data) ? (int) $data['reviews_count'] : ($product?->reviews_count ?? 128),
             'condition' => $data['condition'] ?? 'new',
             'audience' => $audienceName,
             'fabric_gsm' => $data['fabric_gsm'] ?? $product?->fabric_gsm,
             'material' => $data['material'] ?? $product?->material,
             'default_unit_weight_kg' => $data['default_unit_weight_kg'] ?? $product?->default_unit_weight_kg ?? 0.030,
             'single_piece_price' => $data['single_piece_price'] ?? $product?->single_piece_price,
+            'wholesale_price' => $data['wholesale_price'] ?? $product?->wholesale_price,
             'country_of_origin' => strtoupper($data['country_of_origin'] ?? 'BD'),
             'status' => $data['status'] ?? $product?->status ?? 'draft',
         ], fn (mixed $value, string $key): bool => $key !== 'primary_media_id' || $value !== null, ARRAY_FILTER_USE_BOTH);

@@ -897,58 +897,51 @@ it('provides reusable variant size presets CRUD and allows applying same sizes a
     $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
     $this->actingAs($context['user']);
 
-    // 1. Create a reusable variant preset
+    // 1. Create a reusable variant option (e.g. Large / L)
     $this->post(route('user.commerce.variants.store'), [
-        'name' => 'Adult Standard Sizes',
-        'values_csv' => 'S, M, L, XL, XXL',
+        'name' => 'Large',
+        'sku_suffix' => 'L',
+        'price_delta' => 0.00,
         'is_active' => true,
     ])->assertRedirect();
 
-    $preset = VariantPreset::query()->where('workspace_id', $context['workspace']->id)->where('name', 'Adult Standard Sizes')->firstOrFail();
-    expect($preset->values)->toBe(['S', 'M', 'L', 'XL', 'XXL']);
+    $preset = VariantPreset::query()->where('workspace_id', $context['workspace']->id)->where('name', 'Large')->firstOrFail();
+    expect($preset->sku_suffix)->toBe('L')
+        ->and((float) $preset->price_delta)->toBe(0.00);
 
-    // 2. View variants preset index page
+    // 2. View variant options index page
     $this->get(route('user.commerce.variants.index'))
         ->assertOk()
-        ->assertSee('Adult Standard Sizes')
-        ->assertSee('XXL');
+        ->assertSee('Variant options')
+        ->assertSee('Reusable variant options')
+        ->assertSee('Large')
+        ->assertSee('L');
 
-    // 3. Update the preset
-    $this->put(route('user.commerce.variants.update', $preset), [
-        'name' => 'Adult Standard (S–3XL)',
-        'values_csv' => 'S, M, L, XL, XXL, 3XL',
+    // 3. Update the option via JSON inline update
+    $this->putJson(route('user.commerce.variants.update', $preset), [
+        'name' => 'Large (L)',
+        'sku_suffix' => 'L',
+        'price_delta' => 2.50,
         'is_active' => true,
-    ])->assertRedirect();
+    ])->assertSuccessful()->assertJsonPath('ok', true);
 
-    expect($preset->fresh()->name)->toBe('Adult Standard (S–3XL)')
-        ->and($preset->fresh()->values)->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL']);
+    expect($preset->fresh()->name)->toBe('Large (L)')
+        ->and((float) $preset->fresh()->price_delta)->toBe(2.50);
 
-    // 4. Apply these sizes to Product 1 via Step 2
+    // 4. Apply size L to Product 1 via Step 2
     $product1 = commerceProduct($context['workspace']->id);
     $this->put(route('user.commerce.products.options.update', $product1), [
-        'sizes' => $preset->fresh()->values,
+        'sizes' => ['L', 'XL'],
         'colors' => [
-            ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A'],
-            ['name' => 'Jet Black', 'hex_code' => '#111827'],
+            ['name' => '', 'hex_code' => '#1E3A8A'],
+            ['name' => '', 'hex_code' => '#111827'],
         ],
     ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product1, 'step' => 3]));
 
-    // 5. Apply the same sizes to Product 2 via Step 2
-    $product2 = commerceProduct($context['workspace']->id);
-    $this->put(route('user.commerce.products.options.update', $product2), [
-        'sizes' => $preset->fresh()->values,
-        'colors' => [
-            ['name' => 'Heather Grey', 'hex_code' => '#6B7280'],
-        ],
-    ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product2, 'step' => 3]));
-
     $p1Options = $product1->fresh()->options()->where('code', 'size')->first();
-    $p2Options = $product2->fresh()->options()->where('code', 'size')->first();
+    expect($p1Options->values->pluck('value')->all())->toBe(['L', 'XL']);
 
-    expect($p1Options->values->pluck('value')->all())->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL'])
-        ->and($p2Options->values->pluck('value')->all())->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL']);
-
-    // 6. Delete preset
+    // 5. Delete option
     $this->delete(route('user.commerce.variants.destroy', $preset))->assertRedirect();
     $this->assertDatabaseMissing('commerce_variant_presets', ['id' => $preset->id]);
 });
@@ -1005,10 +998,30 @@ it('supports color-dedicated multi-image galleries and connects them to swatches
         ->and($blackColor->fresh()->swatch_media_id)->toBe($media3->id);
 
     // Check Public Storefront
-    $product->update(['status' => 'active', 'wizard_step' => 5]);
+    $product->update([
+        'status' => 'active',
+        'wizard_step' => 5,
+        'moq' => 40,
+        'wholesale_price' => 20.00,
+        'fit' => 'USA True-to-Size',
+        'set_includes' => 'Hoodie + Jogger Pants',
+        'gender' => 'Unisex (Boys & Girls)',
+        'season' => 'All Season',
+        'shipping_info' => 'USA & Canada Shipping',
+        'delivery_time' => '6–10 Working Days Delivery',
+    ]);
+
     $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))
         ->assertOk()
         ->assertSee('Royal Blue')
         ->assertSee('Jet Black')
+        ->assertSee('Add to Quote')
+        ->assertSee('WhatsApp Order')
+        ->assertSee('MOQ: 40')
+        ->assertSee('USA &amp; Canada Shipping', false)
+        ->assertSee('USA True-to-Size')
+        ->assertSee('COLORS AVAILABLE')
+        ->assertSee('1000+')
+        ->assertSee('USA Buyers Trust Us')
         ->assertSee($product->name);
 });

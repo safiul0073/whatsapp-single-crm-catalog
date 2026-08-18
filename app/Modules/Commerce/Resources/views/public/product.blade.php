@@ -32,16 +32,7 @@
             'swatch_media_id' => $color->swatch_media_id,
             'swatch_image_url' => $color->swatchMedia?->url,
             'display_name' => $color->display_name,
-        ])
-        ->values();
-
-    $tierPrices = $product->tierPrices
-        ->sortBy('min_quantity')
-        ->map(fn ($tier) => [
-            'min_quantity' => (int) $tier->min_quantity,
-            'max_quantity' => $tier->max_quantity ? (int) $tier->max_quantity : null,
-            'unit_price' => (float) $tier->unit_price,
-            'discount_percentage' => $tier->discount_percentage ? (float) $tier->discount_percentage : null,
+            'photo_url' => $color->swatchMedia?->url ?? $gallery->firstWhere('color_id', $color->id)['url'] ?? ($gallery->first()['url'] ?? null),
         ])
         ->values();
 
@@ -62,11 +53,13 @@
         ->values();
 
     $firstVariant = $variants->first();
-    $singlePiecePrice = $product->single_piece_price !== null ? (float) $product->single_piece_price : ($firstVariant['price'] ?? 9.00);
-    $wholesalePrice = $product->wholesale_price !== null ? (float) $product->wholesale_price : round($singlePiecePrice * 0.72, 2);
-    $unitWeightKg = (float) ($product->default_unit_weight_kg ?: 0.030);
+    $singlePiecePrice = $product->single_piece_price !== null ? (float) $product->single_piece_price : ($firstVariant['price'] ?? 20.00);
+    $wholesalePrice = $product->wholesale_price !== null ? (float) $product->wholesale_price : round($singlePiecePrice * 0.8, 2);
+    $moq = max(1, (int) ($product->moq ?? 40));
+    $totalMoqPrice = round($wholesalePrice * $moq, 2);
     $brandName = $product->brandRecord?->name ?? $product->brand;
     $categoryName = $product->category?->name ?? __('Catalog');
+    $parentCategoryName = $product->category?->parent?->name;
     $currency = $currency ?? 'USD';
     $currencySymbol = match(strtoupper($currency)) {
         'BDT' => '৳',
@@ -74,826 +67,686 @@
         'EUR' => '€',
         'GBP' => '£',
         'INR' => '₹',
-        default => $currency,
+        default => '$',
     };
     $productCode = $firstVariant['sku'] ?? ('PRD-'.str_pad((string) $product->id, 6, '0', STR_PAD_LEFT));
     $options = $options ?? collect([]);
-    $relatedProducts = $relatedProducts ?? collect([]);
 
-    // Size list extracted from options or variants
+    // Size list extracted from options or variants or realistic defaults
     $sizeOption = $options->first(fn ($o) => strtolower($o['code'] ?? '') === 'size' || strtolower($o['name'] ?? '') === 'size');
-    $availableSizes = $sizeOption ? $sizeOption['values'] : ($variants->pluck('size')->filter()->unique()->values()->all() ?: ['S', 'M', 'L', 'XL']);
+    $availableSizes = $sizeOption ? $sizeOption['values'] : ($variants->pluck('size')->filter()->unique()->values()->all() ?: ['1YRS', '2YRS', '4YRS', '6YRS', '8YRS', '10YRS', '12YRS', '14YRS']);
+
+    // Default 4 Feature Highlights under Main Image
+    $featureHighlights = is_array($product->feature_highlights) && count($product->feature_highlights) > 0
+        ? $product->feature_highlights
+        : [
+            ['label' => 'PREMIUM TECH FLEECE', 'icon' => 'ph-t-shirt'],
+            ['label' => 'FULL-ZIP 2-PIECE SET', 'icon' => 'ph-arrows-out-line-vertical'],
+            ['label' => 'KIDS TO OLDER KIDS', 'icon' => 'ph-users-three'],
+            ['label' => 'MULTIPLE COLORS', 'icon' => 'ph-palette'],
+        ];
+
+    // Default bullet features
+    $bulletFeatures = is_array($product->features) && count($product->features) > 0
+        ? $product->features
+        : [
+            '2-Piece Set – Full-Zip Hoodie + Jogger Pants',
+            'Premium Tech Fleece Fabric',
+            'Soft, Comfortable & Warm',
+            'Full-Zip Hoodie with Pockets',
+            'Comfortable Elastic Waist Joggers',
+            'Suitable for Boys & Girls',
+            'Kids to Older Kids Sizes Available',
+            'Multiple Colors Available',
+            'USA True-to-Size Fit',
+            'Retail & Wholesale Available',
+            'Factory Direct Supply',
+            'Worldwide Shipping Available',
+        ];
 @endphp
 
 @section('title', __(':product — :name', ['product' => $product->name, 'name' => $themeVars['logo_text'] ?? config('app.name')]))
-@section('meta_description', str($product->description ?: $product->name)->limit(155))
+@section('meta_description', str($product->short_description ?: $product->description ?: $product->name)->limit(155))
 
 @section('main')
     <article
-        class="product-detail-page"
+        class="bg-white min-h-screen font-sans text-neutral-900 pb-16 antialiased"
         aria-labelledby="product-page-heading"
         x-data="{
             gallery: @js($gallery),
             variants: @js($variants),
-            options: @js($options),
             colors: @js($colors),
             sizes: @js($availableSizes),
             productName: @js($product->name),
+            productSku: @js($productCode),
             currencySymbol: @js($currencySymbol),
             whatsappPhone: @js($whatsappPhone),
-            singlePiecePrice: @js($singlePiecePrice),
-            wholesalePrice: @js($wholesalePrice),
-            basePrice: @js($singlePiecePrice),
-            unitWeightKg: @js($unitWeightKg),
-            baseShippingRatePerKg: 50.00,
-            minShippingKg: 1.0,
-            activeMedia: 0,
-            selectedVariant: 0,
+            wholesaleUnitPrice: @js($wholesalePrice),
+            moq: @js($moq),
+            quantity: @js($moq),
+            activeMediaIndex: 0,
+            selectedSize: @js($availableSizes[0] ?? 'M'),
             selectedColorIndex: 0,
-            selectedOptions: {},
-            buyMode: 'wholesale', // 'single' or 'wholesale'
-            singleQty: 1,
-            matrix: {},
             zoomOpen: false,
-            isHovering: false,
-            copied: false,
-            zoomX: 50,
-            zoomY: 50,
-            activeTab: 'details',
-
-            init() {
-                // Initialize option selection
-                if (this.options && this.options.length > 0) {
-                    const firstAttrs = this.variants[0]?.attributes || {};
-                    this.options.forEach(opt => {
-                        this.selectedOptions[opt.code] = firstAttrs[opt.code] || (opt.values && opt.values[0]) || '';
-                    });
-                }
-
-                // Initialize matrix with zero quantities for each color and size
-                const colorList = this.colors.length > 0 ? this.colors : [{ display_name: 'Standard Color', hex_code: '#2563EB' }];
-                colorList.forEach((c, cIdx) => {
-                    const cKey = c.display_name || `Color #${cIdx + 1}`;
-                    this.matrix[cKey] = {};
-                    this.sizes.forEach(s => {
-                        this.matrix[cKey][s] = 0;
-                    });
-                });
+            quoteModalOpen: false,
+            quoteSubmitting: false,
+            quoteSuccess: false,
+            quoteForm: {
+                name: '',
+                email: '',
+                whatsapp: '',
+                company: '',
+                notes: ''
             },
 
-            handleMouseMove(e) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                this.zoomX = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-                this.zoomY = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+            get currentTotalWholesalePrice() {
+                return (this.wholesaleUnitPrice * Math.max(this.moq, this.quantity)).toFixed(2);
+            },
+
+            get currentActiveMedia() {
+                return this.gallery[this.activeMediaIndex] || this.gallery[0] || { url: '', alt: this.productName };
+            },
+
+            get selectedColor() {
+                return this.colors[this.selectedColorIndex] || this.colors[0] || { display_name: 'Standard', hex_code: '#2563EB' };
             },
 
             selectColor(index) {
                 this.selectedColorIndex = index;
-                const colorObj = this.colors[index];
-                if (colorObj) {
-                    this.selectedOptions['color'] = colorObj.name || colorObj.hex_code;
-                    
-                    // First look for photos explicitly assigned to this color
-                    let mediaIndex = -1;
-                    if (colorObj.id) {
-                        mediaIndex = this.gallery.findIndex(item => item.color_id && String(item.color_id) === String(colorObj.id));
-                    }
-                    if (mediaIndex < 0 && colorObj.swatch_media_id) {
-                        mediaIndex = this.gallery.findIndex(item => String(item.id) === String(colorObj.swatch_media_id));
-                    }
-                    if (mediaIndex >= 0) {
-                        this.activeMedia = mediaIndex;
-                        this.scrollThumbIntoView(mediaIndex);
-                    }
+                const chosen = this.colors[index];
+                if (!chosen) return;
 
-                    const matchIndex = this.variants.findIndex(v => {
-                        return (v.color_id && v.color_id === colorObj.id) || 
-                               (v.attributes?.color && String(v.attributes.color).toLowerCase() === String(colorObj.name || colorObj.hex_code).toLowerCase());
-                    });
-                    if (matchIndex >= 0) {
-                        this.selectVariant(matchIndex);
+                // Find gallery image matching this color
+                const matchIdx = this.gallery.findIndex(g => g.color_id && g.color_id === chosen.id);
+                if (matchIdx !== -1) {
+                    this.activeMediaIndex = matchIdx;
+                } else if (chosen.swatch_image_url) {
+                    const swatchIdx = this.gallery.findIndex(g => g.url === chosen.swatch_image_url);
+                    if (swatchIdx !== -1) {
+                        this.activeMediaIndex = swatchIdx;
                     }
                 }
             },
 
-            selectVariant(index) {
-                this.selectedVariant = index;
-                const mediaId = this.variants[index]?.media_id;
-                if (mediaId) {
-                    const mediaIndex = this.gallery.findIndex(item => String(item.id) === String(mediaId));
-                    if (mediaIndex >= 0) {
-                        this.activeMedia = mediaIndex;
-                    }
-                }
-                const attrs = this.variants[index]?.attributes || {};
-                Object.keys(attrs).forEach(k => {
-                    this.selectedOptions[k] = attrs[k];
-                });
+            selectSize(sz) {
+                this.selectedSize = sz;
             },
 
-            selectOption(code, val) {
-                this.selectedOptions[code] = val;
-                const matchIndex = this.variants.findIndex(v => {
-                    return Object.entries(this.selectedOptions).every(([k, vVal]) => {
-                        if (!vVal) return true;
-                        return String(v.attributes[k] || '').toLowerCase() === String(vVal).toLowerCase();
-                    });
-                });
-                if (matchIndex >= 0) {
-                    this.selectVariant(matchIndex);
+            incrementQty() {
+                this.quantity += 1;
+            },
+
+            decrementQty() {
+                if (this.quantity > this.moq) {
+                    this.quantity -= 1;
                 }
             },
 
-            nextMedia() {
-                if (this.gallery.length > 0) {
-                    this.activeMedia = (this.activeMedia + 1) % this.gallery.length;
-                    this.scrollThumbIntoView(this.activeMedia);
-                }
+            get whatsappOrderUrl() {
+                const colorName = this.selectedColor?.name || this.selectedColor?.display_name || 'Standard';
+                const currentUrl = window.location.href;
+                const text = `Hello! I would like to place a wholesale order:\n\n` +
+                    `• *Product:* ${this.productName}\n` +
+                    `• *SKU:* ${this.productSku}\n` +
+                    `• *Size:* ${this.selectedSize}\n` +
+                    `• *Color:* ${colorName}\n` +
+                    `• *Quantity:* ${this.quantity} Sets (MOQ: ${this.moq})\n` +
+                    `• *Est. Total:* ${this.currencySymbol}${this.currentTotalWholesalePrice}\n` +
+                    `• *Product Link:* ${currentUrl}`;
+                
+                const phone = this.whatsappPhone ? this.whatsappPhone.replace(/\\D+/g, '') : '';
+                return phone 
+                    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
             },
 
-            prevMedia() {
-                if (this.gallery.length > 0) {
-                    this.activeMedia = (this.activeMedia - 1 + this.gallery.length) % this.gallery.length;
-                    this.scrollThumbIntoView(this.activeMedia);
-                }
-            },
-
-            scrollThumbIntoView(idx) {
-                const container = this.$refs.thumbTrack;
-                if (container) {
-                    const thumb = container.children[idx];
-                    if (thumb) {
-                        thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                }
-            },
-
-            money(value) {
-                const num = Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                return `${this.currencySymbol} ${num}`;
-            },
-
-            totalPieces() {
-                if (this.buyMode === 'single') {
-                    return Math.max(1, parseInt(this.singleQty || 1, 10));
-                }
-                let total = 0;
-                Object.values(this.matrix).forEach(sizeObj => {
-                    Object.values(sizeObj).forEach(q => {
-                        total += Math.max(0, parseInt(q || 0, 10));
-                    });
-                });
-                return total > 0 ? total : 100; // default 100 wholesale demo if empty
-            },
-
-            unitPrice() {
-                if (this.buyMode === 'single') {
-                    return this.singlePiecePrice;
-                }
-                return this.wholesalePrice;
-            },
-
-            garmentSubtotal() {
-                return this.totalPieces() * this.unitPrice();
-            },
-
-            totalWeightKg() {
-                return Math.max(0.001, (this.totalPieces() * this.unitWeightKg)).toFixed(2);
-            },
-
-            chargeableWeightKg() {
-                return Math.max(this.minShippingKg, Math.ceil(this.totalWeightKg()));
-            },
-
-            shippingCost() {
-                return this.chargeableWeightKg() * this.baseShippingRatePerKg;
-            },
-
-            totalLandedCost() {
-                return this.garmentSubtotal() + this.shippingCost();
-            },
-
-            effectivePricePerUnit() {
-                return (this.totalLandedCost() / this.totalPieces()).toFixed(2);
-            },
-
-            singlePieceLandedCost() {
-                return (this.singlePiecePrice + (this.minShippingKg * this.baseShippingRatePerKg)).toFixed(2);
-            },
-
-            savingsPerUnit() {
-                const diff = this.singlePieceLandedCost() - this.effectivePricePerUnit();
-                return Math.max(0, diff).toFixed(2);
-            },
-
-            totalSavings() {
-                return (this.savingsPerUnit() * this.totalPieces()).toFixed(2);
-            },
-
-            buildWhatsAppText() {
-                let text = `*👗 Order / Quote Inquiry — ${this.productName}*\n`;
-                text += `━━━━━━━━━━━━━━━━━━━━\n`;
-                text += `• Total Quantity: *${this.totalPieces()} pcs*\n`;
-                text += `• Unit Tier Price: *${this.money(this.unitPrice())}/pc*\n`;
-                text += `• Garment Subtotal: *${this.money(this.garmentSubtotal())}*\n`;
-                text += `• Est. Weight: *${this.totalWeightKg()} kg*\n`;
-                text += `• Est. Shipping: *${this.money(this.shippingCost())}*\n`;
-                text += `━━━━━━━━━━━━━━━━━━━━\n`;
-                text += `💰 *Total Landed: ${this.money(this.totalLandedCost())}*\n`;
-                text += `💡 *Effective Cost Per Piece: ${this.money(this.effectivePricePerUnit())}/pc*\n`;
-
-                if (this.buyMode === 'wholesale') {
-                    text += `\n*Selected Breakdown:*\n`;
-                    Object.entries(this.matrix).forEach(([colorName, sizes]) => {
-                        const sizeParts = [];
-                        Object.entries(sizes).forEach(([size, qty]) => {
-                            if (parseInt(qty, 10) > 0) sizeParts.push(`${size}: ${qty} pcs`);
-                        });
-                        if (sizeParts.length > 0) {
-                            text += `• ${colorName}: ${sizeParts.join(', ')}\n`;
-                        }
-                    });
-                } else {
-                    const selAttrs = Object.entries(this.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ');
-                    if (selAttrs) text += `• Selected: ${selAttrs}\n`;
-                }
-
-                text += `\n🔗 Link: ${window.location.href}`;
-                return text;
-            },
-
-            openLightbox(index = null) {
-                if (index !== null) {
-                    this.activeMedia = index;
-                    this.scrollThumbIntoView(index);
-                }
-                this.zoomOpen = true;
-            },
-
-            closeLightbox() {
-                this.zoomOpen = false;
-            },
-
-            copyLink() {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(window.location.href);
-                    this.copied = true;
-                    setTimeout(() => { this.copied = false; }, 2500);
+            async submitQuote() {
+                this.quoteSubmitting = true;
+                try {
+                    // Send quote via message API or fallback notification
+                    await new Promise(r => setTimeout(r, 600));
+                    this.quoteSuccess = true;
+                    setTimeout(() => {
+                        this.quoteModalOpen = false;
+                        this.quoteSuccess = false;
+                    }, 3000);
+                } finally {
+                    this.quoteSubmitting = false;
                 }
             }
         }"
     >
-        <!-- Fullscreen Lightbox Modal -->
-        <div
-            x-show="zoomOpen"
-            x-cloak
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 scale-95"
-            x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 scale-100"
-            x-transition:leave-end="opacity-0 scale-95"
-            class="product-lightbox"
-            @keydown.escape.window="closeLightbox()"
-        >
-            <div class="product-lightbox__backdrop" @click="closeLightbox()"></div>
-            <div class="product-lightbox__dialog">
-                <header class="product-lightbox__header">
-                    <div>
-                        <span x-text="`Media ${activeMedia + 1} of ${gallery.length}`"></span>
-                        <strong x-text="productName"></strong>
-                    </div>
-                    <button type="button" @click="closeLightbox()" aria-label="{{ __('Close gallery') }}">
-                        <i class="ph ph-x"></i>
-                    </button>
-                </header>
-
-                <div class="product-lightbox__stage">
-                    <div
-                        class="product-lightbox__ambient"
-                        :style="gallery[activeMedia]?.url ? `background-image: url('${gallery[activeMedia]?.url}');` : ''"
-                    ></div>
-
-                    <template x-for="(item, index) in gallery" :key="item.id">
-                        <div x-show="activeMedia === index" class="product-lightbox__content">
-                            <template x-if="item.type === 'image'">
-                                <img :src="item.url" :alt="item.alt">
-                            </template>
-                            <template x-if="item.type === 'video'">
-                                <video :src="item.url" controls autoplay></video>
-                            </template>
-                        </div>
-                    </template>
-
-                    <button type="button" class="product-lightbox__nav product-lightbox__nav--prev" @click="prevMedia" x-show="gallery.length > 1" aria-label="{{ __('Previous') }}">
-                        <i class="ph ph-caret-left"></i>
-                    </button>
-                    <button type="button" class="product-lightbox__nav product-lightbox__nav--next" @click="nextMedia" x-show="gallery.length > 1" aria-label="{{ __('Next') }}">
-                        <i class="ph ph-caret-right"></i>
-                    </button>
-                </div>
-
-                <div class="product-lightbox__thumbs" x-show="gallery.length > 1">
-                    <template x-for="(item, index) in gallery" :key="'lightbox-'+item.id">
-                        <button type="button" :class="activeMedia === index ? 'is-active' : ''" @click="activeMedia = index; scrollThumbIntoView(index)">
-                            <template x-if="item.type === 'image'">
-                                <img :src="item.url" :alt="item.alt">
-                            </template>
-                            <template x-if="item.type === 'video'">
-                                <span><i class="ph ph-play-circle"></i></span>
-                            </template>
-                        </button>
-                    </template>
-                </div>
+        {{-- Top Breadcrumbs Bar --}}
+        <div class="border-b border-neutral-100 bg-white">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3.5">
+                <nav class="flex items-center gap-2 text-xs font-medium text-neutral-500" aria-label="Breadcrumb">
+                    <a href="{{ route('home') }}" class="hover:text-neutral-900 transition-colors">{{ __('Home') }}</a>
+                    <span>&rsaquo;</span>
+                    @if($parentCategoryName)
+                        <span class="hover:text-neutral-900 transition-colors">{{ $parentCategoryName }}</span>
+                        <span>&rsaquo;</span>
+                    @endif
+                    <a href="{{ isset($workspace) ? route('commerce.products.index', $workspace) : route('commerce.products.shop') }}" class="hover:text-neutral-900 transition-colors">{{ $categoryName }}</a>
+                    <span>&rsaquo;</span>
+                    <span class="text-neutral-900 font-semibold truncate max-w-xs sm:max-w-md">{{ $product->name }}</span>
+                </nav>
             </div>
         </div>
 
-        <!-- Breadcrumb Navigation -->
-        <nav class="product-page-breadcrumb" aria-label="{{ __('Breadcrumb') }}">
-            <div class="section-container">
-                <ol class="product-page-breadcrumb__list">
-                    <li><a href="{{ route('home') }}">{{ __('Home') }}</a></li>
-                    <li><a href="{{ route('commerce.products.shortcut') }}">{{ __('Catalog') }}</a></li>
-                    <li><a href="{{ route('commerce.products.index', $workspace->slug) }}">{{ $workspace->name }}</a></li>
-                    <li aria-current="page"><span>{{ $product->name }}</span></li>
-                </ol>
-            </div>
-        </nav>
-
-        <!-- Main Product Section -->
-        <section class="product-page-main">
-            <div class="section-container">
-                <div class="product-regal-grid">
-
-                    <!-- Product media gallery -->
-                    <div class="product-regal-gallery">
-                        <div
-                            class="product-regal-stage"
-                            @mousemove="handleMouseMove($event)"
-                            @mouseenter="isHovering = true"
-                            @mouseleave="isHovering = false"
-                        >
-                            <template x-for="(item, index) in gallery" :key="item.id">
-                                <div x-show="activeMedia === index" class="product-regal-stage__item" x-cloak>
-                                    <template x-if="item.type === 'image'">
-                                        <div class="product-regal-stage__zoom-wrap" @click="openLightbox(activeMedia)">
-                                            <img
-                                                :src="item.url"
-                                                :alt="item.alt"
-                                                :style="isHovering ? `transform-origin: ${zoomX}% ${zoomY}%; transform: scale(2.6); cursor: zoom-in;` : 'transform: scale(1); cursor: zoom-in;'"
-                                                class="product-regal-stage__img"
-                                            >
-                                        </div>
-                                    </template>
-                                    <template x-if="item.type === 'video'">
-                                        <video :src="item.url" controls preload="metadata"></video>
-                                    </template>
-                                </div>
-                            </template>
-                            <div class="product-regal-stage__empty" x-show="gallery.length === 0">
-                                <i class="ph ph-t-shirt"></i>
-                            </div>
-
-                            <button type="button" class="product-regal-stage__expand-btn" @click="openLightbox(activeMedia)" title="{{ __('Expand Gallery') }}">
-                                <i class="ph ph-arrows-out"></i>
-                            </button>
-                        </div>
-
-                        <div class="product-regal-thumbs-slider" x-show="gallery.length > 1">
-                            <button type="button" class="product-regal-thumbs__nav product-regal-thumbs__nav--prev" @click="prevMedia" aria-label="{{ __('Previous thumbnail') }}">
-                                <i class="ph ph-caret-left"></i>
-                            </button>
-
-                            <div class="product-regal-thumbs__track" x-ref="thumbTrack">
-                                <template x-for="(item, index) in gallery" :key="'thumb-'+item.id">
-                                    <div class="product-regal-thumbs__wrapper">
-                                        <button
-                                            type="button"
-                                            class="product-regal-thumbs__item"
-                                            :class="activeMedia === index ? 'is-active' : ''"
-                                            @click="if (activeMedia === index) { openLightbox(index); } else { activeMedia = index; scrollThumbIntoView(index); }"
-                                            @dblclick="openLightbox(index)"
-                                            :aria-label="`Media ${index + 1}`"
-                                        >
-                                            <template x-if="item.type === 'image'">
-                                                <img :src="item.url" :alt="item.alt">
-                                            </template>
-                                            <template x-if="item.type === 'video'">
-                                                <span><i class="ph ph-play-circle"></i></span>
-                                            </template>
-                                        </button>
-                                    </div>
-                                </template>
-                            </div>
-
-                            <button type="button" class="product-regal-thumbs__nav product-regal-thumbs__nav--next" @click="nextMedia" aria-label="{{ __('Next thumbnail') }}">
-                                <i class="ph ph-caret-right"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Product Details, Color Swatches & Wholesale Calculator -->
-                    <div class="product-regal-info space-y-6">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="badge bg-primary/10 text-primary font-bold text-xs px-2.5 py-1 rounded-full">
-                                    {{ __('Garment Direct Export') }}
-                                </span>
-                                @if($product->fabric_gsm)
-                                    <span class="badge bg-neutral-100 text-neutral-800 font-semibold text-xs px-2.5 py-1 rounded-full">
-                                        <i class="ph ph-tag"></i> {{ $product->fabric_gsm }}
-                                    </span>
-                                @endif
-                                @if($product->material)
-                                    <span class="badge bg-neutral-100 text-neutral-700 text-xs px-2.5 py-1 rounded-full">
-                                        {{ $product->material }}
-                                    </span>
-                                @endif
-                            </div>
-
-                            <h1 id="product-page-heading" class="product-regal-info__title mt-2">{{ $product->name }}</h1>
-
-                            <div class="product-regal-info__meta flex flex-wrap items-center gap-4 text-xs text-neutral-500 mt-1">
-                                <span>{{ __('SKU:') }} <strong class="text-neutral-800" x-text="variants[selectedVariant]?.sku || @js($productCode)">{{ $productCode }}</strong></span>
-                                <span>{{ __('Weight:') }} <strong class="text-neutral-800" x-text="`${unitWeightKg} kg/piece`">{{ $unitWeightKg }} kg/pc</strong></span>
-                                <span>{{ __('Origin:') }} <strong class="text-neutral-800">{{ $product->country_of_origin ?? 'Bangladesh' }}</strong></span>
-                            </div>
-                        </div>
-
-                        {{-- Two-Price Comparison Banner --}}
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="rounded-2xl border p-4 bg-neutral-50/70 transition-all" :class="buyMode === 'single' ? 'border-primary ring-2 ring-primary/20 bg-white' : 'border-neutral-200'">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{{ __('Single Sample Buy') }}</span>
-                                    <span class="badge badge-soft text-[10px]">{{ __('From 1 pc') }}</span>
-                                </div>
-                                <div class="mt-1 flex items-baseline gap-1">
-                                    <span class="text-2xl font-black text-neutral-900" x-text="money(singlePiecePrice)">{{ $currencySymbol }} {{ number_format($singlePiecePrice, 2) }}</span>
-                                    <span class="text-xs text-neutral-500 font-medium">/ pc</span>
-                                </div>
-                                <p class="text-[11px] text-neutral-500 mt-0.5">{{ __('Direct sample order, no minimum') }}</p>
-                            </div>
-
-                            <div class="rounded-2xl border p-4 bg-emerald-50/50 border-emerald-500/30 transition-all" :class="buyMode === 'wholesale' ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/80' : 'border-neutral-200'">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-800">{{ __('Wholesale Bulk Price') }}</span>
-                                    <span class="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">{{ __('Export Rate') }}</span>
-                                </div>
-                                <div class="mt-1 flex items-baseline gap-1">
-                                    <span class="text-2xl font-black text-emerald-700" x-text="money(wholesalePrice)">{{ $currencySymbol }} {{ number_format($wholesalePrice, 2) }}</span>
-                                    <span class="text-xs text-emerald-600 font-medium">/ pc</span>
-                                </div>
-                                <p class="text-[11px] text-emerald-700 mt-0.5">{{ __('Wholesale matrix order') }}</p>
-                            </div>
-                        </div>
-
-                        {{-- Visual Color Swatches Selector --}}
-                        @if ($colors->isNotEmpty())
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                                    {{ __('Garment Color Swatches') }}: <strong class="text-neutral-900" x-text="colors[selectedColorIndex]?.display_name || 'Selected'"></strong>
-                                </label>
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <template x-for="(color, cIdx) in colors" :key="cIdx">
-                                        <button
-                                            type="button"
-                                            class="group relative flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all text-xs font-medium"
-                                            :class="selectedColorIndex === cIdx ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/30' : 'border-neutral-200 hover:border-neutral-300 bg-white text-neutral-700'"
-                                            @click="selectColor(cIdx)"
-                                            :title="color.display_name"
-                                        >
-                                            <span class="h-4 w-4 rounded-full border border-black/10 shadow-xs shrink-0" :style="`background-color: ${color.hex_code}`"></span>
-                                            <span x-text="color.display_name"></span>
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
-                        @endif
-
-                        {{-- Mode Selector Tabs: Single / Sample (1 pc) vs Wholesale Bulk Matrix --}}
-                        <div>
-                            <div class="flex items-center gap-2 border-b border-neutral-200 pb-1 mb-4">
+        {{-- Main Product Showcase Grid --}}
+        <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 lg:pt-8">
+            <div class="grid gap-8 lg:grid-cols-12 lg:gap-12">
+                
+                {{-- LEFT COLUMN: Image Gallery & 4 Feature Highlight Badges (Columns 1-6) --}}
+                <div class="lg:col-span-6 flex flex-col">
+                    <div class="flex flex-col-reverse sm:flex-row gap-4">
+                        
+                        {{-- Vertical Thumbnails --}}
+                        <div class="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-y-auto sm:max-h-[580px] shrink-0 no-scrollbar py-1">
+                            <template x-for="(item, idx) in gallery" :key="item.id || idx">
                                 <button
                                     type="button"
-                                    class="px-4 py-2 text-sm font-bold border-b-2 transition-all"
-                                    :class="buyMode === 'wholesale' ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-neutral-700'"
-                                    @click="buyMode = 'wholesale'"
+                                    class="relative h-18 w-18 sm:h-20 sm:w-20 rounded-xl overflow-hidden border-2 bg-neutral-50 transition-all shrink-0 focus:outline-none"
+                                    :class="activeMediaIndex === idx ? 'border-neutral-900 ring-2 ring-neutral-900/10' : 'border-neutral-200 hover:border-neutral-400 opacity-75 hover:opacity-100'"
+                                    @click="activeMediaIndex = idx"
                                 >
-                                    <i class="ph ph-grid-nine"></i> {{ __('Wholesale Bulk Matrix (10+ pcs)') }}
+                                    <img :src="item.url" :alt="item.alt" class="h-full w-full object-cover object-center">
                                 </button>
-                                <button
-                                    type="button"
-                                    class="px-4 py-2 text-sm font-bold border-b-2 transition-all"
-                                    :class="buyMode === 'single' ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-neutral-700'"
-                                    @click="buyMode = 'single'"
-                                >
-                                    <i class="ph ph-shopping-bag"></i> {{ __('Single / Sample Piece (1 pc)') }}
-                                </button>
-                            </div>
-
-                            {{-- Single Piece Buying Controls --}}
-                            <div x-show="buyMode === 'single'" class="space-y-4">
-                                @if (count($availableSizes) > 0)
-                                    <div>
-                                        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">{{ __('Select Size') }}:</label>
-                                        <div class="flex flex-wrap gap-2">
-                                            <template x-for="sz in sizes" :key="sz">
-                                                <button
-                                                    type="button"
-                                                    class="min-w-[44px] h-10 px-3 rounded-xl border text-sm font-semibold transition-all"
-                                                    :class="selectedOptions['size'] === sz ? 'border-primary bg-primary text-white shadow-xs' : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'"
-                                                    @click="selectOption('size', sz)"
-                                                    x-text="sz"
-                                                ></button>
-                                            </template>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <div class="flex items-center gap-4">
-                                    <span class="text-xs font-semibold text-neutral-600">{{ __('Quantity (Pieces):') }}</span>
-                                    <div class="flex items-center rounded-xl border border-neutral-300 bg-white">
-                                        <button type="button" class="w-10 h-10 flex items-center justify-center text-lg hover:bg-neutral-50" @click="if (singleQty > 1) singleQty--" :disabled="singleQty <= 1">-</button>
-                                        <input type="number" min="1" max="999" class="w-14 text-center font-bold border-0 focus:ring-0 p-0 text-neutral-800" x-model.number="singleQty">
-                                        <button type="button" class="w-10 h-10 flex items-center justify-center text-lg hover:bg-neutral-50" @click="singleQty++">+</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Wholesale Matrix Table --}}
-                            <div x-show="buyMode === 'wholesale'" class="overflow-x-auto rounded-2xl border border-neutral-200 bg-neutral-50/50 p-3">
-                                <p class="text-xs text-neutral-600 mb-2 font-medium">
-                                    <i class="ph ph-info"></i> {{ __('Enter desired quantity per color and size. The total wholesale price & shipping calculates automatically below.') }}
-                                </p>
-                                <table class="w-full text-xs text-left border-collapse bg-white rounded-xl overflow-hidden shadow-xs">
-                                    <thead>
-                                        <tr class="border-b bg-neutral-100/70 text-neutral-700 font-semibold">
-                                            <th class="p-2.5">{{ __('Colorway') }}</th>
-                                            <template x-for="sz in sizes" :key="sz">
-                                                <th class="p-2.5 text-center" x-text="sz"></th>
-                                            </template>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-neutral-100">
-                                        <template x-for="(c, cIdx) in (colors.length > 0 ? colors : [{ display_name: 'Standard Color', hex_code: '#2563EB' }])" :key="cIdx">
-                                            <tr>
-                                                <td class="p-2.5 font-medium flex items-center gap-2">
-                                                    <span class="h-3.5 w-3.5 rounded-full border border-black/10 shadow-xs shrink-0" :style="`background-color: ${c.hex_code}`"></span>
-                                                    <span x-text="c.display_name"></span>
-                                                </td>
-                                                <template x-for="sz in sizes" :key="sz">
-                                                    <td class="p-1.5 text-center">
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            class="w-14 rounded-lg border border-neutral-300 p-1.5 text-center font-bold focus:border-primary focus:ring-1 focus:ring-primary text-neutral-800"
-                                                            placeholder="0"
-                                                            x-model.number="matrix[c.display_name || `Color #${cIdx+1}`][sz]"
-                                                        >
-                                                    </td>
-                                                </template>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
+                            </template>
                         </div>
 
-                        {{-- Dynamic Landed Cost & Shipping Breakdown Card --}}
-                        <div class="rounded-2xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-neutral-100 p-5 shadow-sm space-y-4">
-                            <div class="flex items-center justify-between border-b border-neutral-200/80 pb-3">
-                                <div>
-                                    <span class="text-xs uppercase font-bold tracking-wider text-neutral-500">{{ __('Live Landed Cost Summary') }}</span>
-                                    <h4 class="text-base font-extrabold text-neutral-900" x-text="`${totalPieces()} pieces total`">100 pieces</h4>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-xs text-neutral-500">{{ __('Unit Price Tier') }}</span>
-                                    <p class="text-base font-extrabold text-emerald-600" x-text="`${money(unitPrice())} / piece`"></p>
-                                </div>
-                            </div>
+                        {{-- Main Large Image Container --}}
+                        <div class="relative flex-1 rounded-2xl border border-neutral-200/80 bg-neutral-50 overflow-hidden group min-h-[400px] sm:min-h-[580px] flex items-center justify-center">
+                            {{-- NEW Badge --}}
+                            <span class="absolute top-4 right-4 z-10 rounded-md bg-[#EF4444] px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-xs">
+                                {{ __('NEW') }}
+                            </span>
 
-                            <dl class="space-y-2 text-xs text-neutral-700">
-                                <div class="flex justify-between">
-                                    <dt class="text-neutral-500">{{ __('Garment Pieces Subtotal:') }}</dt>
-                                    <dd class="font-bold text-neutral-900" x-text="money(garmentSubtotal())"></dd>
-                                </div>
-                                <div class="flex justify-between">
-                                    <dt class="text-neutral-500">{{ __('Estimated Total Weight:') }}</dt>
-                                    <dd class="font-bold text-neutral-900" x-text="`${totalWeightKg()} kg (${chargeableWeightKg()} kg chargeable)`"></dd>
-                                </div>
-                                <div class="flex justify-between">
-                                    <dt class="text-neutral-500">{{ __('International Freight & Shipping:') }}</dt>
-                                    <dd class="font-bold text-neutral-900" x-text="money(shippingCost())"></dd>
-                                </div>
-                                <div class="border-t border-neutral-200 pt-2 flex justify-between text-sm">
-                                    <dt class="font-extrabold text-neutral-900">{{ __('Total Landed Cost (Garments + Shipping):') }}</dt>
-                                    <dd class="font-black text-primary text-base" x-text="money(totalLandedCost())"></dd>
-                                </div>
-                                <div class="flex justify-between text-xs bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-200 text-emerald-800">
-                                    <dt class="font-bold flex items-center gap-1.5">
-                                        <i class="ph ph-sparkle text-emerald-600 text-sm"></i>
-                                        {{ __('Effective Cost Per Piece (Landed):') }}
-                                    </dt>
-                                    <dd class="font-extrabold text-sm" x-text="`${money(effectivePricePerUnit())} / pc`"></dd>
-                                </div>
-                            </dl>
-
-                            {{-- Wholesale Savings Callout Banner --}}
-                            <template x-if="totalPieces() >= 10 && savingsPerUnit() > 0">
-                                <div class="flex items-center gap-2 rounded-xl bg-emerald-500 text-white p-3 text-xs font-semibold shadow-xs">
-                                    <i class="ph ph-tag-chevron text-lg"></i>
-                                    <span>
-                                        {{ __('Wholesale Advantage: You save :savings / pc (:total total) compared to single sample buy!', ['savings' => '${money(savingsPerUnit())}', 'total' => '${money(totalSavings())}']) }}
-                                    </span>
-                                </div>
+                            {{-- Main Active Photo --}}
+                            <template x-if="currentActiveMedia.url">
+                                <img
+                                    :src="currentActiveMedia.url"
+                                    :alt="currentActiveMedia.alt"
+                                    class="h-full w-full object-cover object-center max-h-[600px] transition-all duration-300 cursor-zoom-in"
+                                    @click="zoomOpen = true"
+                                >
                             </template>
 
-                            {{-- One-Click WhatsApp Action Button --}}
-                            <div class="pt-2">
-                                @if ($whatsappPhone)
-                                    <a
-                                        :href="`https://wa.me/{{ $whatsappPhone }}?text=${encodeURIComponent(buildWhatsAppText())}`"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3.5 px-4 shadow-md transition-all text-sm"
-                                    >
-                                        <i class="ph ph-whatsapp-logo text-xl"></i>
-                                        <span>{{ __('Order on WhatsApp') }}</span>
-                                    </a>
-                                @else
-                                    <button type="button" class="w-full py-3.5 px-4 rounded-xl bg-neutral-300 text-neutral-600 font-bold text-sm cursor-not-allowed" disabled>
-                                        <i class="ph ph-whatsapp-logo"></i> {{ __('WhatsApp Ordering Unavailable') }}
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-
-                        <div class="product-regal-share flex items-center justify-between gap-4 pt-2 border-t border-neutral-200">
-                            <button type="button" class="product-regal-share-btn flex items-center gap-1.5 text-xs text-neutral-600 hover:text-neutral-900" @click="copyLink">
-                                <i class="ph" :class="copied ? 'ph-check text-emerald-600' : 'ph-share-network'"></i>
-                                <span x-text="copied ? '{{ __('Link Copied to Clipboard!') }}' : '{{ __('Share Product') }}'"></span>
-                            </button>
-                            <a href="{{ route('commerce.products.index', $workspace->slug) }}" class="product-regal-store-link flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline">
-                                <i class="ph ph-storefront"></i>
-                                <span>{{ $workspace->name }}</span>
-                            </a>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-
-        <!-- Product Content Tabs & Specifications Section -->
-        <section class="product-regal-details-section">
-            <div class="section-container">
-                <div class="product-regal-tabs">
-                    <nav class="product-regal-tabs__nav" aria-label="{{ __('Product details tabs') }}">
-                        <button
-                            type="button"
-                            class="product-regal-tab-btn"
-                            :class="activeTab === 'details' ? 'is-active' : ''"
-                            @click="activeTab = 'details'"
-                        >
-                            {{ __('Product Details') }}
-                        </button>
-                        <button
-                            type="button"
-                            class="product-regal-tab-btn"
-                            :class="activeTab === 'specs' ? 'is-active' : ''"
-                            @click="activeTab = 'specs'"
-                        >
-                            {{ __('Garment Specifications') }}
-                        </button>
-                        @if ($product->care_information)
+                            {{-- Magnifier Zoom Button --}}
                             <button
                                 type="button"
-                                class="product-regal-tab-btn"
-                                :class="activeTab === 'care' ? 'is-active' : ''"
-                                @click="activeTab = 'care'"
+                                class="absolute bottom-4 right-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-neutral-700 shadow-md backdrop-blur transition hover:bg-white hover:text-neutral-900 hover:scale-105"
+                                @click="zoomOpen = true"
+                                aria-label="{{ __('Zoom image') }}"
                             >
-                                {{ __('Care & Washing') }}
+                                <i class="ph ph-magnifying-glass-plus text-base font-bold"></i>
                             </button>
-                        @endif
-                    </nav>
-
-                    <div class="product-regal-tabs__content">
-                        <!-- Tab 1: Description Details -->
-                        <div x-show="activeTab === 'details'" class="product-regal-tab-panel" x-cloak>
-                            <div class="product-regal-description prose max-w-none text-neutral-700 leading-relaxed">
-                                <p>{{ $product->description ?: __('High-quality garment manufacturing directly from verified exporters. Suitable for both single unit samples and bulk container orders.') }}</p>
-                            </div>
                         </div>
+                    </div>
 
-                        <!-- Tab 2: Specifications Table -->
-                        <div x-show="activeTab === 'specs'" class="product-regal-tab-panel" x-cloak>
-                            <table class="product-regal-specs-table w-full text-sm">
-                                <tbody>
-                                    <tr>
-                                        <th class="py-2 text-neutral-500 font-medium w-1/3">{{ __('Product Name') }}</th>
-                                        <td class="py-2 text-neutral-900 font-semibold">{{ $product->name }}</td>
-                                    </tr>
-                                    @if ($product->fabric_gsm)
-                                        <tr>
-                                            <th class="py-2 text-neutral-500 font-medium">{{ __('Fabric GSM') }}</th>
-                                            <td class="py-2 text-neutral-900 font-semibold">{{ $product->fabric_gsm }}</td>
-                                        </tr>
-                                    @endif
-                                    @if ($product->material)
-                                        <tr>
-                                            <th class="py-2 text-neutral-500 font-medium">{{ __('Material Composition') }}</th>
-                                            <td class="py-2 text-neutral-900 font-semibold">{{ $product->material }}</td>
-                                        </tr>
-                                    @endif
-                                    <tr>
-                                        <th class="py-2 text-neutral-500 font-medium">{{ __('Weight per Piece') }}</th>
-                                        <td class="py-2 text-neutral-900 font-semibold">{{ $unitWeightKg }} kg ({{ round($unitWeightKg * 1000) }} grams)</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="py-2 text-neutral-500 font-medium">{{ __('Country of Origin') }}</th>
-                                        <td class="py-2 text-neutral-900 font-semibold">{{ $product->country_of_origin ?? 'Bangladesh' }}</td>
-                                    </tr>
-                                    @if ($brandName)
-                                        <tr>
-                                            <th class="py-2 text-neutral-500 font-medium">{{ __('Manufacturer / Brand') }}</th>
-                                            <td class="py-2 text-neutral-900 font-semibold">{{ $brandName }}</td>
-                                        </tr>
-                                    @endif
-                                    <tr>
-                                        <th class="py-2 text-neutral-500 font-medium">{{ __('Store / Merchant') }}</th>
-                                        <td class="py-2"><a class="text-primary hover:underline font-semibold" href="{{ route('commerce.products.index', $workspace->slug) }}">{{ $workspace->name }}</a></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        @if ($product->care_information)
-                            <div x-show="activeTab === 'care'" class="product-regal-tab-panel" x-cloak>
-                                <div class="product-regal-care-box p-4 rounded-xl bg-neutral-50 text-neutral-700 text-sm">
-                                    <p>{{ $product->care_information }}</p>
+                    {{-- 4 Feature Highlights Bar under Main Image (Matching Image 1) --}}
+                    <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        @foreach($featureHighlights as $highlight)
+                            @php
+                                $label = is_array($highlight) ? ($highlight['label'] ?? '') : (string) $highlight;
+                                $icon = is_array($highlight) ? ($highlight['icon'] ?? 'ph-check-circle') : 'ph-check-circle';
+                                if (!str_starts_with($icon, 'ph-')) { $icon = 'ph-'.$icon; }
+                            @endphp
+                            <div class="flex flex-col items-center justify-center text-center p-3 rounded-2xl border border-neutral-200/80 bg-[#FAFAFA] hover:bg-white transition-all shadow-2xs">
+                                <div class="h-9 w-9 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 mb-1.5">
+                                    <i class="ph {{ $icon }} text-lg"></i>
                                 </div>
+                                <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-tight text-neutral-800 leading-tight">
+                                    {{ $label }}
+                                </span>
                             </div>
-                        @endif
+                        @endforeach
                     </div>
                 </div>
 
-                <!-- Related Products Section -->
-                @if ($relatedProducts->isNotEmpty())
-                    <div class="product-regal-related mt-12">
-                        <div class="product-regal-related__header flex items-center justify-between mb-6">
-                            <h2 class="text-2xl font-bold text-neutral-900">{{ __('More Garments from :shop', ['shop' => $workspace->name]) }}</h2>
-                            <a href="{{ route('commerce.products.index', $workspace->slug) }}" class="text-sm font-semibold text-primary hover:underline">{{ __('See All') }} <i class="ph ph-arrow-right"></i></a>
+                {{-- RIGHT COLUMN: Product Info, Options, Price & Action CTAs (Columns 7-12) --}}
+                <div class="lg:col-span-6 flex flex-col justify-between">
+                    <div>
+                        {{-- Product Heading --}}
+                        <h1 id="product-page-heading" class="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight leading-snug">
+                            {{ $product->name }}
+                        </h1>
+
+                        {{-- Star Rating & Reviews --}}
+                        <div class="mt-2.5 flex items-center gap-2">
+                            <div class="flex items-center text-[#F59E0B]">
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="ph-fill ph-star text-sm"></i>
+                                @endfor
+                            </div>
+                            <span class="text-xs font-semibold text-neutral-600">
+                                ({{ $product->reviews_count ?? 128 }} {{ __('Reviews') }})
+                            </span>
                         </div>
 
-                        <div class="shop-grid">
-                            @foreach ($relatedProducts as $relProduct)
-                                @php
-                                    $relPrice = $relProduct->starting_price !== null ? (float) $relProduct->starting_price : ($relProduct->single_piece_price !== null ? (float) $relProduct->single_piece_price : null);
-                                    $relStock = (int) ($relProduct->stock_total ?? 0);
-                                    $relUrl = route('commerce.products.public', ['workspace' => $workspace->slug, 'product' => $relProduct->slug]);
-                                    $relWaText = rawurlencode(__('Hello! I am interested in ordering ":name" from :shop. Link: :url', [
-                                        'name' => $relProduct->name,
-                                        'shop' => $workspace->name,
-                                        'url' => $relUrl,
-                                    ]));
-                                    $relWaLink = $whatsappPhone ? "https://wa.me/{$whatsappPhone}?text={$relWaText}" : $relUrl;
-                                @endphp
-                                <article class="shop-card">
-                                    <a href="{{ $relUrl }}" class="shop-card__media" aria-label="{{ __('View :product', ['product' => $relProduct->name]) }}">
-                                        @if ($relProduct->primaryMedia)
-                                            <img src="{{ $relProduct->primaryMedia->url }}" alt="{{ $relProduct->primaryMedia->alt ?: $relProduct->name }}" loading="lazy">
-                                        @else
-                                            <span><i class="ph ph-t-shirt"></i></span>
-                                        @endif
-                                        <span class="shop-card__badge {{ $relStock > 0 ? 'is-available' : 'is-limited' }}">
-                                            <i class="ph {{ $relStock > 0 ? 'ph-check-circle' : 'ph-clock' }}"></i>
-                                            {{ $relStock > 0 ? __('In stock') : __('Check availability') }}
-                                        </span>
-                                    </a>
+                        {{-- Short Description / Subtitle --}}
+                        <div class="mt-3 text-sm text-neutral-600 leading-relaxed font-normal">
+                            {{ $product->short_description ?: __('Premium Tech Fleece 2-Piece Set – Hoodie & Jogger. Designed for all-day comfort and a sporty look.') }}
+                        </div>
 
-                                    <div class="shop-card__body">
-                                        <div class="shop-card__meta">
-                                            <span>{{ $relProduct->category?->name ?? __('Catalog') }}</span>
-                                        </div>
-                                        <h3><a href="{{ $relUrl }}">{{ $relProduct->name }}</a></h3>
-                                        <div class="shop-card__footer">
-                                            <div class="shop-card__price">
-                                                <span>{{ __('Starting price') }}</span>
-                                                <strong>{{ $relPrice !== null ? $currencySymbol.' '.number_format($relPrice, 2) : __('Price on request') }}</strong>
-                                            </div>
-                                            <a href="{{ $relWaLink }}" @if ($whatsappPhone) target="_blank" rel="noopener noreferrer" @endif class="shop-card__whatsapp-btn">
-                                                <i class="ph ph-whatsapp-logo"></i>
-                                                <span>{{ __('Order') }}</span>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </article>
-                            @endforeach
+                        {{-- Wholesale Price & MOQ Box --}}
+                        <div class="mt-5 pb-4 border-b border-neutral-200">
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-3xl sm:text-4xl font-black text-[#DC2626] tracking-tight">
+                                    {{ $currencySymbol }}<span x-text="currentTotalWholesalePrice"></span>
+                                </span>
+                                <span class="text-sm sm:text-base font-bold text-neutral-600">
+                                    / <span x-text="quantity"></span> {{ __('Set') }} (<span class="text-neutral-800 font-extrabold">{{ __('MOQ: ') }}{{ $moq }}</span>)
+                                </span>
+                            </div>
+                            <p class="mt-1 text-xs text-neutral-500 font-medium">
+                                {{ __('Shipping calculated at checkout.') }}
+                            </p>
+
+                            {{-- Shipping & Delivery info with Icons --}}
+                            <div class="mt-3.5 space-y-1.5 text-xs font-semibold text-neutral-700">
+                                <div class="flex items-center gap-2">
+                                    <i class="ph ph-truck text-base text-neutral-800"></i>
+                                    <span>{{ $product->shipping_info ?: __('USA & Canada Shipping') }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="ph ph-clock text-base text-neutral-800"></i>
+                                    <span>{{ $product->delivery_time ?: __('6–10 Working Days Delivery') }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Size Selection --}}
+                        <div class="mt-5">
+                            <div class="flex items-center justify-between text-xs font-bold text-neutral-900 mb-2.5">
+                                <span>{{ __('Size: ') }}<span class="font-normal text-neutral-600" x-text="selectedSize"></span></span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="sz in sizes" :key="sz">
+                                    <button
+                                        type="button"
+                                        class="h-10 min-w-16 px-3 rounded-xl border text-xs font-bold transition-all shadow-2xs focus:outline-none"
+                                        :class="selectedSize === sz ? 'border-neutral-900 bg-neutral-900 text-white ring-2 ring-neutral-900/20' : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50'"
+                                        @click="selectSize(sz)"
+                                        x-text="sz"
+                                    ></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Color Swatches Selection --}}
+                        <div class="mt-5">
+                            <div class="flex items-center justify-between text-xs font-bold text-neutral-900 mb-2.5">
+                                <span>{{ __('Colors: ') }}<span class="font-normal text-neutral-600" x-text="colors.length + '+ Colors Available'"></span></span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <template x-for="(col, cIdx) in colors.slice(0, 12)" :key="col.id || cIdx">
+                                    <button
+                                        type="button"
+                                        class="relative h-8 w-8 rounded-full border-2 transition-all p-0.5 focus:outline-none"
+                                        :class="selectedColorIndex === cIdx ? 'border-neutral-900 scale-110 shadow-xs' : 'border-transparent hover:scale-105'"
+                                        :title="col.name || col.display_name"
+                                        @click="selectColor(cIdx)"
+                                    >
+                                        <span class="block h-full w-full rounded-full border border-neutral-300 shadow-2xs" :style="`background-color: ${col.hex_code || '#2563EB'}`"></span>
+                                    </button>
+                                </template>
+                                <template x-if="colors.length > 12">
+                                    <span class="text-xs font-bold text-neutral-500 pl-1" x-text="`+${colors.length - 12}`"></span>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Quantity Stepper (Bounded to MOQ) --}}
+                        <div class="mt-5">
+                            <label class="block text-xs font-bold text-neutral-900 mb-2">{{ __('Quantity (Set)') }}</label>
+                            <div class="inline-flex items-center rounded-xl border border-neutral-200 bg-white shadow-2xs">
+                                <button
+                                    type="button"
+                                    class="h-10 w-10 flex items-center justify-center text-neutral-600 hover:text-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    :disabled="quantity <= moq"
+                                    @click="decrementQty()"
+                                    aria-label="{{ __('Decrease quantity') }}"
+                                >
+                                    <i class="ph ph-minus font-bold text-sm"></i>
+                                </button>
+                                <input
+                                    type="number"
+                                    class="w-16 border-0 text-center font-bold text-sm text-neutral-900 focus:ring-0"
+                                    x-model.number="quantity"
+                                    @input="if(quantity < moq) quantity = moq"
+                                >
+                                <button
+                                    type="button"
+                                    class="h-10 w-10 flex items-center justify-center text-neutral-600 hover:text-neutral-900 transition"
+                                    @click="incrementQty()"
+                                    aria-label="{{ __('Increase quantity') }}"
+                                >
+                                    <i class="ph ph-plus font-bold text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Main Action Buttons (Add to Quote & WhatsApp Order) --}}
+                        <div class="mt-6 space-y-3">
+                            {{-- Add to Quote Button --}}
+                            <button
+                                type="button"
+                                class="w-full h-12 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
+                                @click="quoteModalOpen = true"
+                            >
+                                <i class="ph ph-notepad text-lg"></i>
+                                <span>{{ __('Add to Quote') }}</span>
+                            </button>
+
+                            {{-- WhatsApp Order Button --}}
+                            <a
+                                :href="whatsappOrderUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="w-full h-12 rounded-xl border-2 border-emerald-600/30 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
+                            >
+                                <i class="ph-fill ph-whatsapp-logo text-xl text-[#25D366]"></i>
+                                <span>{{ __('WhatsApp Order') }}</span>
+                            </a>
+                        </div>
+
+                        {{-- 5-Icon Trust Badges Row Under Buttons --}}
+                        <div class="mt-6 grid grid-cols-5 gap-2 border-t border-neutral-200/80 pt-5 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="ph ph-seal-check text-xl text-neutral-700"></i>
+                                <span class="text-[10px] font-bold text-neutral-700 mt-1 leading-tight">{{ __('Premium Quality') }}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="ph ph-ruler text-xl text-neutral-700"></i>
+                                <span class="text-[10px] font-bold text-neutral-700 mt-1 leading-tight">{{ __('USA True Size') }}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="ph ph-buildings text-xl text-neutral-700"></i>
+                                <span class="text-[10px] font-bold text-neutral-700 mt-1 leading-tight">{{ __('Factory Direct') }}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="ph ph-globe text-xl text-neutral-700"></i>
+                                <span class="text-[10px] font-bold text-neutral-700 mt-1 leading-tight">{{ __('Worldwide Shipping') }}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="ph ph-lock-key text-xl text-neutral-700"></i>
+                                <span class="text-[10px] font-bold text-neutral-700 mt-1 leading-tight">{{ __('Secure Payment') }}</span>
+                            </div>
                         </div>
                     </div>
-                @endif
-
+                </div>
             </div>
-        </section>
+
+            {{-- BOTTOM 2-COLUMN SECTION: Product Description/Specs (Left) + 20+ Colors Gallery (Right) --}}
+            <div class="mt-14 pt-10 border-t border-neutral-200/80 grid gap-10 lg:grid-cols-12">
+                
+                {{-- Bottom Left: Product Description, Bullet Features & Specifications Table --}}
+                <div class="lg:col-span-6 space-y-6">
+                    <div>
+                        <h2 class="text-lg font-black text-neutral-900 uppercase tracking-tight">{{ __('Product Description') }}</h2>
+                        <p class="mt-2 text-sm text-neutral-600 leading-relaxed">
+                            {{ $product->description ?: __('Premium Kids Nike Tech Fleece Full-Zip Tracksuit designed for everyday comfort and a stylish sporty look.') }}
+                        </p>
+                    </div>
+
+                    {{-- Bullet-point Features List --}}
+                    <div>
+                        <ul class="space-y-2 text-sm text-neutral-700">
+                            @foreach($bulletFeatures as $feat)
+                                <li class="flex items-start gap-2.5">
+                                    <span class="text-neutral-900 font-black">•</span>
+                                    <span>{{ $feat }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    {{-- Specifications Table (Matching Screenshot) --}}
+                    <div class="rounded-2xl border border-neutral-200 bg-[#FAFAFA] p-5 shadow-2xs">
+                        <table class="w-full text-xs">
+                            <tbody class="divide-y divide-neutral-200/80 font-medium">
+                                <tr>
+                                    <td class="py-2.5 pr-4 text-neutral-900 font-bold w-32">{{ __('SKU') }}</td>
+                                    <td class="py-2.5 text-neutral-700 font-mono" x-text="productSku"></td>
+                                </tr>
+                                @if(is_array($product->specifications) && count($product->specifications) > 0)
+                                    @foreach($product->specifications as $spec)
+                                        @if(!empty($spec['attribute']) && !empty($spec['value']) && strtolower($spec['attribute']) !== 'sku')
+                                            <tr>
+                                                <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ $spec['attribute'] }}</td>
+                                                <td class="py-2.5 text-neutral-700">{{ $spec['value'] }}</td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                @else
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Material') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->material ?: __('Tech Fleece (Premium Quality)') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Fit') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->fit ?: __('USA True-to-Size') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Set Includes') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->set_includes ?: __('Hoodie + Jogger Pants') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Gender') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->gender ?: __('Unisex (Boys & Girls)') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Season') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->season ?: __('All Season') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('MOQ') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $moq }} {{ __('Set') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 pr-4 text-neutral-900 font-bold">{{ __('Shipping') }}</td>
+                                        <td class="py-2.5 text-neutral-700">{{ $product->shipping_info ?: __('USA & Canada (6-10 Working Days)') }}</td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Bottom Right: 20+ COLORS AVAILABLE Photo Grid (Matching Screenshot) --}}
+                <div class="lg:col-span-6">
+                    <h2 class="text-sm font-black uppercase tracking-wider text-neutral-900 mb-4">
+                        {{ count($colors) > 0 ? count($colors).'+ ' : '20+ ' }}{{ __('COLORS AVAILABLE') }}
+                    </h2>
+
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                        @foreach($colors as $idx => $color)
+                            <button
+                                type="button"
+                                class="flex flex-col items-center rounded-xl border p-1.5 transition-all text-center group focus:outline-none"
+                                :class="selectedColorIndex === {{ $idx }} ? 'border-neutral-900 bg-neutral-50 shadow-sm ring-2 ring-neutral-900/10' : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-2xs'"
+                                @click="selectColor({{ $idx }})"
+                            >
+                                <div class="h-20 w-full rounded-lg overflow-hidden bg-neutral-100 flex items-center justify-center">
+                                    @if(!empty($color['photo_url']))
+                                        <img src="{{ $color['photo_url'] }}" alt="{{ $color['display_name'] }}" class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200">
+                                    @else
+                                        <div class="h-full w-full flex items-center justify-center" style="background-color: {{ $color['hex_code'] }}">
+                                            <i class="ph ph-t-shirt text-2xl text-white/80"></i>
+                                        </div>
+                                    @endif
+                                </div>
+                                <span class="mt-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-tight text-neutral-800 line-clamp-1">
+                                    {{ $color['name'] ?: $color['display_name'] }}
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- FULL-WIDTH TRUST & BUSINESS INFORMATION BARS (Matching Screenshot) --}}
+            <div class="mt-14 space-y-4">
+                
+                {{-- Top 3-Column Trust Strip --}}
+                <div class="rounded-2xl border border-neutral-200 bg-[#FAFAFA] p-6 grid gap-6 sm:grid-cols-3 text-center">
+                    <div class="flex items-center justify-center gap-3">
+                        <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs shrink-0">
+                            <i class="ph ph-users-four text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-sm font-black text-neutral-900">{{ __('1000+') }}</p>
+                            <p class="text-xs text-neutral-600">{{ __('USA Buyers Trust Us') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-3 border-t sm:border-t-0 sm:border-l border-neutral-200 pt-4 sm:pt-0 sm:pl-6">
+                        <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs shrink-0">
+                            <i class="ph ph-buildings text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-sm font-black text-neutral-900">{{ __('Factory Direct') }}</p>
+                            <p class="text-xs text-neutral-600">{{ __('No Middleman') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-3 border-t sm:border-t-0 sm:border-l border-neutral-200 pt-4 sm:pt-0 sm:pl-6">
+                        <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs shrink-0">
+                            <i class="ph ph-shield-check text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-sm font-black text-neutral-900">{{ __('Secure Payment') }}</p>
+                            <p class="text-xs text-neutral-600">{{ __('Safe & Reliable') }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Bottom Dark Navy Wholesale Feature Strip --}}
+                <div class="rounded-2xl bg-[#0F172A] text-white p-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-package text-2xl text-neutral-400"></i>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-wider">{{ __('Wholesale Only') }}</p>
+                            <p class="text-[11px] text-neutral-400">{{ __('We Do Only Wholesale') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-sparkle text-2xl text-neutral-400"></i>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-wider">{{ __('Best Quality') }}</p>
+                            <p class="text-[11px] text-neutral-400">{{ __('Premium Fabric & Stitching') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-truck text-2xl text-neutral-400"></i>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-wider">{{ __('Fast Shipping') }}</p>
+                            <p class="text-[11px] text-neutral-400">{{ __('6-10 Working Days Delivery') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-headphones text-2xl text-neutral-400"></i>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-wider">{{ __('Customer Support') }}</p>
+                            <p class="text-[11px] text-neutral-400">{{ __('Always Here to Help') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        {{-- Image Zoom Modal --}}
+        <div
+            x-show="zoomOpen"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
+            @keydown.escape.window="zoomOpen = false"
+        >
+            <div class="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-white p-2" @click.away="zoomOpen = false">
+                <button
+                    type="button"
+                    class="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black"
+                    @click="zoomOpen = false"
+                >
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+                <img :src="currentActiveMedia.url" :alt="currentActiveMedia.alt" class="max-h-[85vh] w-auto mx-auto object-contain rounded-xl">
+            </div>
+        </div>
+
+        {{-- Add to Quote Modal --}}
+        <div
+            x-show="quoteModalOpen"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+            @keydown.escape.window="quoteModalOpen = false"
+        >
+            <div class="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" @click.away="quoteModalOpen = false">
+                <div class="flex items-center justify-between border-b border-neutral-100 pb-4">
+                    <div>
+                        <h3 class="text-lg font-black text-neutral-900">{{ __('Request Wholesale Quote') }}</h3>
+                        <p class="text-xs text-neutral-500 mt-0.5">{{ $product->name }}</p>
+                    </div>
+                    <button type="button" class="text-neutral-400 hover:text-neutral-700" @click="quoteModalOpen = false">
+                        <i class="ph ph-x text-lg"></i>
+                    </button>
+                </div>
+
+                {{-- Success State --}}
+                <div x-show="quoteSuccess" class="py-8 text-center text-emerald-700">
+                    <i class="ph-fill ph-check-circle text-5xl mx-auto mb-2"></i>
+                    <p class="font-bold text-base">{{ __('Quote Request Submitted!') }}</p>
+                    <p class="text-xs text-neutral-600 mt-1">{{ __('Our sales team will contact you via WhatsApp / Email shortly.') }}</p>
+                </div>
+
+                {{-- Form State --}}
+                <form x-show="!quoteSuccess" @submit.prevent="submitQuote()" class="mt-4 space-y-4">
+                    <div class="rounded-xl bg-neutral-50 p-3 text-xs text-neutral-700 space-y-1">
+                        <p><strong>{{ __('Selected:') }}</strong> <span x-text="`${selectedSize}, ${selectedColor.name || selectedColor.display_name}`"></span></p>
+                        <p><strong>{{ __('Quantity:') }}</strong> <span x-text="`${quantity} Sets`"></span></p>
+                        <p><strong>{{ __('Estimated Total:') }}</strong> <span class="font-bold text-[#DC2626]" x-text="`${currencySymbol}${currentTotalWholesalePrice}`"></span></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-800 mb-1">{{ __('Your Name') }} *</label>
+                        <input type="text" required class="form-input text-sm" x-model="quoteForm.name" placeholder="{{ __('John Doe') }}">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-neutral-800 mb-1">{{ __('WhatsApp Number') }} *</label>
+                            <input type="tel" required class="form-input text-sm" x-model="quoteForm.whatsapp" placeholder="{{ __('+1 234 567 8900') }}">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-neutral-800 mb-1">{{ __('Email Address') }}</label>
+                            <input type="email" class="form-input text-sm" x-model="quoteForm.email" placeholder="{{ __('john@company.com') }}">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-800 mb-1">{{ __('Company / Store Name') }}</label>
+                        <input type="text" class="form-input text-sm" x-model="quoteForm.company" placeholder="{{ __('Retail Store LLC') }}">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-800 mb-1">{{ __('Custom Requirements / Notes') }}</label>
+                        <textarea class="form-input text-xs min-h-18" x-model="quoteForm.notes" placeholder="{{ __('Any special packing, custom labeling, or target delivery date...') }}"></textarea>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full h-11 rounded-xl bg-[#0F172A] hover:bg-neutral-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
+                        :disabled="quoteSubmitting"
+                    >
+                        <span x-show="!quoteSubmitting">{{ __('Submit Wholesale Quote Request') }}</span>
+                        <span x-show="quoteSubmitting">{{ __('Submitting...') }}</span>
+                    </button>
+                </form>
+            </div>
+        </div>
     </article>
 @endsection

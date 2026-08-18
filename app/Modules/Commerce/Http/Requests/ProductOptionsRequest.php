@@ -14,7 +14,18 @@ class ProductOptionsRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $options = collect($this->input('options', []))->map(function (array $option): array {
-            $option['values'] = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) ($option['values_csv'] ?? ''))))));
+            $values = $option['values'] ?? [];
+            if (is_string($values)) {
+                $values = [$values];
+            } elseif (! is_array($values)) {
+                $values = [];
+            }
+
+            if (empty($values) && isset($option['values_csv'])) {
+                $values = explode(',', (string) $option['values_csv']);
+            }
+
+            $option['values'] = array_values(array_unique(array_filter(array_map('trim', $values))));
 
             return $option;
         })->all();

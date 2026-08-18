@@ -13,6 +13,8 @@ class VariantPreset extends Model
     protected $fillable = [
         'workspace_id',
         'name',
+        'sku_suffix',
+        'price_delta',
         'type',
         'values',
         'is_active',
@@ -21,6 +23,7 @@ class VariantPreset extends Model
     protected function casts(): array
     {
         return [
+            'price_delta' => 'decimal:2',
             'values' => 'array',
             'is_active' => 'boolean',
         ];
@@ -29,5 +32,23 @@ class VariantPreset extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    public function getUsedByProductsCountAttribute(): int
+    {
+        $suffix = $this->sku_suffix ?: $this->name;
+        $name = $this->name;
+
+        return ProductVariant::query()
+            ->where('workspace_id', $this->workspace_id)
+            ->where(function ($q) use ($name, $suffix): void {
+                $q->where('size', $name)
+                    ->orWhere('size', $suffix)
+                    ->orWhereJsonContains('attributes->size', $name)
+                    ->orWhereJsonContains('attributes->size', $suffix)
+                    ->orWhere('sku', 'like', '%-'.$suffix);
+            })
+            ->distinct('product_id')
+            ->count('product_id');
     }
 }

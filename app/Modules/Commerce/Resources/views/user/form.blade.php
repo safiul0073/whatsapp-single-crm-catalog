@@ -1,699 +1,926 @@
 @php
-    $isEdit = isset($product);
-    $galleryState = $product?->gallery?->map(fn ($item) => ['id' => $item->media_id, 'color_id' => $item->color_id ? (string) $item->color_id : null, 'name' => $item->media?->name, 'url' => $item->media?->url, 'type' => $item->media_type, 'alt_text' => $item->alt_text, 'is_primary' => $item->is_primary])->values()->all() ?? [];
-    $colorState = $product?->colors?->map(fn ($c) => ['id' => $c->id, 'name' => $c->name ?? '', 'hex_code' => $c->hex_code ?: '#2563EB', 'color_family' => $c->color_family ?? '', 'swatch_media_id' => $c->swatch_media_id])->values()->all() ?? [
-        ['id' => '', 'name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue', 'swatch_media_id' => ''],
-        ['id' => '', 'name' => 'Jet Black', 'hex_code' => '#111827', 'color_family' => 'Black', 'swatch_media_id' => ''],
-    ];
-    $sizeOption = $product?->options?->first(fn ($o) => strtolower($o->code ?? '') === 'size' || strtolower($o->name ?? '') === 'size');
-    $sizeState = $sizeOption ? $sizeOption->values->pluck('value')->all() : ($product?->variants?->pluck('size')->filter()->unique()->values()->all() ?: ['S', 'M', 'L', 'XL', 'XXL']);
-    $steps = [
-        1 => ['label' => __('Basic Info & Specs'), 'icon' => 'ph-note-pencil'],
-        2 => ['label' => __('Colors & Sizes'), 'icon' => 'ph-palette'],
-        3 => ['label' => __('Color Photos & Gallery'), 'icon' => 'ph-images'],
-        4 => ['label' => __('Stock Matrix (Color → Size)'), 'icon' => 'ph-squares-four'],
-        5 => ['label' => __('Review & Publish'), 'icon' => 'ph-check-circle'],
-    ];
+    $isEdit = (bool) $product;
+    $galleryState = $product ? $product->gallery->map(fn ($item) => [
+        'id' => $item->media_id,
+        'name' => $item->media?->name,
+        'url' => $item->media?->url,
+        'type' => $item->media_type,
+        'alt_text' => $item->alt_text,
+        'color_id' => $item->color_id,
+        'is_primary' => $item->is_primary,
+    ])->values()->all() : [];
+
+    $colorState = $product ? $product->colors->map(fn ($color) => [
+        'id' => $color->id,
+        'name' => $color->name ?? '',
+        'hex_code' => $color->hex_code ?: '#2563EB',
+        'color_family' => $color->color_family ?? '',
+        'swatch_media_id' => $color->swatch_media_id,
+        'swatch_image_url' => $color->swatchMedia?->url,
+        'display_name' => $color->display_name,
+    ])->values()->all() : [];
+
+    $tierPricesState = $product ? $product->tierPrices->map(fn ($tp) => [
+        'min_quantity' => $tp->min_quantity,
+        'max_quantity' => $tp->max_quantity,
+        'unit_price' => $tp->unit_price,
+        'discount_percentage' => $tp->discount_percentage,
+    ])->values()->all() : [];
+
+    $sizeOption = $product?->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
+    $sizeState = $sizeOption ? $sizeOption->values->pluck('value')->values()->all() : ($product ? $product->variants->pluck('size')->filter()->unique()->values()->all() : ['1YRS', '2YRS', '4YRS', '6YRS', '8YRS', '10YRS', '12YRS', '14YRS']);
+
+    $featureHighlightsState = is_array($product?->feature_highlights) && count($product->feature_highlights) > 0
+        ? $product->feature_highlights
+        : [
+            ['label' => 'Premium Tech Fleece', 'icon' => 'ph-t-shirt'],
+            ['label' => 'Full-Zip 2-Piece Set', 'icon' => 'ph-arrows-out-line-vertical'],
+            ['label' => 'Kids to Older Kids', 'icon' => 'ph-users-three'],
+            ['label' => 'Multiple Colors', 'icon' => 'ph-palette'],
+            ['label' => 'USA True Size', 'icon' => 'ph-ruler'],
+        ];
+
+    $shippingCountriesState = is_array($product?->shipping_countries) && count($product->shipping_countries) > 0
+        ? $product->shipping_countries
+        : ['USA', 'Canada'];
+
+    $specificationsState = is_array($product?->specifications) && count($product->specifications) > 0
+        ? $product->specifications
+        : [
+            ['attribute' => 'Material', 'value' => $product?->material ?: 'Tech Fleece (Premium Quality)'],
+            ['attribute' => 'Fit', 'value' => $product?->fit ?: 'USA True-to-Size'],
+            ['attribute' => 'Set Includes', 'value' => $product?->set_includes ?: 'Hoodie + Jogger Pants'],
+            ['attribute' => 'Gender', 'value' => $product?->gender ?: 'Unisex (Boys & Girls)'],
+            ['attribute' => 'Season', 'value' => $product?->season ?: 'All Season'],
+            ['attribute' => 'MOQ', 'value' => ($product?->moq ?: '40').' Set'],
+            ['attribute' => 'Shipping', 'value' => $product?->shipping_info ?: 'USA & Canada (6-10 Working Days)'],
+        ];
+
+    $currentStep = (int) ($step ?? 1);
 @endphp
 
-<x-layouts.user :title="$isEdit ? __('Edit garment product') : __('Create garment product')">
+<x-layouts.user :title="$isEdit ? __('Edit product — :name', ['name' => $product->name]) : __('Add Product')" :hide-help="true">
     <div
         class="mx-auto max-w-7xl space-y-6"
-        x-data="commerceProductWizard(@js(['gallery' => $galleryState, 'colors' => $colorState, 'sizes' => $sizeState, 'variants' => $variantPreview, 'previewUrl' => $isEdit ? route('user.commerce.products.variants.preview', $product) : null]))"
+        x-data="commerceProductWizard(@js([
+            'gallery' => $galleryState,
+            'colors' => $colorState,
+            'sizes' => $sizeState,
+            'tierPrices' => $tierPricesState,
+            'featureHighlights' => $featureHighlightsState,
+            'shippingCountries' => $shippingCountriesState,
+            'specifications' => $specificationsState,
+            'variants' => $variantPreview ?? [],
+            'variantPresets' => $variantPresets ?? [],
+            'basePrice' => (float) ($product?->single_piece_price ?? 9.00),
+            'productSlug' => $product?->slug ?? 'PROD',
+            'previewUrl' => $isEdit ? route('user.commerce.products.variants.preview', $product) : null
+        ]))"
         @change="dirty = true"
-        @media-picker:selected="addMedia($event.detail.media)"
     >
-        <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {{-- Hidden Media Picker Bridge: connects Alpine actions to DOM-based media picker --}}
+        <div id="commerceMediaPickerBridge" class="hidden" data-media-picker data-media-accept="image" data-media-multiple="true">
+            <button type="button" data-media-picker-trigger></button>
+        </div>
+        {{-- Header Bar --}}
+        <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
             <div>
-                <p class="text-sm font-semibold text-primary">{{ __('Garment Catalog Product') }}</p>
-                <h1 class="heading-3 text-title">{{ $isEdit ? $product->name : __('Create garment product') }}</h1>
-                <p class="mt-1 text-sm text-body">{{ __('Setup single pieces, bulk wholesale price, dedicated color photos, and Color → Size → Count inventory matrix.') }}</p>
+                <nav class="flex items-center gap-1.5 text-xs font-medium text-neutral-500 mb-1" aria-label="Breadcrumb">
+                    <a href="{{ route('user.commerce.products.index') }}" class="hover:text-neutral-900 transition-colors">{{ __('Products') }}</a>
+                    <span class="text-neutral-400">/</span>
+                    <span class="text-neutral-800 font-semibold">{{ $isEdit ? __('Edit Product') : __('Add Product') }}</span>
+                </nav>
+                <h1 class="text-2xl font-black tracking-tight text-neutral-900">{{ $isEdit ? $product->name : __('Add Product') }}</h1>
             </div>
-            <div class="flex flex-wrap gap-2">
-                @if($isEdit && $product->status === 'active')
-                    <x-ui.button variant="outline" href="{{ route('commerce.products.public', ['workspace' => $product->workspace->slug, 'product' => $product->slug]) }}" target="_blank"><i class="ph ph-arrow-square-out"></i> {{ __('Preview Storefront') }}</x-ui.button>
-                @endif
-                <x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Save and exit') }}</x-ui.button>
-            </div>
+            @if($isEdit)
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('commerce.products.public', ['workspace' => auth()->user()->currentWorkspace->slug ?? 'shop', 'product' => $product->slug]) }}" target="_blank" class="btn btn-sm btn-outline text-xs inline-flex items-center gap-1.5 shadow-2xs">
+                        <i class="ph ph-arrow-square-out text-sm"></i>
+                        <span>{{ __('View Storefront') }}</span>
+                    </a>
+                </div>
+            @endif
         </header>
 
-        @include('commerce::user.partials.help', ['helpKey' => 'product_form'])
+        {{-- 9-Step Horizontal Tab Navigation (Matching Screenshot) --}}
+        <nav class="overflow-x-auto border-b border-neutral-200 no-scrollbar bg-neutral-50/50 rounded-xl p-1">
+            <div class="flex items-center gap-1 min-w-max">
+                @php
+                    $steps = [
+                        1 => ['label' => __('Basic Info'), 'icon' => 'ph-info'],
+                        2 => ['label' => __('Images'), 'icon' => 'ph-image'],
+                        3 => ['label' => __('Sizes'), 'icon' => 'ph-ruler'],
+                        4 => ['label' => __('Colors'), 'icon' => 'ph-palette'],
+                        5 => ['label' => __('Pricing & MOQ'), 'icon' => 'ph-currency-dollar'],
+                        6 => ['label' => __('Features'), 'icon' => 'ph-sparkle'],
+                        7 => ['label' => __('Description'), 'icon' => 'ph-text-align-left'],
+                        8 => ['label' => __('Shipping'), 'icon' => 'ph-truck'],
+                        9 => ['label' => __('Specifications'), 'icon' => 'ph-list-checks'],
+                    ];
+                @endphp
 
-        <nav class="overflow-x-auto rounded-2xl bg-neutral-0 p-4" aria-label="{{ __('Product setup progress') }}">
-            <ol class="grid min-w-[680px] grid-cols-5 text-sm">
-                @foreach($steps as $number => $stepMeta)
+                @foreach($steps as $stepNum => $sData)
                     @php
-                        $isCurrentStep = $step === $number;
-                        $isCompletedStep = $isEdit && $product->wizard_step > $number;
-                        $isReachableStep = $isEdit && $number <= max($product->wizard_step, $step);
+                        $label = is_array($sData) ? $sData['label'] : $sData;
+                        $isActive = $currentStep === $stepNum;
+                        $isAccessible = $isEdit || $stepNum === 1;
+                        $url = $isEdit ? route('user.commerce.products.edit', ['product' => $product, 'step' => $stepNum]) : '#';
                     @endphp
-                    <li class="group relative">
-                        @if (! $loop->last)
-                            <span class="pointer-events-none absolute left-[calc(50%+1.25rem)] right-[calc(-50%+1.25rem)] top-5 z-0 h-px {{ $isEdit && $product->wizard_step > $number ? 'bg-primary' : 'bg-primary/25' }}" aria-hidden="true"></span>
-                        @endif
-
-                        @if($isReachableStep)
-                            <a href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => $number]) }}" class="relative z-10 flex flex-col items-center gap-2 rounded-xl px-2 py-1 text-center font-semibold text-primary transition hover:text-primary/80" @if($isCurrentStep) aria-current="step" @endif>
-                                <span class="grid h-10 w-10 place-items-center rounded-full border transition {{ $isCurrentStep ? 'border-primary bg-primary text-neutral-0 shadow-sm shadow-primary/20' : ($isCompletedStep ? 'border-primary bg-primary/10 text-primary' : 'border-primary/40 bg-primary/5 text-primary') }}">
-                                    <i class="ph {{ $isCompletedStep ? 'ph-check' : $stepMeta['icon'] }} text-lg"></i>
-                                </span>
-                                <span>{{ $stepMeta['label'] }}</span>
-                            </a>
-                        @else
-                            <span class="relative z-10 flex flex-col items-center gap-2 rounded-xl px-2 py-1 text-center font-semibold {{ $isCurrentStep ? 'text-primary' : 'text-primary/50' }}" @if($isCurrentStep) aria-current="step" @endif>
-                                <span class="grid h-10 w-10 place-items-center rounded-full border {{ $isCurrentStep ? 'border-primary bg-primary text-neutral-0 shadow-sm shadow-primary/20' : 'border-primary/30 bg-primary/5 text-primary/50' }}">
-                                    <i class="ph {{ $stepMeta['icon'] }} text-lg"></i>
-                                </span>
-                                <span>{{ $stepMeta['label'] }}</span>
-                            </span>
-                        @endif
-                    </li>
+                    <a
+                        href="{{ $isAccessible ? $url : '#' }}"
+                        class="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all {{ $isActive ? 'bg-emerald-600 text-white shadow-xs' : ($isAccessible ? 'text-neutral-600 hover:text-neutral-900 hover:bg-white' : 'text-neutral-400 cursor-not-allowed opacity-60') }}"
+                    >
+                        <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] {{ $isActive ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-600' }}">
+                            {{ $stepNum }}
+                        </span>
+                        <span>{{ $label }}</span>
+                    </a>
                 @endforeach
-            </ol>
+            </div>
         </nav>
 
+        {{-- Validation Error Alert --}}
         @if ($errors->any())
-            <div class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert"><p class="font-semibold">{{ __('Please fix the highlighted information.') }}</p><ul class="mt-2 list-disc space-y-1 pl-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-xs">
+                <div class="flex items-center gap-2 font-bold text-sm mb-1.5">
+                    <i class="ph ph-warning-circle text-lg text-red-600"></i>
+                    <span>{{ __('Please correct the following errors before proceeding:') }}</span>
+                </div>
+                <ul class="list-disc list-inside text-xs text-red-700 space-y-1 ml-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
         @endif
 
-        {{-- STEP 1: Basic Details, Pricing & Garment Specs --}}
-        @if($step === 1)
+        {{-- STEP 1: Basic Information --}}
+        @if($currentStep === 1)
             <form method="POST" action="{{ $isEdit ? route('user.commerce.products.details.update', $product) : route('user.commerce.products.store') }}" class="space-y-6" @submit="markSaved()">
                 @csrf @if($isEdit) @method('PUT') @endif
-                <section class="section-card">
-                    <div>
-                        <h2 class="heading-5 text-title">{{ __('Garment basic details & pricing') }}</h2>
-                        <p class="text-sm text-body">{{ __('Set base garment specs, single sample piece price, wholesale bulk price, and fabric composition.') }}</p>
-                    </div>
-                    
-                    <div class="mt-5 grid gap-5 md:grid-cols-2">
+                <input type="hidden" name="next_step" value="2">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Basic Information') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Enter the core title, SKU, short excerpt description, and prices for this product.') }}</p>
+
+                    <div class="mt-6 grid gap-5 md:grid-cols-2">
+                        {{-- Product Name --}}
                         <div>
-                            <label class="form-label" for="name">{{ __('Product name') }}</label>
-                            <input id="name" class="form-input" name="name" required maxlength="255" value="{{ old('name', $product?->name) }}" placeholder="{{ __('e.g. 180 GSM Heavyweight Cotton T-Shirt') }}">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="product_name">{{ __('Product Name *') }}</label>
+                            <input id="product_name" class="form-input text-sm @error('name') border-red-500 ring-1 ring-red-500 @enderror" name="name" required maxlength="255" value="{{ old('name', $product?->name) }}" placeholder="{{ __('Nike Sportswear Tech Fleece Kids Full-Zip Tracksuit') }}">
+                            @error('name')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
+
+                        {{-- SKU --}}
                         <div>
-                            <label class="form-label" for="category_id">{{ __('Category') }}</label>
-                            <select id="category_id" class="form-input" name="category_id">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="product_sku">{{ __('SKU *') }}</label>
+                            <input id="product_sku" class="form-input text-sm font-mono uppercase @error('sku') border-red-500 ring-1 ring-red-500 @enderror" name="sku" maxlength="120" value="{{ old('sku', $product?->sku ?? ('NTFKIDS-'.str_pad((string)($product?->id ?? 1), 3, '0', STR_PAD_LEFT))) }}" placeholder="{{ __('NTFKIDS-001') }}">
+                            @error('sku')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Short Description --}}
+                        <div class="md:col-span-2">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="short_description">{{ __('Short Description *') }}</label>
+                            <textarea id="short_description" class="form-input text-sm min-h-20 @error('short_description') border-red-500 ring-1 ring-red-500 @enderror" name="short_description" maxlength="1000" placeholder="{{ __('Premium Tech Fleece 2-Piece Set – Hoodie & Jogger. Designed for all-day comfort and a sporty look.') }}">{{ old('short_description', $product?->short_description) }}</textarea>
+                            @error('short_description')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Wholesale Price --}}
+                        <div class="rounded-xl border border-emerald-500/30 bg-emerald-50/30 p-4">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-emerald-800" for="wholesale_price">{{ __('Wholesale Price *') }}</label>
+                            <div class="flex items-center gap-2 mt-1">
+                                <input id="wholesale_price" type="number" step="0.01" min="0.01" class="form-input font-bold text-emerald-700 flex-1 @error('wholesale_price') border-red-500 ring-1 ring-red-500 @enderror" name="wholesale_price" required value="{{ old('wholesale_price', $product?->wholesale_price ?? 800.00) }}" placeholder="800">
+                                <span class="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">USD</span>
+                            </div>
+                            @error('wholesale_price')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Retail Price --}}
+                        <div class="rounded-xl border border-border/80 bg-neutral-50/50 p-4">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="single_piece_price">{{ __('Retail Price') }}</label>
+                            <div class="flex items-center gap-2 mt-1">
+                                <input id="single_piece_price" type="number" step="0.01" min="0.01" class="form-input font-bold flex-1 @error('single_piece_price') border-red-500 ring-1 ring-red-500 @enderror" name="single_piece_price" value="{{ old('single_piece_price', $product?->single_piece_price ?? 1200.00) }}" placeholder="1200">
+                                <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">USD</span>
+                            </div>
+                            @error('single_piece_price')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Category --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="category_id">{{ __('Category') }}</label>
+                            <select id="category_id" class="form-input text-sm" name="category_id">
                                 <option value="">{{ __('Select category') }}</option>
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}" @selected(old('category_id', $product?->category_id) == $category->id)>{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+
+                        {{-- Brand --}}
                         <div>
-                            <div class="flex items-center justify-between gap-3">
-                                <label class="form-label" for="brand_id">{{ __('Brand') }}</label>
-                                <a class="text-xs font-semibold text-primary hover:underline" href="{{ route('user.commerce.brands.index') }}">{{ __('Manage brands') }}</a>
-                            </div>
-                            <select id="brand_id" class="form-input" name="brand_id">
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="brand_id">{{ __('Brand') }}</label>
+                            <select id="brand_id" class="form-input text-sm" name="brand_id">
                                 <option value="">{{ __('Select brand') }}</option>
                                 @foreach($brands as $brand)
                                     <option value="{{ $brand->id }}" @selected(old('brand_id', $product?->brand_id) == $brand->id)>{{ $brand->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+
+                        {{-- Status --}}
                         <div>
-                            <div class="flex items-center justify-between gap-3">
-                                <label class="form-label" for="audience_id">{{ __('Audience') }}</label>
-                                <a class="text-xs font-semibold text-primary hover:underline" href="{{ route('user.commerce.audiences.index') }}">{{ __('Manage audiences') }}</a>
-                            </div>
-                            <select id="audience_id" class="form-input" name="audience_id">
-                                <option value="">{{ __('Select audience') }}</option>
-                                @foreach($audiences as $audience)
-                                    <option value="{{ $audience->id }}" @selected(old('audience_id', $product?->audience_id) == $audience->id)>{{ $audience->name }}</option>
-                                @endforeach
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="status">{{ __('Status') }}</label>
+                            <select id="status" class="form-input text-sm" name="status">
+                                <option value="active" @selected(old('status', $product?->status ?? 'active') === 'active')>{{ __('Active') }}</option>
+                                <option value="draft" @selected(old('status', $product?->status) === 'draft')>{{ __('Draft') }}</option>
+                                <option value="archived" @selected(old('status', $product?->status) === 'archived')>{{ __('Archived') }}</option>
                             </select>
                         </div>
 
-                        {{-- Direct Two-Price Inputs --}}
-                        <div class="rounded-xl border border-border/80 bg-neutral-50/50 p-4">
-                            <label class="form-label text-primary font-semibold" for="single_piece_price">{{ __('1. Single sample sale price (USD)') }}</label>
-                            <input id="single_piece_price" type="number" step="0.01" min="0.01" class="form-input font-bold" name="single_piece_price" value="{{ old('single_piece_price', $product?->single_piece_price ?? 9.00) }}" placeholder="9.00">
-                            <span class="text-xs text-body">{{ __('Sample purchase price for single pieces (e.g. $9.00 USD).') }}</span>
-                        </div>
-                        <div class="rounded-xl border border-emerald-500/30 bg-emerald-50/30 p-4">
-                            <label class="form-label text-emerald-800 font-semibold" for="wholesale_price">{{ __('2. Wholesale bulk price (USD)') }}</label>
-                            <input id="wholesale_price" type="number" step="0.01" min="0.01" class="form-input font-bold text-emerald-700" name="wholesale_price" value="{{ old('wholesale_price', $product?->wholesale_price ?? 6.50) }}" placeholder="6.50">
-                            <span class="text-xs text-emerald-700">{{ __('Bulk wholesale export price per piece (e.g. $6.50 USD).') }}</span>
-                        </div>
-
+                        {{-- Visibility --}}
                         <div>
-                            <label class="form-label" for="default_unit_weight_kg">{{ __('Weight per piece (kg)') }}</label>
-                            <input id="default_unit_weight_kg" type="number" step="0.001" min="0.001" class="form-input" name="default_unit_weight_kg" value="{{ old('default_unit_weight_kg', $product?->default_unit_weight_kg ?? 0.030) }}" placeholder="0.030">
-                            <span class="text-xs text-body">{{ __('Used for dynamic international air parcel & bulk freight calculation.') }}</span>
-                        </div>
-                        <div>
-                            <label class="form-label" for="fabric_gsm">{{ __('Fabric GSM / Density') }}</label>
-                            <input id="fabric_gsm" class="form-input" name="fabric_gsm" value="{{ old('fabric_gsm', $product?->fabric_gsm) }}" placeholder="{{ __('e.g. 180 GSM, 240 GSM French Terry') }}">
-                        </div>
-                        <div>
-                            <label class="form-label" for="material">{{ __('Fabric material composition') }}</label>
-                            <input id="material" class="form-input" name="material" value="{{ old('material', $product?->material) }}" placeholder="{{ __('e.g. 100% Combed Compact Cotton') }}">
-                        </div>
-                        <div>
-                            <label class="form-label" for="condition">{{ __('Condition') }}</label>
-                            <select id="condition" class="form-input" name="condition">
-                                <option value="new" @selected(old('condition', $product?->condition ?? 'new') === 'new')>{{ __('New') }}</option>
-                                <option value="refurbished" @selected(old('condition', $product?->condition) === 'refurbished')>{{ __('Refurbished') }}</option>
-                                <option value="used" @selected(old('condition', $product?->condition) === 'used')>{{ __('Used') }}</option>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="visibility">{{ __('Visibility') }}</label>
+                            <select id="visibility" class="form-input text-sm" name="visibility">
+                                <option value="published" @selected(old('visibility', $product?->visibility ?? 'published') === 'published')>{{ __('Published') }}</option>
+                                <option value="hidden" @selected(old('visibility', $product?->visibility) === 'hidden')>{{ __('Hidden') }}</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="form-label" for="country_of_origin">{{ __('Country of origin') }}</label>
-                            <input id="country_of_origin" class="form-input" name="country_of_origin" maxlength="2" value="{{ old('country_of_origin', $product?->country_of_origin ?? 'BD') }}">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="form-label" for="description">{{ __('Description') }}</label>
-                            <textarea id="description" class="form-input min-h-32" name="description" maxlength="5000" placeholder="{{ __('Describe the fabric weave, stitching gauge, cut, feel, and garment quality.') }}">{{ old('description', $product?->description) }}</textarea>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="form-label" for="care_information">{{ __('Care instructions') }}</label>
-                            <textarea id="care_information" class="form-input min-h-24" name="care_information" maxlength="2000" placeholder="{{ __('Machine wash warm (40°C) with like colors, tumble dry medium...') }}">{{ old('care_information', $product?->care_information) }}</textarea>
                         </div>
                     </div>
                 </section>
-                <div class="sticky bottom-4 flex justify-end rounded-2xl bg-neutral-0/95 p-3 shadow-lg backdrop-blur">
-                    <x-forms.submit :label="$isEdit ? __('Save and configure colors') : __('Create draft and configure colors')" />
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">
+                        {{ $isEdit ? __('Save & Next: Images Gallery →') : __('Create & Next: Images Gallery →') }}
+                    </button>
                 </div>
             </form>
 
-        {{-- STEP 2: Colors & Sizes Setup --}}
-        @elseif($step === 2)
-            <form method="POST" action="{{ route('user.commerce.products.options.update', $product) }}" class="space-y-6" @submit="markSaved()">
+        {{-- STEP 2: Images Gallery --}}
+        @elseif($currentStep === 2)
+            <form method="POST" action="{{ route('user.commerce.products.gallery.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
-                
-                {{-- Garment Colors Section --}}
-                <section class="section-card">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <input type="hidden" name="next_step" value="3">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
-                            <h2 class="heading-5 text-title">{{ __('1. Garment color swatches') }}</h2>
-                            <p class="text-sm text-body">{{ __('Add garment colorways using the HEX color picker. You can leave the name blank if unknown and it will fallback to the visual swatch.') }}</p>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Images') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Upload product photography. Click star to make primary. Recommended size 800x1000px.') }}</p>
                         </div>
-                        <button type="button" class="btn btn-outline" @click="addColor()">
-                            <i class="ph ph-plus"></i> {{ __('Add color swatch') }}
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="openMediaPicker()">
+                            <i class="ph ph-upload-simple"></i> {{ __('Upload Image') }}
                         </button>
                     </div>
 
-                    <div class="mt-5 space-y-3">
-                        <template x-for="(col, cIndex) in colors" :key="cIndex">
-                            <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-neutral-0 p-4">
-                                <input type="hidden" :name="`colors[${cIndex}][id]`" :value="col.id || ''">
-                                <div class="flex items-center gap-2">
-                                    <input type="color" class="h-10 w-12 cursor-pointer rounded-lg border border-border bg-transparent p-1" :name="`colors[${cIndex}][hex_code]`" x-model="col.hex_code">
-                                    <span class="font-mono text-xs text-body" x-text="col.hex_code"></span>
-                                </div>
-                                <div class="flex-1 min-w-[140px]">
-                                    <input class="form-input" :name="`colors[${cIndex}][name]`" x-model="col.name" placeholder="{{ __('Color name, e.g. Royal Blue (optional)') }}">
-                                </div>
-                                <div class="w-36">
-                                    <select class="form-input" :name="`colors[${cIndex}][color_family]`" x-model="col.color_family">
-                                        <option value="">{{ __('Color family') }}</option>
-                                        <option value="Blue">{{ __('Blue') }}</option>
-                                        <option value="Black">{{ __('Black') }}</option>
-                                        <option value="White">{{ __('White') }}</option>
-                                        <option value="Red">{{ __('Red') }}</option>
-                                        <option value="Green">{{ __('Green') }}</option>
-                                        <option value="Grey">{{ __('Grey') }}</option>
-                                        <option value="Yellow">{{ __('Yellow') }}</option>
-                                        <option value="Earth">{{ __('Earth / Brown') }}</option>
-                                        <option value="Pastel">{{ __('Pastel') }}</option>
-                                    </select>
-                                </div>
-                                <button type="button" class="row-action text-error" @click="removeColor(cIndex)" aria-label="{{ __('Remove color') }}">
-                                    <i class="ph ph-trash"></i>
-                                </button>
-                            </div>
-                        </template>
-
-                        <div x-show="colors.length === 0" class="rounded-2xl border border-dashed border-border p-6 text-center text-body">
-                            {{ __('No custom color swatches added yet. Click "Add color swatch" above.') }}
-                        </div>
-                    </div>
-                </section>
-
-                {{-- Garment Sizes & Reusable Presets --}}
-                <section class="section-card">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 class="heading-5 text-title">{{ __('2. Garment sizes & size presets') }}</h2>
-                            <p class="text-sm text-body">{{ __('Choose a saved size preset or click individual size badges below.') }}</p>
-                        </div>
-                        <a href="{{ route('user.commerce.variants.index') }}" target="_blank" class="btn btn-sm btn-outline text-xs">
-                            <i class="ph ph-sliders"></i> {{ __('Manage Size Presets') }}
-                        </a>
-                    </div>
-
-                    {{-- Reusable Preset Quick Selector --}}
-                    @if(isset($variantPresets) && $variantPresets->isNotEmpty())
-                        <div class="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                            <div class="flex items-center gap-2 mb-2.5">
-                                <i class="ph ph-lightning text-primary font-bold"></i>
-                                <span class="text-xs font-bold uppercase tracking-wider text-primary">{{ __('1-Click Apply Saved Preset') }}</span>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($variantPresets as $preset)
-                                    <button
-                                        type="button"
-                                        class="group flex items-center gap-2 rounded-xl border border-primary/30 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs transition hover:border-primary hover:bg-primary/10 hover:text-primary"
-                                        @click="applyPreset(@js($preset->values))"
-                                    >
-                                        <span>{{ $preset->name }}</span>
-                                        <span class="text-[10px] text-neutral-400 font-normal group-hover:text-primary">({{ implode(', ', $preset->values) }})</span>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Quick Size Clickable Badges --}}
-                    <div class="mt-5">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2.5">{{ __('Quick Size Toggle') }}</label>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach(['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'] as $quickSize)
-                                <button
-                                    type="button"
-                                    class="h-10 min-w-12 rounded-xl border font-bold text-xs transition-all shadow-xs"
-                                    :class="hasSize('{{ $quickSize }}') ? 'border-primary bg-primary text-white ring-2 ring-primary/30' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'"
-                                    @click="toggleSize('{{ $quickSize }}')"
+                    {{-- Image Grid Showcase matching Step 2 --}}
+                    <div class="mt-6 grid gap-6 lg:grid-cols-12">
+                        {{-- Left Column: Thumbnails List --}}
+                        <div class="lg:col-span-3 space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                            <template x-for="(item, index) in gallery" :key="item.id">
+                                <div
+                                    class="flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer"
+                                    :class="item.is_primary ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-neutral-200 bg-white hover:border-neutral-400'"
+                                    @click="setPrimaryById(item.id)"
                                 >
-                                    {{ $quickSize }}
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Active Selected Sizes list & Custom Size Input --}}
-                    <div class="mt-6 border-t border-border pt-4">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2.5">{{ __('Selected Sizes for this Product') }}</label>
-                        <div class="flex flex-wrap items-center gap-2 mb-4">
-                            <template x-for="(sz, sIdx) in sizes" :key="sIdx">
-                                <span class="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-neutral-900 px-3 py-1.5 text-xs font-bold text-white shadow-xs">
-                                    <span x-text="sz"></span>
-                                    <button type="button" class="text-neutral-400 hover:text-red-400" @click="removeSize(sIdx)" aria-label="{{ __('Remove size') }}">
-                                        <i class="ph ph-x"></i>
-                                    </button>
-                                </span>
-                            </template>
-                            <span x-show="sizes.length === 0" class="text-xs text-error font-medium">{{ __('Please select at least one size.') }}</span>
-                        </div>
-
-                        {{-- Add Custom Size Box --}}
-                        <div class="flex items-center gap-2 max-w-md">
-                            <input
-                                type="text"
-                                class="form-input text-xs"
-                                x-model="customSize"
-                                @keydown.enter.prevent="addCustomSize()"
-                                placeholder="{{ __('Add custom sizes (e.g. 6Y, 8Y, 28W, 30W)...') }}"
-                            >
-                            <button type="button" class="btn btn-sm btn-outline text-xs shrink-0" @click="addCustomSize()">
-                                <i class="ph ph-plus"></i> {{ __('Add Size') }}
-                            </button>
-                        </div>
-
-                        {{-- Hidden Inputs to submit sizes --}}
-                        <template x-for="(sz, sIdx) in sizes" :key="'h-'+sIdx">
-                            <input type="hidden" name="sizes[]" :value="sz">
-                        </template>
-                    </div>
-                </section>
-
-                <div class="sticky bottom-4 flex justify-between gap-3 rounded-2xl bg-neutral-0/95 p-3 shadow-lg backdrop-blur">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}">{{ __('Back') }}</x-ui.button>
-                    <x-forms.submit :label="__('Save and upload color photos')" />
-                </div>
-            </form>
-
-        {{-- STEP 3: Dedicated Color Galleries & Lookbook --}}
-        @elseif($step === 3)
-            <form method="POST" action="{{ route('user.commerce.products.gallery.update', $product) }}" class="space-y-6" @submit="markSaved()">
-                @csrf @method('PUT')
-                
-                {{-- Section 1: Colorway Galleries (Multi-Image per Color) --}}
-                <div class="space-y-6">
-                    <template x-for="(col, cIndex) in colors" :key="cIndex">
-                        <section class="section-card border-2 transition hover:border-primary/40">
-                            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
-                                <div class="flex items-center gap-3">
-                                    <span class="inline-block h-7 w-7 rounded-full border-2 border-white shadow-md" :style="`background-color: ${col.hex_code || '#2563EB'}`"></span>
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <h3 class="text-base font-bold text-title" x-text="col.name || col.hex_code"></h3>
-                                            <span class="badge badge-soft text-xs" x-text="col.color_family || 'Colorway'"></span>
-                                        </div>
-                                        <p class="text-xs text-body mt-0.5" x-text="`${getColorMediaList(cIndex).length} photos assigned to this color`"></p>
+                                    <img :src="item.url" :alt="item.alt_text" class="h-14 w-14 rounded-lg object-cover border border-neutral-200">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-semibold text-neutral-900 truncate" x-text="item.name || `Photo #${index + 1}`"></p>
+                                        <span x-show="item.is_primary" class="inline-block mt-0.5 text-[10px] font-bold text-primary">{{ __('Primary') }}</span>
                                     </div>
-                                </div>
-
-                                {{-- Button to Open Media Picker for this specific color --}}
-                                <div class="flex items-center gap-2">
-                                    <x-media.picker
-                                        name="color_gallery_picker"
-                                        accept="image"
-                                        :multiple="true"
-                                        :label="__('+ Add Images to this Color')"
-                                        @media-picker:selected="addMediaToColor(cIndex, $event.detail.media)"
-                                    />
-                                </div>
-                            </div>
-
-                            {{-- Multi-Image Grid for this Color --}}
-                            <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                <template x-for="item in getColorMediaList(cIndex)" :key="item.id">
-                                    <article class="overflow-hidden rounded-2xl border border-border bg-neutral-50 shadow-2xs group relative transition hover:shadow-md">
-                                        <div class="aspect-[4/3] bg-neutral-200 relative overflow-hidden">
-                                            <img :src="item.url" :alt="item.alt_text || col.name" class="h-full w-full object-cover">
-                                            
-                                            {{-- Badges --}}
-                                            <div class="absolute top-2 left-2 flex flex-col gap-1">
-                                                <span x-show="col.swatch_media_id == item.id" class="rounded-lg bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
-                                                    <i class="ph ph-star-fill"></i> {{ __('Color Hero') }}
-                                                </span>
-                                                <span x-show="item.is_primary" class="rounded-lg bg-primary px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
-                                                    {{ __('Product Cover') }}
-                                                </span>
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-error"
-                                                @click="removeMediaById(item.id)"
-                                                aria-label="{{ __('Remove image') }}"
-                                            >
-                                                <i class="ph ph-trash text-sm"></i>
-                                            </button>
-                                        </div>
-
-                                        <div class="p-3 space-y-2 bg-white">
-                                            <input class="form-input text-xs" x-model="item.alt_text" maxlength="255" placeholder="{{ __('Photo caption / angle...') }}">
-                                            
-                                            <div class="flex items-center justify-between gap-1.5 pt-1">
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-xs flex-1 text-[11px]"
-                                                    :class="col.swatch_media_id == item.id ? 'btn-primary' : 'btn-outline'"
-                                                    @click="setColorPrimary(cIndex, item.id)"
-                                                >
-                                                    <i class="ph" :class="col.swatch_media_id == item.id ? 'ph-check-circle' : 'ph-star'"></i>
-                                                    <span x-text="col.swatch_media_id == item.id ? '{{ __('Main Color Hero') }}' : '{{ __('Make Color Hero') }}'"></span>
-                                                </button>
-                                                
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-xs btn-outline text-[11px]"
-                                                    x-show="!item.is_primary"
-                                                    @click="setPrimaryById(item.id)"
-                                                    title="{{ __('Set as main product catalog cover') }}"
-                                                >
-                                                    {{ __('Product Cover') }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </article>
-                                </template>
-
-                                {{-- Empty State for this Color --}}
-                                <div x-show="getColorMediaList(cIndex).length === 0" class="col-span-full rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 p-6 text-center text-body">
-                                    <i class="ph ph-images text-3xl text-neutral-400"></i>
-                                    <p class="mt-1 font-semibold text-sm text-title" x-text="`No photos added for ${col.name || col.hex_code} yet`"></p>
-                                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Click \"+ Add Images to this Color\" to upload front, back, and detail shots in this color.') }}</p>
-                                </div>
-                            </div>
-                        </section>
-                    </template>
-
-                    <div x-show="colors.length === 0" class="rounded-2xl border border-dashed border-border p-6 text-center text-body">
-                        {{ __('No colors defined. Return to Step 2 to add color swatches.') }}
-                    </div>
-                </div>
-
-                {{-- Section 2: General Lookbook & Video Showcase --}}
-                <section class="section-card">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 class="heading-5 text-title">{{ __('General Lookbook Gallery & Video Showcase') }}</h2>
-                            <p class="text-sm text-body">{{ __('Upload group model shots, flatlays, fabric closeups, and video showcase.') }}</p>
-                        </div>
-                        <x-media.picker name="general_gallery_picker" accept="all" :multiple="true" :label="__('+ Add Lookbook Media / Video')" @media-picker:selected="addMedia($event.detail.media, null)" />
-                    </div>
-
-                    <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        <template x-for="item in getGeneralMediaList()" :key="item.id">
-                            <article class="overflow-hidden rounded-2xl border border-border bg-neutral-0">
-                                <div class="aspect-[4/3] bg-neutral-100 relative">
-                                    <template x-if="item.type === 'image'"><img :src="item.url" :alt="item.alt_text" class="h-full w-full object-cover"></template>
-                                    <template x-if="item.type === 'video'"><video :src="item.url" controls preload="metadata" class="h-full w-full object-cover"></video></template>
-                                    
-                                    <button
-                                        type="button"
-                                        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-error"
-                                        @click="removeMediaById(item.id)"
-                                        aria-label="{{ __('Remove media') }}"
-                                    >
+                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click.stop="removeMedia(index)">
                                         <i class="ph ph-trash text-sm"></i>
                                     </button>
                                 </div>
-                                <div class="space-y-2 p-3">
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="badge badge-soft text-xs" x-text="item.type"></span>
-                                        <span x-show="item.is_primary" class="badge bg-primary/10 text-primary text-xs">{{ __('Product Cover') }}</span>
-                                    </div>
-                                    <input class="form-input text-xs" x-model="item.alt_text" maxlength="255" placeholder="{{ __('Photo caption') }}">
-                                    <button type="button" class="btn btn-xs btn-outline w-full text-xs" x-show="item.type === 'image' && !item.is_primary" @click="setPrimaryById(item.id)">{{ __('Make Product Cover') }}</button>
+                            </template>
+                            <div x-show="gallery.length === 0" class="text-xs text-neutral-400 p-4 border border-dashed rounded-xl text-center">
+                                {{ __('No images added yet.') }}
+                            </div>
+                        </div>
+
+                        {{-- Center Column: Large Main Preview --}}
+                        <div class="lg:col-span-6 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-center p-4 min-h-[380px] overflow-hidden">
+                            <template x-if="gallery.find(g => g.is_primary) || gallery[0]">
+                                <img :src="(gallery.find(g => g.is_primary) || gallery[0]).url" alt="Preview" class="max-h-[420px] w-auto rounded-xl object-contain shadow-sm">
+                            </template>
+                            <div x-show="gallery.length === 0" class="text-center text-neutral-400">
+                                <i class="ph ph-image text-4xl text-neutral-300"></i>
+                                <p class="mt-2 text-xs font-semibold text-neutral-600">{{ __('No primary image selected') }}</p>
+                            </div>
+                        </div>
+
+                        {{-- Right Column: Upload Dropzone Card --}}
+                        <div class="lg:col-span-3">
+                            <div
+                                class="h-full min-h-[220px] rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 hover:bg-neutral-100 hover:border-primary p-6 flex flex-col items-center justify-center text-center cursor-pointer transition"
+                                @click="openMediaPicker()"
+                            >
+                                <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shadow-2xs mb-2">
+                                    <i class="ph ph-plus text-xl font-bold text-primary"></i>
                                 </div>
-                            </article>
-                        </template>
-                        <div x-show="getGeneralMediaList().length === 0" class="col-span-full rounded-2xl border border-dashed border-border p-6 text-center text-body">
-                            <i class="ph ph-film-strip text-3xl text-neutral-300"></i>
-                            <p class="mt-1 font-semibold text-xs text-title">{{ __('No general lookbook media or video added') }}</p>
-                            <p class="text-[11px] text-neutral-400">{{ __('Optional: Add overall lifestyle photos or MP4 video demo.') }}</p>
+                                <span class="text-xs font-bold text-neutral-900">{{ __('+ Upload Image') }}</span>
+                                <span class="text-[11px] text-neutral-400 mt-1">{{ __('Recommended size') }}<br>800x1000px</span>
+                            </div>
                         </div>
                     </div>
+
+                    {{-- Hidden Inputs to submit gallery --}}
+                    <template x-for="(item, index) in gallery" :key="item.id">
+                        <div>
+                            <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
+                            <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? '1' : '0'">
+                            <input type="hidden" :name="`media[${index}][alt_text]`" :value="item.alt_text || ''">
+                            <input type="hidden" :name="`media[${index}][color_id]`" :value="item.color_id || ''">
+                        </div>
+                    </template>
                 </section>
 
-                {{-- Hidden Form Fields for Form Submission --}}
-                <template x-for="(item, index) in gallery" :key="'g-' + item.id">
-                    <div>
-                        <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
-                        <input type="hidden" :name="`media[${index}][color_id]`" :value="item.color_id || ''">
-                        <input type="hidden" :name="`media[${index}][alt_text]`" :value="item.alt_text || ''">
-                        <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? 1 : 0">
-                    </div>
-                </template>
-                <template x-for="(col, cIndex) in colors" :key="'c-' + cIndex">
-                    <div>
-                        <input type="hidden" :name="`colors[${cIndex}][id]`" :value="col.id || ''">
-                        <input type="hidden" :name="`colors[${cIndex}][swatch_media_id]`" :value="col.swatch_media_id || ''">
-                    </div>
-                </template>
-
-                <div class="sticky bottom-4 flex justify-between gap-3 rounded-2xl bg-neutral-0/95 p-3 shadow-lg backdrop-blur">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 2]) }}">{{ __('Back') }}</x-ui.button>
-                    <x-forms.submit :label="__('Save photos and set stock matrix')" />
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Sizes →') }}</button>
                 </div>
             </form>
 
-        {{-- STEP 4: Color → Size → Count Variant Inventory Matrix --}}
-        @elseif($step === 4)
-            <form method="POST" action="{{ route('user.commerce.products.variants.update', $product) }}" class="space-y-6" @submit="markSaved()">
+        {{-- STEP 3: Sizes (Manage) --}}
+        @elseif($currentStep === 3)
+            <form method="POST" action="{{ route('user.commerce.products.options.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="4">
+                <input type="hidden" name="options[0][code]" value="size">
+                <input type="hidden" name="options[0][name]" value="Size">
 
-                <section class="section-card">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
-                            <div class="flex items-center gap-3">
-                                <h2 class="heading-5 text-title">{{ __('Variant stock matrix (Color → Size → Count)') }}</h2>
-                                <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                                    {{ __('Total Stock: ') }} <span x-text="getTotalStock()"></span> {{ __('pcs') }}
-                                </span>
-                            </div>
-                            <p class="text-sm text-body mt-1">{{ __('Manage inventory stock count for every size grouped by its color. Each variant automatically uses its color photo.') }}</p>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Sizes') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Manage available garment sizes. Admin can add, edit, remove, and reorder sizes.') }}</p>
                         </div>
-                        <button type="button" class="btn btn-outline" @click="regenerateVariants()" :disabled="loadingVariants">
-                            <i class="ph ph-arrows-clockwise"></i> <span x-text="loadingVariants ? '{{ __('Regenerating…') }}' : '{{ __('Regenerate combinations') }}'"></span>
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="addCustomSize()">
+                            <i class="ph ph-plus"></i> {{ __('+ Add Size') }}
                         </button>
                     </div>
 
-                    {{-- Grouped by Color --}}
-                    <div class="mt-6 space-y-6">
-                        <template x-for="(col, cIdx) in colors" :key="cIdx">
-                            <div class="rounded-2xl border-2 border-border bg-neutral-0 overflow-hidden shadow-xs">
-                                {{-- Color Group Header --}}
-                                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-neutral-50 p-4">
-                                    <div class="flex items-center gap-3">
-                                        <span class="inline-block h-6 w-6 rounded-full border border-neutral-300 shadow-xs" :style="`background-color: ${col.hex_code || '#2563EB'}`"></span>
-                                        <h3 class="font-bold text-base text-title" x-text="col.name || col.hex_code"></h3>
-                                        <template x-if="getColorMedia(col)">
-                                            <img :src="getColorMedia(col)?.url" :alt="col.name" class="h-8 w-8 rounded-lg object-cover border border-border">
-                                        </template>
+                    {{-- Quick Presets --}}
+                    @if(isset($variantPresets) && $variantPresets->isNotEmpty())
+                        <div class="mt-4 flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-bold text-neutral-600 uppercase">{{ __('Quick Presets:') }}</span>
+                            @foreach($variantPresets as $vp)
+                                <button
+                                    type="button"
+                                    class="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold hover:border-primary hover:text-primary transition shadow-2xs"
+                                    @click="applyPreset(@js($vp->values))"
+                                >
+                                    {{ $vp->name }}
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    {{-- Sizes Interactive Table --}}
+                    <div class="mt-5 rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
+                        <div class="divide-y divide-neutral-200">
+                            <template x-for="(sz, sIdx) in sizes" :key="sIdx">
+                                <div class="flex items-center justify-between gap-4 p-3 bg-white hover:bg-neutral-50/50 transition">
+                                    <div class="flex items-center gap-3 flex-1">
+                                        <i class="ph ph-dots-six-vertical text-neutral-400 text-base cursor-grab"></i>
+                                        <input
+                                            type="text"
+                                            class="form-input text-xs font-bold h-9 max-w-xs"
+                                            x-model="sizes[sIdx]"
+                                            required
+                                        >
                                     </div>
-                                    <div class="text-sm font-semibold text-body">
-                                        {{ __('Subtotal: ') }} <strong class="text-primary" x-text="getColorSubtotal(col.name || col.hex_code)"></strong> {{ __('pcs') }}
-                                    </div>
+                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeSize(sIdx)" aria-label="{{ __('Delete size') }}">
+                                        <i class="ph ph-trash text-base"></i>
+                                    </button>
                                 </div>
-
-                                {{-- Size Rows for this Color --}}
-                                <div class="p-4 space-y-3 divide-y divide-border/60">
-                                    <template x-for="(variant, index) in variants" :key="variant.id || index">
-                                        <div x-show="String(variant.attributes?.color || '').toLowerCase() === String(col.name || col.hex_code).toLowerCase()" class="pt-3 first:pt-0">
-                                            <input type="hidden" :name="`variants[${index}][id]`" :value="variant.id || ''">
-                                            <input type="hidden" :name="`variants[${index}][color_id]`" :value="col.id || variant.color_id || ''">
-                                            <input type="hidden" :name="`variants[${index}][size]`" :value="variant.size || variant.attributes?.size || ''">
-                                            <input type="hidden" :name="`variants[${index}][media_id]`" :value="variant.media_id || col.swatch_media_id || ''">
-                                            <input type="hidden" :name="`variants[${index}][attributes_json]`" :value="JSON.stringify(variant.attributes)">
-
-                                            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 items-center">
-                                                {{-- Size Pill --}}
-                                                <div class="flex items-center gap-2">
-                                                    <span class="inline-flex items-center justify-center rounded-lg bg-neutral-900 px-3 py-1.5 font-bold text-white text-xs min-w-[48px]" x-text="variant.attributes?.size || variant.size || 'Size'"></span>
-                                                    <span class="text-xs text-body font-mono" x-text="variant.sku"></span>
-                                                </div>
-
-                                                {{-- SKU --}}
-                                                <div>
-                                                    <label class="text-[11px] font-medium text-body">{{ __('SKU') }}</label>
-                                                    <input class="form-input text-xs" required :name="`variants[${index}][sku]`" x-model="variant.sku">
-                                                </div>
-
-                                                {{-- Stock Count (Count) --}}
-                                                <div class="bg-primary/5 rounded-xl p-2 border border-primary/20">
-                                                    <label class="text-[11px] font-bold text-primary">{{ __('Stock Count (pcs)') }}</label>
-                                                    <input type="number" min="0" class="form-input text-xs font-bold" required :name="`variants[${index}][stock_quantity]`" x-model="variant.stock_quantity" placeholder="0">
-                                                </div>
-
-                                                {{-- Price override --}}
-                                                <div>
-                                                    <label class="text-[11px] font-medium text-body">{{ __('Sample Price ($)') }}</label>
-                                                    <input type="number" step="0.01" min="0.01" class="form-input text-xs" required :name="`variants[${index}][price]`" x-model="variant.price">
-                                                </div>
-
-                                                {{-- Status --}}
-                                                <div>
-                                                    <label class="text-[11px] font-medium text-body">{{ __('Availability') }}</label>
-                                                    <select class="form-input text-xs" :name="`variants[${index}][status]`" x-model="variant.status">
-                                                        <option value="active">{{ __('Active') }}</option>
-                                                        <option value="out_of_stock">{{ __('Out of stock') }}</option>
-                                                        <option value="archived">{{ __('Archived') }}</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-
-                        <div x-show="variants.length === 0" class="rounded-2xl border border-dashed border-border p-8 text-center text-body">
-                            {{ __('Return to Step 2 (Colors & Sizes) to add colors and sizes.') }}
+                            </template>
+                        </div>
+                        <div x-show="sizes.length === 0" class="p-8 text-center text-xs text-red-600 font-medium">
+                            {{ __('Please add at least one size.') }}
                         </div>
                     </div>
+
+                    {{-- Add Custom Size Input Box --}}
+                    <div class="mt-4 flex items-center gap-2 max-w-md">
+                        <input
+                            type="text"
+                            class="form-input text-xs"
+                            x-model="customSize"
+                            @keydown.enter.prevent="addCustomSize()"
+                            placeholder="{{ __('Add new size (e.g. 16YRS, 2XL)...') }}"
+                        >
+                        <button type="button" class="btn btn-sm btn-outline text-xs shrink-0" @click="addCustomSize()">
+                            <i class="ph ph-plus"></i> {{ __('Add') }}
+                        </button>
+                    </div>
+
+                    {{-- Hidden Inputs for Sizes --}}
+                    <template x-for="(sz, sIdx) in sizes" :key="sIdx">
+                        <input type="hidden" :name="`options[0][values][${sIdx}]`" :value="sz">
+                    </template>
                 </section>
-                
-                <div class="sticky bottom-4 flex justify-between gap-3 rounded-2xl bg-neutral-0/95 p-3 shadow-lg backdrop-blur">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 3]) }}">{{ __('Back') }}</x-ui.button>
-                    <x-forms.submit :label="__('Save matrix and review')" />
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 2]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Colors →') }}</button>
                 </div>
             </form>
 
-        {{-- STEP 5: WhatsApp Readiness & Publish --}}
-        @else
-            <section class="grid gap-6 lg:grid-cols-[1fr_360px]">
-                <div class="space-y-6">
-                    {{-- Readiness Checks --}}
-                    <div class="section-card">
-                        <h2 class="heading-5 text-title">{{ __('WhatsApp Readiness Review') }}</h2>
-                        <p class="text-sm text-body">{{ __('Resolve every blocking issue before publishing this product to your live storefront and WhatsApp catalog.') }}</p>
-                        
-                        <div class="mt-5 space-y-3">
-                            @forelse($readinessIssues as $issue)
-                                <div class="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
-                                    <i class="ph ph-warning-circle mt-0.5 text-warning"></i>
-                                    <div>
-                                        <p class="font-semibold text-title">{{ str($issue['code'])->replace('_', ' ')->title() }}</p>
-                                        <p class="text-sm text-body">{{ $issue['message'] }}</p>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
-                                    <i class="ph ph-check-circle mt-0.5 text-success"></i>
-                                    <div>
-                                        <p class="font-semibold text-title">{{ __('Ready for WhatsApp & Storefront') }}</p>
-                                        <p class="text-sm text-body">{{ __('The product has public HTTPS images, valid prices, and configured color & size stock matrix.') }}</p>
-                                    </div>
-                                </div>
-                            @endforelse
+        {{-- STEP 4: Colors (Manage + Images) --}}
+        @elseif($currentStep === 4)
+            <form method="POST" action="{{ route('user.commerce.products.gallery.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="5">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Colors') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Add unlimited colors with hex codes and assign dedicated photos for each color variation.') }}</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="addColor()">
+                            <i class="ph ph-plus"></i> {{ __('+ Add Color') }}
+                        </button>
+                    </div>
+
+                    {{-- Colors Table matching Step 4 --}}
+                    <div class="mt-5 overflow-x-auto rounded-xl border border-neutral-200 shadow-2xs">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-neutral-50/80 uppercase font-bold text-neutral-600 border-b border-neutral-200">
+                                <tr>
+                                    <th class="px-4 py-3">{{ __('Color Name') }}</th>
+                                    <th class="px-4 py-3 w-40">{{ __('Color Code (Hex)') }}</th>
+                                    <th class="px-4 py-3 w-32 text-center">{{ __('Images') }}</th>
+                                    <th class="px-4 py-3 w-20 text-right">{{ __('Action') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-neutral-200 bg-white">
+                                <template x-for="(col, cIdx) in colors" :key="col.id || cIdx">
+                                    <tr class="hover:bg-neutral-50/50">
+                                        {{-- Color Name --}}
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center gap-2.5">
+                                                <span class="h-6 w-6 rounded-full border border-neutral-300 shadow-2xs shrink-0" :style="`background-color: ${col.hex_code || '#2563EB'}`"></span>
+                                                <input type="text" class="form-input text-xs font-semibold h-9" x-model="col.name" placeholder="{{ __('Light Blue') }}">
+                                            </div>
+                                        </td>
+
+                                        {{-- Color Code --}}
+                                        <td class="px-4 py-3">
+                                            <input type="text" class="form-input text-xs font-mono uppercase h-9" x-model="col.hex_code" placeholder="#87CEEB">
+                                        </td>
+
+                                        {{-- Color Images Thumbnail --}}
+                                        <td class="px-4 py-3 min-w-[120px] text-center">
+                                            <button type="button" class="btn btn-sm btn-outline text-xs px-2 py-1 flex items-center justify-center gap-1.5 mx-auto hover:bg-primary hover:text-white hover:border-primary transition" @click="editingColorIndex = cIdx">
+                                                <i class="ph ph-image-square text-sm"></i>
+                                                <span x-text="getColorMediaList(cIdx).length > 0 ? getColorMediaList(cIdx).length + ' Images' : '{{ __('Add Images') }}'"></span>
+                                            </button>
+                                        </td>
+
+                                        {{-- Delete Action --}}
+                                        <td class="px-4 py-3 text-right">
+                                            <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeColor(cIdx)" aria-label="{{ __('Delete color') }}">
+                                                <i class="ph ph-trash text-base"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Hidden inputs for Colors --}}
+                    <template x-for="(col, cIdx) in colors" :key="col.id || cIdx">
+                        <div>
+                            <input type="hidden" :name="`colors[${cIdx}][id]`" :value="col.id || ''">
+                            <input type="hidden" :name="`colors[${cIdx}][name]`" :value="col.name || ''">
+                            <input type="hidden" :name="`colors[${cIdx}][hex_code]`" :value="col.hex_code || '#2563EB'">
+                            <input type="hidden" :name="`colors[${cIdx}][swatch_media_id]`" :value="col.swatch_media_id || ''">
+                        </div>
+                    </template>
+
+                    {{-- Hidden inputs for Media --}}
+                    <template x-for="(item, index) in gallery" :key="item.id">
+                        <div>
+                            <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
+                            <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? '1' : '0'">
+                            <input type="hidden" :name="`media[${index}][alt_text]`" :value="item.alt_text || ''">
+                            <input type="hidden" :name="`media[${index}][color_id]`" :value="item.color_id || ''">
+                        </div>
+                    </template>
+                </section>
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 3]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Pricing & MOQ →') }}</button>
+                </div>
+            </form>
+
+        {{-- STEP 5: Pricing, MOQ & Inventory --}}
+        @elseif($currentStep === 5)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="6">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Pricing & Inventory') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Configure minimum order quantities, stock numbers, and optional bulk price breaks.') }}</p>
+
+                    <div class="mt-6 grid gap-5 md:grid-cols-2">
+                        {{-- Minimum Order Quantity (MOQ) --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="moq">{{ __('Minimum Order Quantity (MOQ) *') }}</label>
+                            <div class="flex items-center gap-2 mt-1">
+                                <input id="moq" type="number" min="1" class="form-input text-sm font-bold flex-1" name="moq" required value="{{ old('moq', $product->moq ?? 40) }}" placeholder="40">
+                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
+                            </div>
+                        </div>
+
+                        {{-- Total Stock / Inventory --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="default_stock">{{ __('Stock / Inventory *') }}</label>
+                            <div class="flex items-center gap-2 mt-1">
+                                <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', 500) }}" placeholder="500">
+                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Pricing & Color Summary --}}
-                    <div class="section-card">
-                        <h3 class="heading-6 text-title mb-4">{{ __('Pricing & Matrix Summary') }}</h3>
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            <div class="rounded-xl border border-border p-4 bg-neutral-50/50">
-                                <span class="text-xs text-body font-medium">{{ __('Single Sample Sale Price') }}</span>
-                                <p class="text-xl font-bold text-title mt-1">${{ number_format((float) ($product->single_piece_price ?? 9.00), 2) }} <span class="text-xs font-normal text-body">/ piece</span></p>
+                    {{-- Price Break Rules (Optional) --}}
+                    <div class="mt-8 border-t border-neutral-200 pt-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-800">{{ __('Price Break Rules (Optional)') }}</h3>
+                                <p class="text-[11px] text-neutral-500">{{ __('Set volume discounts based on order quantity ranges.') }}</p>
                             </div>
-                            <div class="rounded-xl border border-emerald-500/30 p-4 bg-emerald-50/30">
-                                <span class="text-xs text-emerald-800 font-medium">{{ __('Wholesale Bulk Price') }}</span>
-                                <p class="text-xl font-bold text-emerald-700 mt-1">${{ number_format((float) ($product->wholesale_price ?? 6.50), 2) }} <span class="text-xs font-normal text-emerald-600">/ piece</span></p>
+                            <button type="button" class="btn btn-xs btn-outline text-xs shadow-2xs" @click="addTierPrice()">
+                                <i class="ph ph-plus"></i> {{ __('+ Add Price Break') }}
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="(tier, tIdx) in tierPrices" :key="tIdx">
+                                <div class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] items-center p-3 rounded-xl border border-neutral-200 bg-neutral-50/50">
+                                    <div>
+                                        <label class="text-[10px] font-bold text-neutral-600 uppercase">{{ __('Min Qty') }}</label>
+                                        <input type="number" min="1" class="form-input text-xs h-9" :name="`tier_prices[${tIdx}][min_quantity]`" x-model="tier.min_quantity" placeholder="40">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-neutral-600 uppercase">{{ __('Max Qty') }}</label>
+                                        <input type="number" min="1" class="form-input text-xs h-9" :name="`tier_prices[${tIdx}][max_quantity]`" x-model="tier.max_quantity" placeholder="99">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-neutral-600 uppercase">{{ __('Unit Price ($)') }}</label>
+                                        <input type="number" step="0.01" min="0.01" class="form-input text-xs h-9 font-bold" :name="`tier_prices[${tIdx}][unit_price]`" x-model="tier.unit_price" placeholder="750.00">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-neutral-600 uppercase">{{ __('Discount (%)') }}</label>
+                                        <input type="number" step="0.1" min="0" max="100" class="form-input text-xs h-9" :name="`tier_prices[${tIdx}][discount_percentage]`" x-model="tier.discount_percentage" placeholder="5">
+                                    </div>
+                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1 self-end mb-1" @click="removeTierPrice(tIdx)" aria-label="{{ __('Delete price break') }}">
+                                        <i class="ph ph-trash text-base"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 4]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Feature Highlights →') }}</button>
+                </div>
+            </form>
+
+        {{-- STEP 6: Feature Highlights (Icons) --}}
+        @elseif($currentStep === 6)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="7">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Features / Highlights') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Configure the 4–5 icon badges that display directly below the main product photo.') }}</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="addFeatureHighlight()">
+                            <i class="ph ph-plus"></i> {{ __('+ Add Feature') }}
+                        </button>
+                    </div>
+
+                    {{-- Feature Highlights List --}}
+                    <div class="mt-5 space-y-3">
+                        <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
+                            <div class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 bg-white shadow-2xs">
+                                <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
+                                    <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
+                                </div>
+                                <div class="w-44">
+                                    <select class="form-input text-xs h-9" x-model="feat.icon">
+                                        <option value="ph-t-shirt">{{ __('T-Shirt / Fleece') }}</option>
+                                        <option value="ph-arrows-out-line-vertical">{{ __('Zipper / Set') }}</option>
+                                        <option value="ph-users-three">{{ __('Users / Kids') }}</option>
+                                        <option value="ph-palette">{{ __('Palette / Colors') }}</option>
+                                        <option value="ph-ruler">{{ __('Ruler / True Size') }}</option>
+                                        <option value="ph-seal-check">{{ __('Quality Seal') }}</option>
+                                        <option value="ph-buildings">{{ __('Factory Direct') }}</option>
+                                        <option value="ph-globe">{{ __('Worldwide') }}</option>
+                                        <option value="ph-lock-key">{{ __('Secure') }}</option>
+                                    </select>
+                                </div>
+                                <input
+                                    type="text"
+                                    class="form-input text-xs font-bold h-9 flex-1"
+                                    x-model="feat.label"
+                                    placeholder="{{ __('Premium Tech Fleece') }}"
+                                    required
+                                >
+                                <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeFeatureHighlight(fIdx)" aria-label="{{ __('Delete feature') }}">
+                                    <i class="ph ph-trash text-base"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- Hidden inputs --}}
+                    <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
+                        <div>
+                            <input type="hidden" :name="`feature_highlights[${fIdx}][icon]`" :value="feat.icon">
+                            <input type="hidden" :name="`feature_highlights[${fIdx}][label]`" :value="feat.label">
+                        </div>
+                    </template>
+                </section>
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 5]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Description →') }}</button>
+                </div>
+            </form>
+
+        {{-- STEP 7: Description & Details --}}
+        @elseif($currentStep === 7)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="8">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Description') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Provide the full marketing description, fabric details, and bullet-point feature checklist.') }}</p>
+
+                    <div class="mt-6 space-y-5">
+                        {{-- Full Description --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="full_description">{{ __('Full Description') }}</label>
+                            <textarea id="full_description" class="form-input text-sm min-h-28" name="description" maxlength="5000" placeholder="{{ __('Premium Kids Nike Tech Fleece Full-Zip Tracksuit designed for everyday comfort and a stylish sporty look.') }}">{{ old('description', $product->description) }}</textarea>
+                        </div>
+
+                        {{-- Bullet-point Features List --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="features_list">{{ __('Bullet-Point Features (one per line)') }}</label>
+                            <textarea id="features_list" class="form-input text-xs font-mono min-h-36" name="features" placeholder="{{ __('2-Piece Set – Full-Zip Hoodie + Jogger Pants&#10;Premium Tech Fleece Fabric&#10;Soft, Comfortable & Warm&#10;Full-Zip Hoodie with Pockets&#10;Comfortable Elastic Waist Joggers&#10;Suitable for Boys & Girls&#10;Kids to Older Kids Sizes Available&#10;Multiple Colors Available&#10;USA True-to-Size Fit&#10;Retail & Wholesale Available&#10;Factory Direct Supply&#10;Worldwide Shipping Available') }}">{{ old('features', is_array($product->features) ? implode("\n", $product->features) : $product->features) }}</textarea>
+                            <span class="text-xs text-neutral-500 mt-1 block">{{ __('Each line appears as a clean bullet item in the Product Description section.') }}</span>
+                        </div>
+
+                        {{-- Care Instructions --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="care_instructions">{{ __('Care Instructions') }}</label>
+                            <textarea id="care_instructions" class="form-input text-xs min-h-20" name="care_information" maxlength="2000" placeholder="{{ __('Machine wash warm (40°C) with like colors, tumble dry low...') }}">{{ old('care_information', $product->care_information) }}</textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 6]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Shipping & Delivery →') }}</button>
+                </div>
+            </form>
+
+        {{-- STEP 8: Shipping & Delivery --}}
+        @elseif($currentStep === 8)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="9">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Shipping & Delivery') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Specify shipping destination countries, delivery timelines, and trust lines displayed on the storefront.') }}</p>
+
+                    <div class="mt-6 space-y-5">
+                        {{-- Shipping Countries Tags --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700">{{ __('Shipping Countries') }}</label>
+                            <div class="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-neutral-200 bg-white min-h-[48px] shadow-2xs">
+                                <template x-for="(country, cIdx) in shippingCountries" :key="cIdx">
+                                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white px-2.5 py-1 text-xs font-bold">
+                                        <span x-text="country"></span>
+                                        <button type="button" class="text-neutral-400 hover:text-red-400" @click="removeShippingCountry(cIdx)">
+                                            <i class="ph ph-x"></i>
+                                        </button>
+                                    </span>
+                                </template>
+                                <div class="flex items-center gap-2 flex-1 min-w-[140px]">
+                                    <input
+                                        type="text"
+                                        class="border-0 text-xs p-0 focus:ring-0 w-full"
+                                        x-model="countryInput"
+                                        @keydown.enter.prevent="addShippingCountry()"
+                                        placeholder="{{ __('Type country & press enter (e.g. USA, Canada, UK)...') }}"
+                                    >
+                                </div>
+                            </div>
+
+                            {{-- Hidden inputs for countries --}}
+                            <template x-for="(country, cIdx) in shippingCountries" :key="cIdx">
+                                <input type="hidden" :name="`shipping_countries[${cIdx}]`" :value="country">
+                            </template>
+                        </div>
+
+                        {{-- Delivery Time --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="delivery_time">{{ __('Delivery Time') }}</label>
+                            <div class="flex items-center gap-2">
+                                <input id="delivery_time" class="form-input text-sm font-semibold flex-1" name="delivery_time" value="{{ old('delivery_time', $product->delivery_time ?? '6–10') }}" placeholder="6-10">
+                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('Working Days') }}</span>
                             </div>
                         </div>
 
-                        <div class="mt-4 pt-4 border-t border-border">
-                            <h4 class="text-xs font-bold text-body uppercase tracking-wider mb-2">{{ __('Configured Color Swatches') }}</h4>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($product->colors as $c)
-                                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-semibold">
-                                        <span class="h-3 w-3 rounded-full border border-neutral-300" style="background-color: {{ $c->hex_code ?: '#2563EB' }}"></span>
-                                        <span>{{ $c->display_name }}</span>
-                                    </span>
-                                @endforeach
-                            </div>
+                        {{-- Shipping Information line --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="shipping_info">{{ __('Shipping Information (Shown on Product Page)') }}</label>
+                            <input id="shipping_info" class="form-input text-sm" name="shipping_info" value="{{ old('shipping_info', $product->shipping_info ?? 'USA & Canada Shipping') }}" placeholder="{{ __('USA & Canada Shipping') }}">
                         </div>
+                    </div>
+                </section>
+
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Specifications →') }}</button>
+                </div>
+            </form>
+
+        {{-- STEP 9: Specifications & Save --}}
+        @elseif($currentStep === 9)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="9">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Specifications') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Review and edit the technical specifications table for the storefront.') }}</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline text-xs shadow-2xs" @click="addSpecification()">
+                            <i class="ph ph-plus"></i> {{ __('+ Add Specification') }}
+                        </button>
+                    </div>
+
+                    {{-- Specifications Table matching Step 9 --}}
+                    <div class="mt-5 rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-neutral-50/80 uppercase font-bold text-neutral-600 border-b border-neutral-200">
+                                <tr>
+                                    <th class="px-4 py-3 w-1/3">{{ __('Attribute') }}</th>
+                                    <th class="px-4 py-3">{{ __('Value') }}</th>
+                                    <th class="px-4 py-3 w-12"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-neutral-200 bg-white">
+                                <template x-for="(spec, sIdx) in specifications" :key="sIdx">
+                                    <tr class="hover:bg-neutral-50/50">
+                                        <td class="px-4 py-2.5">
+                                            <input type="text" class="form-input text-xs font-bold h-9" x-model="spec.attribute" placeholder="{{ __('Material') }}" required>
+                                        </td>
+                                        <td class="px-4 py-2.5">
+                                            <input type="text" class="form-input text-xs h-9" x-model="spec.value" placeholder="{{ __('Tech Fleece (Premium Quality)') }}" required>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-right">
+                                            <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click="removeSpecification(sIdx)">
+                                                <i class="ph ph-trash text-sm"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Hidden inputs for specs --}}
+                    <template x-for="(spec, sIdx) in specifications" :key="sIdx">
+                        <div>
+                            <input type="hidden" :name="`specifications[${sIdx}][attribute]`" :value="spec.attribute">
+                            <input type="hidden" :name="`specifications[${sIdx}][value]`" :value="spec.value">
+                        </div>
+                    </template>
+
+                    {{-- Hidden inputs for Material, Fit, Gender, Season fields sync --}}
+                    <input type="hidden" name="material" :value="(specifications.find(s => s.attribute.toLowerCase() === 'material') || {}).value || '{{ $product->material }}'">
+                    <input type="hidden" name="fit" :value="(specifications.find(s => s.attribute.toLowerCase() === 'fit') || {}).value || '{{ $product->fit }}'">
+                    <input type="hidden" name="set_includes" :value="(specifications.find(s => s.attribute.toLowerCase().includes('include')) || {}).value || '{{ $product->set_includes }}'">
+                    <input type="hidden" name="gender" :value="(specifications.find(s => s.attribute.toLowerCase() === 'gender') || {}).value || '{{ $product->gender }}'">
+                    <input type="hidden" name="season" :value="(specifications.find(s => s.attribute.toLowerCase() === 'season') || {}).value || '{{ $product->season }}'">
+                </section>
+
+                {{-- Final Action Buttons matching Screenshot --}}
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Cancel') }}</x-ui.button>
+                    <button
+                        type="submit"
+                        name="status"
+                        value="draft"
+                        class="btn btn-outline text-xs"
+                    >
+                        {{ __('Save as Draft') }}
+                    </button>
+                    <button
+                        type="submit"
+                        name="status"
+                        value="active"
+                        class="btn btn-primary text-xs flex items-center gap-1.5 px-5 py-2.5 font-bold shadow-sm"
+                    >
+                        <i class="ph ph-floppy-disk text-base"></i>
+                        <span>{{ __('Save Product') }}</span>
+                </div>
+            </form>
+        @endif
+
+        {{-- Color Images Management Modal --}}
+        <template x-if="editingColorIndex !== null">
+            <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingColorIndex = null" @click.self="editingColorIndex = null">
+                <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col">
+                    {{-- Modal Header --}}
+                    <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
+                        <h3 class="text-lg font-bold text-neutral-900 flex items-center gap-2">
+                            <span class="h-4 w-4 rounded-full border shadow-2xs" :style="`background-color: ${colors[editingColorIndex].hex_code || '#2563EB'}`"></span>
+                            <span>{{ __('Manage Images for ') }}<span x-text="colors[editingColorIndex].name || 'Color'"></span></span>
+                        </h3>
+                        <button type="button" class="text-neutral-400 hover:text-neutral-600 transition" @click="editingColorIndex = null">
+                            <i class="ph ph-x text-xl"></i>
+                        </button>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="px-6 py-6 overflow-y-auto max-h-[60vh]">
+                        <p class="text-xs text-neutral-500 mb-4">{{ __('Upload and select images specifically for this color variant. Click an image to set it as the primary swatch for this color.') }}</p>
+                        
+                        <div class="flex flex-wrap gap-4">
+                            {{-- Add New Image Button --}}
+                            <button type="button" class="h-24 w-24 rounded-xl border-2 border-dashed border-neutral-300 hover:border-primary bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 hover:text-primary transition shadow-2xs cursor-pointer" @click="openMediaPickerForColor(editingColorIndex)">
+                                <i class="ph ph-plus text-2xl mb-1"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider">{{ __('Add') }}</span>
+                            </button>
+
+                            {{-- Gallery Grid --}}
+                            <template x-for="(cMedia, cmIdx) in getColorMediaList(editingColorIndex)" :key="cMedia.id">
+                                <div class="relative group h-24 w-24">
+                                    <img 
+                                        :src="cMedia.url" 
+                                        class="h-full w-full rounded-xl object-cover border-2 shadow-2xs cursor-pointer transition" 
+                                        :class="colors[editingColorIndex].swatch_media_id == cMedia.id ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-neutral-200 hover:border-neutral-400'" 
+                                        @click="setColorPrimary(editingColorIndex, cMedia.id)" 
+                                        :title="colors[editingColorIndex].swatch_media_id == cMedia.id ? 'Primary Swatch' : 'Click to Set as Swatch'"
+                                    >
+                                    
+                                    {{-- Primary Badge --}}
+                                    <template x-if="colors[editingColorIndex].swatch_media_id == cMedia.id">
+                                        <div class="absolute -bottom-2 -left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 border border-white">
+                                            {{ __('PRIMARY') }}
+                                        </div>
+                                    </template>
+
+                                    {{-- Remove Action --}}
+                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaById(cMedia.id)" title="Remove Image">
+                                        <i class="ph ph-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="border-t border-neutral-100 px-6 py-4 flex justify-end">
+                        <button type="button" class="btn btn-primary" @click="editingColorIndex = null">{{ __('Done') }}</button>
                     </div>
                 </div>
-
-                {{-- Sidebar Action Card --}}
-                <aside class="section-card h-fit">
-                    <h3 class="font-semibold text-title">{{ __('Publish Status') }}</h3>
-                    <dl class="mt-4 space-y-3 text-sm">
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-body">{{ __('Gallery Images') }}</dt>
-                            <dd class="font-semibold text-title">{{ $product->gallery->count() }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-body">{{ __('Colors') }}</dt>
-                            <dd class="font-semibold text-title">{{ $product->colors->count() }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-body">{{ __('Total Variants') }}</dt>
-                            <dd class="font-semibold text-title">{{ $product->variants->count() }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-body">{{ __('Total Stock Count') }}</dt>
-                            <dd class="font-bold text-primary">{{ $product->variants->sum('stock_quantity') }} pcs</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-body">{{ __('Current Status') }}</dt>
-                            <dd><span class="badge badge-soft">{{ str($product->status)->title() }}</span></dd>
-                        </div>
-                    </dl>
-
-                    <form method="POST" action="{{ route('user.commerce.products.publish', $product) }}" class="mt-6 space-y-3">
-                        @csrf @method('PUT')
-                        <input type="hidden" name="status" value="active">
-                        <x-forms.submit :label="__('Publish product')" class="w-full" :disabled="$readinessIssues !== []" />
-                    </form>
-
-                    @if($product->status !== 'draft')
-                        <form method="POST" action="{{ route('user.commerce.products.publish', $product) }}" class="mt-2">
-                            @csrf @method('PUT')
-                            <input type="hidden" name="status" value="draft">
-                            <x-forms.submit :label="__('Return to draft')" variant="outline" class="w-full" />
-                        </form>
-                    @endif
-                </aside>
-            </section>
-        @endif
+            </div>
+        </template>
     </div>
 </x-layouts.user>

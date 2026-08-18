@@ -108,28 +108,33 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateDetails(ProductDetailsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
-        $this->products->updateDetails($product, $request->validated());
+        $nextStep = $request->integer('next_step', 2);
+        $this->products->updateDetails($product, $request->validated() + ['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 2])->with('success', __('Product details saved. Configure colors and sizes next.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
     }
 
     public function updateOptions(ProductOptionsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 4);
         if ($request->has('colors')) {
             $this->products->syncColors($product, $request->input('colors', []));
         }
         $this->products->updateOptions($product, $request->validated('options'));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 3])->with('success', __('Colors and options saved. Upload dedicated color photos next.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Sizes and options saved.'));
     }
 
     public function updateGallery(ProductGalleryRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 3);
         $this->products->updateGallery($product, $request->validated('media'), $request->input('colors', []));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 4])->with('success', __('Photos saved. Manage variant stock matrix next.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Photos saved.'));
     }
 
     public function previewVariants(Request $request, Product $product): JsonResponse
@@ -142,12 +147,14 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateVariants(ProductVariantsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 6);
         if ($request->has('tier_prices')) {
             $this->products->syncTierPrices($product, $request->input('tier_prices', []));
         }
         $this->products->updateVariants($product, $request->validated('variants'));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 5])->with('success', __('Variant stock matrix saved. Ready to review and publish.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Pricing, MOQ and inventory saved.'));
     }
 
     public function publish(PublishProductRequest $request, Product $product): RedirectResponse
@@ -155,7 +162,7 @@ class CommerceController extends Controller implements HasMiddleware
         $this->assertWorkspace($request, $product->workspace_id);
         $this->products->publish($product, $request->string('status')->toString());
 
-        return back()->with('success', __('Product status updated.'));
+        return redirect()->route('user.commerce.products.index')->with('success', __('Product published successfully.'));
     }
 
     public function uploadMedia(UploadCommerceMediaRequest $request, MediaService $media): JsonResponse
@@ -389,39 +396,55 @@ class CommerceController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function storeVariantPreset(VariantPresetRequest $request): RedirectResponse
+    public function storeVariantPreset(VariantPresetRequest $request): RedirectResponse|JsonResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        VariantPreset::query()->create([
+        $preset = VariantPreset::query()->create([
             'workspace_id' => $workspace->id,
             'name' => $request->string('name')->toString(),
+            'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
+            'price_delta' => (float) $request->input('price_delta', 0.00),
             'type' => $request->string('type', 'size')->toString(),
             'values' => $request->input('values', []),
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return back()->with('success', __('Variant preset created.'));
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'preset' => $preset, 'message' => __('Variant option created.')]);
+        }
+
+        return back()->with('success', __('Variant option created.'));
     }
 
-    public function updateVariantPreset(VariantPresetRequest $request, VariantPreset $preset): RedirectResponse
+    public function updateVariantPreset(VariantPresetRequest $request, VariantPreset $preset): RedirectResponse|JsonResponse
     {
         $this->assertWorkspace($request, $preset->workspace_id);
         $preset->update([
             'name' => $request->string('name')->toString(),
+            'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
+            'price_delta' => (float) $request->input('price_delta', 0.00),
             'type' => $request->string('type', 'size')->toString(),
             'values' => $request->input('values', []),
             'is_active' => $request->boolean('is_active'),
         ]);
 
-        return back()->with('success', __('Variant preset updated.'));
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'preset' => $preset, 'message' => __('Variant option updated.')]);
+        }
+
+        return back()->with('success', __('Variant option updated.'));
     }
 
-    public function destroyVariantPreset(Request $request, VariantPreset $preset): RedirectResponse
+    public function destroyVariantPreset(Request $request, VariantPreset $preset): RedirectResponse|JsonResponse
     {
         $this->assertWorkspace($request, $preset->workspace_id);
         $preset->delete();
 
-        return back()->with('success', __('Variant preset deleted.'));
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'message' => __('Variant option deleted.')]);
+        }
+
+        return back()->with('success', __('Variant option deleted.'));
     }
 
     public function bulkDestroyVariantPresets(BulkDeleteCommerceRequest $request): RedirectResponse
@@ -430,7 +453,7 @@ class CommerceController extends Controller implements HasMiddleware
         $presets = $this->bulkRecords(VariantPreset::class, $workspace->id, $request->validated('ids'));
         VariantPreset::query()->whereKey($presets->modelKeys())->delete();
 
-        return back()->with('success', trans_choice(':count variant preset deleted.|:count variant presets deleted.', $presets->count(), ['count' => $presets->count()]));
+        return back()->with('success', trans_choice(':count variant option deleted.|:count variant options deleted.', $presets->count(), ['count' => $presets->count()]));
     }
 
     public function catalog(Request $request): View
@@ -584,7 +607,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.form', [
             'product' => $product,
-            'step' => $product ? max(1, min(5, $request->integer('step', $product->wizard_step))) : 1,
+            'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,
             'categories' => Category::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'audiences' => Audience::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),

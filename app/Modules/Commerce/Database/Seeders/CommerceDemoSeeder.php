@@ -117,17 +117,25 @@ class CommerceDemoSeeder extends Seeder
     protected function variantPresets(int $workspaceId): void
     {
         $presets = [
-            ['name' => 'Adult Standard (S–XXL)', 'type' => 'size', 'values' => ['S', 'M', 'L', 'XL', 'XXL']],
-            ['name' => 'Adult Extended (XS–3XL)', 'type' => 'size', 'values' => ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']],
-            ['name' => 'Kids Age Sizes (2Y–10Y)', 'type' => 'size', 'values' => ['2Y', '4Y', '6Y', '8Y', '10Y']],
-            ['name' => 'Trouser Waist Sizes (28–38)', 'type' => 'size', 'values' => ['28', '30', '32', '34', '36', '38']],
-            ['name' => 'Footwear EU (38–45)', 'type' => 'size', 'values' => ['38', '39', '40', '41', '42', '43', '44', '45']],
+            ['name' => 'Small', 'sku_suffix' => 'S', 'price_delta' => 0.00, 'type' => 'size', 'values' => ['S']],
+            ['name' => 'Medium', 'sku_suffix' => 'M', 'price_delta' => 0.00, 'type' => 'size', 'values' => ['M']],
+            ['name' => 'Large', 'sku_suffix' => 'L', 'price_delta' => 0.00, 'type' => 'size', 'values' => ['L']],
+            ['name' => 'XL', 'sku_suffix' => 'XL', 'price_delta' => 0.00, 'type' => 'size', 'values' => ['XL']],
+            ['name' => 'XXL', 'sku_suffix' => 'XXL', 'price_delta' => 1.50, 'type' => 'size', 'values' => ['XXL']],
+            ['name' => '3XL', 'sku_suffix' => '3XL', 'price_delta' => 2.00, 'type' => 'size', 'values' => ['3XL']],
+            ['name' => 'Adult Standard (S–XXL)', 'sku_suffix' => 'STD', 'price_delta' => 0.00, 'type' => 'size', 'values' => ['S', 'M', 'L', 'XL', 'XXL']],
         ];
 
         foreach ($presets as $preset) {
             VariantPreset::query()->updateOrCreate(
                 ['workspace_id' => $workspaceId, 'name' => $preset['name']],
-                ['type' => $preset['type'], 'values' => $preset['values'], 'is_active' => true]
+                [
+                    'sku_suffix' => $preset['sku_suffix'],
+                    'price_delta' => $preset['price_delta'],
+                    'type' => $preset['type'],
+                    'values' => $preset['values'],
+                    'is_active' => true,
+                ]
             );
         }
     }
@@ -573,10 +581,40 @@ class CommerceDemoSeeder extends Seeder
                 'primary_media_id' => $primaryMedia->id,
                 'name' => $definition['name'],
                 'brand' => $brand->name,
+                'short_description' => "Premium {$definition['name']} – Hoodie & Jogger set designed for all-day comfort and a stylish sporty look.",
                 'description' => "{$definition['name']} is a production-ready {$definition['fit']} garment made from {$definition['material']} ({$definition['fabric_gsm']}). It is prepared for WhatsApp catalog selling with clear variant data, retail-friendly photography, and reliable stock quantities for wholesale or direct customer orders.",
                 'care_information' => $definition['category'] === 'Coats'
                     ? 'Dry clean recommended. Hang after wear. Steam lightly if needed. Do not bleach.'
                     : 'Machine wash warm (40°C) with similar colors. Use mild detergent. Do not bleach. Tumble dry low or line dry. Iron on low when needed.',
+                'features' => [
+                    '2-Piece Set – Full-Zip Hoodie + Jogger Pants',
+                    'Premium Tech Fleece Fabric',
+                    'Soft, Comfortable & Warm',
+                    'Full-Zip Hoodie with Pockets',
+                    'Comfortable Elastic Waist Joggers',
+                    'Suitable for Boys & Girls',
+                    'Kids to Older Kids Sizes Available',
+                    'Multiple Colors Available',
+                    'USA True-to-Size Fit',
+                    'Retail & Wholesale Available',
+                    'Factory Direct Supply',
+                    'Worldwide Shipping Available',
+                ],
+                'feature_highlights' => [
+                    ['label' => 'PREMIUM TECH FLEECE', 'icon' => 'ph-t-shirt'],
+                    ['label' => 'FULL-ZIP 2-PIECE SET', 'icon' => 'ph-arrows-out-line-vertical'],
+                    ['label' => 'KIDS TO OLDER KIDS', 'icon' => 'ph-users-three'],
+                    ['label' => 'MULTIPLE COLORS', 'icon' => 'ph-palette'],
+                ],
+                'fit' => $definition['fit'] ?? 'USA True-to-Size',
+                'set_includes' => 'Hoodie + Jogger Pants',
+                'gender' => 'Unisex (Boys & Girls)',
+                'season' => 'All Season',
+                'shipping_info' => 'USA & Canada Shipping',
+                'delivery_time' => '6–10 Working Days Delivery',
+                'moq' => 40,
+                'rating' => 5.00,
+                'reviews_count' => 128,
                 'fabric_gsm' => $definition['fabric_gsm'],
                 'material' => $definition['material'],
                 'single_piece_price' => $price,
@@ -591,10 +629,36 @@ class CommerceDemoSeeder extends Seeder
             ]
         );
 
+        // Build 20 realistic colorways for showcase if this is the first product
+        $colorsToSeed = $definition['colors'];
+        if ($index === 0) {
+            $colorsToSeed = [
+                ['name' => 'Light Blue', 'hex_code' => '#60A5FA', 'color_family' => 'Blue'],
+                ['name' => 'Green', 'hex_code' => '#10B981', 'color_family' => 'Green'],
+                ['name' => 'Olive', 'hex_code' => '#84CC16', 'color_family' => 'Green'],
+                ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
+                ['name' => 'Maroon', 'hex_code' => '#991B1B', 'color_family' => 'Red'],
+                ['name' => 'Purple', 'hex_code' => '#8B5CF6', 'color_family' => 'Purple'],
+                ['name' => 'Steel Blue', 'hex_code' => '#3B82F6', 'color_family' => 'Blue'],
+                ['name' => 'Navy', 'hex_code' => '#1E293B', 'color_family' => 'Blue'],
+                ['name' => 'Dark Grey', 'hex_code' => '#374151', 'color_family' => 'Grey'],
+                ['name' => 'Camel', 'hex_code' => '#D97706', 'color_family' => 'Earth'],
+                ['name' => 'Pink', 'hex_code' => '#EC4899', 'color_family' => 'Pink'],
+                ['name' => 'Brown', 'hex_code' => '#78350F', 'color_family' => 'Earth'],
+                ['name' => 'Army Green', 'hex_code' => '#3F6212', 'color_family' => 'Green'],
+                ['name' => 'Coral', 'hex_code' => '#F43F5E', 'color_family' => 'Red'],
+                ['name' => 'Mint Green', 'hex_code' => '#34D399', 'color_family' => 'Green'],
+                ['name' => 'Yellow', 'hex_code' => '#F59E0B', 'color_family' => 'Yellow'],
+                ['name' => 'Red', 'hex_code' => '#EF4444', 'color_family' => 'Red'],
+                ['name' => 'Deep Navy', 'hex_code' => '#0F172A', 'color_family' => 'Blue'],
+                ['name' => 'Teal', 'hex_code' => '#0D9488', 'color_family' => 'Green'],
+            ];
+        }
+
         // Seed Product Media Gallery & Color Swatches
         $colorModels = [];
         $pos = 0;
-        foreach ($definition['colors'] as $cPos => $colorData) {
+        foreach ($colorsToSeed as $cPos => $colorData) {
             $colorMedia1 = $media[(($index * 7 + $cPos * 13) % 60) + 1];
             $colorMedia2 = $media[(($index * 7 + $cPos * 13 + 5) % 60) + 1];
 
