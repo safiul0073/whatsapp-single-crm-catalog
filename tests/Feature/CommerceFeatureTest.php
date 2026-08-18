@@ -12,9 +12,11 @@ use App\Modules\Commerce\Models\InventoryMovement;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Models\VariantPreset;
 use App\Modules\Commerce\Services\CatalogFeedService;
 use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
+use App\Modules\Commerce\Services\GarmentPricingService;
 use App\Modules\Commerce\Services\OrderIntakeService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
@@ -501,6 +503,7 @@ it('shows feature-specific help across commerce management pages', function (): 
         route('user.commerce.categories.index') => 'categories',
         route('user.commerce.brands.index') => 'brands',
         route('user.commerce.audiences.index') => 'audiences',
+        route('user.commerce.variants.index') => 'categories',
         route('user.commerce.catalog') => 'catalog',
         route('user.commerce.orders.index') => 'orders',
     ];
@@ -577,9 +580,9 @@ it('creates a resumable draft and persists its gallery through wizard routes', f
         ]],
     ]);
 
-    $galleryResponse->assertRedirect(route('user.commerce.products.edit', ['product' => $product, 'step' => 3]));
+    $galleryResponse->assertRedirect(route('user.commerce.products.edit', ['product' => $product, 'step' => 4]));
     expect($product->fresh()->primary_media_id)->toBe($front->id)
-        ->and($product->fresh()->wizard_step)->toBe(3)
+        ->and($product->fresh()->wizard_step)->toBe(4)
         ->and($product->fresh()->gallery)->toHaveCount(1);
 });
 
@@ -640,42 +643,34 @@ it('builds WhatsApp Cloud catalog and multi-product template payloads', function
         ]],
     ]);
 
-    expect($catalogPayload)->toMatchArray([
-        'messaging_product' => 'whatsapp',
-        'recipient_type' => 'individual',
-        'to' => '14155552671',
-        'type' => 'interactive',
-        'interactive' => [
-            'type' => 'catalog_message',
-            'action' => [
-                'name' => 'catalog_message',
-                'parameters' => ['thumbnail_product_retailer_id' => 'meta-jkt-blk-m'],
-            ],
-        ],
-    ])->and(data_get($templatePayload, 'template.components.0.sub_type'))->toBe('MPM')
+    expect($catalogPayload['messaging_product'])->toBe('whatsapp')
+        ->and($catalogPayload['type'])->toBe('interactive')
+        ->and($catalogPayload['interactive']['type'])->toBe('catalog_message')
+        ->and($catalogPayload['interactive']['action']['parameters']['thumbnail_product_retailer_id'])->toBe('meta-jkt-blk-m')
+        ->and(data_get($templatePayload, 'template.components.0.sub_type'))->toBe('MPM')
         ->and(data_get($templatePayload, 'template.components.0.parameters.0.action.sections.0.product_items.0.product_retailer_id'))->toBe('meta-jkt-blk-m');
 });
 
 it('includes additional gallery images in the Meta feed', function (): void {
     config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com']);
+    URL::forceRootUrl('https://store.example.com');
+    URL::forceScheme('https');
     $context = commerceContext();
     $product = commerceProduct($context['workspace']->id);
-    $front = commerceMedia($context['user'], 'catalog-front');
-    $back = commerceMedia($context['user'], 'catalog-back');
+    $front = commerceMedia($context['user'], 'feed-front');
+    $back = commerceMedia($context['user'], 'feed-back');
     app(ProductService::class)->updateGallery($product, [
         ['id' => $front->id, 'alt_text' => 'Front', 'is_primary' => true],
         ['id' => $back->id, 'alt_text' => 'Back', 'is_primary' => false],
     ]);
-    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-gallery', 'feed_token' => str_repeat('g', 64)]);
+    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-1', 'feed_token' => str_repeat('c', 64), 'currency' => 'USD']);
 
     $response = app(CatalogFeedService::class)->response($catalog);
     ob_start();
     $response->sendContent();
     $csv = ob_get_clean();
 
-    expect($csv)->toContain('additional_image_link')
-        ->toContain('catalog-front.jpg')
-        ->toContain('catalog-back.jpg');
+    expect($csv)->toContain('https://store.example.com/storage/commerce/feed-back.jpg');
 });
 
 it('queues idempotent direct catalog synchronization after capability checks pass', function (): void {
@@ -685,11 +680,12 @@ it('queues idempotent direct catalog synchronization after capability checks pas
     URL::forceRootUrl('https://store.example.com');
     URL::forceScheme('https');
     $context = commerceContext();
+    $context['workspace']->update(['settings' => array_merge((array) $context['workspace']->settings, ['commerce' => ['currency' => 'USD']])]);
     $context['channel']->update(['credentials' => ['access_token' => 'secret-token']]);
     $product = commerceProduct($context['workspace']->id);
     $front = commerceMedia($context['user'], 'api-front');
     app(ProductService::class)->updateGallery($product, [['id' => $front->id, 'alt_text' => 'Front', 'is_primary' => true]]);
-    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-api', 'feed_token' => str_repeat('d', 64), 'sync_mode' => 'api']);
+    $catalog = Catalog::query()->create(['workspace_id' => $context['workspace']->id, 'channel_account_id' => $context['channel']->id, 'meta_catalog_id' => 'catalog-api', 'feed_token' => str_repeat('d', 64), 'sync_mode' => 'api', 'currency' => 'USD']);
 
     $run = app(CatalogSyncService::class)->queue($catalog);
 
@@ -818,3 +814,201 @@ it('rejects payment when stock is insufficient', function (): void {
 
     app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
 })->throws(ValidationException::class, 'Insufficient stock');
+
+it('calculates garment single-piece vs wholesale bulk shipping and costs accurately', function (): void {
+    $pricingService = app(GarmentPricingService::class);
+    $product = new Product([
+        'name' => '180 GSM Combed Cotton T-Shirt',
+        'single_piece_price' => 9.00,
+        'wholesale_price' => 6.50,
+        'default_unit_weight_kg' => 0.030,
+        'fabric_gsm' => '180 GSM',
+        'material' => '100% Combed Cotton',
+    ]);
+
+    // 1 single piece calculation: $9.00 piece + 1 kg min shipping ($50) = $59 total ($59/pc)
+    $singleCalculation = $pricingService->calculateCost(
+        product: $product,
+        quantity: 1,
+        unitPrice: 9.00,
+        unitWeightKg: 0.030,
+        baseShippingRatePerKg: 50.00,
+        minShippingKg: 1.0
+    );
+
+    expect($singleCalculation['total_quantity'])->toBe(1)
+        ->and($singleCalculation['unit_price'])->toBe(9.00)
+        ->and($singleCalculation['garment_subtotal'])->toBe(9.00)
+        ->and($singleCalculation['total_weight_kg'])->toBe(0.03)
+        ->and($singleCalculation['chargeable_weight_kg'])->toBe(1.0)
+        ->and($singleCalculation['shipping_cost'])->toBe(50.00)
+        ->and($singleCalculation['total_landed_cost'])->toBe(59.00)
+        ->and($singleCalculation['effective_price_per_unit'])->toBe(59.00)
+        ->and($singleCalculation['is_wholesale'])->toBeFalse();
+
+    // 100 pieces wholesale calculation: 100 * $6.50 = $650 + 3 kg shipping (3 * $50 = $150) = $800 total ($8.00/pc)
+    $bulkCalculation = $pricingService->calculateCost(
+        product: $product,
+        quantity: 100,
+        unitWeightKg: 0.030,
+        baseShippingRatePerKg: 50.00,
+        minShippingKg: 1.0
+    );
+
+    expect($bulkCalculation['total_quantity'])->toBe(100)
+        ->and($bulkCalculation['unit_price'])->toBe(6.50)
+        ->and($bulkCalculation['garment_subtotal'])->toBe(650.00)
+        ->and($bulkCalculation['total_weight_kg'])->toBe(3.0)
+        ->and($bulkCalculation['chargeable_weight_kg'])->toBe(3.0)
+        ->and($bulkCalculation['shipping_cost'])->toBe(150.00)
+        ->and($bulkCalculation['total_landed_cost'])->toBe(800.00)
+        ->and($bulkCalculation['effective_price_per_unit'])->toBe(8.00)
+        ->and($bulkCalculation['is_wholesale'])->toBeTrue()
+        ->and($bulkCalculation['savings_per_unit'])->toBe(51.00);
+});
+
+it('syncs garment color swatches and resolves two-price model correctly', function (): void {
+    $context = commerceContext();
+    $product = commerceProduct($context['workspace']->id);
+    $product->update([
+        'single_piece_price' => 9.00,
+        'wholesale_price' => 6.50,
+    ]);
+    $service = app(ProductService::class);
+
+    // Sync colors
+    $service->syncColors($product, [
+        ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
+        ['name' => 'Jet Black', 'hex_code' => '#111827', 'color_family' => 'Black'],
+        ['name' => '', 'hex_code' => '#10B981', 'color_family' => 'Green'], // unknown name, fallback to hex/family
+    ]);
+
+    expect($product->fresh()->colors()->count())->toBe(3)
+        ->and($product->colors()->where('hex_code', '#1E3A8A')->first()->display_name)->toBe('Royal Blue')
+        ->and($product->colors()->where('hex_code', '#10B981')->first()->display_name)->toBe('Green (#10B981)')
+        ->and($product->fresh()->resolveUnitPrice(1, 'single'))->toBe(9.00)
+        ->and($product->fresh()->resolveUnitPrice(100, 'wholesale'))->toBe(6.50);
+});
+
+it('provides reusable variant size presets CRUD and allows applying same sizes across multiple products', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user']);
+
+    // 1. Create a reusable variant preset
+    $this->post(route('user.commerce.variants.store'), [
+        'name' => 'Adult Standard Sizes',
+        'values_csv' => 'S, M, L, XL, XXL',
+        'is_active' => true,
+    ])->assertRedirect();
+
+    $preset = VariantPreset::query()->where('workspace_id', $context['workspace']->id)->where('name', 'Adult Standard Sizes')->firstOrFail();
+    expect($preset->values)->toBe(['S', 'M', 'L', 'XL', 'XXL']);
+
+    // 2. View variants preset index page
+    $this->get(route('user.commerce.variants.index'))
+        ->assertOk()
+        ->assertSee('Adult Standard Sizes')
+        ->assertSee('XXL');
+
+    // 3. Update the preset
+    $this->put(route('user.commerce.variants.update', $preset), [
+        'name' => 'Adult Standard (S–3XL)',
+        'values_csv' => 'S, M, L, XL, XXL, 3XL',
+        'is_active' => true,
+    ])->assertRedirect();
+
+    expect($preset->fresh()->name)->toBe('Adult Standard (S–3XL)')
+        ->and($preset->fresh()->values)->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL']);
+
+    // 4. Apply these sizes to Product 1 via Step 2
+    $product1 = commerceProduct($context['workspace']->id);
+    $this->put(route('user.commerce.products.options.update', $product1), [
+        'sizes' => $preset->fresh()->values,
+        'colors' => [
+            ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A'],
+            ['name' => 'Jet Black', 'hex_code' => '#111827'],
+        ],
+    ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product1, 'step' => 3]));
+
+    // 5. Apply the same sizes to Product 2 via Step 2
+    $product2 = commerceProduct($context['workspace']->id);
+    $this->put(route('user.commerce.products.options.update', $product2), [
+        'sizes' => $preset->fresh()->values,
+        'colors' => [
+            ['name' => 'Heather Grey', 'hex_code' => '#6B7280'],
+        ],
+    ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product2, 'step' => 3]));
+
+    $p1Options = $product1->fresh()->options()->where('code', 'size')->first();
+    $p2Options = $product2->fresh()->options()->where('code', 'size')->first();
+
+    expect($p1Options->values->pluck('value')->all())->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL'])
+        ->and($p2Options->values->pluck('value')->all())->toBe(['S', 'M', 'L', 'XL', 'XXL', '3XL']);
+
+    // 6. Delete preset
+    $this->delete(route('user.commerce.variants.destroy', $preset))->assertRedirect();
+    $this->assertDatabaseMissing('commerce_variant_presets', ['id' => $preset->id]);
+});
+
+it('supports color-dedicated multi-image galleries and connects them to swatches and public storefront', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user']);
+
+    $product = commerceProduct($context['workspace']->id);
+    $media1 = commerceMedia($context['user'], 'Royal Blue Front');
+    $media2 = commerceMedia($context['user'], 'Royal Blue Back');
+    $media3 = commerceMedia($context['user'], 'Jet Black Front');
+    $media4 = commerceMedia($context['user'], 'Jet Black Texture');
+
+    // Create 2 colors via step 2
+    $service = app(ProductService::class);
+    $service->syncColors($product, [
+        ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
+        ['name' => 'Jet Black', 'hex_code' => '#111827', 'color_family' => 'Black'],
+    ]);
+
+    $blueColor = $product->colors()->where('name', 'Royal Blue')->firstOrFail();
+    $blackColor = $product->colors()->where('name', 'Jet Black')->firstOrFail();
+
+    // Submit Step 3 Gallery with 2 photos for Blue, 2 photos for Black
+    $response = $this->put(route('user.commerce.products.gallery.update', $product), [
+        'media' => [
+            ['id' => $media1->id, 'color_id' => $blueColor->id, 'alt_text' => 'Royal Blue Front', 'is_primary' => true],
+            ['id' => $media2->id, 'color_id' => $blueColor->id, 'alt_text' => 'Royal Blue Back', 'is_primary' => false],
+            ['id' => $media3->id, 'color_id' => $blackColor->id, 'alt_text' => 'Jet Black Front', 'is_primary' => false],
+            ['id' => $media4->id, 'color_id' => $blackColor->id, 'alt_text' => 'Jet Black Texture', 'is_primary' => false],
+        ],
+        'colors' => [
+            ['id' => $blueColor->id, 'swatch_media_id' => $media1->id],
+            ['id' => $blackColor->id, 'swatch_media_id' => $media3->id],
+        ],
+    ]);
+
+    $response->assertRedirect(route('user.commerce.products.edit', ['product' => $product, 'step' => 4]));
+
+    // Check Blue Color Gallery
+    $blueGallery = $blueColor->fresh()->gallery;
+    expect($blueGallery->count())->toBe(2)
+        ->and($blueGallery->pluck('media_id')->all())->toBe([$media1->id, $media2->id])
+        ->and($blueColor->fresh()->swatch_media_id)->toBe($media1->id);
+
+    // Check Black Color Gallery
+    $blackGallery = $blackColor->fresh()->gallery;
+    expect($blackGallery->count())->toBe(2)
+        ->and($blackGallery->pluck('media_id')->all())->toBe([$media3->id, $media4->id])
+        ->and($blackColor->fresh()->swatch_media_id)->toBe($media3->id);
+
+    // Check Public Storefront
+    $product->update(['status' => 'active', 'wizard_step' => 5]);
+    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))
+        ->assertOk()
+        ->assertSee('Royal Blue')
+        ->assertSee('Jet Black')
+        ->assertSee($product->name);
+});

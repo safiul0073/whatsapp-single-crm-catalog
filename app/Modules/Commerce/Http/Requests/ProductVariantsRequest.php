@@ -19,6 +19,8 @@ class ProductVariantsRequest extends FormRequest
         return [
             'variants' => ['required', 'array', 'min:1', 'max:500'],
             'variants.*.id' => ['nullable', 'integer', Rule::exists('commerce_product_variants', 'id')->where('product_id', $product?->id)],
+            'variants.*.color_id' => ['nullable', 'integer', Rule::exists('commerce_product_colors', 'id')->where('product_id', $product?->id)],
+            'variants.*.size' => ['nullable', 'string', 'max:50'],
             'variants.*.sku' => ['required', 'string', 'max:120', 'distinct', Rule::unique('commerce_product_variants', 'sku')->where('workspace_id', $product?->workspace_id)->whereNotIn('id', collect($this->input('variants'))->pluck('id')->filter()->all())],
             'variants.*.meta_retailer_id' => ['required', 'string', 'max:120', 'distinct'],
             'variants.*.attributes' => ['required', 'array'],
@@ -32,6 +34,11 @@ class ProductVariantsRequest extends FormRequest
             'variants.*.package_dimensions.width' => ['nullable', 'numeric', 'min:0'],
             'variants.*.package_dimensions.height' => ['nullable', 'numeric', 'min:0'],
             'variants.*.status' => ['required', 'in:active,out_of_stock,archived'],
+            'tier_prices' => ['nullable', 'array'],
+            'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1'],
+            'tier_prices.*.max_quantity' => ['nullable', 'integer', 'min:1'],
+            'tier_prices.*.unit_price' => ['nullable', 'numeric', 'min:0.01'],
+            'tier_prices.*.discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 

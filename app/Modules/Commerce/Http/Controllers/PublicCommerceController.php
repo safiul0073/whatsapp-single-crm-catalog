@@ -59,7 +59,7 @@ class PublicCommerceController extends Controller
         $categoryIds = $this->filteredCategoryIds($categoryId, $subcategoryId, $categoryTree);
 
         $products = Product::query()
-            ->with(['workspace', 'primaryMedia', 'category.parent', 'brandRecord'])
+            ->with(['workspace', 'primaryMedia', 'category.parent', 'brandRecord', 'colors', 'tierPrices'])
             ->withMin([
                 'variants as starting_price' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
@@ -95,7 +95,7 @@ class PublicCommerceController extends Controller
         abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
 
         $products = Product::query()
-            ->with(['primaryMedia', 'category', 'brandRecord'])
+            ->with(['primaryMedia', 'category', 'brandRecord', 'colors', 'tierPrices'])
             ->withCount([
                 'variants' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
             ])
@@ -207,9 +207,12 @@ class PublicCommerceController extends Controller
                 'category',
                 'brandRecord',
                 'gallery.media',
+                'colors.swatchMedia',
+                'tierPrices',
                 'options.values',
                 'variants' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock'])->orderBy('price'),
                 'variants.media',
+                'variants.color',
             ])
             ->whereKey($product->id)
             ->where('workspace_id', $workspace->id)

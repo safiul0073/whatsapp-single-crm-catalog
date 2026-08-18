@@ -54,6 +54,7 @@
                 ['label' => __('Categories'), 'route' => 'user.commerce.categories.index', 'active' => 'user.commerce.categories.*', 'icon' => 'ph-tree-structure', 'permission' => 'commerce.view'],
                 ['label' => __('Brands'), 'route' => 'user.commerce.brands.index', 'active' => 'user.commerce.brands.*', 'icon' => 'ph-seal-check', 'permission' => 'commerce.view'],
                 ['label' => __('Audiences'), 'route' => 'user.commerce.audiences.index', 'active' => 'user.commerce.audiences.*', 'icon' => 'ph-users-three', 'permission' => 'commerce.view'],
+                ['label' => __('Variants & Sizes'), 'route' => 'user.commerce.variants.index', 'active' => 'user.commerce.variants.*', 'icon' => 'ph-squares-four', 'permission' => 'commerce.view'],
             ],
         ],
         [

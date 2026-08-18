@@ -29,7 +29,23 @@ class ProductDetailsRequest extends FormRequest
             'care_information' => ['nullable', 'string', 'max:2000'],
             'condition' => ['required', 'in:new,refurbished,used'],
             'audience' => ['nullable', 'string', 'max:80'],
+            'fabric_gsm' => ['nullable', 'string', 'max:80'],
+            'material' => ['nullable', 'string', 'max:120'],
+            'default_unit_weight_kg' => ['nullable', 'numeric', 'min:0.001', 'max:100'],
+            'single_piece_price' => ['nullable', 'numeric', 'min:0.01', 'max:9999999'],
+            'wholesale_price' => ['nullable', 'numeric', 'min:0.01', 'max:9999999'],
             'country_of_origin' => ['required', 'string', 'size:2'],
+            'tier_prices' => ['nullable', 'array'],
+            'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1'],
+            'tier_prices.*.max_quantity' => ['nullable', 'integer', 'min:1'],
+            'tier_prices.*.unit_price' => ['nullable', 'numeric', 'min:0.01'],
+            'tier_prices.*.discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'colors' => ['nullable', 'array'],
+            'colors.*.id' => ['nullable', 'integer'],
+            'colors.*.name' => ['nullable', 'string', 'max:100'],
+            'colors.*.hex_code' => ['nullable', 'string', 'max:30'],
+            'colors.*.color_family' => ['nullable', 'string', 'max:50'],
+            'colors.*.swatch_media_id' => ['nullable', 'integer', 'exists:media,id'],
         ];
     }
 }

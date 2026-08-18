@@ -76,7 +76,9 @@
                 <div class="shop-grid">
                     @foreach ($products as $product)
                         @php
-                            $startingPrice = $product->starting_price !== null ? (float) $product->starting_price : null;
+                            $startingPrice = $product->single_piece_price !== null ? (float) $product->single_piece_price : ($product->starting_price !== null ? (float) $product->starting_price : null);
+                            $wholesalePrice = $product->wholesale_price !== null ? (float) $product->wholesale_price : ($product->tierPrices->sortBy('unit_price')->first()?->unit_price ?? ($startingPrice ? round($startingPrice * 0.72, 2) : null));
+                            $bestTierPrice = $wholesalePrice;
                             $stockTotal = (int) ($product->stock_total ?? 0);
                             $categoryName = $product->category?->name ?? __('Uncategorized');
                             $parentCategoryName = $product->category?->parent?->name;
@@ -92,10 +94,10 @@
                             ]));
                             $waLink = $productPhone ? "https://wa.me/{$productPhone}?text={$waText}" : $productUrl;
                         @endphp
-                        <article class="shop-card">
+                        <article class="shop-card" x-data="{ currentImg: '{{ $product->primaryMedia?->url }}' }">
                             <a href="{{ $productUrl }}" class="shop-card__media" aria-label="{{ __('View :product', ['product' => $product->name]) }}">
                                 @if ($product->primaryMedia)
-                                    <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->primaryMedia->alt ?: $product->name }}" loading="lazy">
+                                    <img :src="currentImg" src="{{ $product->primaryMedia->url }}" alt="{{ $product->primaryMedia->alt ?: $product->name }}" loading="lazy">
                                 @else
                                     <span><i class="ph ph-t-shirt"></i></span>
                                 @endif
@@ -113,18 +115,61 @@
                                     @endif
                                     <span>{{ $parentCategoryName ? $parentCategoryName.' / '.$categoryName : $categoryName }}</span>
                                 </div>
+                                
                                 <h3><a href="{{ $productUrl }}">{{ $product->name }}</a></h3>
-                                @if ($product->description)
-                                    <p>{{ str($product->description)->limit(110) }}</p>
+
+                                {{-- Fabric & Spec Tags --}}
+                                @if ($product->fabric_gsm || $product->material)
+                                    <div class="my-1 flex flex-wrap gap-1 text-xs">
+                                        @if ($product->fabric_gsm)
+                                            <span class="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{{ $product->fabric_gsm }}</span>
+                                        @endif
+                                        @if ($product->material)
+                                            <span class="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-neutral-600">{{ $product->material }}</span>
+                                        @endif
+                                    </div>
                                 @endif
+
+                                {{-- Visual Color Swatches with Instant Preview --}}
+                                @if ($product->colors->isNotEmpty())
+                                    <div class="my-2 flex items-center gap-1.5" title="{{ __('Available in :count colors', ['count' => $product->colors->count()]) }}">
+                                        @foreach($product->colors->take(6) as $color)
+                                            @php
+                                                $swatchImg = $color->swatchMedia?->url ?? $product->variants->firstWhere('color_id', $color->id)?->media?->url;
+                                            @endphp
+                                            <button
+                                                type="button"
+                                                class="inline-block h-3.5 w-3.5 cursor-pointer rounded-full border border-neutral-300 shadow-xs transition-transform hover:scale-125 focus:outline-none"
+                                                style="background-color: {{ $color->hex_code ?: '#333333' }}"
+                                                title="{{ $color->display_name }}"
+                                                @if ($swatchImg)
+                                                    @mouseenter="currentImg = '{{ $swatchImg }}'"
+                                                    @click.prevent="currentImg = '{{ $swatchImg }}'"
+                                                @endif
+                                            ></button>
+                                        @endforeach
+                                        @if ($product->colors->count() > 6)
+                                            <span class="text-[11px] font-medium text-neutral-500">+{{ $product->colors->count() - 6 }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                @if ($product->description)
+                                    <p>{{ str($product->description)->limit(95) }}</p>
+                                @endif
+
                                 <div class="shop-card__footer">
                                     <div class="shop-card__price">
-                                        <span>{{ __('Starting price') }}</span>
-                                        <strong>{{ $startingPrice !== null ? $productCurrency.' '.number_format($startingPrice, 2) : __('Price on request') }}</strong>
+                                        <span>{{ __('Sample from :price', ['price' => $startingPrice !== null ? $productCurrency.' '.number_format($startingPrice, 2) : '—']) }}</span>
+                                        @if ($bestTierPrice && $startingPrice && (float)$bestTierPrice < (float)$startingPrice)
+                                            <strong class="text-emerald-600">{{ $productCurrency.' '.number_format((float)$bestTierPrice, 2) }} <span class="text-[11px] font-normal text-neutral-500">({{ __('Wholesale') }})</span></strong>
+                                        @else
+                                            <strong>{{ $startingPrice !== null ? $productCurrency.' '.number_format($startingPrice, 2) : __('Price on request') }}</strong>
+                                        @endif
                                     </div>
                                     <a href="{{ $waLink }}" @if ($productPhone) target="_blank" rel="noopener noreferrer" @endif class="shop-card__whatsapp-btn" aria-label="{{ __('Send WhatsApp message for :product', ['product' => $product->name]) }}">
                                         <i class="ph ph-whatsapp-logo"></i>
-                                        <span>{{ __('Send WhatsApp Message') }}</span>
+                                        <span>{{ __('Order') }}</span>
                                     </a>
                                 </div>
                             </div>

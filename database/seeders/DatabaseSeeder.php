@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Modules\AiSettings\Database\Seeders\AiSettingSeeder;
 use App\Modules\Blogs\Database\Seeders\BlogsSeeder;
+use App\Modules\Commerce\Database\Seeders\CommerceDemoSeeder;
 use App\Modules\Contacts\Database\Seeders\LegacyContactTagSeeder;
 use App\Modules\Crm\Database\Seeders\CrmSeeder;
 use App\Modules\Currencies\Database\Seeders\CurrencySeeder;
@@ -48,6 +49,7 @@ class DatabaseSeeder extends Seeder
             BlogsSeeder::class,
             FrontendMenuSeeder::class,
             WaProLandingSeeder::class,
+            CommerceDemoSeeder::class,
         ]);
     }
 }

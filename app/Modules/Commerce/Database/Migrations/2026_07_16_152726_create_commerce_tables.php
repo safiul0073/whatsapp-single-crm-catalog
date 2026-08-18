@@ -44,6 +44,17 @@ return new class extends Migration
             $table->unique(['workspace_id', 'slug']);
         });
 
+        Schema::create('commerce_variant_presets', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->string('type', 40)->default('size');
+            $table->json('values');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            $table->unique(['workspace_id', 'name']);
+        });
+
         Schema::create('commerce_products', function (Blueprint $table): void {
             $table->id();
             $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
@@ -58,6 +69,11 @@ return new class extends Migration
             $table->text('care_information')->nullable();
             $table->string('condition')->default('new');
             $table->string('audience')->nullable();
+            $table->string('fabric_gsm')->nullable();
+            $table->string('material')->nullable();
+            $table->decimal('default_unit_weight_kg', 8, 3)->default(0.030);
+            $table->decimal('single_piece_price', 12, 2)->nullable();
+            $table->decimal('wholesale_price', 12, 2)->nullable();
             $table->string('country_of_origin', 2)->default('BD');
             $table->string('status')->default('draft')->index();
             $table->unsignedTinyInteger('wizard_step')->default(1);
@@ -66,11 +82,25 @@ return new class extends Migration
             $table->unique(['workspace_id', 'slug']);
         });
 
+        Schema::create('commerce_product_colors', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('commerce_products')->cascadeOnDelete();
+            $table->foreignIdFor(Media::class, 'swatch_media_id')->nullable()->constrained('media')->nullOnDelete();
+            $table->string('name')->nullable();
+            $table->string('hex_code', 30)->nullable();
+            $table->string('color_family', 50)->nullable();
+            $table->unsignedInteger('position')->default(0);
+            $table->timestamps();
+            $table->index(['product_id', 'position']);
+        });
+
         Schema::create('commerce_product_media', function (Blueprint $table): void {
             $table->id();
             $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('commerce_products')->cascadeOnDelete();
             $table->foreignIdFor(Media::class, 'media_id')->constrained('media')->cascadeOnDelete();
+            $table->foreignId('color_id')->nullable()->constrained('commerce_product_colors')->nullOnDelete();
             $table->string('media_type', 20);
             $table->string('role', 20)->default('gallery');
             $table->string('alt_text')->nullable();
@@ -79,6 +109,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['product_id', 'media_id']);
             $table->index(['product_id', 'position']);
+            $table->index(['product_id', 'color_id']);
         });
 
         Schema::create('commerce_product_options', function (Blueprint $table): void {
@@ -106,9 +137,11 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('commerce_products')->cascadeOnDelete();
+            $table->foreignId('color_id')->nullable()->constrained('commerce_product_colors')->nullOnDelete();
             $table->foreignIdFor(Media::class, 'media_id')->nullable()->constrained('media')->nullOnDelete();
             $table->string('sku');
             $table->string('meta_retailer_id');
+            $table->string('size', 50)->nullable();
             $table->json('attributes')->nullable();
             $table->decimal('price', 12, 2);
             $table->decimal('compare_at_price', 12, 2)->nullable();
@@ -119,6 +152,18 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['workspace_id', 'sku']);
             $table->unique(['workspace_id', 'meta_retailer_id']);
+        });
+
+        Schema::create('commerce_product_tier_prices', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('commerce_products')->cascadeOnDelete();
+            $table->unsignedInteger('min_quantity')->default(1);
+            $table->unsignedInteger('max_quantity')->nullable();
+            $table->decimal('unit_price', 12, 2);
+            $table->decimal('discount_percentage', 5, 2)->nullable();
+            $table->timestamps();
+            $table->index(['product_id', 'min_quantity']);
         });
 
         Schema::create('commerce_catalogs', function (Blueprint $table): void {
@@ -260,9 +305,11 @@ return new class extends Migration
         Schema::dropIfExists('commerce_catalog_sync_runs');
         Schema::dropIfExists('commerce_catalog_item_syncs');
         Schema::dropIfExists('commerce_catalogs');
+        Schema::dropIfExists('commerce_product_tier_prices');
         Schema::dropIfExists('commerce_product_variants');
         Schema::dropIfExists('commerce_product_option_values');
         Schema::dropIfExists('commerce_product_options');
+        Schema::dropIfExists('commerce_product_colors');
         Schema::dropIfExists('commerce_product_media');
         Schema::dropIfExists('commerce_products');
         Schema::dropIfExists('commerce_audiences');

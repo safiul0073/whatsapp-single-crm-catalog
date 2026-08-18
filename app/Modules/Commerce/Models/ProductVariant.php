@@ -11,7 +11,22 @@ class ProductVariant extends Model
 {
     protected $table = 'commerce_product_variants';
 
-    protected $fillable = ['workspace_id', 'product_id', 'media_id', 'sku', 'meta_retailer_id', 'attributes', 'price', 'compare_at_price', 'stock_quantity', 'weight_kg', 'package_dimensions', 'status'];
+    protected $fillable = [
+        'workspace_id',
+        'product_id',
+        'color_id',
+        'media_id',
+        'sku',
+        'meta_retailer_id',
+        'size',
+        'attributes',
+        'price',
+        'compare_at_price',
+        'stock_quantity',
+        'weight_kg',
+        'package_dimensions',
+        'status',
+    ];
 
     protected function casts(): array
     {
@@ -21,6 +36,11 @@ class ProductVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function color(): BelongsTo
+    {
+        return $this->belongsTo(ProductColor::class, 'color_id');
     }
 
     public function media(): BelongsTo
