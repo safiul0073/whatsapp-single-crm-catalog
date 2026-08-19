@@ -15,6 +15,8 @@ class VariantPreset extends Model
         'name',
         'sku_suffix',
         'price_delta',
+        'weight',
+        'weight_unit',
         'type',
         'values',
         'is_active',
@@ -24,6 +26,7 @@ class VariantPreset extends Model
     {
         return [
             'price_delta' => 'decimal:2',
+            'weight' => 'decimal:3',
             'values' => 'array',
             'is_active' => 'boolean',
         ];

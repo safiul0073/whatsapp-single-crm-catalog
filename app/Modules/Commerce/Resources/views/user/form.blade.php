@@ -28,7 +28,22 @@
     ])->values()->all() : [];
 
     $sizeOption = $product?->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
-    $sizeState = $sizeOption ? $sizeOption->values->pluck('value')->values()->all() : ($product ? $product->variants->pluck('size')->filter()->unique()->values()->all() : ['1YRS', '2YRS', '4YRS', '6YRS', '8YRS', '10YRS', '12YRS', '14YRS']);
+    $sizeState = $sizeOption ? $sizeOption->values->map(function ($v) {
+        return [
+            'value' => $v->value,
+            'weight' => $v->weight,
+            'weight_unit' => $v->weight_unit ?? 'kg',
+        ];
+    })->all() : ($product ? $product->variants->pluck('size')->filter()->unique()->map(fn($s) => ['value' => $s, 'weight' => null, 'weight_unit' => 'kg'])->values()->all() : [
+        ['value' => '1YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '2YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '4YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '6YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '8YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '10YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '12YRS', 'weight' => null, 'weight_unit' => 'kg'],
+        ['value' => '14YRS', 'weight' => null, 'weight_unit' => 'kg'],
+    ]);
 
     $featureHighlightsState = is_array($product?->feature_highlights) && count($product->feature_highlights) > 0
         ? $product->feature_highlights
@@ -102,42 +117,66 @@
             @endif
         </header>
 
-        {{-- 9-Step Horizontal Tab Navigation (Matching Screenshot) --}}
-        <nav class="overflow-x-auto border-b border-neutral-200 no-scrollbar bg-neutral-50/50 rounded-xl p-1">
-            <div class="flex items-center gap-1 min-w-max">
+        {{-- Screenshot-Matched Tab Navigation --}}
+        <div class="w-full overflow-x-auto no-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 border-b border-neutral-200 bg-white mb-8">
+            <nav class="flex items-end justify-between min-w-[800px] w-full" aria-label="Progress">
                 @php
                     $steps = [
-                        1 => ['label' => __('Basic Info'), 'icon' => 'ph-info'],
-                        2 => ['label' => __('Images'), 'icon' => 'ph-image'],
-                        3 => ['label' => __('Sizes'), 'icon' => 'ph-ruler'],
-                        4 => ['label' => __('Colors'), 'icon' => 'ph-palette'],
-                        5 => ['label' => __('Pricing & MOQ'), 'icon' => 'ph-currency-dollar'],
-                        6 => ['label' => __('Features'), 'icon' => 'ph-sparkle'],
-                        7 => ['label' => __('Description'), 'icon' => 'ph-text-align-left'],
-                        8 => ['label' => __('Shipping'), 'icon' => 'ph-truck'],
-                        9 => ['label' => __('Specifications'), 'icon' => 'ph-list-checks'],
+                        1 => ['label' => __('Basic Info')],
+                        2 => ['label' => __('Images')],
+                        3 => ['label' => __('Sizes')],
+                        4 => ['label' => __('Colors')],
+                        5 => ['label' => __('Pricing & MOQ')],
+                        6 => ['label' => __('Features')],
+                        7 => ['label' => __('Description')],
+                        8 => ['label' => __('Shipping')],
+                        9 => ['label' => __('Specifications')],
                     ];
                 @endphp
 
                 @foreach($steps as $stepNum => $sData)
                     @php
-                        $label = is_array($sData) ? $sData['label'] : $sData;
                         $isActive = $currentStep === $stepNum;
                         $isAccessible = $isEdit || $stepNum === 1;
+                        $isCompleted = $isEdit && $product->wizard_step > $stepNum;
+                        $prevCompleted = $isEdit && $product->wizard_step > ($stepNum - 1);
                         $url = $isEdit ? route('user.commerce.products.edit', ['product' => $product, 'step' => $stepNum]) : '#';
                     @endphp
-                    <a
-                        href="{{ $isAccessible ? $url : '#' }}"
-                        class="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all {{ $isActive ? 'bg-emerald-600 text-white shadow-xs' : ($isAccessible ? 'text-neutral-600 hover:text-neutral-900 hover:bg-white' : 'text-neutral-400 cursor-not-allowed opacity-60') }}"
-                    >
-                        <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] {{ $isActive ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-600' }}">
-                            {{ $stepNum }}
+                    
+                    <a href="{{ $isAccessible ? $url : '#' }}" class="relative flex flex-col items-center gap-2.5 px-6 pt-5 pb-4 transition-colors flex-1 {{ $isActive ? 'bg-primary/5 rounded-t-xl' : ($isAccessible ? 'hover:bg-neutral-50 rounded-t-xl' : 'opacity-60 cursor-not-allowed') }}">
+                        
+                        {{-- Active Bottom Border --}}
+                        @if($isActive)
+                            <div class="absolute bottom-0 left-0 w-full h-[3px] bg-primary rounded-t-sm z-20"></div>
+                        @endif
+
+                        {{-- Left Half Line --}}
+                        @if(!$loop->first)
+                            <div class="absolute left-0 w-[50%] top-[36px] h-[2px] -translate-y-1/2 z-0 {{ $prevCompleted ? 'bg-primary' : 'bg-neutral-200' }}"></div>
+                        @endif
+
+                        {{-- Right Half Line --}}
+                        @if(!$loop->last)
+                            <div class="absolute right-0 w-[50%] top-[36px] h-[2px] -translate-y-1/2 z-0 {{ $isCompleted ? 'bg-primary' : 'bg-neutral-200' }}"></div>
+                        @endif
+
+                        {{-- Circle --}}
+                        <span class="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs transition-colors {{ $isActive || $isCompleted ? 'bg-primary text-white shadow-sm shadow-primary/20' : ($isAccessible ? 'bg-white border border-neutral-300 text-neutral-500' : 'bg-white border border-neutral-200 text-neutral-400') }}">
+                            @if($isCompleted)
+                                <i class="ph-bold ph-check text-sm"></i>
+                            @else
+                                <span class="font-bold">{{ $stepNum }}</span>
+                            @endif
                         </span>
-                        <span>{{ $label }}</span>
+                        
+                        {{-- Label --}}
+                        <span class="relative z-10 text-[11px] font-bold tracking-wide whitespace-nowrap {{ $isActive ? 'text-neutral-900' : ($isCompleted ? 'text-neutral-700' : 'text-neutral-500') }}">
+                            {{ $sData['label'] }}
+                        </span>
                     </a>
                 @endforeach
-            </div>
-        </nav>
+            </nav>
+        </div>
 
         {{-- Validation Error Alert --}}
         @if ($errors->any())
@@ -365,42 +404,40 @@
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Sizes') }}</h2>
                             <p class="text-xs text-neutral-500 mt-0.5">{{ __('Manage available garment sizes. Admin can add, edit, remove, and reorder sizes.') }}</p>
                         </div>
-                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="addCustomSize()">
-                            <i class="ph ph-plus"></i> {{ __('+ Add Size') }}
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="openSizeModal()">
+                            <i class="ph ph-plus"></i> {{ __('Add Size') }}
                         </button>
                     </div>
-
-                    {{-- Quick Presets --}}
-                    @if(isset($variantPresets) && $variantPresets->isNotEmpty())
-                        <div class="mt-4 flex flex-wrap items-center gap-2">
-                            <span class="text-xs font-bold text-neutral-600 uppercase">{{ __('Quick Presets:') }}</span>
-                            @foreach($variantPresets as $vp)
-                                <button
-                                    type="button"
-                                    class="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold hover:border-primary hover:text-primary transition shadow-2xs"
-                                    @click="applyPreset(@js($vp->values))"
-                                >
-                                    {{ $vp->name }}
-                                </button>
-                            @endforeach
-                        </div>
-                    @endif
 
                     {{-- Sizes Interactive Table --}}
                     <div class="mt-5 rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
                         <div class="divide-y divide-neutral-200">
                             <template x-for="(sz, sIdx) in sizes" :key="sIdx">
-                                <div class="flex items-center justify-between gap-4 p-3 bg-white hover:bg-neutral-50/50 transition">
-                                    <div class="flex items-center gap-3 flex-1">
-                                        <i class="ph ph-dots-six-vertical text-neutral-400 text-base cursor-grab"></i>
+                                <div class="flex items-center gap-4 p-3 bg-white hover:bg-neutral-50/50 transition">
+                                    <i class="ph ph-dots-six-vertical text-neutral-400 text-base cursor-grab shrink-0"></i>
+                                    <div class="grid grid-cols-[2fr_1fr_1fr] gap-3 flex-1 items-center">
                                         <input
                                             type="text"
-                                            class="form-input text-xs font-bold h-9 max-w-xs"
-                                            x-model="sizes[sIdx]"
+                                            class="form-input text-xs font-bold h-9 w-full"
+                                            x-model="sz.value"
                                             required
+                                            placeholder="Size Name"
                                         >
+                                        <input
+                                            type="number"
+                                            step="0.001"
+                                            class="form-input text-xs font-medium h-9 w-full"
+                                            x-model="sz.weight"
+                                            placeholder="Weight"
+                                        >
+                                        <select class="form-input text-xs h-9 w-full px-2" x-model="sz.weight_unit">
+                                            <option value="kg">kg</option>
+                                            <option value="g">g</option>
+                                            <option value="lb">lb</option>
+                                            <option value="oz">oz</option>
+                                        </select>
                                     </div>
-                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeSize(sIdx)" aria-label="{{ __('Delete size') }}">
+                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition shrink-0" @click="removeSize(sIdx)" aria-label="{{ __('Delete size') }}">
                                         <i class="ph ph-trash text-base"></i>
                                     </button>
                                 </div>
@@ -411,25 +448,84 @@
                         </div>
                     </div>
 
-                    {{-- Add Custom Size Input Box --}}
-                    <div class="mt-4 flex items-center gap-2 max-w-md">
-                        <input
-                            type="text"
-                            class="form-input text-xs"
-                            x-model="customSize"
-                            @keydown.enter.prevent="addCustomSize()"
-                            placeholder="{{ __('Add new size (e.g. 16YRS, 2XL)...') }}"
-                        >
-                        <button type="button" class="btn btn-sm btn-outline text-xs shrink-0" @click="addCustomSize()">
-                            <i class="ph ph-plus"></i> {{ __('Add') }}
-                        </button>
-                    </div>
-
                     {{-- Hidden Inputs for Sizes --}}
                     <template x-for="(sz, sIdx) in sizes" :key="sIdx">
-                        <input type="hidden" :name="`options[0][values][${sIdx}]`" :value="sz">
+                        <div>
+                            <input type="hidden" :name="`options[0][values][${sIdx}][value]`" :value="sz.value">
+                            <input type="hidden" :name="`options[0][values][${sIdx}][weight]`" :value="sz.weight">
+                            <input type="hidden" :name="`options[0][values][${sIdx}][weight_unit]`" :value="sz.weight_unit">
+                        </div>
                     </template>
                 </section>
+
+                {{-- Select / Create Size Modal --}}
+                <div x-show="showSizeModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div x-show="showSizeModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-neutral-900/50 transition-opacity" aria-hidden="true" @click="showSizeModal = false"></div>
+                        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                        
+                        <div x-show="showSizeModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="relative z-10 inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-neutral-100">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg leading-6 font-bold text-neutral-900" id="modal-title">{{ __('Select or Create Size') }}</h3>
+                                    <button type="button" @click="showSizeModal = false" class="text-neutral-400 hover:text-neutral-500">
+                                        <i class="ph ph-x text-xl"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="px-4 py-4 sm:p-6 space-y-5 bg-neutral-50/50">
+                                {{-- Quick Add Form --}}
+                                <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-xs">
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3">{{ __('Quick Create New Size Preset') }}</h4>
+                                    <div class="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center">
+                                        <input type="text" class="form-input text-xs h-9" x-model="modalNewSize.name" placeholder="Size Name (e.g. XL)" @keydown.enter.prevent="createPresetFromModal()">
+                                        <input type="number" step="0.001" class="form-input text-xs h-9" x-model="modalNewSize.weight" placeholder="Weight" @keydown.enter.prevent="createPresetFromModal()">
+                                        <select class="form-input text-xs h-9 px-1" x-model="modalNewSize.weight_unit">
+                                            <option value="kg">kg</option>
+                                            <option value="g">g</option>
+                                            <option value="lb">lb</option>
+                                            <option value="oz">oz</option>
+                                        </select>
+                                        <button type="button" class="btn btn-sm btn-primary h-9 px-3" @click="createPresetFromModal()" :disabled="modalSaving">
+                                            <i class="ph ph-check" x-show="!modalSaving"></i>
+                                            <i class="ph ph-spinner animate-spin" x-show="modalSaving" style="display:none"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-[10px] text-red-500 mt-1" x-show="modalError" x-text="modalError" style="display:none;"></p>
+                                </div>
+
+                                {{-- Preset List --}}
+                                <div>
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3">{{ __('Select Reusable Presets') }}</h4>
+                                    <div class="max-h-60 overflow-y-auto border border-neutral-200 rounded-xl bg-white shadow-xs divide-y divide-neutral-100">
+                                        <template x-for="(vp, idx) in variantPresets" :key="vp.id || idx">
+                                            <label class="flex items-center gap-3 p-3 hover:bg-neutral-50 cursor-pointer transition">
+                                                <input type="checkbox" class="form-checkbox text-primary rounded shadow-xs" :value="vp" x-model="modalSelectedPresets">
+                                                <div class="flex-1 flex justify-between items-center">
+                                                    <span class="text-sm font-semibold text-neutral-900" x-text="vp.name"></span>
+                                                    <span class="text-xs text-neutral-500 font-medium" x-text="vp.weight ? `${vp.weight} ${vp.weight_unit || 'kg'}` : ''"></span>
+                                                </div>
+                                            </label>
+                                        </template>
+                                        <div x-show="variantPresets.length === 0" class="p-4 text-center text-xs text-neutral-400">
+                                            {{ __('No presets available. Create one above.') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-neutral-100">
+                                <button type="button" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-xs px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-600 sm:ml-3 sm:w-auto sm:text-sm" @click="applyModalSelection()">
+                                    {{ __('Add Selected') }}
+                                </button>
+                                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-lg border border-neutral-300 shadow-xs px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" @click="showSizeModal = false">
+                                    {{ __('Cancel') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 2]) }}">{{ __('Back') }}</x-ui.button>
@@ -483,7 +579,7 @@
 
                                         {{-- Color Images Thumbnail --}}
                                         <td class="px-4 py-3 min-w-[120px] text-center">
-                                            <button type="button" class="btn btn-sm btn-outline text-xs px-2 py-1 flex items-center justify-center gap-1.5 mx-auto hover:bg-primary hover:text-white hover:border-primary transition" @click="editingColorIndex = cIdx">
+                                            <button type="button" class="btn btn-sm btn-outline text-xs px-2 !py-0 flex items-center justify-center gap-1.5 mx-auto hover:bg-primary hover:text-white hover:border-primary transition" @click="editingColorIndex = cIdx">
                                                 <i class="ph ph-image-square text-sm"></i>
                                                 <span x-text="getColorMediaList(cIdx).length > 0 ? getColorMediaList(cIdx).length + ' Images' : '{{ __('Add Images') }}'"></span>
                                             </button>
@@ -631,7 +727,7 @@
                                     <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
                                 </div>
                                 <div class="w-44">
-                                    <select class="form-input text-xs h-9" x-model="feat.icon">
+                                    <select class="form-input text-xs py-2.5" x-model="feat.icon">
                                         <option value="ph-t-shirt">{{ __('T-Shirt / Fleece') }}</option>
                                         <option value="ph-arrows-out-line-vertical">{{ __('Zipper / Set') }}</option>
                                         <option value="ph-users-three">{{ __('Users / Kids') }}</option>
@@ -645,7 +741,7 @@
                                 </div>
                                 <input
                                     type="text"
-                                    class="form-input text-xs font-bold h-9 flex-1"
+                                    class="form-input text-xs font-bold py-2.5 flex-1"
                                     x-model="feat.label"
                                     placeholder="{{ __('Premium Tech Fleece') }}"
                                     required
@@ -685,22 +781,8 @@
 
                     <div class="mt-6 space-y-5">
                         {{-- Full Description --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="full_description">{{ __('Full Description') }}</label>
-                            <textarea id="full_description" class="form-input text-sm min-h-28" name="description" maxlength="5000" placeholder="{{ __('Premium Kids Nike Tech Fleece Full-Zip Tracksuit designed for everyday comfort and a stylish sporty look.') }}">{{ old('description', $product->description) }}</textarea>
-                        </div>
-
-                        {{-- Bullet-point Features List --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="features_list">{{ __('Bullet-Point Features (one per line)') }}</label>
-                            <textarea id="features_list" class="form-input text-xs font-mono min-h-36" name="features" placeholder="{{ __('2-Piece Set – Full-Zip Hoodie + Jogger Pants&#10;Premium Tech Fleece Fabric&#10;Soft, Comfortable & Warm&#10;Full-Zip Hoodie with Pockets&#10;Comfortable Elastic Waist Joggers&#10;Suitable for Boys & Girls&#10;Kids to Older Kids Sizes Available&#10;Multiple Colors Available&#10;USA True-to-Size Fit&#10;Retail & Wholesale Available&#10;Factory Direct Supply&#10;Worldwide Shipping Available') }}">{{ old('features', is_array($product->features) ? implode("\n", $product->features) : $product->features) }}</textarea>
-                            <span class="text-xs text-neutral-500 mt-1 block">{{ __('Each line appears as a clean bullet item in the Product Description section.') }}</span>
-                        </div>
-
-                        {{-- Care Instructions --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="care_instructions">{{ __('Care Instructions') }}</label>
-                            <textarea id="care_instructions" class="form-input text-xs min-h-20" name="care_information" maxlength="2000" placeholder="{{ __('Machine wash warm (40°C) with like colors, tumble dry low...') }}">{{ old('care_information', $product->care_information) }}</textarea>
+                        <div class="col-span-full">
+                            <x-forms.editor name="description" label="{{ __('Full Description') }}" :value="old('description', $product->description)" placeholder="{{ __('Premium Kids Nike Tech Fleece Full-Zip Tracksuit designed for everyday comfort and a stylish sporty look.') }}" />
                         </div>
                     </div>
                 </section>
@@ -722,27 +804,49 @@
                     <h2 class="text-lg font-bold text-neutral-900">{{ __('Shipping & Delivery') }}</h2>
                     <p class="text-xs text-neutral-500 mt-0.5">{{ __('Specify shipping destination countries, delivery timelines, and trust lines displayed on the storefront.') }}</p>
 
-                    <div class="mt-6 space-y-5">
+                    <div class="mt-8 space-y-6">
                         {{-- Shipping Countries Tags --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700">{{ __('Shipping Countries') }}</label>
-                            <div class="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-neutral-200 bg-white min-h-[48px] shadow-2xs">
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700">
+                                <i class="ph-fill ph-globe-hemisphere-west text-primary text-base"></i>
+                                {{ __('Shipping Countries') }}
+                            </label>
+                            <div class="group flex flex-wrap items-center gap-2 p-2 rounded-xl border border-neutral-200 bg-white min-h-[56px] shadow-xs transition-all focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                                 <template x-for="(country, cIdx) in shippingCountries" :key="cIdx">
-                                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white px-2.5 py-1 text-xs font-bold">
+                                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-neutral-100/80 border border-neutral-200/60 text-neutral-800 px-3 py-1.5 text-xs font-bold shadow-2xs transition-colors hover:bg-neutral-200/80">
                                         <span x-text="country"></span>
-                                        <button type="button" class="text-neutral-400 hover:text-red-400" @click="removeShippingCountry(cIdx)">
+                                        <button type="button" class="text-neutral-400 hover:text-red-500 transition-colors focus:outline-none" @click="removeShippingCountry(cIdx)">
                                             <i class="ph ph-x"></i>
                                         </button>
                                     </span>
                                 </template>
-                                <div class="flex items-center gap-2 flex-1 min-w-[140px]">
+                                <div class="relative flex items-center gap-2 flex-1 min-w-[200px] px-2">
                                     <input
                                         type="text"
-                                        class="border-0 text-xs p-0 focus:ring-0 w-full"
+                                        class="border-0 text-sm font-medium p-0 focus:ring-0 focus:outline-none outline-none w-full placeholder:text-neutral-400 text-neutral-900 bg-transparent"
                                         x-model="countryInput"
                                         @keydown.enter.prevent="addShippingCountry()"
-                                        placeholder="{{ __('Type country & press enter (e.g. USA, Canada, UK)...') }}"
+                                        @focus="showCountryDropdown = true"
+                                        @click.away="showCountryDropdown = false"
+                                        placeholder="{{ __('Search & select country...') }}"
                                     >
+                                    
+                                    {{-- Autocomplete Dropdown --}}
+                                    <div 
+                                        x-show="showCountryDropdown && filteredCountries.length > 0" 
+                                        x-transition
+                                        style="display: none;"
+                                        class="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-neutral-100 overflow-hidden z-10"
+                                    >
+                                        <template x-for="c in filteredCountries" :key="c">
+                                            <button 
+                                                type="button" 
+                                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/5 hover:text-primary transition-colors focus:bg-primary/5 focus:text-primary focus:outline-none font-medium"
+                                                @click="addShippingCountry(c)"
+                                                x-text="c"
+                                            ></button>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
 
@@ -752,19 +856,31 @@
                             </template>
                         </div>
 
-                        {{-- Delivery Time --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="delivery_time">{{ __('Delivery Time') }}</label>
-                            <div class="flex items-center gap-2">
-                                <input id="delivery_time" class="form-input text-sm font-semibold flex-1" name="delivery_time" value="{{ old('delivery_time', $product->delivery_time ?? '6–10') }}" placeholder="6-10">
-                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('Working Days') }}</span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {{-- Delivery Time --}}
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700" for="delivery_time">
+                                    <i class="ph-fill ph-clock text-primary text-base"></i>
+                                    {{ __('Delivery Time') }}
+                                </label>
+                                <div class="relative flex items-center group">
+                                    <input id="delivery_time" class="form-input text-sm font-semibold w-full pr-28 transition-all shadow-xs focus:ring-4 focus:ring-primary/10" name="delivery_time" value="{{ old('delivery_time', $product->delivery_time ?? '6–10 Working Days') }}" placeholder="e.g. 6-10 Working Days">
+                                    <div class="absolute right-1.5 top-1.5 bottom-1.5 flex items-center px-3 rounded-md bg-neutral-100/80 text-xs font-bold text-neutral-500 pointer-events-none">
+                                        {{ __('Estimated') }}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        {{-- Shipping Information line --}}
-                        <div>
-                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="shipping_info">{{ __('Shipping Information (Shown on Product Page)') }}</label>
-                            <input id="shipping_info" class="form-input text-sm" name="shipping_info" value="{{ old('shipping_info', $product->shipping_info ?? 'USA & Canada Shipping') }}" placeholder="{{ __('USA & Canada Shipping') }}">
+                            {{-- Shipping Information line --}}
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700" for="shipping_info">
+                                    <i class="ph-fill ph-truck text-primary text-base"></i>
+                                    {{ __('Shipping Details') }}
+                                </label>
+                                <div class="relative">
+                                    <input id="shipping_info" class="form-input text-sm font-semibold w-full transition-all shadow-xs focus:ring-4 focus:ring-primary/10" name="shipping_info" value="{{ old('shipping_info', $product->shipping_info ?? 'USA & Canada Shipping') }}" placeholder="{{ __('USA & Canada Shipping') }}">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -907,7 +1023,7 @@
                                     </template>
 
                                     {{-- Remove Action --}}
-                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaById(cMedia.id)" title="Remove Image">
+                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaFromColor(cMedia.id, editingColorIndex)" title="Remove Image">
                                         <i class="ph ph-trash text-xs"></i>
                                     </button>
                                 </div>

@@ -101,6 +101,7 @@
                                 <th class="px-5 py-3.5">{{ __('OPTION') }}</th>
                                 <th class="px-4 py-3.5 w-36">{{ __('SKU SUFFIX') }}</th>
                                 <th class="px-4 py-3.5 w-32">{{ __('PRICE DELTA') }}</th>
+                                <th class="px-4 py-3.5 w-40">{{ __('WEIGHT') }}</th>
                                 <th class="px-4 py-3.5 w-28 text-center">{{ __('USED BY') }}</th>
                                 <th class="px-4 py-3.5 w-24 text-center">{{ __('STATUS') }}</th>
                                 <th class="px-5 py-3.5 w-24 text-right">{{ __('ACTION') }}</th>
@@ -115,6 +116,8 @@
                                         name: @js($preset->name),
                                         skuSuffix: @js($preset->sku_suffix ?: $preset->name),
                                         priceDelta: @js((string) number_format((float) ($preset->price_delta ?? 0), 2, '.', '')),
+                                        weight: @js($preset->weight),
+                                        weightUnit: @js($preset->weight_unit ?? 'kg'),
                                         isActive: @js((bool) $preset->is_active),
                                         dirty: false,
                                         markDirty() { this.dirty = true; },
@@ -123,6 +126,8 @@
                                                 name: this.name,
                                                 sku_suffix: this.skuSuffix,
                                                 price_delta: parseFloat(this.priceDelta) || 0,
+                                                weight: this.weight ? parseFloat(this.weight) : null,
+                                                weight_unit: this.weightUnit,
                                                 is_active: this.isActive ? 1 : 0
                                             });
                                             this.dirty = false;
@@ -177,6 +182,31 @@
                                             @keydown.enter.prevent="save()"
                                             placeholder="0.00"
                                         >
+                                    </td>
+
+                                    {{-- Weight --}}
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <input
+                                                type="number"
+                                                step="0.001"
+                                                class="form-input text-xs font-medium h-9 w-16"
+                                                x-model="weight"
+                                                @input="markDirty()"
+                                                @keydown.enter.prevent="save()"
+                                                placeholder="0.0"
+                                            >
+                                            <select
+                                                class="form-input text-xs h-9 w-16 px-1.5"
+                                                x-model="weightUnit"
+                                                @change="markDirty(); save()"
+                                            >
+                                                <option value="kg">kg</option>
+                                                <option value="g">g</option>
+                                                <option value="lb">lb</option>
+                                                <option value="oz">oz</option>
+                                            </select>
+                                        </div>
                                     </td>
 
                                     {{-- Used By --}}
@@ -288,6 +318,31 @@
                             placeholder="0"
                         >
                         <span class="text-[11px] text-body mt-1 block">{{ __('Optional adjustment from the product base price.') }}</span>
+                    </div>
+
+                    {{-- Weight --}}
+                    <div>
+                        <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="option_weight">{{ __('Weight') }}</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input
+                                id="option_weight"
+                                type="number"
+                                step="0.001"
+                                class="form-input text-sm flex-1"
+                                name="weight"
+                                value="{{ old('weight') }}"
+                                placeholder="0.5"
+                            >
+                            <select
+                                name="weight_unit"
+                                class="form-input text-sm w-24 px-2"
+                            >
+                                <option value="kg" {{ old('weight_unit', 'kg') === 'kg' ? 'selected' : '' }}>kg</option>
+                                <option value="g" {{ old('weight_unit') === 'g' ? 'selected' : '' }}>g</option>
+                                <option value="lb" {{ old('weight_unit') === 'lb' ? 'selected' : '' }}>lb</option>
+                                <option value="oz" {{ old('weight_unit') === 'oz' ? 'selected' : '' }}>oz</option>
+                            </select>
+                        </div>
                     </div>
 
                     {{-- Available for selection toggle --}}

@@ -4,8 +4,17 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   gallery: config.gallery || [],
   options: config.options || [],
   variants: config.variants || [],
+  variantPresets: config.variantPresets || [],
   colors: config.colors || [],
-  sizes: config.sizes || ['1YRS', '2YRS', '4YRS', '6YRS', '8YRS', '10YRS', '12YRS', '14YRS'],
+  sizes: config.sizes || [],
+  
+  // Modal State
+  showSizeModal: false,
+  modalSelectedPresets: [],
+  modalNewSize: { name: '', weight: '', weight_unit: 'kg' },
+  modalSaving: false,
+  modalError: '',
+  
   tierPrices: config.tierPrices || [],
   featureHighlights: config.featureHighlights || [
     { label: 'Premium Tech Fleece', icon: 'ph-t-shirt' },
@@ -16,6 +25,16 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   ],
   shippingCountries: config.shippingCountries || ['USA', 'Canada'],
   countryInput: '',
+  showCountryDropdown: false,
+  availableCountries: ['Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Côte d\'Ivoire', 'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo (Congo-Brazzaville)', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czechia (Czech Republic)', 'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini (fmr. "Swaziland")', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Holy See', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Palestine State', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'UK', 'Ukraine', 'United Arab Emirates', 'Uruguay', 'USA', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe', 'Worldwide'],
+
+  get filteredCountries() {
+    if (!this.countryInput) return [];
+    const search = this.countryInput.toLowerCase();
+    return this.availableCountries.filter(c => 
+      c.toLowerCase().includes(search) && !this.shippingCountries.includes(c)
+    ).slice(0, 6);
+  },
   specifications: config.specifications || [
     { attribute: 'Material', value: 'Tech Fleece (Premium Quality)' },
     { attribute: 'Fit', value: 'USA True-to-Size' },
@@ -114,14 +133,20 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.dirty = true;
   },
 
-  addShippingCountry() {
-    if (!this.countryInput || !this.countryInput.trim()) return;
-    const c = this.countryInput.trim();
-    if (!this.shippingCountries.includes(c)) {
-      this.shippingCountries.push(c);
+  addShippingCountry(name) {
+    const c = (typeof name === 'string' ? name : this.countryInput).trim();
+    if (!c) return;
+    
+    // Check if what they typed exactly matches an available country (case-insensitive)
+    const exactMatch = this.availableCountries.find(ac => ac.toLowerCase() === c.toLowerCase());
+    
+    if (exactMatch && !this.shippingCountries.includes(exactMatch)) {
+      this.shippingCountries.push(exactMatch);
       this.dirty = true;
     }
+    
     this.countryInput = '';
+    this.showCountryDropdown = false;
   },
 
   removeShippingCountry(index) {
@@ -141,16 +166,17 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
 
   addMedia(items, defaultColorId = null) {
     if (!items || !items.length) return;
-    const existing = new Map(this.gallery.map((item) => [String(item.id), item]));
 
     items.forEach((item) => {
-      if (existing.has(String(item.id))) {
-        const found = existing.get(String(item.id));
-        if (defaultColorId !== null && defaultColorId !== undefined) {
-          found.color_id = defaultColorId;
-        }
+      const cId = defaultColorId !== null && defaultColorId !== undefined ? defaultColorId : (item.color_id || null);
+      
+      // Check if this exact combination of media + color already exists
+      const exists = this.gallery.some(g => String(g.id) === String(item.id) && String(g.color_id || '') === String(cId || ''));
+      
+      if (exists) {
         return;
       }
+      
       const isVideo = item.type === 'video';
       if (isVideo && this.gallery.some((entry) => entry.type === 'video')) return;
       if (!isVideo && this.gallery.filter((entry) => entry.type === 'image').length >= 40) return;
@@ -161,7 +187,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
         url: item.url,
         type: item.type,
         alt_text: item.name || '',
-        color_id: defaultColorId !== null && defaultColorId !== undefined ? defaultColorId : (item.color_id || null),
+        color_id: cId,
         is_primary: !isVideo && !this.gallery.some((entry) => entry.is_primary),
       });
     });
@@ -241,6 +267,17 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     }
   },
 
+  removeMediaFromColor(mediaId, colorIndex) {
+    const colorObj = this.colors[colorIndex];
+    if (!colorObj) return;
+    const colorIdentifier = colorObj.id ? String(colorObj.id) : `idx_${colorIndex}`;
+
+    const idx = this.gallery.findIndex((item) => String(item.id) === String(mediaId) && String(item.color_id || '') === String(colorIdentifier));
+    if (idx !== -1) {
+      this.removeMedia(idx);
+    }
+  },
+
   removeMedia(index) {
     const removed = this.gallery[index];
     this.gallery.splice(index, 1);
@@ -301,38 +338,63 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.dirty = true;
   },
 
-  applyPreset(presetValues) {
-    if (!presetValues) return;
-    const list = Array.isArray(presetValues) ? presetValues : presetValues.split(',').map((s) => s.trim()).filter(Boolean);
-    this.sizes = [...list];
-    this.dirty = true;
+  openSizeModal() {
+    this.modalSelectedPresets = [];
+    this.modalNewSize = { name: '', weight: '', weight_unit: 'kg' };
+    this.modalError = '';
+    this.showSizeModal = true;
   },
 
-  toggleSize(sizeVal) {
-    if (!sizeVal) return;
-    const idx = this.sizes.indexOf(sizeVal);
-    if (idx > -1) {
-      this.sizes.splice(idx, 1);
-    } else {
-      this.sizes.push(sizeVal);
-    }
-    this.dirty = true;
-  },
-
-  hasSize(sizeVal) {
-    return this.sizes.includes(sizeVal);
-  },
-
-  addCustomSize() {
-    if (!this.customSize || !this.customSize.trim()) return;
-    const parts = this.customSize.split(',').map((s) => s.trim()).filter(Boolean);
-    parts.forEach((p) => {
-      if (!this.sizes.includes(p)) {
-        this.sizes.push(p);
+  applyModalSelection() {
+    this.modalSelectedPresets.forEach(preset => {
+      // Check if size already exists
+      if (!this.sizes.some(s => s.value.toLowerCase() === preset.name.toLowerCase())) {
+        this.sizes.push({
+          value: preset.name,
+          weight: preset.weight ? parseFloat(preset.weight) : null,
+          weight_unit: preset.weight_unit || 'kg'
+        });
       }
     });
-    this.customSize = '';
+    this.showSizeModal = false;
     this.dirty = true;
+  },
+
+  async createPresetFromModal() {
+    if (!this.modalNewSize.name.trim()) {
+      this.modalError = 'Size name is required.';
+      return;
+    }
+    
+    this.modalSaving = true;
+    this.modalError = '';
+    
+    try {
+      const response = await window.axios.post('/user/commerce/variant-presets', {
+        name: this.modalNewSize.name,
+        type: 'size',
+        weight: this.modalNewSize.weight ? parseFloat(this.modalNewSize.weight) : null,
+        weight_unit: this.modalNewSize.weight_unit
+      }, {
+        headers: { Accept: 'application/json' }
+      });
+      
+      const newPreset = response.data.preset;
+      
+      // Add to presets list
+      this.variantPresets.push(newPreset);
+      
+      // Auto-select it
+      this.modalSelectedPresets.push(newPreset);
+      
+      // Reset form
+      this.modalNewSize = { name: '', weight: '', weight_unit: 'kg' };
+      
+    } catch (err) {
+      this.modalError = err.response?.data?.message || 'Failed to create preset. Check name uniqueness.';
+    } finally {
+      this.modalSaving = false;
+    }
   },
 
   removeSize(index) {
@@ -369,7 +431,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   },
 
   addVariant(colorObj = null) {
-    const defaultOption = this.variantPresets[0] ? (this.variantPresets[0].sku_suffix || this.variantPresets[0].name) : (this.sizes[0] || 'M');
+    const defaultOption = this.variantPresets[0] ? (this.variantPresets[0].sku_suffix || this.variantPresets[0].name) : (this.sizes[0]?.value || 'M');
     const colorVal = colorObj ? (colorObj.hex_code || colorObj.name || '') : '';
     const colorId = colorObj?.id || null;
     const mediaId = colorObj?.swatch_media_id || null;
@@ -422,6 +484,22 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
       if (calculated > 0) {
         variant.price = calculated.toFixed(2);
       }
+    }
+
+    // Apply weight from preset
+    if (preset && preset.weight !== null && preset.weight !== undefined) {
+      let weightInKg = parseFloat(preset.weight);
+      const unit = (preset.weight_unit || 'kg').toLowerCase();
+      
+      if (unit === 'g') {
+        weightInKg = weightInKg / 1000;
+      } else if (unit === 'lb') {
+        weightInKg = weightInKg * 0.453592;
+      } else if (unit === 'oz') {
+        weightInKg = weightInKg * 0.0283495;
+      }
+      
+      variant.weight_kg = weightInKg.toFixed(3);
     }
 
     this.dirty = true;

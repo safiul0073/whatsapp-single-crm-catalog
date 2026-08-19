@@ -88,13 +88,12 @@ class ProductService
 
             foreach (array_values($items) as $position => $item) {
                 $record = Media::query()->where('uploaded_by', $product->workspace->owner_id ?? auth()->id())->whereKey($item['id'])->firstOrFail();
-                $colorId = filled($item['color_id'] ?? null) ? (int) $item['color_id'] : null;
+                $colorId = ((int) ($item['color_id'] ?? 0)) > 0 ? (int) $item['color_id'] : null;
 
                 $galleryItem = ProductMedia::query()->updateOrCreate(
-                    ['product_id' => $product->id, 'media_id' => $record->id],
+                    ['product_id' => $product->id, 'media_id' => $record->id, 'color_id' => $colorId],
                     [
                         'workspace_id' => $product->workspace_id,
-                        'color_id' => $colorId,
                         'media_type' => $record->type,
                         'role' => ($item['is_primary'] ?? false) ? 'primary' : 'gallery',
                         'alt_text' => $item['alt_text'] ?? null,
@@ -179,6 +178,25 @@ class ProductService
                 $colorMediaId = $colorMatch?->swatch_media_id;
             }
 
+            // Lookup size option value for weight
+            $sizeWeightKg = null;
+            if (isset($attributes['size'])) {
+                $sizeOption = $product->options->firstWhere('code', 'size');
+                $sizeValue = $sizeOption?->values->firstWhere('value', $attributes['size']);
+                if ($sizeValue && $sizeValue->weight !== null) {
+                    $w = (float) $sizeValue->weight;
+                    $unit = strtolower($sizeValue->weight_unit ?? 'kg');
+                    if ($unit === 'g') {
+                        $w = $w / 1000;
+                    } elseif ($unit === 'lb') {
+                        $w = $w * 0.453592;
+                    } elseif ($unit === 'oz') {
+                        $w = $w * 0.0283495;
+                    }
+                    $sizeWeightKg = $w;
+                }
+            }
+
             return [
                 'id' => $existing?->id,
                 'color_id' => $existing?->color_id ?? $colorId,
@@ -190,7 +208,7 @@ class ProductService
                 'price' => $existing?->price ?? $product->single_piece_price,
                 'compare_at_price' => $existing?->compare_at_price,
                 'stock_quantity' => $existing?->stock_quantity ?? 0,
-                'weight_kg' => $existing?->weight_kg ?? $product->default_unit_weight_kg,
+                'weight_kg' => $existing?->weight_kg ?? $sizeWeightKg ?? $product->default_unit_weight_kg,
                 'package_dimensions' => $existing?->package_dimensions,
                 'status' => $existing?->status ?? 'active',
             ];
@@ -301,7 +319,21 @@ class ProductService
                 'position' => $position,
             ]);
             foreach (array_values(array_filter($optionData['values'] ?? [])) as $valuePosition => $value) {
-                $option->values()->create(['workspace_id' => $product->workspace_id, 'value' => $value, 'position' => $valuePosition]);
+                if (is_array($value)) {
+                    $option->values()->create([
+                        'workspace_id' => $product->workspace_id, 
+                        'value' => $value['value'], 
+                        'weight' => $value['weight'] ?? null,
+                        'weight_unit' => $value['weight_unit'] ?? 'kg',
+                        'position' => $valuePosition
+                    ]);
+                } else {
+                    $option->values()->create([
+                        'workspace_id' => $product->workspace_id, 
+                        'value' => $value, 
+                        'position' => $valuePosition
+                    ]);
+                }
             }
         }
     }
@@ -364,9 +396,9 @@ class ProductService
             'sku' => $data['sku'] ?? $product?->sku,
             'visibility' => $data['visibility'] ?? $product?->visibility ?? 'published',
             'brand' => $brandName,
-            'short_description' => $data['short_description'] ?? null,
-            'description' => $data['description'] ?? null,
-            'care_information' => $data['care_information'] ?? null,
+            'short_description' => array_key_exists('short_description', $data) ? $data['short_description'] : $product?->short_description,
+            'description' => array_key_exists('description', $data) ? $data['description'] : $product?->description,
+            'care_information' => array_key_exists('care_information', $data) ? $data['care_information'] : $product?->care_information,
             'features' => $data['features'] ?? $product?->features,
             'feature_highlights' => $data['feature_highlights'] ?? $product?->feature_highlights,
             'shipping_countries' => $data['shipping_countries'] ?? $product?->shipping_countries,

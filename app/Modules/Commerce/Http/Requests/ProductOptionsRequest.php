@@ -33,10 +33,35 @@ class ProductOptionsRequest extends FormRequest
         // If simple sizes / sizes_csv is provided, auto-construct the Size and Color options
         $sizes = $this->input('sizes', []);
         if (is_string($sizes)) {
-            $sizes = array_values(array_unique(array_filter(array_map('trim', explode(',', $sizes)))));
+            $sizes = array_filter(array_map('trim', explode(',', $sizes)));
         } elseif ($this->filled('sizes_csv')) {
-            $sizes = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $this->input('sizes_csv'))))));
+            $sizes = array_filter(array_map('trim', explode(',', (string) $this->input('sizes_csv'))));
         }
+
+        $formattedSizes = [];
+        foreach ($sizes as $size) {
+            if (is_array($size) && isset($size['value'])) {
+                $formattedSizes[] = [
+                    'value' => trim((string) $size['value']),
+                    'weight' => isset($size['weight']) ? (float) $size['weight'] : null,
+                    'weight_unit' => $size['weight_unit'] ?? 'kg',
+                ];
+            } elseif (is_string($size)) {
+                $formattedSizes[] = [
+                    'value' => trim($size),
+                    'weight' => null,
+                    'weight_unit' => 'kg',
+                ];
+            }
+        }
+        
+        $uniqueSizes = [];
+        foreach ($formattedSizes as $fs) {
+            if ($fs['value'] !== '' && !isset($uniqueSizes[$fs['value']])) {
+                $uniqueSizes[$fs['value']] = $fs;
+            }
+        }
+        $sizes = array_values($uniqueSizes);
 
         if (! empty($sizes)) {
             $constructedOptions = [];

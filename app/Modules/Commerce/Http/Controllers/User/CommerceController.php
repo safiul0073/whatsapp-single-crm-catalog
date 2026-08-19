@@ -109,7 +109,8 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 2);
-        $this->products->updateDetails($product, $request->validated() + ['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $this->products->updateDetails($product, $request->validated());
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
     }
@@ -404,6 +405,8 @@ class CommerceController extends Controller implements HasMiddleware
             'name' => $request->string('name')->toString(),
             'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
             'price_delta' => (float) $request->input('price_delta', 0.00),
+            'weight' => $request->filled('weight') ? (float) $request->input('weight') : null,
+            'weight_unit' => $request->string('weight_unit', 'kg')->toString(),
             'type' => $request->string('type', 'size')->toString(),
             'values' => $request->input('values', []),
             'is_active' => $request->boolean('is_active', true),
@@ -423,6 +426,8 @@ class CommerceController extends Controller implements HasMiddleware
             'name' => $request->string('name')->toString(),
             'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
             'price_delta' => (float) $request->input('price_delta', 0.00),
+            'weight' => $request->filled('weight') ? (float) $request->input('weight') : null,
+            'weight_unit' => $request->string('weight_unit', 'kg')->toString(),
             'type' => $request->string('type', 'size')->toString(),
             'values' => $request->input('values', []),
             'is_active' => $request->boolean('is_active'),

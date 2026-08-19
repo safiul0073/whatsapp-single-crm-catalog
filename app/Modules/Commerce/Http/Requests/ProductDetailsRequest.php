@@ -51,7 +51,7 @@ class ProductDetailsRequest extends FormRequest
             'audience_id' => ['nullable', 'integer', Rule::exists('commerce_audiences', 'id')->where('workspace_id', $workspaceId)->where('is_active', true)],
             'brand' => ['nullable', 'string', 'max:120'],
             'short_description' => ['nullable', 'string', 'max:1000'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => ['nullable', 'string', 'max:16777215'],
             'care_information' => ['nullable', 'string', 'max:2000'],
             'features' => ['nullable', 'array'],
             'features.*' => ['nullable', 'string', 'max:255'],

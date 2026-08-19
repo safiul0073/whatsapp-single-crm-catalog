@@ -35,6 +35,8 @@ class VariantPresetRequest extends FormRequest
         $this->merge([
             'sku_suffix' => $skuSuffix !== '' ? $skuSuffix : null,
             'price_delta' => $this->filled('price_delta') ? (float) $this->input('price_delta') : 0.00,
+            'weight' => $this->filled('weight') ? (float) $this->input('weight') : null,
+            'weight_unit' => $this->input('weight_unit', 'kg'),
             'values' => $values,
             'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
         ]);
@@ -54,6 +56,8 @@ class VariantPresetRequest extends FormRequest
             ],
             'sku_suffix' => ['nullable', 'string', 'max:40'],
             'price_delta' => ['nullable', 'numeric'],
+            'weight' => ['nullable', 'numeric', 'min:0'],
+            'weight_unit' => ['nullable', 'string', 'in:kg,g,lb,oz'],
             'type' => ['nullable', 'string', 'max:40'],
             'values' => ['nullable', 'array'],
             'values.*' => ['nullable', 'string', 'max:60'],
