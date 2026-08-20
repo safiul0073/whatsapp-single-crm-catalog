@@ -25,7 +25,24 @@ class ProductOptionsRequest extends FormRequest
                 $values = explode(',', (string) $option['values_csv']);
             }
 
-            $option['values'] = array_values(array_unique(array_filter(array_map('trim', $values))));
+            $formattedValues = [];
+            foreach ($values as $v) {
+                if (is_array($v) && isset($v['value'])) {
+                    $val = trim((string) $v['value']);
+                    if ($val !== '') {
+                        $formattedValues[$val] = $v;
+                        $formattedValues[$val]['value'] = $val;
+                    }
+                } elseif (is_string($v)) {
+                    $val = trim($v);
+                    if ($val !== '') {
+                        if (! isset($formattedValues[$val])) {
+                            $formattedValues[$val] = $val;
+                        }
+                    }
+                }
+            }
+            $option['values'] = array_values($formattedValues);
 
             return $option;
         })->all();
@@ -54,10 +71,10 @@ class ProductOptionsRequest extends FormRequest
                 ];
             }
         }
-        
+
         $uniqueSizes = [];
         foreach ($formattedSizes as $fs) {
-            if ($fs['value'] !== '' && !isset($uniqueSizes[$fs['value']])) {
+            if ($fs['value'] !== '' && ! isset($uniqueSizes[$fs['value']])) {
                 $uniqueSizes[$fs['value']] = $fs;
             }
         }
@@ -105,7 +122,7 @@ class ProductOptionsRequest extends FormRequest
             'options.*.name' => ['required', 'string', 'max:80', 'distinct'],
             'options.*.code' => ['required', 'alpha_dash', 'max:80', 'distinct'],
             'options.*.values' => ['required', 'array', 'min:1', 'max:30'],
-            'options.*.values.*' => ['required', 'string', 'max:80'],
+            'options.*.values.*' => ['required'],
             'sizes' => ['nullable'],
             'sizes_csv' => ['nullable', 'string'],
             'colors' => ['nullable', 'array'],

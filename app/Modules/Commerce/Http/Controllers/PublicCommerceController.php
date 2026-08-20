@@ -196,12 +196,28 @@ class PublicCommerceController extends Controller
         ], 301);
     }
 
+    public function directProduct(string $product): ViewContract
+    {
+        $record = Product::query()
+            ->with('workspace')
+            ->where('slug', $product)
+            ->first();
+
+        if (! $record && is_numeric($product)) {
+            $record = Product::query()->with('workspace')->find((int) $product);
+        }
+
+        abort_unless($record && $record->workspace, 404);
+
+        return $this->product($record->workspace, $record);
+    }
+
     public function product(Workspace $workspace, Product $product): ViewContract
     {
         abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
         abort_unless($product->workspace_id === $workspace->id, 404);
 
-        $record = Product::query()
+        $query = Product::query()
             ->with([
                 'primaryMedia',
                 'category',
@@ -215,9 +231,15 @@ class PublicCommerceController extends Controller
                 'variants.color',
             ])
             ->whereKey($product->id)
-            ->where('workspace_id', $workspace->id)
-            ->where('status', 'active')
-            ->firstOrFail();
+            ->where('workspace_id', $workspace->id);
+
+        $isOwnerOrStaff = auth()->check() && (auth()->user()->workspaces()->where('workspace_id', $workspace->id)->exists() || (bool) (auth()->user()->is_superadmin ?? false));
+
+        if (! $isOwnerOrStaff) {
+            $query->where('status', 'active');
+        }
+
+        $record = $query->firstOrFail();
 
         $phone = $this->resolveWorkspaceWhatsAppPhone($workspace->id);
 

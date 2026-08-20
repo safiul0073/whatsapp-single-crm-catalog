@@ -74,6 +74,20 @@ class ProductService
             if (isset($data['tier_prices'])) {
                 $this->syncTierPrices($product, $data['tier_prices']);
             }
+            if (isset($data['default_stock'])) {
+                $stock = (int) $data['default_stock'];
+                if ($product->variants()->exists()) {
+                    $product->variants()->update(['stock_quantity' => $stock]);
+                } else {
+                    $variants = $this->variantPreview($product);
+                    if (! empty($variants)) {
+                        foreach ($variants as &$v) {
+                            $v['stock_quantity'] = $stock;
+                        }
+                        $this->syncVariants($product, $variants);
+                    }
+                }
+            }
             $this->audit->log($product, 'updated');
 
             return $this->loadProduct($product);
@@ -321,17 +335,17 @@ class ProductService
             foreach (array_values(array_filter($optionData['values'] ?? [])) as $valuePosition => $value) {
                 if (is_array($value)) {
                     $option->values()->create([
-                        'workspace_id' => $product->workspace_id, 
-                        'value' => $value['value'], 
+                        'workspace_id' => $product->workspace_id,
+                        'value' => $value['value'],
                         'weight' => $value['weight'] ?? null,
                         'weight_unit' => $value['weight_unit'] ?? 'kg',
-                        'position' => $valuePosition
+                        'position' => $valuePosition,
                     ]);
                 } else {
                     $option->values()->create([
-                        'workspace_id' => $product->workspace_id, 
-                        'value' => $value, 
-                        'position' => $valuePosition
+                        'workspace_id' => $product->workspace_id,
+                        'value' => $value,
+                        'position' => $valuePosition,
                     ]);
                 }
             }

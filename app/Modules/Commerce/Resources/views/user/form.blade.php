@@ -49,10 +49,6 @@
         ? $product->feature_highlights
         : [
             ['label' => 'Premium Tech Fleece', 'icon' => 'ph-t-shirt'],
-            ['label' => 'Full-Zip 2-Piece Set', 'icon' => 'ph-arrows-out-line-vertical'],
-            ['label' => 'Kids to Older Kids', 'icon' => 'ph-users-three'],
-            ['label' => 'Multiple Colors', 'icon' => 'ph-palette'],
-            ['label' => 'USA True Size', 'icon' => 'ph-ruler'],
         ];
 
     $shippingCountriesState = is_array($product?->shipping_countries) && count($product->shipping_countries) > 0
@@ -109,7 +105,7 @@
             </div>
             @if($isEdit)
                 <div class="flex items-center gap-2">
-                    <a href="{{ route('commerce.products.public', ['workspace' => auth()->user()->currentWorkspace->slug ?? 'shop', 'product' => $product->slug]) }}" target="_blank" class="btn btn-sm btn-outline text-xs inline-flex items-center gap-1.5 shadow-2xs">
+                    <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" target="_blank" class="btn btn-sm btn-outline text-xs inline-flex items-center gap-1.5 shadow-2xs">
                         <i class="ph ph-arrow-square-out text-sm"></i>
                         <span>{{ __('View Storefront') }}</span>
                     </a>
@@ -235,7 +231,7 @@
                         <div class="rounded-xl border border-emerald-500/30 bg-emerald-50/30 p-4">
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-emerald-800" for="wholesale_price">{{ __('Wholesale Price *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
-                                <input id="wholesale_price" type="number" step="0.01" min="0.01" class="form-input font-bold text-emerald-700 flex-1 @error('wholesale_price') border-red-500 ring-1 ring-red-500 @enderror" name="wholesale_price" required value="{{ old('wholesale_price', $product?->wholesale_price ?? 800.00) }}" placeholder="800">
+                                <input id="wholesale_price" type="number" step="0.01" min="0.01" class="form-input font-bold text-emerald-700 flex-1 @error('wholesale_price') border-red-500 ring-1 ring-red-500 @enderror" name="wholesale_price" required value="{{ old('wholesale_price', $product?->wholesale_price ?? "") }}" placeholder="800">
                                 <span class="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">USD</span>
                             </div>
                             @error('wholesale_price')
@@ -247,7 +243,7 @@
                         <div class="rounded-xl border border-border/80 bg-neutral-50/50 p-4">
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="single_piece_price">{{ __('Retail Price') }}</label>
                             <div class="flex items-center gap-2 mt-1">
-                                <input id="single_piece_price" type="number" step="0.01" min="0.01" class="form-input font-bold flex-1 @error('single_piece_price') border-red-500 ring-1 ring-red-500 @enderror" name="single_piece_price" value="{{ old('single_piece_price', $product?->single_piece_price ?? 1200.00) }}" placeholder="1200">
+                                <input id="single_piece_price" type="number" step="0.01" min="0.01" class="form-input font-bold flex-1 @error('single_piece_price') border-red-500 ring-1 ring-red-500 @enderror" name="single_piece_price" value="{{ old('single_piece_price', $product?->single_piece_price ?? "") }}" placeholder="1200">
                                 <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">USD</span>
                             </div>
                             @error('single_piece_price')
@@ -258,10 +254,13 @@
                         {{-- Category --}}
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="category_id">{{ __('Category') }}</label>
-                            <select id="category_id" class="form-input text-sm" name="category_id">
+                            @php
+                                $selectedCategoryId = old('category_id', $product?->category_id ?? request('category_id') ?? $categories->first()?->id);
+                            @endphp
+                            <select id="category_id" class="form-input text-sm cursor-pointer" name="category_id">
                                 <option value="">{{ __('Select category') }}</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" @selected(old('category_id', $product?->category_id) == $category->id)>{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" @selected((string)$selectedCategoryId === (string)$category->id)>{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -269,10 +268,27 @@
                         {{-- Brand --}}
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="brand_id">{{ __('Brand') }}</label>
-                            <select id="brand_id" class="form-input text-sm" name="brand_id">
+                            @php
+                                $selectedBrandId = old('brand_id', $product?->brand_id ?? request('brand_id') ?? $brands->first()?->id);
+                            @endphp
+                            <select id="brand_id" class="form-input text-sm cursor-pointer" name="brand_id">
                                 <option value="">{{ __('Select brand') }}</option>
                                 @foreach($brands as $brand)
-                                    <option value="{{ $brand->id }}" @selected(old('brand_id', $product?->brand_id) == $brand->id)>{{ $brand->name }}</option>
+                                    <option value="{{ $brand->id }}" @selected((string)$selectedBrandId === (string)$brand->id)>{{ $brand->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Audience --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="audience_id">{{ __('Audience / Target') }}</label>
+                            @php
+                                $selectedAudienceId = old('audience_id', $product?->audience_id ?? request('audience_id') ?? $audiences->first()?->id);
+                            @endphp
+                            <select id="audience_id" class="form-input text-sm cursor-pointer" name="audience_id">
+                                <option value="">{{ __('Select audience') }}</option>
+                                @foreach($audiences as $audience)
+                                    <option value="{{ $audience->id }}" @selected((string)$selectedAudienceId === (string)$audience->id)>{{ $audience->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -280,7 +296,7 @@
                         {{-- Status --}}
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="status">{{ __('Status') }}</label>
-                            <select id="status" class="form-input text-sm" name="status">
+                            <select id="status" class="form-input text-sm cursor-pointer" name="status">
                                 <option value="active" @selected(old('status', $product?->status ?? 'active') === 'active')>{{ __('Active') }}</option>
                                 <option value="draft" @selected(old('status', $product?->status) === 'draft')>{{ __('Draft') }}</option>
                                 <option value="archived" @selected(old('status', $product?->status) === 'archived')>{{ __('Archived') }}</option>
@@ -418,7 +434,7 @@
                                     <div class="grid grid-cols-[2fr_1fr_1fr] gap-3 flex-1 items-center">
                                         <input
                                             type="text"
-                                            class="form-input text-xs font-bold h-9 w-full"
+                                            class="form-input text-xs font-bold h-9 w-full !py-1.5 !px-3"
                                             x-model="sz.value"
                                             required
                                             placeholder="Size Name"
@@ -426,11 +442,11 @@
                                         <input
                                             type="number"
                                             step="0.001"
-                                            class="form-input text-xs font-medium h-9 w-full"
+                                            class="form-input text-xs font-medium h-9 w-full !py-1.5 !px-3"
                                             x-model="sz.weight"
                                             placeholder="Weight"
                                         >
-                                        <select class="form-input text-xs h-9 w-full px-2" x-model="sz.weight_unit">
+                                        <select class="form-input text-xs h-9 w-full !py-1 !pl-2.5 !pr-7 cursor-pointer" x-model="sz.weight_unit">
                                             <option value="kg">kg</option>
                                             <option value="g">g</option>
                                             <option value="lb">lb</option>
@@ -479,9 +495,9 @@
                                 <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-xs">
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3">{{ __('Quick Create New Size Preset') }}</h4>
                                     <div class="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center">
-                                        <input type="text" class="form-input text-xs h-9" x-model="modalNewSize.name" placeholder="Size Name (e.g. XL)" @keydown.enter.prevent="createPresetFromModal()">
-                                        <input type="number" step="0.001" class="form-input text-xs h-9" x-model="modalNewSize.weight" placeholder="Weight" @keydown.enter.prevent="createPresetFromModal()">
-                                        <select class="form-input text-xs h-9 px-1" x-model="modalNewSize.weight_unit">
+                                        <input type="text" class="form-input text-xs h-9 !py-1.5 !px-3" x-model="modalNewSize.name" placeholder="Size Name (e.g. XL)" @keydown.enter.prevent="createPresetFromModal()">
+                                        <input type="number" step="0.001" class="form-input text-xs h-9 !py-1.5 !px-3" x-model="modalNewSize.weight" placeholder="Weight" @keydown.enter.prevent="createPresetFromModal()">
+                                        <select class="form-input text-xs h-9 !py-1 !pl-2.5 !pr-7 cursor-pointer" x-model="modalNewSize.weight_unit">
                                             <option value="kg">kg</option>
                                             <option value="g">g</option>
                                             <option value="lb">lb</option>
@@ -649,7 +665,7 @@
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="default_stock">{{ __('Stock / Inventory *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
-                                <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', 500) }}" placeholder="500">
+                                <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', $product->variants->isNotEmpty() ? $product->variants->first()->stock_quantity : "") }}" placeholder="500">
                                 <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
                             </div>
                         </div>

@@ -190,14 +190,14 @@
                                             <input
                                                 type="number"
                                                 step="0.001"
-                                                class="form-input text-xs font-medium h-9 w-16"
+                                                class="form-input text-xs font-medium h-9 w-18 !py-1.5 !px-2.5"
                                                 x-model="weight"
                                                 @input="markDirty()"
                                                 @keydown.enter.prevent="save()"
                                                 placeholder="0.0"
                                             >
                                             <select
-                                                class="form-input text-xs h-9 w-16 px-1.5"
+                                                class="form-input text-xs h-9 w-20 !py-1 !pl-2.5 !pr-7 cursor-pointer"
                                                 x-model="weightUnit"
                                                 @change="markDirty(); save()"
                                             >
@@ -335,7 +335,7 @@
                             >
                             <select
                                 name="weight_unit"
-                                class="form-input text-sm w-24 px-2"
+                                class="form-input text-sm w-24 !py-2 !pl-3 !pr-8 cursor-pointer"
                             >
                                 <option value="kg" {{ old('weight_unit', 'kg') === 'kg' ? 'selected' : '' }}>kg</option>
                                 <option value="g" {{ old('weight_unit') === 'g' ? 'selected' : '' }}>g</option>

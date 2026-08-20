@@ -65,6 +65,7 @@ class ProductDetailsRequest extends FormRequest
             'shipping_info' => ['nullable', 'string', 'max:200'],
             'delivery_time' => ['nullable', 'string', 'max:200'],
             'moq' => ['nullable', 'integer', 'min:1'],
+            'default_stock' => ['nullable', 'integer', 'min:0'],
             'rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
             'reviews_count' => ['nullable', 'integer', 'min:0'],
             'condition' => ['nullable', 'in:new,refurbished,used'],

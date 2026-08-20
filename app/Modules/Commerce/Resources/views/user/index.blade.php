@@ -68,9 +68,8 @@
                                 <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Product') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Category') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Brand / Audience') }}</th>
-                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Variants') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('From') }}</th>
-                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Stock') }}</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Stock & MOQ') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Status') }}</th>
                                 <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Actions') }}</th>
                             </tr>
@@ -96,19 +95,19 @@
                                     </td>
                                     <td class="px-4 py-3.5 text-title">{{ $product->category?->name ?? __('Uncategorized') }}</td>
                                     <td class="px-4 py-3.5">
-                                        <span class="block text-title">{{ $product->brand ?: '—' }}</span>
-                                        <span class="block text-xs text-body">{{ $product->audience ?: __('All audiences') }}</span>
+                                        <span class="block text-title">{{ $product->brandRecord?->name ?? $product->brand ?? '—' }}</span>
+                                        <span class="block text-xs text-body">{{ $product->audienceRecord?->name ?? $product->audience ?? __('All audiences') }}</span>
                                     </td>
-                                    <td class="px-4 py-3.5 font-semibold text-title">{{ $product->variants_count }}</td>
-                                    <td class="px-4 py-3.5 font-semibold text-title">{{ $product->starting_price !== null ? '$'.number_format((float) $product->starting_price, 2) : '—' }}</td>
+                                    <td class="px-4 py-3.5 font-semibold text-title">{{ ($product->starting_price ?? $product->single_piece_price) !== null ? '$'.number_format((float) ($product->starting_price ?? $product->single_piece_price), 2) : '—' }}</td>
                                     <td class="px-4 py-3.5">
-                                        <span class="font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ number_format((int) $product->stock_total) }}</span>
+                                        <span class="block font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ number_format((int) $product->stock_total) }} {{ __('in stock') }}</span>
+                                        <span class="block text-xs text-body">{{ __('MOQ: :count', ['count' => number_format((int) ($product->moq ?? 1))]) }}</span>
                                     </td>
                                     <td class="px-4 py-3.5"><span class="badge badge-soft">{{ str($product->status)->replace('_', ' ')->title() }}</span></td>
                                     <td class="px-5 py-3.5">
                                         <div class="flex justify-end gap-2">
                                             @if ($product->status === 'active')
-                                                <a href="{{ route('commerce.products.public', ['workspace' => $product->workspace->slug, 'product' => $product->slug]) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
+                                                <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
                                             @endif
                                             <a href="{{ route('user.commerce.products.edit', $product) }}" class="row-action" aria-label="{{ __('Manage :product', ['product' => $product->name]) }}" title="{{ __('Manage product') }}"><i class="ph ph-pencil-simple"></i></a>
                                             <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">
@@ -142,14 +141,18 @@
                                         <input type="checkbox" class="app-checkbox mt-1" value="{{ $product->id }}" x-model="selectedProducts" aria-label="{{ __('Select :product', ['product' => $product->name]) }}">
                                         <div class="min-w-0">
                                             <h2 class="truncate font-semibold text-title">{{ $product->name }}</h2>
-                                            <p class="text-xs text-body">{{ $product->category?->name ?? __('Uncategorized') }} · {{ trans_choice(':count variant|:count variants', $product->variants_count, ['count' => $product->variants_count]) }}</p>
+                                            <p class="text-xs text-body">{{ $product->category?->name ?? __('Uncategorized') }}</p>
                                         </div>
                                     </div>
                                     <span class="badge badge-soft">{{ str($product->status)->title() }}</span>
                                 </div>
                                 <div class="flex items-center justify-between gap-3 text-sm">
-                                    <span class="font-semibold text-title">{{ $product->starting_price !== null ? __('From $:price', ['price' => number_format((float) $product->starting_price, 2)]) : __('No price') }}</span>
-                                    <span class="text-body">{{ __(':count in stock', ['count' => number_format((int) $product->stock_total)]) }}</span>
+                                    @php $displayPrice = $product->starting_price ?? $product->single_piece_price; @endphp
+                                    <span class="font-semibold text-title">{{ $displayPrice !== null ? __('From $:price', ['price' => number_format((float) $displayPrice, 2)]) : __('No price') }}</span>
+                                    <div class="text-right">
+                                        <span class="block text-xs font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ __(':count in stock', ['count' => number_format((int) $product->stock_total)]) }}</span>
+                                        <span class="block text-[11px] text-body">{{ __('MOQ: :count', ['count' => number_format((int) ($product->moq ?? 1))]) }}</span>
+                                    </div>
                                 </div>
                                 <div class="grid gap-2 sm:grid-cols-2">
                                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', $product) }}" class="w-full">{{ __('Manage') }}</x-ui.button>

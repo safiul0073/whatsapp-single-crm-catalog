@@ -68,7 +68,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.index', [
             'products' => Product::query()
-                ->with(['category', 'primaryMedia', 'workspace'])
+                ->with(['category', 'primaryMedia', 'workspace', 'brandRecord', 'audienceRecord'])
                 ->withCount('variants')
                 ->withMin('variants as starting_price', 'price')
                 ->withSum('variants as stock_total', 'stock_quantity')

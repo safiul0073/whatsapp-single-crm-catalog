@@ -58,6 +58,14 @@
             ],
         ],
         [
+            'label' => __('Shipping Management'),
+            'items' => [
+                ['label' => __('Shipping Zones'), 'route' => 'user.shipping.index', 'active' => ['user.shipping.index', 'user.shipping.zones.*', 'user.shipping.rates.*'], 'icon' => 'ph-globe-hemisphere-west', 'permission' => 'commerce.manage'],
+                ['label' => __('Shipping Methods'), 'route' => 'user.shipping.methods.index', 'active' => 'user.shipping.methods.*', 'icon' => 'ph-truck', 'permission' => 'commerce.manage'],
+                ['label' => __('Settings'), 'route' => 'user.shipping.settings', 'active' => 'user.shipping.settings.*', 'icon' => 'ph-gear', 'permission' => 'commerce.manage'],
+            ],
+        ],
+        [
             'label' => __('Channels'),
             'items' => [
                 ['label' => __('WhatsApp Cloud'), 'route' => 'user.whatsapp-cloud.channel-setup', 'active' => 'user.whatsapp-cloud.*', 'icon' => 'ph-whatsapp-logo', 'permission' => 'channels.manage'],

@@ -1,0 +1,20 @@
+{
+    "name": "Shipping",
+    "alias": "shipping",
+    "description": "Weight-based shipping, zones, and rate calculations",
+    "version": "1.0.0",
+    "priority": 39,
+    "providers": [
+        "App\\Modules\\Shipping\\Providers\\ShippingServiceProvider"
+    ],
+    "requires": ["commerce"],
+    "packages": {
+        "require": {},
+        "require-dev": {}
+    },
+    "routes": {
+        "user": "Routes/user.php",
+        "api": "Routes/api.php"
+    },
+    "active": true
+}
