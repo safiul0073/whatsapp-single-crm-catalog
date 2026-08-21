@@ -125,8 +125,7 @@
                         5 => ['label' => __('Pricing & MOQ')],
                         6 => ['label' => __('Features')],
                         7 => ['label' => __('Description')],
-                        8 => ['label' => __('Shipping')],
-                        9 => ['label' => __('Specifications')],
+                        8 => ['label' => __('Specifications')],
                     ];
                 @endphp
 
@@ -805,113 +804,15 @@
 
                 <div class="flex items-center justify-between gap-3 pt-2">
                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 6]) }}">{{ __('Back') }}</x-ui.button>
-                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Shipping & Delivery →') }}</button>
-                </div>
-            </form>
-
-        {{-- STEP 8: Shipping & Delivery --}}
-        @elseif($currentStep === 8)
-            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
-                @csrf @method('PUT')
-                <input type="hidden" name="next_step" value="9">
-                <input type="hidden" name="name" value="{{ $product->name }}">
-
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
-                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Shipping & Delivery') }}</h2>
-                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Specify shipping destination countries, delivery timelines, and trust lines displayed on the storefront.') }}</p>
-
-                    <div class="mt-8 space-y-6">
-                        {{-- Shipping Countries Tags --}}
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700">
-                                <i class="ph-fill ph-globe-hemisphere-west text-primary text-base"></i>
-                                {{ __('Shipping Countries') }}
-                            </label>
-                            <div class="group flex flex-wrap items-center gap-2 p-2 rounded-xl border border-neutral-200 bg-white min-h-[56px] shadow-xs transition-all focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
-                                <template x-for="(country, cIdx) in shippingCountries" :key="cIdx">
-                                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-neutral-100/80 border border-neutral-200/60 text-neutral-800 px-3 py-1.5 text-xs font-bold shadow-2xs transition-colors hover:bg-neutral-200/80">
-                                        <span x-text="country"></span>
-                                        <button type="button" class="text-neutral-400 hover:text-red-500 transition-colors focus:outline-none" @click="removeShippingCountry(cIdx)">
-                                            <i class="ph ph-x"></i>
-                                        </button>
-                                    </span>
-                                </template>
-                                <div class="relative flex items-center gap-2 flex-1 min-w-[200px] px-2">
-                                    <input
-                                        type="text"
-                                        class="border-0 text-sm font-medium p-0 focus:ring-0 focus:outline-none outline-none w-full placeholder:text-neutral-400 text-neutral-900 bg-transparent"
-                                        x-model="countryInput"
-                                        @keydown.enter.prevent="addShippingCountry()"
-                                        @focus="showCountryDropdown = true"
-                                        @click.away="showCountryDropdown = false"
-                                        placeholder="{{ __('Search & select country...') }}"
-                                    >
-                                    
-                                    {{-- Autocomplete Dropdown --}}
-                                    <div 
-                                        x-show="showCountryDropdown && filteredCountries.length > 0" 
-                                        x-transition
-                                        style="display: none;"
-                                        class="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-neutral-100 overflow-hidden z-10"
-                                    >
-                                        <template x-for="c in filteredCountries" :key="c">
-                                            <button 
-                                                type="button" 
-                                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/5 hover:text-primary transition-colors focus:bg-primary/5 focus:text-primary focus:outline-none font-medium"
-                                                @click="addShippingCountry(c)"
-                                                x-text="c"
-                                            ></button>
-                                        </template>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Hidden inputs for countries --}}
-                            <template x-for="(country, cIdx) in shippingCountries" :key="cIdx">
-                                <input type="hidden" :name="`shipping_countries[${cIdx}]`" :value="country">
-                            </template>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {{-- Delivery Time --}}
-                            <div class="space-y-2">
-                                <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700" for="delivery_time">
-                                    <i class="ph-fill ph-clock text-primary text-base"></i>
-                                    {{ __('Delivery Time') }}
-                                </label>
-                                <div class="relative flex items-center group">
-                                    <input id="delivery_time" class="form-input text-sm font-semibold w-full pr-28 transition-all shadow-xs focus:ring-4 focus:ring-primary/10" name="delivery_time" value="{{ old('delivery_time', $product->delivery_time ?? '6–10 Working Days') }}" placeholder="e.g. 6-10 Working Days">
-                                    <div class="absolute right-1.5 top-1.5 bottom-1.5 flex items-center px-3 rounded-md bg-neutral-100/80 text-xs font-bold text-neutral-500 pointer-events-none">
-                                        {{ __('Estimated') }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Shipping Information line --}}
-                            <div class="space-y-2">
-                                <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700" for="shipping_info">
-                                    <i class="ph-fill ph-truck text-primary text-base"></i>
-                                    {{ __('Shipping Details') }}
-                                </label>
-                                <div class="relative">
-                                    <input id="shipping_info" class="form-input text-sm font-semibold w-full transition-all shadow-xs focus:ring-4 focus:ring-primary/10" name="shipping_info" value="{{ old('shipping_info', $product->shipping_info ?? 'USA & Canada Shipping') }}" placeholder="{{ __('USA & Canada Shipping') }}">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Specifications →') }}</button>
                 </div>
             </form>
 
-        {{-- STEP 9: Specifications & Save --}}
-        @elseif($currentStep === 9)
+        {{-- STEP 8: Specifications & Save --}}
+        @elseif($currentStep === 8)
             <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
-                <input type="hidden" name="next_step" value="9">
+                <input type="hidden" name="next_step" value="8">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">

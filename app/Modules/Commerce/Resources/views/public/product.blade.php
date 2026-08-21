@@ -342,18 +342,6 @@
                             <p class="mt-1 text-xs text-neutral-500 font-medium">
                                 {{ __('Shipping calculated at checkout.') }}
                             </p>
-
-                            {{-- Shipping & Delivery info with Icons --}}
-                            <div class="mt-3.5 space-y-1.5 text-xs font-semibold text-neutral-700">
-                                <div class="flex items-center gap-2">
-                                    <i class="ph ph-truck text-base text-neutral-800"></i>
-                                    <span>{{ $product->shipping_info ?: __('USA & Canada Shipping') }}</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <i class="ph ph-clock text-base text-neutral-800"></i>
-                                    <span>{{ $product->delivery_time ?: __('6–10 Working Days Delivery') }}</span>
-                                </div>
-                            </div>
                         </div>
 
                         {{-- Size Selection --}}
