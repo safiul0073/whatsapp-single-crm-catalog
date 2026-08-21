@@ -16,7 +16,7 @@
                 
                 <div>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" name="is_packaging_weight_enabled" class="app-checkbox" {{ $settings->is_packaging_weight_enabled ? 'checked' : '' }}>
+                        <input type="checkbox" name="is_packaging_weight_enabled" value="1" class="app-checkbox" {{ $settings->is_packaging_weight_enabled ? 'checked' : '' }}>
                         <span class="text-sm font-semibold text-neutral-800">{{ __('Enable Packaging Weight') }}</span>
                     </label>
                     <p class="text-xs text-neutral-500 mt-1 ml-6">{{ __('Automatically add the weight of a standard shipping box/mailer to the order total weight.') }}</p>
@@ -24,7 +24,10 @@
 
                 <div>
                     <label class="form-label font-semibold text-neutral-700" for="default_packaging_weight_kg">{{ __('Default Packaging Weight (kg)') }}</label>
-                    <input id="default_packaging_weight_kg" type="number" step="0.001" min="0" class="form-input w-full max-w-xs mt-1" name="default_packaging_weight_kg" value="{{ old('default_packaging_weight_kg', $settings->default_packaging_weight_kg) }}">
+                    <input id="default_packaging_weight_kg" type="number" step="0.001" min="0" class="form-input w-full max-w-xs mt-1 @error('default_packaging_weight_kg') border-error @enderror" name="default_packaging_weight_kg" value="{{ old('default_packaging_weight_kg', $settings->default_packaging_weight_kg) }}">
+                    @error('default_packaging_weight_kg')
+                        <p class="text-xs text-error mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="pt-4 border-t border-neutral-200">

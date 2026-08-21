@@ -2,7 +2,7 @@
     $authUser = auth()->user();
     $siteName = 'WaPro';
     $canSeeSidebarItem = function (?string $permission) use ($authUser): bool {
-        if (! $permission) {
+        if (!$permission) {
             return true;
         }
 
@@ -15,73 +15,276 @@
         [
             'label' => __('Workspace'),
             'items' => [
-                ['label' => __('Dashboard'), 'route' => 'user.dashboard', 'active' => 'user.dashboard', 'icon' => 'ph-house', 'permission' => 'workspace.view'],
-                ['label' => __('Inbox'), 'route' => 'user.inbox.index', 'active' => 'user.inbox.*', 'icon' => 'ph-chat-text', 'permission' => 'inbox.view|inbox.assigned_only'],
+                [
+                    'label' => __('Dashboard'),
+                    'route' => 'user.dashboard',
+                    'active' => 'user.dashboard',
+                    'icon' => 'ph-house',
+                    'permission' => 'workspace.view',
+                ],
+                [
+                    'label' => __('Inbox'),
+                    'route' => 'user.inbox.index',
+                    'active' => 'user.inbox.*',
+                    'icon' => 'ph-chat-text',
+                    'permission' => 'inbox.view|inbox.assigned_only',
+                ],
+                [
+                    'label' => __('Team & Members'),
+                    'route' => 'user.workspaces.team',
+                    'active' => 'user.workspaces.team*',
+                    'icon' => 'ph-users',
+                    'permission' => 'team.manage',
+                ],
             ],
         ],
         [
             'label' => __('Customers'),
             'items' => [
-                ['label' => __('Contacts'), 'route' => 'user.contacts.index', 'active' => 'user.contacts.*', 'icon' => 'ph-users-three', 'permission' => 'contacts.view'],
-                ['label' => __('CRM'), 'route' => 'user.crm.index', 'active' => 'user.crm.*', 'icon' => 'ph-kanban', 'permission' => 'crm.view'],
-                ['label' => __('Generated Leads'), 'route' => 'user.leads.index', 'active' => 'user.leads.*', 'icon' => 'ph-user-focus', 'permission' => 'leads.view'],
-                ['label' => __('Groups'), 'route' => 'user.groups.index', 'active' => ['user.groups.*', 'user.segments.*'], 'icon' => 'ph-folders', 'permission' => 'contacts.manage'],
+                [
+                    'label' => __('Contacts'),
+                    'route' => 'user.contacts.index',
+                    'active' => 'user.contacts.*',
+                    'icon' => 'ph-users-three',
+                    'permission' => 'contacts.view',
+                ],
+                [
+                    'label' => __('CRM'),
+                    'route' => 'user.crm.index',
+                    'active' => 'user.crm.*',
+                    'icon' => 'ph-kanban',
+                    'permission' => 'crm.view',
+                ],
+                [
+                    'label' => __('Generated Leads'),
+                    'route' => 'user.leads.index',
+                    'active' => 'user.leads.*',
+                    'icon' => 'ph-user-focus',
+                    'permission' => 'leads.view',
+                ],
+                [
+                    'label' => __('Groups'),
+                    'route' => 'user.groups.index',
+                    'active' => ['user.groups.*', 'user.segments.*'],
+                    'icon' => 'ph-folders',
+                    'permission' => 'contacts.manage',
+                ],
             ],
         ],
         [
             'label' => __('Campaigns'),
             'items' => [
-                ['label' => __('Campaigns'), 'route' => 'user.campaigns.index', 'active' => 'user.campaigns.*', 'icon' => 'ph-paper-plane-tilt', 'permission' => 'campaigns.view'],
-                ['label' => __('Templates'), 'route' => 'user.message-templates.index', 'active' => 'user.message-templates.*', 'icon' => 'ph-file-text', 'permission' => 'templates.manage'],
-                ['label' => __('Auto Replies'), 'route' => 'user.auto-replies.index', 'active' => 'user.auto-replies.*', 'icon' => 'ph-arrow-bend-up-left', 'permission' => 'automations.manage'],
+                [
+                    'label' => __('Campaigns'),
+                    'route' => 'user.campaigns.index',
+                    'active' => 'user.campaigns.*',
+                    'icon' => 'ph-paper-plane-tilt',
+                    'permission' => 'campaigns.view',
+                ],
+                [
+                    'label' => __('Templates'),
+                    'route' => 'user.message-templates.index',
+                    'active' => 'user.message-templates.*',
+                    'icon' => 'ph-file-text',
+                    'permission' => 'templates.manage',
+                ],
+                [
+                    'label' => __('Auto Replies'),
+                    'route' => 'user.auto-replies.index',
+                    'active' => 'user.auto-replies.*',
+                    'icon' => 'ph-arrow-bend-up-left',
+                    'permission' => 'automations.manage',
+                ],
             ],
         ],
         [
             'label' => __('Automation'),
             'items' => [
-                ['label' => __('Automations'), 'route' => 'user.automations.index', 'active' => 'user.automations.*', 'icon' => 'ph-flow-arrow', 'permission' => 'automations.manage'],
-                ['label' => __('Chatbots'), 'route' => 'user.chatbots.index', 'active' => ['user.chatbots.index', 'user.chatbots.create', 'user.chatbots.config', 'user.chatbots.store', 'user.chatbots.update', 'user.chatbots.toggle', 'user.chatbots.destroy', 'user.chatbots.test'], 'icon' => 'ph-robot', 'permission' => 'chatbots.manage'],
-                ['label' => __('Knowledge Bases'), 'route' => 'user.knowledge-bases.index', 'active' => 'user.knowledge-bases.*', 'icon' => 'ph-books', 'permission' => 'chatbots.manage'],
-                ['label' => __('Website Widgets'), 'route' => 'user.chatbots.widgets.index', 'active' => 'user.chatbots.widgets.*', 'icon' => 'ph-browser', 'permission' => 'chatbots.manage'],
+                [
+                    'label' => __('Automations'),
+                    'route' => 'user.automations.index',
+                    'active' => 'user.automations.*',
+                    'icon' => 'ph-flow-arrow',
+                    'permission' => 'automations.manage',
+                ],
+                [
+                    'label' => __('Chatbots'),
+                    'route' => 'user.chatbots.index',
+                    'active' => [
+                        'user.chatbots.index',
+                        'user.chatbots.create',
+                        'user.chatbots.config',
+                        'user.chatbots.store',
+                        'user.chatbots.update',
+                        'user.chatbots.toggle',
+                        'user.chatbots.destroy',
+                        'user.chatbots.test',
+                    ],
+                    'icon' => 'ph-robot',
+                    'permission' => 'chatbots.manage',
+                ],
+                [
+                    'label' => __('Knowledge Bases'),
+                    'route' => 'user.knowledge-bases.index',
+                    'active' => 'user.knowledge-bases.*',
+                    'icon' => 'ph-books',
+                    'permission' => 'chatbots.manage',
+                ],
+                [
+                    'label' => __('Website Widgets'),
+                    'route' => 'user.chatbots.widgets.index',
+                    'active' => 'user.chatbots.widgets.*',
+                    'icon' => 'ph-browser',
+                    'permission' => 'chatbots.manage',
+                ],
             ],
         ],
         [
             'label' => __('Commerce'),
             'items' => [
-                ['label' => __('Orders'), 'route' => 'user.commerce.orders.index', 'active' => 'user.commerce.orders.*', 'icon' => 'ph-package', 'permission' => 'commerce.view'],
-                ['label' => __('Products'), 'route' => 'user.commerce.products.index', 'active' => 'user.commerce.products.*', 'icon' => 'ph-t-shirt', 'permission' => 'commerce.view'],
-                ['label' => __('Meta Catalog'), 'route' => 'user.commerce.catalog', 'active' => 'user.commerce.catalog*', 'icon' => 'ph-storefront', 'permission' => 'commerce.manage'],
-                ['label' => __('Categories'), 'route' => 'user.commerce.categories.index', 'active' => 'user.commerce.categories.*', 'icon' => 'ph-tree-structure', 'permission' => 'commerce.view'],
-                ['label' => __('Brands'), 'route' => 'user.commerce.brands.index', 'active' => 'user.commerce.brands.*', 'icon' => 'ph-seal-check', 'permission' => 'commerce.view'],
-                ['label' => __('Audiences'), 'route' => 'user.commerce.audiences.index', 'active' => 'user.commerce.audiences.*', 'icon' => 'ph-users-three', 'permission' => 'commerce.view'],
-                ['label' => __('Variants & Sizes'), 'route' => 'user.commerce.variants.index', 'active' => 'user.commerce.variants.*', 'icon' => 'ph-squares-four', 'permission' => 'commerce.view'],
+                [
+                    'label' => __('Orders'),
+                    'route' => 'user.commerce.orders.index',
+                    'active' => 'user.commerce.orders.*',
+                    'icon' => 'ph-package',
+                    'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Products'),
+                    'route' => 'user.commerce.products.index',
+                    'active' => 'user.commerce.products.*',
+                    'icon' => 'ph-t-shirt',
+                    'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Meta Catalog'),
+                    'route' => 'user.commerce.catalog',
+                    'active' => 'user.commerce.catalog*',
+                    'icon' => 'ph-storefront',
+                    'permission' => 'commerce.manage',
+                ],
+                [
+                    'label' => __('Categories'),
+                    'route' => 'user.commerce.categories.index',
+                    'active' => 'user.commerce.categories.*',
+                    'icon' => 'ph-tree-structure',
+                    'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Brands'),
+                    'route' => 'user.commerce.brands.index',
+                    'active' => 'user.commerce.brands.*',
+                    'icon' => 'ph-seal-check',
+                    'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Audiences'),
+                    'route' => 'user.commerce.audiences.index',
+                    'active' => 'user.commerce.audiences.*',
+                    'icon' => 'ph-users-three',
+                    'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Variants & Sizes'),
+                    'route' => 'user.commerce.variants.index',
+                    'active' => 'user.commerce.variants.*',
+                    'icon' => 'ph-squares-four',
+                    'permission' => 'commerce.view',
+                ],
             ],
         ],
         [
             'label' => __('Shipping Management'),
             'items' => [
-                ['label' => __('Shipping Zones'), 'route' => 'user.shipping.index', 'active' => ['user.shipping.index', 'user.shipping.zones.*', 'user.shipping.rates.*'], 'icon' => 'ph-globe-hemisphere-west', 'permission' => 'commerce.manage'],
-                ['label' => __('Shipping Methods'), 'route' => 'user.shipping.methods.index', 'active' => 'user.shipping.methods.*', 'icon' => 'ph-truck', 'permission' => 'commerce.manage'],
-                ['label' => __('Settings'), 'route' => 'user.shipping.settings', 'active' => 'user.shipping.settings.*', 'icon' => 'ph-gear', 'permission' => 'commerce.manage'],
+                [
+                    'label' => __('Shipping Zones'),
+                    'route' => 'user.shipping.index',
+                    'active' => ['user.shipping.index', 'user.shipping.zones.*', 'user.shipping.rates.*'],
+                    'icon' => 'ph-globe-hemisphere-west',
+                    'permission' => 'commerce.manage',
+                ],
+                [
+                    'label' => __('Shipping Methods'),
+                    'route' => 'user.shipping.methods.index',
+                    'active' => 'user.shipping.methods.*',
+                    'icon' => 'ph-truck',
+                    'permission' => 'commerce.manage',
+                ],
+                [
+                    'label' => __('Settings'),
+                    'route' => 'user.shipping.settings',
+                    'active' => 'user.shipping.settings.*',
+                    'icon' => 'ph-gear',
+                    'permission' => 'commerce.manage',
+                ],
             ],
         ],
         [
             'label' => __('Channels'),
             'items' => [
-                ['label' => __('WhatsApp Cloud'), 'route' => 'user.whatsapp-cloud.channel-setup', 'active' => 'user.whatsapp-cloud.*', 'icon' => 'ph-whatsapp-logo', 'permission' => 'channels.manage'],
-                ['label' => __('Telegram'), 'route' => 'user.telegram.index', 'active' => 'user.telegram.*', 'icon' => 'ph-telegram-logo', 'permission' => 'telegram.manage'],
-                ['label' => __('Email'), 'route' => 'user.email.index', 'active' => 'user.email.*', 'icon' => 'ph-envelope-simple', 'permission' => 'email.manage'],
-                ['label' => __('SMS'), 'route' => 'user.sms.index', 'active' => 'user.sms.*', 'icon' => 'ph-chat-text', 'permission' => 'sms.manage'],
+                [
+                    'label' => __('WhatsApp Cloud'),
+                    'route' => 'user.whatsapp-cloud.channel-setup',
+                    'active' => 'user.whatsapp-cloud.*',
+                    'icon' => 'ph-whatsapp-logo',
+                    'permission' => 'channels.manage',
+                ],
+                [
+                    'label' => __('Telegram'),
+                    'route' => 'user.telegram.index',
+                    'active' => 'user.telegram.*',
+                    'icon' => 'ph-telegram-logo',
+                    'permission' => 'telegram.manage',
+                ],
+                [
+                    'label' => __('Email'),
+                    'route' => 'user.email.index',
+                    'active' => 'user.email.*',
+                    'icon' => 'ph-envelope-simple',
+                    'permission' => 'email.manage',
+                ],
+                [
+                    'label' => __('SMS'),
+                    'route' => 'user.sms.index',
+                    'active' => 'user.sms.*',
+                    'icon' => 'ph-chat-text',
+                    'permission' => 'sms.manage',
+                ],
             ],
         ],
         [
             'label' => __('Account'),
             'items' => [
-                ['label' => __('Subscription'), 'route' => 'user.subscription.show', 'active' => 'user.subscription.*', 'icon' => 'ph-credit-card', 'permission' => 'subscription.manage'],
-                ['label' => __('Media'), 'route' => 'user.media.index', 'active' => 'user.media.*', 'icon' => 'ph-image-square', 'permission' => 'workspace.view'],
-                ['label' => __('Activity Log'), 'route' => 'user.audit-log.index', 'active' => 'user.audit-log.*', 'icon' => 'ph-list-magnifying-glass', 'permission' => 'workspace.view'],
-                ['label' => __('Support'), 'route' => 'user.support-tickets.index', 'active' => 'user.support-tickets.*', 'icon' => 'ph-question', 'permission' => 'workspace.view'],
-                ['label' => __('Notifications'), 'route' => 'user.system-notifications.index', 'active' => 'user.system-notifications.*', 'icon' => 'ph-bell', 'permission' => 'workspace.view', 'badge' => 'notifications'],
+                // ['label' => __('Subscription'), 'route' => 'user.subscription.show', 'active' => 'user.subscription.*', 'icon' => 'ph-credit-card', 'permission' => 'subscription.manage'],
+                [
+                    'label' => __('Media'),
+                    'route' => 'user.media.index',
+                    'active' => 'user.media.*',
+                    'icon' => 'ph-image-square',
+                    'permission' => 'workspace.view',
+                ],
+                [
+                    'label' => __('Activity Log'),
+                    'route' => 'user.audit-log.index',
+                    'active' => 'user.audit-log.*',
+                    'icon' => 'ph-list-magnifying-glass',
+                    'permission' => 'workspace.view',
+                ],
+                [
+                    'label' => __('Support'),
+                    'route' => 'user.support-tickets.index',
+                    'active' => 'user.support-tickets.*',
+                    'icon' => 'ph-question',
+                    'permission' => 'workspace.view',
+                ],
+                [
+                    'label' => __('Notifications'),
+                    'route' => 'user.system-notifications.index',
+                    'active' => 'user.system-notifications.*',
+                    'icon' => 'ph-bell',
+                    'permission' => 'workspace.view',
+                    'badge' => 'notifications',
+                ],
             ],
         ],
     ];
@@ -95,7 +298,7 @@
                 $visibleItems[] = $item;
             }
         }
-        if (! empty($visibleItems)) {
+        if (!empty($visibleItems)) {
             $group['items'] = $visibleItems;
             $filteredGroups[] = $group;
         }
@@ -111,7 +314,8 @@
                 <img src="{{ media_url(setting('site_logo')) }}" alt="{{ $siteName }}"
                     class="h-9 w-9 shrink-0 rounded-xl object-cover">
             @else
-                <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
+                <span
+                    class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" />
                     </svg>
@@ -152,7 +356,8 @@
 
     <div class="app-sidebar__user">
         <div class="flex items-center gap-3 rounded-xl bg-section p-2.5">
-            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-deep text-sm font-bold text-neutral-0">
+            <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-deep text-sm font-bold text-neutral-0">
                 {{ strtoupper(substr($authUser->name ?? 'U', 0, 2)) }}
             </span>
             <div class="min-w-0 flex-1">

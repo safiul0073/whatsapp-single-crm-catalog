@@ -3,8 +3,6 @@
 namespace App\Modules\Workspaces\Services;
 
 use App\Models\User;
-use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
-use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\Shared\Support\PermissionRegistrar as ModulePermissionRegistrar;
 use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
@@ -75,19 +73,7 @@ class TeamManagementService
 
     public function seatLimit(Workspace $workspace): ?int
     {
-        $subscription = Subscription::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
-            ->with('plan')
-            ->first();
-
-        if (! $subscription?->plan) {
-            return null;
-        }
-
-        $limit = data_get($subscription->plan->limits, 'team_members', data_get($subscription->plan->limits, 'team_seats'));
-
-        return $limit === null ? null : (int) $limit;
+        return null;
     }
 
     public function rolePermissionMatrix(Workspace $workspace): array

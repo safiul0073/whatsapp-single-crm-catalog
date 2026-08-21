@@ -17,7 +17,7 @@ class ShippingApiController extends Controller
     public function calculateRates(Request $request): JsonResponse
     {
         $request->validate([
-            'workspace_id' => ['required', 'integer'], // The storefront should pass this so the backend knows which tenant
+            'workspace_id' => ['nullable', 'integer'], // Made optional for frontend ease
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer'],
             'items.*.variant_id' => ['nullable', 'integer'],
@@ -25,7 +25,9 @@ class ShippingApiController extends Controller
             'shipping_address.country_code' => ['required', 'string', 'size:2'],
         ]);
 
-        $workspace = Workspace::query()->findOrFail($request->input('workspace_id'));
+        $workspaceId = $request->input('workspace_id');
+        $workspace = $workspaceId ? Workspace::query()->findOrFail($workspaceId) : Workspace::query()->firstOrFail();
+
 
         $countryCode = $request->input('shipping_address.country_code');
         $items = $request->input('items');
@@ -50,13 +52,15 @@ class ShippingApiController extends Controller
     public function quote(Request $request): JsonResponse
     {
         $request->validate([
-            'workspace_id' => ['required', 'integer'],
+            'workspace_id' => ['nullable', 'integer'],
             'items' => ['required', 'array', 'min:1'],
             'shipping_address.country_code' => ['required', 'string', 'size:2'],
             'shipping_method_id' => ['nullable', 'integer'],
         ]);
 
-        $workspace = Workspace::query()->findOrFail($request->input('workspace_id'));
+        $workspaceId = $request->input('workspace_id');
+        $workspace = $workspaceId ? Workspace::query()->findOrFail($workspaceId) : Workspace::query()->firstOrFail();
+
 
         $countryCode = $request->input('shipping_address.country_code');
         $items = $request->input('items');
