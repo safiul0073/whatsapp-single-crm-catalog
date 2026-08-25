@@ -3,7 +3,19 @@
         {{ __('Edit Shipping Zone: :name', ['name' => $zone->name]) }}
     </x-slot:title>
 
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto" x-data="{
+        showEditModal: false,
+        editForm: { id: '', shipping_method_id: '', min_weight_kg: '', max_weight_kg: '', price: '', updateUrl: '' },
+        openEditModal(rate) {
+            this.editForm.id = rate.id;
+            this.editForm.shipping_method_id = rate.shipping_method_id;
+            this.editForm.min_weight_kg = rate.min_weight_kg;
+            this.editForm.max_weight_kg = rate.max_weight_kg;
+            this.editForm.price = rate.price;
+            this.editForm.updateUrl = '{{ url('dashboard/shipping/rates') }}/' + rate.id;
+            this.showEditModal = true;
+        }
+    }">
         <div class="mb-8 flex items-center justify-between">
             <div>
                 <a href="{{ route('user.shipping.index') }}" class="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
@@ -97,13 +109,18 @@
                                             </td>
                                             <td class="p-4 font-semibold text-neutral-800">${{ number_format($rate->price, 2) }}</td>
                                             <td class="p-4 text-right">
-                                                <form action="{{ route('user.shipping.rates.destroy', $rate) }}" method="POST" onsubmit="return confirm('{{ __('Remove this rate?') }}');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-error hover:text-error/80 p-1">
-                                                        <i class="ph ph-trash"></i>
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <button type="button" @click="openEditModal({ id: {{ $rate->id }}, shipping_method_id: {{ $rate->shipping_method_id }}, min_weight_kg: {{ (float)$rate->min_weight_kg }}, max_weight_kg: {{ $rate->max_weight_kg ? (float)$rate->max_weight_kg : 'null' }}, price: {{ (float)$rate->price }} })" class="text-neutral-500 hover:text-primary p-1">
+                                                        <i class="ph ph-pencil-simple"></i>
                                                     </button>
-                                                </form>
+                                                    <form action="{{ route('user.shipping.rates.destroy', $rate) }}" method="POST" onsubmit="return confirm('{{ __('Remove this rate?') }}');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-error hover:text-error/80 p-1">
+                                                            <i class="ph ph-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -150,6 +167,53 @@
                                 <i class="ph ph-plus"></i>
                                 <span>{{ __('Add Rate') }}</span>
                             </x-ui.button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Edit Rate Modal -->
+        <div x-show="showEditModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="showEditModal" x-transition.opacity class="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity" aria-hidden="true" @click="showEditModal = false"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div x-show="showEditModal" x-transition.scale.origin.bottom.sm class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                    <form :action="editForm.updateUrl" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <div class="px-6 py-5 border-b border-neutral-200">
+                            <h3 class="text-lg leading-6 font-bold text-neutral-900" id="modal-title">{{ __('Edit Shipping Rate') }}</h3>
+                        </div>
+                        <div class="px-6 py-5 space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="form-label font-medium text-neutral-700 text-sm mb-1 block">{{ __('Shipping Method') }}</label>
+                                    <select name="shipping_method_id" class="ts-basic w-full" x-model="editForm.shipping_method_id" required>
+                                        @foreach($methods as $method)
+                                            <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="form-label font-medium text-neutral-700 text-sm mb-1 block">{{ __('Min Weight (kg)') }}</label>
+                                    <input type="number" step="0.01" min="0" name="min_weight_kg" class="form-input w-full" x-model="editForm.min_weight_kg" required>
+                                </div>
+                                
+                                <div>
+                                    <label class="form-label font-medium text-neutral-700 text-sm mb-1 block">{{ __('Max Weight (kg, leave blank for no limit)') }}</label>
+                                    <input type="number" step="0.01" min="0" name="max_weight_kg" class="form-input w-full" x-model="editForm.max_weight_kg">
+                                </div>
+                                
+                                <div class="md:col-span-2">
+                                    <label class="form-label font-medium text-neutral-700 text-sm mb-1 block">{{ __('Rate / Cost ($)') }}</label>
+                                    <input type="number" step="0.01" min="0" name="price" class="form-input w-full" x-model="editForm.price" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 bg-neutral-50 flex items-center justify-end gap-3 rounded-b-xl border-t border-neutral-200">
+                            <x-ui.button type="button" variant="outline" @click="showEditModal = false">{{ __('Cancel') }}</x-ui.button>
+                            <x-ui.button type="submit" variant="primary">{{ __('Update Rate') }}</x-ui.button>
                         </div>
                     </form>
                 </div>

@@ -259,7 +259,9 @@
                             <select id="category_id" class="form-input text-sm cursor-pointer" name="category_id">
                                 <option value="">{{ __('Select category') }}</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" @selected((string)$selectedCategoryId === (string)$category->id)>{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" @selected((string)$selectedCategoryId === (string)$category->id)>
+                                        {{ $category->path }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>

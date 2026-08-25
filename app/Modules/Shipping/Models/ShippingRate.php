@@ -16,6 +16,7 @@ class ShippingRate extends Model
         'min_weight_kg',
         'max_weight_kg',
         'price',
+        'price_per_kg',
         'currency',
         'is_active',
     ];
@@ -27,6 +28,7 @@ class ShippingRate extends Model
             'min_weight_kg' => 'decimal:3',
             'max_weight_kg' => 'decimal:3',
             'price' => 'decimal:2',
+            'price_per_kg' => 'decimal:2',
         ];
     }
 

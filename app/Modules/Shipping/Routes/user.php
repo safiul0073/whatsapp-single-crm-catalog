@@ -12,6 +12,7 @@ Route::get('shipping/zones/{zone}/edit', [ShippingController::class, 'editZone']
 Route::put('shipping/zones/{zone}', [ShippingController::class, 'updateZone'])->name('shipping.zones.update');
 Route::delete('shipping/zones/{zone}', [ShippingController::class, 'destroyZone'])->name('shipping.zones.destroy');
 Route::post('shipping/zones/{zone}/rates', [ShippingController::class, 'storeRate'])->name('shipping.rates.store');
+Route::put('shipping/rates/{rate}', [ShippingController::class, 'updateRate'])->name('shipping.rates.update');
 Route::delete('shipping/rates/{rate}', [ShippingController::class, 'destroyRate'])->name('shipping.rates.destroy');
 
 Route::resource('shipping/methods', App\Modules\Shipping\Http\Controllers\User\ShippingMethodController::class)

@@ -21,6 +21,8 @@ class ShippingCalculatorService
     public function calculateCartWeight(Workspace $workspace, array $items): array
     {
         $totalWeight = 0.0;
+        $totalVolumetricAir = 0.0;
+        $totalVolumetricSea = 0.0;
         $processedItems = [];
 
         foreach ($items as $item) {
@@ -42,6 +44,7 @@ class ShippingCalculatorService
             }
 
             $unitWeight = (float) $product->default_unit_weight_kg;
+            $dimensions = $product->default_package_dimensions ?? [];
 
             if ($variantId) {
                 $variant = ProductVariant::query()
@@ -50,13 +53,33 @@ class ShippingCalculatorService
                     ->whereKey($variantId)
                     ->first();
 
-                if ($variant && $variant->weight_kg !== null) {
-                    $unitWeight = (float) $variant->weight_kg;
+                if ($variant) {
+                    if ($variant->weight_kg !== null) {
+                        $unitWeight = (float) $variant->weight_kg;
+                    }
+                    if (!empty($variant->package_dimensions)) {
+                        $dimensions = $variant->package_dimensions;
+                    }
                 }
             }
 
             $lineWeight = $unitWeight * $quantity;
             $totalWeight += $lineWeight;
+
+            // Volumetric calculation: (L x W x H)
+            $l = (float) ($dimensions['length_cm'] ?? 0);
+            $w = (float) ($dimensions['width_cm'] ?? 0);
+            $h = (float) ($dimensions['height_cm'] ?? 0);
+            $volumeCm3 = $l * $w * $h;
+
+            $unitVolAir = $volumeCm3 / 5000;
+            $unitVolSea = $volumeCm3 / 1000; // 1 CBM = 1,000,000 cm3 => 1,000,000 / 1000 = 1000 kg
+
+            $lineVolAir = $unitVolAir * $quantity;
+            $lineVolSea = $unitVolSea * $quantity;
+
+            $totalVolumetricAir += $lineVolAir;
+            $totalVolumetricSea += $lineVolSea;
 
             $processedItems[] = [
                 'product_id' => $productId,
@@ -64,6 +87,8 @@ class ShippingCalculatorService
                 'quantity' => $quantity,
                 'unit_weight_kg' => $unitWeight,
                 'total_weight_kg' => $lineWeight,
+                'volumetric_weight_air_kg' => $lineVolAir,
+                'volumetric_weight_sea_kg' => $lineVolSea,
             ];
         }
 
@@ -77,17 +102,19 @@ class ShippingCalculatorService
         return [
             'product_weight_kg' => $totalWeight,
             'packaging_weight_kg' => $packagingWeight,
-            'total_weight_kg' => $totalWeight + $packagingWeight,
+            'total_physical_weight_kg' => $totalWeight + $packagingWeight,
+            'total_volumetric_air_kg' => $totalVolumetricAir + $packagingWeight,
+            'total_volumetric_sea_kg' => $totalVolumetricSea + $packagingWeight,
             'items' => $processedItems,
         ];
     }
 
     /**
-     * Retrieve applicable shipping options for a destination and weight.
+     * Retrieve applicable shipping options for a destination and weight data.
      *
      * @return Collection<ShippingRate>
      */
-    public function getAvailableRates(Workspace $workspace, string $countryCode, float $totalWeightKg): Collection
+    public function getAvailableRates(Workspace $workspace, string $countryCode, array $weightData): Collection
     {
         // 1. Find the shipping zone for this country
         $zoneCountry = ShippingZoneCountry::query()
@@ -100,27 +127,41 @@ class ShippingCalculatorService
             return collect(); // No active zone for this country
         }
 
-        // 2. Fetch rates matching the weight in this zone
-        // Weight rule: min_weight_kg < weight <= max_weight_kg
-        // Except if weight is exactly 0, then 0 <= 0
-        return ShippingRate::query()
+        // 2. Fetch ALL active rates for this zone
+        $rates = ShippingRate::query()
             ->with('method')
             ->where('workspace_id', $workspace->id)
             ->where('shipping_zone_id', $zoneCountry->zone->id)
             ->where('is_active', true)
             ->whereHas('method', fn ($query) => $query->where('is_active', true))
-            ->where(function ($query) use ($totalWeightKg) {
-                if ($totalWeightKg == 0) {
-                    $query->where('min_weight_kg', 0);
-                } else {
-                    $query->where('min_weight_kg', '<', $totalWeightKg);
-                }
-            })
-            ->where(function ($query) use ($totalWeightKg) {
-                $query->where('max_weight_kg', '>=', $totalWeightKg)
-                    ->orWhereNull('max_weight_kg');
-            })
             ->get();
+
+        // 3. Filter in PHP based on Chargeable Weight for each method type
+        return $rates->filter(function (ShippingRate $rate) use ($weightData) {
+            $methodType = strtolower($rate->method->type ?? 'air');
+            
+            $physicalWeight = $weightData['total_physical_weight_kg'];
+            $volumetricWeight = $methodType === 'sea' 
+                ? $weightData['total_volumetric_sea_kg'] 
+                : $weightData['total_volumetric_air_kg'];
+
+            $chargeableWeight = max($physicalWeight, $volumetricWeight);
+
+            // Temporarily store chargeable weight on the rate for later use
+            $rate->chargeable_weight_kg = $chargeableWeight;
+
+            // Check if weight falls in bracket
+            if ($chargeableWeight == 0 && $rate->min_weight_kg > 0) {
+                return false;
+            }
+            if ($chargeableWeight != 0 && $chargeableWeight <= $rate->min_weight_kg) {
+                return false;
+            }
+            if ($rate->max_weight_kg !== null && $chargeableWeight > $rate->max_weight_kg) {
+                return false;
+            }
+            return true;
+        })->values();
     }
 
     /**
@@ -129,9 +170,8 @@ class ShippingCalculatorService
     public function getQuote(Workspace $workspace, array $cartItems, string $countryCode, ?int $selectedMethodId = null): array
     {
         $weightData = $this->calculateCartWeight($workspace, $cartItems);
-        $totalWeight = $weightData['total_weight_kg'];
 
-        $rates = $this->getAvailableRates($workspace, $countryCode, $totalWeight);
+        $rates = $this->getAvailableRates($workspace, $countryCode, $weightData);
 
         $selectedRate = null;
         if ($selectedMethodId) {
@@ -140,12 +180,18 @@ class ShippingCalculatorService
 
         // If no method selected or valid, pick the cheapest by default
         if (! $selectedRate && $rates->isNotEmpty()) {
-            $selectedRate = $rates->sortBy('price')->first();
+            // Sort by calculated dynamic price
+            $selectedRate = $rates->sortBy(function (ShippingRate $rate) {
+                return (float) $rate->price + ((float) $rate->price_per_kg * $rate->chargeable_weight_kg);
+            })->first();
         }
 
         $shippingPrice = 0.0;
         if ($selectedRate) {
-            $shippingPrice = (float) $selectedRate->price;
+            $basePrice = (float) $selectedRate->price;
+            $pricePerKg = (float) $selectedRate->price_per_kg;
+            $chargeableWeight = $selectedRate->chargeable_weight_kg;
+            $shippingPrice = round($basePrice + ($pricePerKg * $chargeableWeight), 2);
         }
 
         return [

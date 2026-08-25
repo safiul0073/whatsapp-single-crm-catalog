@@ -45,17 +45,17 @@ class ProductDetailResource extends JsonResource
             'wholesale_price' => (float) $this->wholesale_price,
             'country_of_origin' => $this->country_of_origin,
             'published_at' => $this->published_at,
-            'primary_image' => $this->primaryMedia ? media_url($this->primaryMedia->file_path) : null,
+            'primary_image' => $this->primaryMedia?->url,
             'gallery' => $this->gallery->map(fn ($g) => [
                 'id' => $g->id,
-                'url' => media_url($g->media?->file_path),
+                'url' => $g->media?->url,
                 'position' => $g->position,
             ]),
             'colors' => $this->colors->map(fn ($color) => [
                 'id' => $color->id,
                 'name' => $color->name,
                 'hex_code' => $color->hex_code,
-                'swatch_image' => $color->swatchMedia ? media_url($color->swatchMedia->file_path) : null,
+                'swatch_image' => $color->swatchMedia?->url,
                 'position' => $color->position,
             ]),
             'options' => $this->options->map(fn ($option) => [
@@ -75,13 +75,56 @@ class ProductDetailResource extends JsonResource
                 'color_id' => $variant->color_id,
                 'options' => $variant->options,
                 'status' => $variant->status,
-                'image' => $variant->media ? media_url($variant->media->file_path) : null,
+                'image' => $variant->media?->url,
             ]),
             'tier_prices' => $this->tierPrices->map(fn ($tier) => [
                 'id' => $tier->id,
                 'min_quantity' => (int) $tier->min_quantity,
                 'price' => (float) $tier->price,
             ]),
+            'shipping_estimate' => $this->getShippingEstimate($request),
         ];
+    }
+
+    protected function getShippingEstimate(Request $request): array
+    {
+        try {
+            $shippingService = app(\App\Modules\Shipping\Services\ShippingCalculatorService::class);
+            $workspace = $this->workspace ?? \App\Modules\Workspaces\Models\Workspace::find($this->workspace_id);
+            if (!$workspace) return [];
+
+            $country = $request->query('country', 'US');
+            
+            // Assume 1 quantity of the first variant (or base product if no variants)
+            $cartItems = [
+                [
+                    'product_id' => $this->id,
+                    'variant_id' => $this->variants->first()?->id,
+                    'quantity' => 1,
+                ]
+            ];
+
+            $quote = $shippingService->getQuote($workspace, $cartItems, $country);
+            
+            return [
+                'country' => $country,
+                'unit_chargeable_weight_kg' => $quote['selected_rate'] ? $quote['selected_rate']->chargeable_weight_kg : null,
+                'price' => $quote['shipping_price'],
+                'currency' => $quote['shipping_currency'],
+                'method' => $quote['selected_rate'] ? $quote['selected_rate']->method->name : null,
+                'available_methods' => $quote['available_rates']->map(function($rate) {
+                    return [
+                        'method_id' => $rate->method->id,
+                        'name' => $rate->method->name,
+                        'base_price' => (float) $rate->price,
+                        'price_per_kg' => (float) $rate->price_per_kg,
+                        'unit_chargeable_weight_kg' => $rate->chargeable_weight_kg,
+                        'currency' => $rate->currency,
+                    ];
+                })->values()->toArray(),
+            ];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }

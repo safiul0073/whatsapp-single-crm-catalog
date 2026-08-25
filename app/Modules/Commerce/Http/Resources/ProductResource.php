@@ -24,11 +24,28 @@ class ProductResource extends JsonResource
             'short_description' => $this->short_description,
             'single_piece_price' => (float) $this->single_piece_price,
             'wholesale_price' => (float) $this->wholesale_price,
-            'primary_image' => $this->primaryMedia ? media_url($this->primaryMedia->file_path) : null,
+            'primary_image' => $this->primaryMedia ? $this->primaryMedia->url : null,
             'rating' => (float) $this->rating,
             'reviews_count' => (int) $this->reviews_count,
             'starting_price' => (float) $this->starting_price, // Will be loaded dynamically via withMin
             'published_at' => $this->published_at,
+            // UI specific fields for ecommarce frontend
+            'price' => (float) $this->resolveUnitPrice(1, 'single'),
+            'originalPrice' => $this->single_piece_price, 
+            'sale' => false,
+            'saleText' => null,
+            'hasVariants' => $this->variants->isNotEmpty(),
+            'variantType' => count($this->colors) > 0 ? (count($this->options) > 0 ? 'color_size' : 'color') : (count($this->options) > 0 ? 'size' : null),
+            'colors' => collect($this->colors)->map(fn($color) => [
+                'id' => $color->id,
+                'name' => $color->name ?? $color->color_family,
+                'code' => $color->hex_code ?? '#000000',
+            ])->toArray(),
+            'sizes' => collect($this->variants)->pluck('size')->filter()->unique()->map(fn($size, $idx) => [
+                'id' => $idx,
+                'name' => $size
+            ])->values()->toArray(),
+            'available' => $this->status === 'active',
         ];
     }
 }

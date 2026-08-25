@@ -51,7 +51,17 @@ class CommerceDemoSeeder extends Seeder
             ]);
         }
 
-        DB::transaction(function () use ($workspace): void {
+        $brands = collect();
+        $audiences = collect();
+        $categories = collect();
+        $media = collect();
+
+        // Run category seeder outside of transaction because it uses TRUNCATE which implicitly commits
+        if (\App\Modules\Commerce\Models\Category::where('workspace_id', $workspace->id)->count() < 5) {
+            $this->call(\Database\Seeders\CategorySeeder::class);
+        }
+
+        DB::transaction(function () use ($workspace, &$brands, &$audiences, &$categories, &$media): void {
             $brands = $this->brands($workspace->id);
             $audiences = $this->audiences($workspace->id);
             $categories = $this->categories($workspace->id);
@@ -103,15 +113,7 @@ class CommerceDemoSeeder extends Seeder
     /** @return array<string, Category> */
     protected function categories(int $workspaceId): array
     {
-        return collect(['Shirts', 'T-Shirts', 'Hoodies & Sweaters', 'Polo Shirts', 'Denim & Jeans', 'Activewear', 'Trousers', 'Coats', 'Uniforms', 'Kids Clothing', 'Dresses', 'Blouses', 'Jackets'])
-            ->mapWithKeys(function (string $name) use ($workspaceId): array {
-                $category = Category::query()->updateOrCreate(
-                    ['workspace_id' => $workspaceId, 'slug' => Str::slug($name)],
-                    ['name' => $name, 'parent_id' => null, 'is_active' => true]
-                );
-
-                return [$name => $category];
-            })->all();
+        return \App\Modules\Commerce\Models\Category::where('workspace_id', $workspaceId)->get()->keyBy('slug')->all();
     }
 
     protected function variantPresets(int $workspaceId): void
@@ -208,7 +210,18 @@ class CommerceDemoSeeder extends Seeder
 
         return collect($images)->mapWithKeys(function (array $image, int $index) use ($userId): array {
             $number = $index + 1;
-            $url = "https://loremflickr.com/960/1200/{$image['query']}?lock=".(4100 + $number);
+            // Use Unsplash source API for images instead of loremflickr
+            $keywords = str_replace('-', ',', $image['query']);
+            $url = "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=1000&fit=crop&q=80&sig=" . (4100 + $number); // Dummy fallback, ideally would use dynamic Unsplash URL but since we want free images that resolve, let's use a stable unsplash image or a varied one if possible. Since we need many images, we can use unsplash source (which is deprecated) or just use the loremflickr replacement if they just meant "unsplash style". Wait, user asked to "use unplshe image free image url". 
+            // We can use a reliable unsplash image URL and append sig to avoid cache, or a list of unsplash URLs.
+            // But let's construct a direct unsplash random URL since source.unsplash is down, we can use images.unsplash.com with some IDs, but since we don't have 60 IDs, let's use random images from a known list or just use unsplash source URL alternative. Wait! I will provide a list of Unsplash URLs later or just use random seed.
+            // Let's use standard Unsplash IDs
+            $unsplashIds = [
+                '1521572163474-6864f9cf17ab', '1586790170083-2f9ceadc732d', '1602810318383-e386cc2a3ccf', '1542272604-787c3835535d', '1551028719-00167b16eac5', '1549298916-b41d501d3772', '1595777457583-95e059d581b8', '1566174053879-31528523f8ae', '1564859228273-274232fdb516', '1541099649105-f69ad21f3246', '1543163521-1bf539c55dd2', '1548036328-c9fa89d128fa', '1523170335258-f5ed11844a49', '1515886657613-9f3515b0c78f', '1489987707023-af7e9e8f85e4', '1509319117193-57bab727e09d', '1512436991502-26f500f40fb1', '1434389670869-bac3984d4da5', '1550614000-4b95d852a32c', '1485230895905-ec40ba36b9bc'
+            ];
+            $randomId = $unsplashIds[$index % count($unsplashIds)];
+            $url = "https://images.unsplash.com/photo-{$randomId}?w=800&h=1000&fit=crop";
+
             $media = Media::query()->updateOrCreate(
                 ['file_name' => sprintf('commerce-demo-%02d.jpg', $number), 'uploaded_by' => $userId],
                 [
@@ -237,6 +250,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '180 GSM Heavyweight Combed Cotton Crewneck T-Shirt',
                 'category' => 'T-Shirts',
+                'category_slug' => 'men-tops-t-shirts',
                 'audience' => 'Unisex',
                 'base_price' => 9.00,
                 'weight_kg' => 0.180,
@@ -252,6 +266,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '240 GSM Premium French Terry Oversized Tee',
                 'category' => 'T-Shirts',
+                'category_slug' => 'men-tops-t-shirts',
                 'audience' => 'Unisex',
                 'base_price' => 13.50,
                 'weight_kg' => 0.240,
@@ -267,6 +282,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '320 GSM Heavyweight Brushed Fleece Pullover Hoodie',
                 'category' => 'Hoodies & Sweaters',
+                'category_slug' => 'men-tops-hoodies-sweatshirts',
                 'audience' => 'Unisex',
                 'base_price' => 24.00,
                 'weight_kg' => 0.550,
@@ -282,6 +298,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '220 GSM Long-Staple Pique Cotton Polo Shirt',
                 'category' => 'Polo Shirts',
+                'category_slug' => 'men-tops-polos',
                 'audience' => 'Men',
                 'base_price' => 14.50,
                 'weight_kg' => 0.220,
@@ -297,6 +314,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '12 oz Ring-Spun Stretch Raw Indigo Denim Jeans',
                 'category' => 'Denim & Jeans',
+                'category_slug' => 'men-bottoms-jeans',
                 'audience' => 'Men',
                 'base_price' => 28.00,
                 'weight_kg' => 0.650,
@@ -312,6 +330,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '150 GSM Breathable Quick-Dry Dry-Fit Athletic Jersey',
                 'category' => 'Activewear',
+                'category_slug' => 'men-activewear',
                 'audience' => 'Unisex',
                 'base_price' => 8.50,
                 'weight_kg' => 0.140,
@@ -327,6 +346,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'High-Waist Seamless 4-Way Stretch Compression Leggings',
                 'category' => 'Activewear',
+                'category_slug' => 'men-activewear',
                 'audience' => 'Women',
                 'base_price' => 16.00,
                 'weight_kg' => 0.210,
@@ -342,6 +362,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Heavy-Duty 240 GSM Industrial Twill Utility Coverall',
                 'category' => 'Uniforms',
+                'category_slug' => 'unisex-t-shirts',
                 'audience' => 'Unisex',
                 'base_price' => 34.00,
                 'weight_kg' => 0.750,
@@ -357,6 +378,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Double-Face Wool Blend Coat',
                 'category' => 'Coats',
+                'category_slug' => 'women-tops-jackets-coats',
                 'audience' => 'Men',
                 'base_price' => 112.00,
                 'weight_kg' => 1.250,
@@ -372,6 +394,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '160 GSM Bio-Washed Soft-Touch Kids Crewneck T-Shirt',
                 'category' => 'Kids Clothing',
+                'category_slug' => 'kids-boys-tops',
                 'audience' => 'Kids',
                 'base_price' => 6.50,
                 'weight_kg' => 0.110,
@@ -387,6 +410,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '280 GSM Full-Zip French Terry Track Bomber Jacket',
                 'category' => 'Jackets',
+                'category_slug' => 'men-tops-jackets-coats',
                 'audience' => 'Men',
                 'base_price' => 28.00,
                 'weight_kg' => 0.480,
@@ -402,6 +426,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => '200 GSM Cotton Twill 6-Pocket Cargo Shorts',
                 'category' => 'Trousers',
+                'category_slug' => 'men-bottoms-trousers',
                 'audience' => 'Men',
                 'base_price' => 17.00,
                 'weight_kg' => 0.320,
@@ -417,6 +442,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Oxford Button-Down Long Sleeve Shirt',
                 'category' => 'Shirts',
+                'category_slug' => 'men-tops-casual-shirts',
                 'audience' => 'Men',
                 'base_price' => 22.00,
                 'weight_kg' => 0.280,
@@ -432,6 +458,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Washed Linen Camp Collar Summer Shirt',
                 'category' => 'Shirts',
+                'category_slug' => 'men-tops-casual-shirts',
                 'audience' => 'Unisex',
                 'base_price' => 26.00,
                 'weight_kg' => 0.210,
@@ -447,6 +474,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Stretch Cotton Slim-Fit Casual Chino Trouser',
                 'category' => 'Trousers',
+                'category_slug' => 'men-bottoms-trousers',
                 'audience' => 'Men',
                 'base_price' => 24.00,
                 'weight_kg' => 0.420,
@@ -462,6 +490,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Water-Repellent Belted Trench Coat',
                 'category' => 'Coats',
+                'category_slug' => 'women-tops-jackets-coats',
                 'audience' => 'Women',
                 'base_price' => 85.00,
                 'weight_kg' => 0.950,
@@ -477,6 +506,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Pleated Cotton Voile Summer Blouse',
                 'category' => 'Blouses',
+                'category_slug' => 'women-tops-blouses-shirts',
                 'audience' => 'Women',
                 'base_price' => 19.00,
                 'weight_kg' => 0.160,
@@ -492,6 +522,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Tiered Viscose Floral Bohemian Maxi Dress',
                 'category' => 'Dresses',
+                'category_slug' => 'women-dresses-jumpsuits',
                 'audience' => 'Women',
                 'base_price' => 32.00,
                 'weight_kg' => 0.350,
@@ -507,6 +538,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'Classic 14 oz Heavyweight Denim Trucker Jacket',
                 'category' => 'Jackets',
+                'category_slug' => 'men-tops-jackets-coats',
                 'audience' => 'Unisex',
                 'base_price' => 38.00,
                 'weight_kg' => 0.850,
@@ -522,6 +554,7 @@ class CommerceDemoSeeder extends Seeder
             [
                 'name' => 'High-Density Recycled Flight Bomber Jacket',
                 'category' => 'Jackets',
+                'category_slug' => 'men-tops-jackets-coats',
                 'audience' => 'Men',
                 'base_price' => 45.00,
                 'weight_kg' => 0.650,
@@ -566,7 +599,7 @@ class CommerceDemoSeeder extends Seeder
         $number = $index + 1;
         $brand = array_values($brands)[$index % count($brands)];
         $audience = $audiences[$definition['audience']] ?? array_values($audiences)[0];
-        $category = $categories[$definition['category']] ?? array_values($categories)[0];
+        $category = $categories[$definition['category_slug']] ?? \App\Modules\Commerce\Models\Category::first();
         $primaryMedia = $media[(($index * 7) % 60) + 1];
         $secondaryMedia = $media[(($index * 7 + 19) % 60) + 1];
         $price = round($definition['single_piece_price'], 2);
@@ -612,7 +645,7 @@ class CommerceDemoSeeder extends Seeder
                 'season' => 'All Season',
                 'shipping_info' => 'USA & Canada Shipping',
                 'delivery_time' => '6–10 Working Days Delivery',
-                'moq' => 40,
+                'moq' => 1,
                 'rating' => 5.00,
                 'reviews_count' => 128,
                 'fabric_gsm' => $definition['fabric_gsm'],
@@ -620,6 +653,7 @@ class CommerceDemoSeeder extends Seeder
                 'single_piece_price' => $price,
                 'wholesale_price' => round($price * 0.72, 2),
                 'default_unit_weight_kg' => $definition['default_unit_weight_kg'],
+                'default_package_dimensions' => ['length_cm' => 35, 'width_cm' => 28, 'height_cm' => 6],
                 'condition' => 'new',
                 'audience' => $audience->name,
                 'country_of_origin' => 'BD',
@@ -629,38 +663,29 @@ class CommerceDemoSeeder extends Seeder
             ]
         );
 
-        // Build 20 realistic colorways for showcase if this is the first product
-        $colorsToSeed = $definition['colors'];
-        if ($index === 0) {
-            $colorsToSeed = [
-                ['name' => 'Light Blue', 'hex_code' => '#60A5FA', 'color_family' => 'Blue'],
-                ['name' => 'Green', 'hex_code' => '#10B981', 'color_family' => 'Green'],
-                ['name' => 'Olive', 'hex_code' => '#84CC16', 'color_family' => 'Green'],
-                ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
-                ['name' => 'Maroon', 'hex_code' => '#991B1B', 'color_family' => 'Red'],
-                ['name' => 'Purple', 'hex_code' => '#8B5CF6', 'color_family' => 'Purple'],
-                ['name' => 'Steel Blue', 'hex_code' => '#3B82F6', 'color_family' => 'Blue'],
-                ['name' => 'Navy', 'hex_code' => '#1E293B', 'color_family' => 'Blue'],
-                ['name' => 'Dark Grey', 'hex_code' => '#374151', 'color_family' => 'Grey'],
-                ['name' => 'Camel', 'hex_code' => '#D97706', 'color_family' => 'Earth'],
-                ['name' => 'Pink', 'hex_code' => '#EC4899', 'color_family' => 'Pink'],
-                ['name' => 'Brown', 'hex_code' => '#78350F', 'color_family' => 'Earth'],
-                ['name' => 'Army Green', 'hex_code' => '#3F6212', 'color_family' => 'Green'],
-                ['name' => 'Coral', 'hex_code' => '#F43F5E', 'color_family' => 'Red'],
-                ['name' => 'Mint Green', 'hex_code' => '#34D399', 'color_family' => 'Green'],
-                ['name' => 'Yellow', 'hex_code' => '#F59E0B', 'color_family' => 'Yellow'],
-                ['name' => 'Red', 'hex_code' => '#EF4444', 'color_family' => 'Red'],
-                ['name' => 'Deep Navy', 'hex_code' => '#0F172A', 'color_family' => 'Blue'],
-                ['name' => 'Teal', 'hex_code' => '#0D9488', 'color_family' => 'Green'],
-            ];
-        }
+        // Build realistic colorways
+        $colorsToSeed = [
+            ['name' => 'Light Blue', 'hex_code' => '#60A5FA', 'color_family' => 'Blue'],
+            ['name' => 'Green', 'hex_code' => '#10B981', 'color_family' => 'Green'],
+            ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
+            ['name' => 'Purple', 'hex_code' => '#8B5CF6', 'color_family' => 'Purple'],
+            ['name' => 'Dark Grey', 'hex_code' => '#374151', 'color_family' => 'Grey'],
+            ['name' => 'Camel', 'hex_code' => '#D97706', 'color_family' => 'Earth'],
+            ['name' => 'Pink', 'hex_code' => '#EC4899', 'color_family' => 'Pink'],
+            ['name' => 'Brown', 'hex_code' => '#78350F', 'color_family' => 'Earth'],
+            ['name' => 'Yellow', 'hex_code' => '#F59E0B', 'color_family' => 'Yellow'],
+            ['name' => 'Red', 'hex_code' => '#EF4444', 'color_family' => 'Red'],
+        ];
 
         // Seed Product Media Gallery & Color Swatches
         $colorModels = [];
         $pos = 0;
         foreach ($colorsToSeed as $cPos => $colorData) {
+            // Get 4 random images for this color
             $colorMedia1 = $media[(($index * 7 + $cPos * 13) % 60) + 1];
             $colorMedia2 = $media[(($index * 7 + $cPos * 13 + 5) % 60) + 1];
+            $colorMedia3 = $media[(($index * 7 + $cPos * 13 + 10) % 60) + 1];
+            $colorMedia4 = $media[(($index * 7 + $cPos * 13 + 15) % 60) + 1];
 
             $colorModel = ProductColor::query()->updateOrCreate(
                 ['workspace_id' => $workspaceId, 'product_id' => $product->id, 'name' => $colorData['name']],
@@ -673,33 +698,21 @@ class CommerceDemoSeeder extends Seeder
             );
             $colorModels[$colorData['name']] = $colorModel;
 
-            // Seed primary photo for this color
-            ProductMedia::query()->updateOrCreate(
-                ['product_id' => $product->id, 'media_id' => $colorMedia1->id],
-                [
-                    'workspace_id' => $workspaceId,
-                    'color_id' => $colorModel->id,
-                    'media_type' => 'image',
-                    'role' => $cPos === 0 ? 'primary' : 'gallery',
-                    'alt_text' => $definition['name'].' in '.$colorData['name'].' - Front',
-                    'position' => $pos++,
-                    'is_primary' => $cPos === 0,
-                ]
-            );
-
-            // Seed secondary angle photo for this color
-            ProductMedia::query()->updateOrCreate(
-                ['product_id' => $product->id, 'media_id' => $colorMedia2->id],
-                [
-                    'workspace_id' => $workspaceId,
-                    'color_id' => $colorModel->id,
-                    'media_type' => 'image',
-                    'role' => 'gallery',
-                    'alt_text' => $definition['name'].' in '.$colorData['name'].' - Angle',
-                    'position' => $pos++,
-                    'is_primary' => false,
-                ]
-            );
+            $mediaToAttach = [$colorMedia1, $colorMedia2, $colorMedia3, $colorMedia4];
+            foreach ($mediaToAttach as $mIndex => $mMedia) {
+                ProductMedia::query()->updateOrCreate(
+                    ['product_id' => $product->id, 'media_id' => $mMedia->id],
+                    [
+                        'workspace_id' => $workspaceId,
+                        'color_id' => $colorModel->id,
+                        'media_type' => 'image',
+                        'role' => ($cPos === 0 && $mIndex === 0) ? 'primary' : 'gallery',
+                        'alt_text' => $definition['name'].' in '.$colorData['name'].' - Image '.($mIndex+1),
+                        'position' => $pos++,
+                        'is_primary' => ($cPos === 0 && $mIndex === 0),
+                    ]
+                );
+            }
         }
 
         // Seed Wholesale Volume Tier Pricing
@@ -723,14 +736,14 @@ class CommerceDemoSeeder extends Seeder
 
         // Seed Product Options (Size & Color)
         $sizes = $definition['sizes'];
-        $colorNames = collect($definition['colors'])->pluck('name')->all();
+        $colorNames = collect($colorsToSeed)->pluck('name')->all();
 
         $sizeOption = $this->option($workspaceId, $product->id, 'Size', 'size', 0, $sizes);
         $colorOption = $this->option($workspaceId, $product->id, 'Color', 'color', 1, $colorNames);
 
         // Seed Variants with Color ID, dedicated Color Image, and Size
         foreach ($sizes as $sizeIndex => $size) {
-            foreach ($definition['colors'] as $colorIndex => $colorData) {
+            foreach ($colorsToSeed as $colorIndex => $colorData) {
                 $colorName = $colorData['name'];
                 $colorObj = $colorModels[$colorName] ?? null;
                 $suffix = Str::upper(Str::slug($size.'-'.$colorName, '-'));

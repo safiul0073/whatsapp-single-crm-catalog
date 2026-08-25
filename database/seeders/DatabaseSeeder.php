@@ -50,6 +50,7 @@ class DatabaseSeeder extends Seeder
             FrontendMenuSeeder::class,
             WaProLandingSeeder::class,
             CommerceDemoSeeder::class,
+            \App\Modules\Shipping\Database\Seeders\ShippingSeeder::class,
         ]);
     }
 }

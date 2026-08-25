@@ -208,14 +208,23 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
 
+        $categories = Category::query()
+            ->withCount(['products', 'children'])
+            ->where('workspace_id', $workspace->id)
+            ->get();
+
+        foreach ($categories as $category) {
+            $path = [$category->name];
+            $parent = $categories->firstWhere('id', $category->parent_id);
+            while ($parent) {
+                array_unshift($path, $parent->name);
+                $parent = $categories->firstWhere('id', $parent->parent_id);
+            }
+            $category->path = implode(' > ', $path);
+        }
+
         return view('commerce::user.categories', [
-            'categories' => Category::query()
-                ->with('parent')
-                ->withCount(['products', 'children'])
-                ->where('workspace_id', $workspace->id)
-                ->orderByRaw('parent_id is not null')
-                ->orderBy('name')
-                ->get(),
+            'categories' => $categories->sortBy('name'),
         ]);
     }
 
@@ -610,10 +619,21 @@ class CommerceController extends Controller implements HasMiddleware
 
         $product?->load(['gallery.media', 'options.values', 'variants.media']);
 
+        $categories = Category::query()->where('workspace_id', $workspace->id)->get();
+        foreach ($categories as $category) {
+            $path = [$category->name];
+            $parent = $categories->firstWhere('id', $category->parent_id);
+            while ($parent) {
+                array_unshift($path, $parent->name);
+                $parent = $categories->firstWhere('id', $parent->parent_id);
+            }
+            $category->path = implode(' > ', $path);
+        }
+
         return view('commerce::user.form', [
             'product' => $product,
             'step' => $product ? max(1, min(8, $request->integer('step', $product->wizard_step))) : 1,
-            'categories' => Category::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(),
+            'categories' => $categories->sortBy('path'),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'audiences' => Audience::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'variantPresets' => VariantPreset::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),

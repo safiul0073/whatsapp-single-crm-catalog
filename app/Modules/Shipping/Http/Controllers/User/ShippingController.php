@@ -201,4 +201,26 @@ class ShippingController extends Controller
 
         return back()->with('success', __('Shipping rate removed successfully.'));
     }
+
+    public function updateRate(Request $request, ShippingRate $rate)
+    {
+        $workspaceId = app(\App\Modules\MarketingChannels\Services\WorkspaceResolver::class)->current($request->user())->id;
+        abort_if($rate->workspace_id !== $workspaceId, 403);
+
+        $request->validate([
+            'shipping_method_id' => ['required', 'exists:shipping_methods,id'],
+            'min_weight_kg' => ['required', 'numeric', 'min:0'],
+            'max_weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $rate->update([
+            'shipping_method_id' => $request->shipping_method_id,
+            'min_weight_kg' => $request->min_weight_kg,
+            'max_weight_kg' => $request->max_weight_kg,
+            'price' => $request->price,
+        ]);
+
+        return redirect()->route('user.shipping.zones.edit', $rate->shipping_zone_id)->with('success', __('Shipping rate updated successfully.'));
+    }
 }

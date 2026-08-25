@@ -16,14 +16,65 @@ class ProductApiController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $products = Product::query()
-            ->with(['primaryMedia', 'category', 'brandRecord'])
+        $query = Product::query()
+            ->with(['primaryMedia', 'category', 'brandRecord', 'colors', 'variants', 'options'])
             ->withMin([
-                'variants as starting_price' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock']),
+                'variants as starting_price' => fn ($q) => $q->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
-            ->where('status', 'active')
-            ->latest('id')
-            ->paginate($request->integer('per_page', 12));
+            ->where('status', 'active');
+
+        // Apply Filters
+        if ($request->filled('category') || $request->filled('subcategory')) {
+            $cat = $request->input('category', $request->input('subcategory'));
+            $query->whereHas('category', fn($q) => $q->where('slug', $cat)->orWhere('name', $cat)->orWhere('id', $cat));
+        }
+
+        if ($request->filled('color')) {
+            $query->whereHas('colors', fn($q) => $q->where('name', $request->color)->orWhere('hex_code', $request->color));
+        }
+
+        if ($request->filled('size')) {
+            $query->whereHas('variants', fn($q) => $q->where('size', $request->size));
+        }
+
+        if ($request->filled('min_price')) {
+            $query->where(function($q) use ($request) {
+                $q->where('single_piece_price', '>=', $request->min_price)
+                  ->orWhereHas('variants', fn($qv) => $qv->where('price', '>=', $request->min_price));
+            });
+        }
+
+        if ($request->filled('max_price')) {
+            $query->where(function($q) use ($request) {
+                $q->where('single_piece_price', '<=', $request->max_price)
+                  ->orWhereHas('variants', fn($qv) => $qv->where('price', '<=', $request->max_price));
+            });
+        }
+
+        // Apply Sorting
+        $sort = $request->get('sort', 'relevance');
+        switch ($sort) {
+            case 'newest':
+                $query->orderByDesc('created_at');
+                break;
+            case 'price_asc':
+                $query->orderBy('single_piece_price'); // simplified for API
+                break;
+            case 'price_desc':
+                $query->orderByDesc('single_piece_price');
+                break;
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            default:
+                $query->orderByDesc('id');
+                break;
+        }
+
+        $products = $query->paginate($request->integer('per_page', 16));
 
         return ProductResource::collection($products);
     }
