@@ -24,6 +24,7 @@ class ProductResource extends JsonResource
             'short_description' => $this->short_description,
             'single_piece_price' => (float) $this->single_piece_price,
             'wholesale_price' => (float) $this->wholesale_price,
+            'selling_mode' => $this->selling_mode ?? 'both',
             'primary_image' => $this->primaryMedia ? $this->primaryMedia->url : null,
             'rating' => (float) $this->rating,
             'reviews_count' => (int) $this->reviews_count,

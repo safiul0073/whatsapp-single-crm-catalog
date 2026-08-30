@@ -47,6 +47,13 @@ class Product extends Model
         'default_package_dimensions',
         'single_piece_price',
         'wholesale_price',
+        'selling_mode',
+        'ws_enabled',
+        'ws_min_sizes',
+        'ws_color_moq',
+        'ws_main_moq',
+        'ws_size_ratios',
+        'ws_ratio_multiplier',
         'country_of_origin',
         'status',
         'wizard_step',
@@ -69,6 +76,13 @@ class Product extends Model
             'default_unit_weight_kg' => 'decimal:3',
             'single_piece_price' => 'decimal:2',
             'wholesale_price' => 'decimal:2',
+            'selling_mode' => 'string',
+            'ws_enabled' => 'boolean',
+            'ws_min_sizes' => 'integer',
+            'ws_color_moq' => 'integer',
+            'ws_main_moq' => 'integer',
+            'ws_size_ratios' => 'array',
+            'ws_ratio_multiplier' => 'integer',
         ];
     }
 
@@ -110,6 +124,59 @@ class Product extends Model
     public function tierPrices(): HasMany
     {
         return $this->hasMany(ProductTierPrice::class)->orderBy('min_quantity');
+    }
+
+    public function isWholesaleEnabled(): bool
+    {
+        return $this->ws_enabled && in_array($this->selling_mode, ['wholesale', 'both'], true);
+    }
+
+    public function isRetailEnabled(): bool
+    {
+        return in_array($this->selling_mode, ['retail', 'both'], true);
+    }
+
+    public function getEffectiveSizeRatios(): array
+    {
+        if (!empty($this->ws_size_ratios)) {
+            return $this->ws_size_ratios;
+        }
+
+        $this->loadMissing('options.values', 'colors');
+        $sizeOption = $this->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
+        if (!$sizeOption) {
+            return [];
+        }
+
+        $colorMoq = max(1, $this->ws_color_moq ?? 1);
+        $defaultRatio = $sizeOption->values->pluck('value')->mapWithKeys(fn (string $size) => [$size => $colorMoq])->all();
+        
+        $ratios = [];
+        foreach ($this->colors as $color) {
+            $ratios[$color->id] = $defaultRatio;
+        }
+        
+        return $ratios;
+    }
+
+    public function calculateMinQtyPerColor(): int
+    {
+        $ratios = $this->getEffectiveSizeRatios();
+        if (empty($ratios)) {
+            return max(1, $this->ws_color_moq ?? 1);
+        }
+
+        $multiplier = max(1, $this->ws_ratio_multiplier ?? 1);
+        $minQty = null;
+
+        foreach ($ratios as $colorRatios) {
+            $sum = (int) array_sum($colorRatios) * $multiplier;
+            if ($minQty === null || $sum < $minQty) {
+                $minQty = $sum;
+            }
+        }
+
+        return $minQty ?? max(1, $this->ws_color_moq ?? 1);
     }
 
     public function variants(): HasMany

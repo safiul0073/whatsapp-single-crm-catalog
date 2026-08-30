@@ -25,9 +25,22 @@ class ProductDetailsRequest extends FormRequest
             $featureHighlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $featureHighlights))));
         }
 
+        // Parse ws_size_ratios from form inputs
+        $wsRatios = $this->input('ws_size_ratios');
+        if (is_array($wsRatios)) {
+            foreach ($wsRatios as $colorName => $ratios) {
+                if (is_array($ratios)) {
+                    $wsRatios[$colorName] = array_map('intval', array_filter($ratios, fn ($v) => $v !== null && $v !== ''));
+                }
+            }
+            $wsRatios = array_filter($wsRatios);
+        }
+
         $this->merge([
             'features' => $features ?: null,
             'feature_highlights' => $featureHighlights ?: null,
+            'ws_enabled' => $this->boolean('ws_enabled'),
+            'ws_size_ratios' => !empty($wsRatios) ? $wsRatios : null,
             'moq' => max(1, (int) $this->input('moq', 1)),
             'condition' => $this->input('condition', 'new') ?: 'new',
             'country_of_origin' => $this->input('country_of_origin', 'BD') ?: 'BD',
@@ -76,6 +89,15 @@ class ProductDetailsRequest extends FormRequest
             'default_unit_weight_kg' => ['nullable', 'numeric', 'min:0.001', 'max:100'],
             'single_piece_price' => ['nullable', 'numeric', 'min:0.01', 'max:9999999'],
             'wholesale_price' => ['nullable', 'numeric', 'min:0.01', 'max:9999999'],
+            'selling_mode' => ['nullable', 'in:retail,wholesale,both'],
+            'ws_enabled' => ['nullable', 'boolean'],
+            'ws_min_sizes' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'ws_color_moq' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'ws_main_moq' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'ws_size_ratios' => ['nullable', 'array'],
+            'ws_size_ratios.*' => ['nullable', 'array'],
+            'ws_size_ratios.*.*' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'ws_ratio_multiplier' => ['nullable', 'integer', 'min:1', 'max:100'],
             'country_of_origin' => ['nullable', 'string', 'max:2'],
             'tier_prices' => ['nullable', 'array'],
             'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1'],

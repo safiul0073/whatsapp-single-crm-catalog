@@ -72,6 +72,11 @@ class OrderWorkflowService
             $locked->save();
             $this->audit->logCustom('commerce.order.status_changed', ['order_id' => $locked->id, 'status' => $to]);
 
+            if ($to === 'shipped' && $locked->contact && $locked->contact->email) {
+                \Illuminate\Support\Facades\Mail::to($locked->contact->email)
+                    ->send(new \App\Modules\Commerce\Mail\OrderShippedMail($locked->fresh('items', 'contact')));
+            }
+
             return $locked->fresh('items');
         });
     }

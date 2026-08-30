@@ -4,6 +4,10 @@ namespace App\Modules\Commerce\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\Brand;
+use App\Modules\Commerce\Models\ProductColor;
+use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Http\Resources\ProductResource;
 use App\Modules\Commerce\Http\Resources\ProductDetailResource;
 use Illuminate\Http\Request;
@@ -24,9 +28,38 @@ class ProductApiController extends Controller
             ->where('status', 'active');
 
         // Apply Filters
+        // Apply Filters
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('brand')) {
+            $brands = is_array($request->brand) ? $request->brand : explode(',', $request->brand);
+            $query->whereHas('brandRecord', function ($q) use ($brands) {
+                $q->whereIn('slug', $brands)->orWhereIn('name', $brands);
+            });
+        }
+
         if ($request->filled('category') || $request->filled('subcategory')) {
-            $cat = $request->input('category', $request->input('subcategory'));
-            $query->whereHas('category', fn($q) => $q->where('slug', $cat)->orWhere('name', $cat)->orWhere('id', $cat));
+            $cats = $request->filled('category') ? $request->category : $request->subcategory;
+            $catArray = is_array($cats) ? $cats : explode(',', $cats);
+
+            // Fetch matched categories
+            $matchedCats = Category::whereIn('slug', $catArray)
+                ->orWhereIn('name', $catArray)
+                ->orWhereIn('id', $catArray)
+                ->pluck('id')->toArray();
+
+            if (!empty($matchedCats)) {
+                // Get Level 2 children
+                $childIds = Category::whereIn('parent_id', $matchedCats)->pluck('id')->toArray();
+                // Get Level 3 children
+                $grandchildIds = !empty($childIds) ? Category::whereIn('parent_id', $childIds)->pluck('id')->toArray() : [];
+                
+                $allCategoryIds = array_unique(array_merge($matchedCats, $childIds, $grandchildIds));
+
+                $query->whereIn('category_id', $allCategoryIds);
+            }
         }
 
         if ($request->filled('color')) {
@@ -123,5 +156,55 @@ class ProductApiController extends Controller
             ->firstOrFail();
 
         return new ProductDetailResource($record);
+    }
+
+
+    /**
+     * Retrieve all available filters (Categories, Brands, Colors, etc.)
+     */
+    public function filters(Request $request)
+    {
+        $workspaceId = $request->get('workspace_id', 1); // Defaults to 1 for demo purposes if not passed
+
+        // Fetch hierarchical categories
+        $categories = Category::where('workspace_id', $workspaceId)
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->with(['children' => function ($q) {
+                $q->where('is_active', true)->with(['children' => function($q2) {
+                    $q2->where('is_active', true);
+                }]);
+            }])
+            ->orderBy('name')
+            ->get();
+
+        // Fetch brands
+        $brands = Brand::where('workspace_id', $workspaceId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Colors
+        $colors = ProductColor::where('workspace_id', $workspaceId)
+            ->select('name', 'hex_code')
+            ->distinct()
+            ->get();
+
+        // Sizes (from variants)
+        $sizes = ProductVariant::where('workspace_id', $workspaceId)
+            ->whereNotNull('size')
+            ->select('size')
+            ->distinct()
+            ->pluck('size');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'categories' => $categories,
+                'brands' => $brands,
+                'colors' => $colors,
+                'sizes' => $sizes
+            ]
+        ]);
     }
 }

@@ -126,6 +126,7 @@
                         6 => ['label' => __('Features')],
                         7 => ['label' => __('Description')],
                         8 => ['label' => __('Specifications')],
+                        9 => ['label' => __('Wholesale')],
                     ];
                 @endphp
 
@@ -814,7 +815,7 @@
         @elseif($currentStep === 8)
             <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
-                <input type="hidden" name="next_step" value="8">
+                <input type="hidden" name="next_step" value="9">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
@@ -874,8 +875,249 @@
                     <input type="hidden" name="season" :value="(specifications.find(s => s.attribute.toLowerCase() === 'season') || {}).value || '{{ $product->season }}'">
                 </section>
 
-                {{-- Final Action Buttons matching Screenshot --}}
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Wholesale Settings →') }}</button>
+                </div>
+            </form>
+        {{-- STEP 9: Wholesale Settings --}}
+        @elseif($currentStep === 9)
+            <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
+                @csrf @method('PUT')
+                <input type="hidden" name="next_step" value="9">
+                <input type="hidden" name="name" value="{{ $product->name }}">
+
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Wholesale Settings') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Configure wholesale selling rules: size ratios, minimum size selection, and order MOQ for wholesale buyers.') }}</p>
+
+                    <div class="mt-6 space-y-6"
+                        x-data="{
+                            sellingMode: @js(old('selling_mode', $product->selling_mode ?? 'both')),
+                            wsEnabled: @js(old('ws_enabled', $product->ws_enabled ?? false)),
+                            wsMinSizes: @js(old('ws_min_sizes', $product->ws_min_sizes ?? '')),
+                            wsColorMoq: @js(old('ws_color_moq', $product->ws_color_moq ?? 1)),
+                            wsMainMoq: @js(old('ws_main_moq', $product->ws_main_moq ?? 40)),
+                            wsRatioMultiplier: @js(old('ws_ratio_multiplier', $product->ws_ratio_multiplier ?? 1)),
+                            productSizes: @js(
+                                ($product->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size')?->values?->pluck('value')?->all()) ?? $product->variants->pluck('size')->filter()->unique()->values()->all()
+                            ),
+                            wsRatios: @js(old('ws_size_ratios', $product->ws_size_ratios ?? [])),
+
+                            get showWholesale() {
+                                return this.sellingMode === 'wholesale' || this.sellingMode === 'both';
+                            },
+
+                            get totalPerColor() {
+                                if (!this.productSizes.length || !this.colors.length) return 0;
+                                let firstKey = this.colors[0]?.id || 0;
+                                if (!this.wsRatios[firstKey]) return 0;
+                                let sum = 0;
+                                for (const sz of this.productSizes) {
+                                    sum += parseInt(this.wsRatios[firstKey][sz] || this.wsColorMoq || 1);
+                                }
+                                return sum * (parseInt(this.wsRatioMultiplier) || 1);
+                            },
+
+                            get colorsNeeded() {
+                                if (this.totalPerColor <= 0 || !this.wsMainMoq) return 0;
+                                return Math.ceil(parseInt(this.wsMainMoq) / this.totalPerColor);
+                            },
+
+                            initRatios() {
+                                if (!this.colors || !this.colors.length) return;
+                                for (let i = 0; i < this.colors.length; i++) {
+                                    const color = this.colors[i];
+                                    const key = color.id || i;
+                                    if (!this.wsRatios[key]) {
+                                        this.wsRatios[key] = {};
+                                    }
+                                    for (const sz of this.productSizes) {
+                                        if (this.wsRatios[key][sz] === undefined) {
+                                            this.wsRatios[key][sz] = parseInt(this.wsColorMoq) || 1;
+                                        }
+                                    }
+                                }
+                            },
+
+                            init() {
+                                this.initRatios();
+                            }
+                        }"
+                    >
+                        {{-- Selling Mode Selector --}}
+                        <div>
+                            <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700">{{ __('Selling Mode *') }}</label>
+                            <p class="text-[11px] text-neutral-500 mb-3">{{ __('Choose how this product is sold to buyers.') }}</p>
+                            <div class="grid grid-cols-3 gap-3">
+                                <label class="relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all shadow-2xs"
+                                    :class="sellingMode === 'retail' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-neutral-200 bg-white hover:border-neutral-300'"
+                                >
+                                    <input type="radio" name="selling_mode" value="retail" class="sr-only" x-model="sellingMode">
+                                    <i class="ph ph-storefront text-2xl" :class="sellingMode === 'retail' ? 'text-primary' : 'text-neutral-400'"></i>
+                                    <span class="text-xs font-bold" :class="sellingMode === 'retail' ? 'text-primary' : 'text-neutral-700'">{{ __('Retail Only') }}</span>
+                                    <span class="text-[10px] text-neutral-500 text-center">{{ __('Single piece sales') }}</span>
+                                </label>
+                                <label class="relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all shadow-2xs"
+                                    :class="sellingMode === 'wholesale' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-neutral-200 bg-white hover:border-neutral-300'"
+                                >
+                                    <input type="radio" name="selling_mode" value="wholesale" class="sr-only" x-model="sellingMode">
+                                    <i class="ph ph-package text-2xl" :class="sellingMode === 'wholesale' ? 'text-primary' : 'text-neutral-400'"></i>
+                                    <span class="text-xs font-bold" :class="sellingMode === 'wholesale' ? 'text-primary' : 'text-neutral-700'">{{ __('Wholesale Only') }}</span>
+                                    <span class="text-[10px] text-neutral-500 text-center">{{ __('Bulk orders only') }}</span>
+                                </label>
+                                <label class="relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all shadow-2xs"
+                                    :class="sellingMode === 'both' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-neutral-200 bg-white hover:border-neutral-300'"
+                                >
+                                    <input type="radio" name="selling_mode" value="both" class="sr-only" x-model="sellingMode">
+                                    <div class="flex gap-1">
+                                        <i class="ph ph-storefront text-xl" :class="sellingMode === 'both' ? 'text-primary' : 'text-neutral-400'"></i>
+                                        <i class="ph ph-package text-xl" :class="sellingMode === 'both' ? 'text-primary' : 'text-neutral-400'"></i>
+                                    </div>
+                                    <span class="text-xs font-bold" :class="sellingMode === 'both' ? 'text-primary' : 'text-neutral-700'">{{ __('Both') }}</span>
+                                    <span class="text-[10px] text-neutral-500 text-center">{{ __('Retail + Wholesale') }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- Wholesale Settings Panel --}}
+                        <div x-show="showWholesale" x-cloak x-transition class="space-y-6 border-t border-neutral-200 pt-6">
+                            {{-- Enable Toggle --}}
+                            <div class="flex items-center justify-between rounded-xl border border-emerald-200/80 bg-emerald-50/30 p-4">
+                                <div>
+                                    <label class="text-sm font-bold text-emerald-900">{{ __('Enable Wholesale Rules') }}</label>
+                                    <p class="text-[11px] text-emerald-700/80 mt-0.5">{{ __('Enforce size ratios, minimum sizes, and MOQ for wholesale buyers.') }}</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="hidden" name="ws_enabled" value="0">
+                                    <input type="checkbox" name="ws_enabled" value="1" class="sr-only peer" x-model="wsEnabled">
+                                    <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+
+                            <div x-show="wsEnabled" x-transition class="space-y-6">
+                                {{-- Settings Grid --}}
+                                <div class="grid gap-5 md:grid-cols-2">
+                                    {{-- Minimum Sizes --}}
+                                    <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
+                                        <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="ws_min_sizes">{{ __('Minimum Size Selection *') }}</label>
+                                        <p class="text-[10px] text-neutral-500 mb-2">{{ __('Buyer must select at least this many sizes per color.') }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <input id="ws_min_sizes" type="number" min="1" :max="productSizes.length || 20" class="form-input text-sm font-bold flex-1" name="ws_min_sizes" x-model="wsMinSizes" :placeholder="productSizes.length || '5'">
+                                            <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700" x-text="'of ' + productSizes.length + ' sizes'"></span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Color MOQ --}}
+                                    <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
+                                        <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="ws_color_moq">{{ __('Per-Color MOQ *') }}</label>
+                                        <p class="text-[10px] text-neutral-500 mb-2">{{ __('Default pieces per size when buyer selects a color.') }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <input id="ws_color_moq" type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_color_moq" x-model="wsColorMoq" placeholder="1">
+                                            <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('pcs/size') }}</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Main MOQ --}}
+                                    <div class="rounded-xl border border-emerald-500/30 bg-emerald-50/30 p-4">
+                                        <label class="form-label text-xs font-bold uppercase tracking-wider text-emerald-800" for="ws_main_moq">{{ __('Main Order MOQ *') }}</label>
+                                        <p class="text-[10px] text-emerald-700/80 mb-2">{{ __('Total quantity must reach this before buyer can add to cart or send WhatsApp order.') }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <input id="ws_main_moq" type="number" min="1" class="form-input text-sm font-bold text-emerald-700 flex-1" name="ws_main_moq" x-model="wsMainMoq" placeholder="40">
+                                            <span class="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">{{ __('pcs total') }}</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Ratio Multiplier --}}
+                                    <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
+                                        <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="ws_ratio_multiplier">{{ __('Ratio Multiplier') }}</label>
+                                        <p class="text-[10px] text-neutral-500 mb-2">{{ __('Buyer can scale all ratios by this multiplier (e.g. ×2 doubles everything).') }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <input id="ws_ratio_multiplier" type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_ratio_multiplier" x-model="wsRatioMultiplier" placeholder="1">
+                                            <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">× {{ __('multiplier') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Size Ratios --}}
+                                <div class="border-t border-neutral-200 pt-5">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-800">{{ __('Per-Size Ratios') }}</h3>
+                                            <p class="text-[11px] text-neutral-500">{{ __('Set how many pieces of each size are included per color selection. Auto-populated from your product sizes.') }}</p>
+                                        </div>
+                                    </div>
+
+                                    <template x-if="productSizes.length === 0">
+                                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                                            <i class="ph ph-warning text-xl text-amber-600"></i>
+                                            <p class="text-xs text-amber-800 font-semibold mt-1">{{ __('No sizes defined yet. Add sizes in Step 3 first.') }}</p>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="productSizes.length > 0">
+                                        <div class="space-y-4">
+                                            <template x-for="(color, cIdx) in colors" :key="color.id || cIdx">
+                                                <div class="rounded-xl border border-neutral-200 overflow-hidden shadow-2xs" x-data="{ expanded: true }">
+                                                    <div class="bg-neutral-50 px-4 py-3 border-b border-neutral-200 flex items-center justify-between cursor-pointer hover:bg-neutral-100 transition-colors" @click="expanded = !expanded">
+                                                        <div class="flex items-center gap-3">
+                                                            <span class="h-4 w-4 rounded-full border border-neutral-300 shadow-2xs" :style="`background-color: ${color.hex_code}`"></span>
+                                                            <span class="text-xs font-bold text-neutral-800" x-text="color.name || 'Color ' + (cIdx + 1)"></span>
+                                                        </div>
+                                                        <i class="ph text-lg text-neutral-500 transition-transform" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                                                    </div>
+                                                    <div x-show="expanded" x-collapse>
+                                                        <div class="grid gap-px bg-neutral-200" :style="`grid-template-columns: repeat(${Math.min(productSizes.length, 8)}, 1fr)`">
+                                                            <template x-for="sz in productSizes" :key="sz">
+                                                                <div class="bg-white p-3 flex flex-col items-center gap-2">
+                                                                    <span class="text-[10px] font-black uppercase tracking-wider text-neutral-600" x-text="sz"></span>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        class="form-input text-center text-sm font-bold h-10 w-full"
+                                                                        :name="`ws_size_ratios[${color.id || cIdx}][${sz}]`"
+                                                                        x-model="wsRatios[color.id || cIdx][sz]"
+                                                                        placeholder="1"
+                                                                    >
+                                                                    <span class="text-[9px] text-neutral-500" x-text="'×' + (parseInt(wsRatioMultiplier) || 1) + ' = ' + ((parseInt(wsRatios[color.id || cIdx]?.[sz]) || 1) * (parseInt(wsRatioMultiplier) || 1))"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                {{-- Live Preview Calculation --}}
+                                <div class="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-blue-800 mb-2"><i class="ph ph-calculator"></i> {{ __('Order Preview') }}</h4>
+                                    <div class="grid gap-3 sm:grid-cols-3 text-center">
+                                        <div class="rounded-lg bg-white border border-blue-100 p-3 shadow-2xs">
+                                            <p class="text-2xl font-black text-blue-700" x-text="totalPerColor"></p>
+                                            <p class="text-[10px] font-bold text-blue-600 uppercase">{{ __('pcs / color') }}</p>
+                                        </div>
+                                        <div class="rounded-lg bg-white border border-blue-100 p-3 shadow-2xs">
+                                            <p class="text-2xl font-black text-blue-700" x-text="colorsNeeded"></p>
+                                            <p class="text-[10px] font-bold text-blue-600 uppercase">{{ __('colors needed') }}</p>
+                                            <p class="text-[9px] text-blue-500">{{ __('to reach main MOQ') }}</p>
+                                        </div>
+                                        <div class="rounded-lg bg-white border border-emerald-100 p-3 shadow-2xs">
+                                            <p class="text-2xl font-black text-emerald-700" x-text="wsMainMoq"></p>
+                                            <p class="text-[10px] font-bold text-emerald-600 uppercase">{{ __('main MOQ') }}</p>
+                                            <p class="text-[9px] text-emerald-500">{{ __('minimum total order') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {{-- Final Action Buttons --}}
                 <div class="flex items-center justify-end gap-3 pt-2">
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 8]) }}">{{ __('Back') }}</x-ui.button>
                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Cancel') }}</x-ui.button>
                     <button
                         type="submit"
@@ -893,6 +1135,7 @@
                     >
                         <i class="ph ph-floppy-disk text-base"></i>
                         <span>{{ __('Save Product') }}</span>
+                    </button>
                 </div>
             </form>
         @endif

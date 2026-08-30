@@ -433,6 +433,13 @@ class ProductService
             'default_unit_weight_kg' => $data['default_unit_weight_kg'] ?? $product?->default_unit_weight_kg ?? 0.030,
             'single_piece_price' => $data['single_piece_price'] ?? $product?->single_piece_price,
             'wholesale_price' => $data['wholesale_price'] ?? $product?->wholesale_price,
+            'selling_mode' => $data['selling_mode'] ?? $product?->selling_mode ?? 'both',
+            'ws_enabled' => array_key_exists('ws_enabled', $data) ? (bool) $data['ws_enabled'] : ($product?->ws_enabled ?? false),
+            'ws_min_sizes' => array_key_exists('ws_min_sizes', $data) ? ($data['ws_min_sizes'] !== null ? (int) $data['ws_min_sizes'] : null) : $product?->ws_min_sizes,
+            'ws_color_moq' => array_key_exists('ws_color_moq', $data) ? (int) ($data['ws_color_moq'] ?? 1) : ($product?->ws_color_moq ?? 1),
+            'ws_main_moq' => array_key_exists('ws_main_moq', $data) ? (int) ($data['ws_main_moq'] ?? 1) : ($product?->ws_main_moq ?? 1),
+            'ws_size_ratios' => array_key_exists('ws_size_ratios', $data) ? $data['ws_size_ratios'] : $product?->ws_size_ratios,
+            'ws_ratio_multiplier' => array_key_exists('ws_ratio_multiplier', $data) ? (int) ($data['ws_ratio_multiplier'] ?? 1) : ($product?->ws_ratio_multiplier ?? 1),
             'country_of_origin' => strtoupper($data['country_of_origin'] ?? 'BD'),
             'status' => $data['status'] ?? $product?->status ?? 'draft',
         ], fn (mixed $value, string $key): bool => $key !== 'primary_media_id' || $value !== null, ARRAY_FILTER_USE_BOTH);

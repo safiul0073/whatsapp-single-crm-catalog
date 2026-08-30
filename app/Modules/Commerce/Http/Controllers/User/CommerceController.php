@@ -632,7 +632,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.form', [
             'product' => $product,
-            'step' => $product ? max(1, min(8, $request->integer('step', $product->wizard_step))) : 1,
+            'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,
             'categories' => $categories->sortBy('path'),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'audiences' => Audience::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
