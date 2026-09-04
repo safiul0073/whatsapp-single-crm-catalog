@@ -565,7 +565,7 @@ class CommerceDemoSeeder extends Seeder
                     ['name' => 'Gunmetal Black', 'hex_code' => '#111827', 'color_family' => 'Black'],
                     ['name' => 'Sage Army Green', 'hex_code' => '#3F6212', 'color_family' => 'Green'],
                 ],
-                'sizes' => ['M', 'L'],
+                'sizes' => ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
             ],
         ];
 
@@ -652,6 +652,13 @@ class CommerceDemoSeeder extends Seeder
                 'material' => $definition['material'],
                 'single_piece_price' => $price,
                 'wholesale_price' => round($price * 0.72, 2),
+                'selling_mode' => 'both',
+                'ws_enabled' => true,
+                'ws_min_sizes' => min(3, count($definition['sizes'])),
+                'ws_color_moq' => 1,
+                'ws_main_moq' => 10,
+                'ws_size_ratios' => collect($definition['sizes'])->mapWithKeys(fn($s) => [$s => 1])->all(),
+                'ws_ratio_multiplier' => 1,
                 'default_unit_weight_kg' => $definition['default_unit_weight_kg'],
                 'default_package_dimensions' => ['length_cm' => 35, 'width_cm' => 28, 'height_cm' => 6],
                 'condition' => 'new',
