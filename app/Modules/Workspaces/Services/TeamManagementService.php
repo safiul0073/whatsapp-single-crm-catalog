@@ -51,7 +51,15 @@ class TeamManagementService
         
         foreach ($roles as $role) {
             $counts['role_' . $role->id] = $activeMembers->where('pivot.workspace_role_id', $role->id)->count();
+            if (strtolower($role->name) === 'administrator') {
+                $counts['administrators'] = $counts['role_' . $role->id];
+            }
+            if (strtolower($role->name) === 'manager') {
+                $counts['managers'] = $counts['role_' . $role->id];
+            }
         }
+        $counts['administrators'] = $counts['administrators'] ?? 0;
+        $counts['managers'] = $counts['managers'] ?? 0;
 
         return [
             'members' => $members,

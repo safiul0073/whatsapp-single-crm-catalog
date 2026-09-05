@@ -62,9 +62,9 @@
             <div class="overflow-x-auto scrollbar-hide">
                 <div data-range-group data-range-value="all" class="inline-flex rounded-full border border-neutral-200 bg-neutral-0 p-1">
                     <button type="button" class="range-btn is-active" data-range="all">{{ __('All') }}</button>
-                    <button type="button" class="range-btn" data-range="administrator">{{ __('Administrators') }}</button>
-                    <button type="button" class="range-btn" data-range="manager">{{ __('Managers') }}</button>
-                    <button type="button" class="range-btn" data-range="staff">{{ __('Staff') }}</button>
+                    @foreach($roles as $workspaceRole)
+                        <button type="button" class="range-btn" data-range="{{ $workspaceRole->id }}">{{ __($workspaceRole->name) }}s</button>
+                    @endforeach
                     <button type="button" class="range-btn" data-range="pending">{{ __('Pending') }}</button>
                 </div>
             </div>
@@ -88,15 +88,17 @@
                     @forelse ($members as $member)
                         @php
                             $isOwner = $workspace->isOwner($member);
-                            $role = $member->pivot->role;
+                            $roleId = $member->pivot->workspace_role_id;
+                            $role = $roles->firstWhere('id', $roleId);
                             $status = $member->pivot->status;
-                            $roleClass = match ($role->value) {
+                            $roleName = $role ? $role->name : 'Unknown';
+                            $roleClass = match (strtolower($roleName)) {
                                 'administrator' => 'badge-deep',
                                 'manager' => 'badge-info',
                                 default => 'badge-neutral',
                             };
                         @endphp
-                        <div data-filter-item data-status="{{ $role->value }}" data-name="{{ strtolower($member->name.' '.$member->email) }}" class="list-table__row">
+                        <div data-filter-item data-status="{{ $roleId }}" data-name="{{ strtolower($member->name.' '.$member->email) }}" class="list-table__row">
                             <div class="flex min-w-0 items-center gap-3">
                                 <span class="avatar">{{ $member->initials() }}</span>
                                 <div class="min-w-0">
@@ -104,7 +106,7 @@
                                     <p class="truncate text-xs text-neutral-400">{{ $member->email }}</p>
                                 </div>
                             </div>
-                            <span><span class="badge {{ $isOwner ? 'badge-deep' : $roleClass }}">{{ $isOwner ? __('Owner') : $role->label() }}</span></span>
+                            <span><span class="badge {{ $isOwner ? 'badge-deep' : $roleClass }}">{{ $isOwner ? __('Owner') : __($roleName) }}</span></span>
                             <span><span class="badge badge-success">{{ $status->label() }}</span></span>
                             <span class="text-xs">{{ $member->last_login_at?->diffForHumans() ?? __('Never') }}</span>
                             <span class="flex items-center justify-end gap-1">
@@ -123,7 +125,7 @@
                                         data-first-name="{{ $member->first_name }}"
                                         data-last-name="{{ $member->last_name }}"
                                         data-email="{{ $member->email }}"
-                                        data-role="{{ $role->value }}"
+                                        data-role="{{ $roleId }}"
                                         aria-label="{{ __('Edit :name', ['name' => $member->name]) }}">
                                         <i class="ph ph-pencil-simple text-lg"></i>
                                     </button>
@@ -161,7 +163,7 @@
                                     <p class="truncate text-xs text-neutral-400">{{ __('Invited :date', ['date' => $invitation->created_at->diffForHumans()]) }}</p>
                                 </div>
                             </div>
-                            <span><span class="badge badge-neutral">{{ $invitation->role->label() }}</span></span>
+                            <span><span class="badge badge-neutral">{{ $invitation->workspaceRole ? $invitation->workspaceRole->name : 'Unknown' }}</span></span>
                             <span><span class="badge badge-warning">{{ __('Pending') }}</span></span>
                             <span class="text-xs text-neutral-400">—</span>
                             <span class="flex justify-end">
@@ -238,9 +240,9 @@
                         <div>
                             <label for="addRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                             <select id="addRole" name="role" required class="form-input">
-                                <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                                <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                                <option value="staff">{{ __('Staff') }} — {{ __('limited access') }}</option>
+                                @foreach($roles as $workspaceRole)
+                                    <option value="{{ $workspaceRole->id }}">{{ __($workspaceRole->name) }} — {{ __($workspaceRole->description) }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="flex items-center gap-3 pt-1">
@@ -287,9 +289,9 @@
                         <div>
                             <label for="inviteRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                             <select id="inviteRole" name="role" required class="form-input">
-                                <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                                <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                                <option value="staff" selected>{{ __('Staff') }} — {{ __('limited access') }}</option>
+                                @foreach($roles as $workspaceRole)
+                                    <option value="{{ $workspaceRole->id }}" {{ strtolower($workspaceRole->name) === 'staff' ? 'selected' : '' }}>{{ __($workspaceRole->name) }} — {{ __($workspaceRole->description) }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="flex items-center gap-3 pt-1">
@@ -345,9 +347,9 @@
                     <div>
                         <label for="editRole" class="form-label">{{ __('Role') }} <span class="text-error">*</span></label>
                         <select id="editRole" name="role" required class="form-input">
-                            <option value="administrator">{{ __('Administrator') }} — {{ __('full access except billing') }}</option>
-                            <option value="manager">{{ __('Manager') }} — {{ __('operational access') }}</option>
-                            <option value="staff">{{ __('Staff') }} — {{ __('limited access') }}</option>
+                            @foreach($roles as $workspaceRole)
+                                <option value="{{ $workspaceRole->id }}">{{ __($workspaceRole->name) }} — {{ __($workspaceRole->description) }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="flex items-center gap-3 pt-1">

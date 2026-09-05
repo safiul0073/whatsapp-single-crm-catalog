@@ -5,7 +5,7 @@ namespace App\Modules\Workspaces\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
+
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Enums\WorkspaceStatus;
 use App\Modules\Workspaces\Http\Requests\User\StoreWorkspaceRequest;
@@ -83,8 +83,29 @@ class WorkspaceController extends Controller
             'timezone' => $request->timezone ?? config('app.timezone', 'UTC'),
         ]);
 
+        $adminRole = \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Administrator',
+            'description' => 'Full access to the workspace',
+            'is_system' => true,
+        ]);
+
+        \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Manager',
+            'description' => 'Can manage most settings',
+            'is_system' => true,
+        ]);
+
+        \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Staff',
+            'description' => 'Standard user access',
+            'is_system' => true,
+        ]);
+
         $workspace->members()->attach($user->id, [
-            'role' => WorkspaceMemberRole::Administrator->value,
+            'workspace_role_id' => $adminRole->id,
             'status' => WorkspaceMemberStatus::Active->value,
         ]);
 
@@ -186,13 +207,9 @@ class WorkspaceController extends Controller
             throw new HttpException(422, __('This invitation is no longer valid.'));
         }
 
-        $role = $invitation->role instanceof WorkspaceMemberRole
-            ? $invitation->role
-            : WorkspaceMemberRole::from($invitation->role);
-
         $invitation->workspace->members()->syncWithoutDetaching([
             $user->id => [
-                'role' => $role->value,
+                'workspace_role_id' => $invitation->workspace_role_id,
                 'status' => WorkspaceMemberStatus::Active->value,
             ],
         ]);
@@ -266,7 +283,7 @@ class WorkspaceController extends Controller
     {
         $membership = $workspace->members()
             ->where('users.id', $user->id)
-            ->withPivot(['role', 'status'])
+            ->withPivot(['workspace_role_id', 'status'])
             ->first();
 
         $workspace->setRelation('viewerMembership', $membership);
@@ -274,7 +291,8 @@ class WorkspaceController extends Controller
         if ($workspace->isOwner($user)) {
             $workspace->viewer_role = 'owner';
         } elseif ($membership) {
-            $workspace->viewer_role = $membership->pivot->role->value;
+            $role = \App\Modules\Workspaces\Models\WorkspaceRole::find($membership->pivot->workspace_role_id);
+            $workspace->viewer_role = $role ? $role->name : null;
         } else {
             $workspace->viewer_role = null;
         }
