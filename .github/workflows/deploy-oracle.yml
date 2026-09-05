@@ -42,12 +42,12 @@ jobs:
 
     - name: Sync Files to Oracle Server
       run: |
-        rsync -avz --exclude='.git' --exclude='.github' --exclude='.env' --exclude='/storage/' --exclude='/bootstrap/cache/' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/marketing/
+        rsync -avz --exclude='.git' --exclude='.github' --exclude='.env' --exclude='/storage/' --exclude='/bootstrap/cache/' --exclude='node_modules/' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/marketing/
 
     - name: Run Artisan Commands on Server
       run: |
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "cd /var/www/marketing && \
-        mkdir -p storage/framework/{cache,sessions,views} storage/app/public storage/logs bootstrap/cache && chmod -R 775 storage bootstrap/cache && \
+        mkdir -p storage/framework/{cache,sessions,views} storage/app/public storage/logs bootstrap/cache && sudo chmod -R 775 storage bootstrap/cache && \
         php artisan migrate --force && \
         php artisan optimize:clear && \
         php artisan storage:link"
