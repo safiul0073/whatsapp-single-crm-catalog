@@ -4,7 +4,7 @@ namespace App\Modules\Workspaces\Http\Requests\User;
 
 use App\Models\User;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
+
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,12 +21,13 @@ class UpdateTeamMemberRequest extends FormRequest
     {
         /** @var User $member */
         $member = $this->route('member');
+        $workspace = app(WorkspaceResolver::class)->current($this->user());
 
         return [
             'first_name' => ['sometimes', 'required', 'string', 'max:120'],
             'last_name' => ['sometimes', 'required', 'string', 'max:120'],
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($member->id)],
-            'role' => ['sometimes', 'required', Rule::in(WorkspaceMemberRole::values())],
+            'role' => ['sometimes', 'required', Rule::exists('workspace_roles', 'id')->where('workspace_id', $workspace->id)],
         ];
     }
 

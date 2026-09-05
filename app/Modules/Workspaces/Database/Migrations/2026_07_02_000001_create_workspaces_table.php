@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Enums\WorkspaceStatus;
 use App\Modules\Workspaces\Models\Workspace;
@@ -38,7 +37,7 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
             $table->string('email');
-            $table->string('role')->default(WorkspaceMemberRole::Staff->value);
+            $table->string('role')->default('staff');
             $table->string('token')->unique();
             $table->foreignIdFor(User::class, 'invited_by')->constrained('users')->cascadeOnDelete();
             $table->timestamp('accepted_at')->nullable();

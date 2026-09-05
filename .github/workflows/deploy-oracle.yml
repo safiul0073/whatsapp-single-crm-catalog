@@ -1,0 +1,53 @@
+name: Deploy to Oracle Server (Parallel)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3' # Or whatever local uses for build
+        extensions: mbstring, xml, bcmath, curl, zip
+        coverage: none
+
+    - name: Install Composer Dependencies
+      run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install NPM Dependencies & Build
+      run: |
+        npm install
+        npm run build
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Sync Files to Oracle Server
+      run: |
+        rsync -avz --exclude='.git' --exclude='.github' --exclude='.env' --exclude='/storage/' --exclude='/bootstrap/cache/' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/marketing/
+
+    - name: Run Artisan Commands on Server
+      run: |
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "cd /var/www/marketing && \
+        chmod -R 775 storage bootstrap/cache && \
+        php artisan migrate --force && \
+        php artisan optimize:clear && \
+        php artisan storage:link"

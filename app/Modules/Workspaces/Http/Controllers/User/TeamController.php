@@ -5,13 +5,13 @@ namespace App\Modules\Workspaces\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Http\Requests\User\InviteTeamMemberRequest;
 use App\Modules\Workspaces\Http\Requests\User\StoreTeamMemberRequest;
 use App\Modules\Workspaces\Http\Requests\User\UpdateRolePermissionsRequest;
 use App\Modules\Workspaces\Http\Requests\User\UpdateTeamMemberRequest;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceInvitation;
+use App\Modules\Workspaces\Models\WorkspaceRole;
 use App\Modules\Workspaces\Services\TeamManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +33,7 @@ class TeamController extends Controller
             'workspace' => $workspace,
             'members' => $teamData['members'],
             'invitations' => $teamData['invitations'],
+            'roles' => $teamData['roles'],
             'counts' => $teamData['counts'],
             'canAddMember' => $this->team->canAddMember($workspace),
         ]);
@@ -59,13 +60,56 @@ class TeamController extends Controller
             ->with('success', __('Team member updated successfully.'));
     }
 
-    public function updateRolePermissions(UpdateRolePermissionsRequest $request, string $role): RedirectResponse
+    public function storeRole(Request $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
+        
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:50'],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'is_system' => false,
+        ]);
+
+        return redirect()->route('user.workspaces.team')
+            ->with('success', __('Role created successfully.'));
+    }
+
+    public function destroyRole(Request $request, WorkspaceRole $role): RedirectResponse
+    {
+        if ($role->workspace_id !== $this->workspaces->current($request->user())->id) {
+            abort(403);
+        }
+
+        if ($role->is_system) {
+            return redirect()->route('user.workspaces.team')
+                ->with('error', __('System roles cannot be deleted.'));
+        }
+
+        if ($role->members()->exists()) {
+            return redirect()->route('user.workspaces.team')
+                ->with('error', __('Cannot delete role because members are assigned to it.'));
+        }
+
+        $role->delete();
+
+        return redirect()->route('user.workspaces.team')
+            ->with('success', __('Role deleted successfully.'));
+    }
+
+    public function updateRolePermissions(UpdateRolePermissionsRequest $request, WorkspaceRole $role): RedirectResponse
+    {
+        if ($role->workspace_id !== $this->workspaces->current($request->user())->id) {
+            abort(403);
+        }
 
         $this->team->updateRolePermissions(
-            $workspace,
-            WorkspaceMemberRole::from($role),
+            $role,
             $request->validated('permissions') ?? []
         );
 
@@ -77,13 +121,13 @@ class TeamController extends Controller
     {
         $workspace = $this->workspaces->current($request->user());
         $member = $this->resolveWorkspaceMember($workspace, $member);
-        $role = $this->team->resolveRole($member->pivot->role);
+        $role = $this->team->resolveRole($workspace, $member->pivot->workspace_role_id);
 
         return view('workspaces::user.permissions', [
             'workspace' => $workspace,
             'member' => $member,
             'role' => $role,
-            'rolePermissions' => $this->team->rolePermissionDetails($workspace, $role),
+            'rolePermissions' => $this->team->rolePermissionDetails($role),
         ]);
     }
 
@@ -91,9 +135,9 @@ class TeamController extends Controller
     {
         $workspace = $this->workspaces->current($request->user());
         $member = $this->resolveWorkspaceMember($workspace, $member);
-        $role = $this->team->resolveRole($member->pivot->role);
+        $role = $this->team->resolveRole($workspace, $member->pivot->workspace_role_id);
 
-        $this->team->updateRolePermissions($workspace, $role, $request->validated('permissions') ?? []);
+        $this->team->updateRolePermissions($role, $request->validated('permissions') ?? []);
 
         return redirect()->route('user.workspaces.team.permissions', $member)
             ->with('success', __('Role permissions updated successfully.'));

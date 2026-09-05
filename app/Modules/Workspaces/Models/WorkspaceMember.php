@@ -3,7 +3,6 @@
 namespace App\Modules\Workspaces\Models;
 
 use App\Models\User;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,14 +17,13 @@ class WorkspaceMember extends Pivot
     protected $fillable = [
         'workspace_id',
         'user_id',
-        'role',
+        'workspace_role_id',
         'status',
     ];
 
     protected function casts(): array
     {
         return [
-            'role' => WorkspaceMemberRole::class,
             'status' => WorkspaceMemberStatus::class,
         ];
     }
@@ -38,5 +36,10 @@ class WorkspaceMember extends Pivot
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function workspaceRole(): BelongsTo
+    {
+        return $this->belongsTo(WorkspaceRole::class, 'workspace_role_id');
     }
 }
