@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
             <h2 class="heading-2">{{ __('Role permissions') }}</h2>
-            <p class="m-text mt-1">{{ $member->name }} · {{ $role->label() }}</p>
+            <p class="m-text mt-1">{{ $member->name }} · {{ $role->name }}</p>
         </div>
         <a href="{{ route('user.workspaces.team') }}" class="btn-sm btn-outline">
             <i class="ph ph-arrow-left text-base"></i>
@@ -23,7 +23,7 @@
             <div class="mt-5 space-y-3 border-t border-neutral-100 pt-5">
                 <div>
                     <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Role') }}</p>
-                    <p class="mt-1 font-semibold text-title">{{ $role->label() }}</p>
+                    <p class="mt-1 font-semibold text-title">{{ $role->name }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Selected') }}</p>
