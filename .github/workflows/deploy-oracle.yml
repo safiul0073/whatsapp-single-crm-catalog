@@ -47,7 +47,7 @@ jobs:
     - name: Run Artisan Commands on Server
       run: |
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "cd /var/www/marketing && \
-        mkdir -p storage/framework/{cache,sessions,views} storage/app/public storage/logs bootstrap/cache && sudo chmod -R 775 storage bootstrap/cache && \
+        mkdir -p storage/framework/{cache,sessions,views} storage/app/public storage/logs bootstrap/cache && sudo sudo chmod -R 775 storage bootstrap/cache && \
         php artisan migrate --force && \
         php artisan optimize:clear && \
         php artisan storage:link"
