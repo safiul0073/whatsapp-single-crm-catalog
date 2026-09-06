@@ -273,8 +273,8 @@ class MessageTemplateService
         if ($headerType === 'text' && filled($header['text'] ?? null)) {
             $component = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $header['text']];
 
-            if ($this->tokens->hasTokens($header['text']) && filled($header['example'] ?? null)) {
-                $component['example'] = ['header_text' => [$header['example']]];
+            if ($this->tokens->hasTokens($header['text'])) {
+                $component['example'] = ['header_text' => [filled($header['example'] ?? null) ? $header['example'] : 'Example']];
             }
 
             $components[] = $component;
@@ -379,7 +379,9 @@ class MessageTemplateService
                         'type' => 'URL',
                         'text' => $button['text'],
                         'url' => $button['url'] ?? '',
-                        'example' => filled($button['example'] ?? null) ? [$button['example']] : null,
+                        'example' => $this->tokens->hasTokens($button['url'] ?? '') 
+                            ? [(filled($button['example'] ?? null) ? $button['example'] : 'example')] 
+                            : null,
                     ]),
                     'phone_number' => [
                         'type' => 'PHONE_NUMBER',
@@ -466,8 +468,7 @@ class MessageTemplateService
         $tokens = $this->tokens->extract($text);
 
         return collect($tokens)
-            ->map(fn (string $token): mixed => $examples[$token] ?? null)
-            ->filter(fn ($value): bool => filled($value))
+            ->map(fn (string $token): mixed => filled($examples[$token] ?? null) ? $examples[$token] : 'Example')
             ->values()
             ->all();
     }
