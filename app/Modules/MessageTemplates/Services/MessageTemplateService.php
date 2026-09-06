@@ -300,6 +300,16 @@ class MessageTemplateService
                 'format' => strtoupper($headerType),
                 'example' => ['header_handle' => [$header['handle']]],
             ];
+        } elseif (in_array($headerType, ['image', 'video', 'document'], true)
+            && blank($header['media_id'] ?? null)
+            && blank($header['handle'] ?? null)
+            && filled($data['header_media_url'] ?? null)) {
+            $components[] = [
+                'type' => 'HEADER',
+                'format' => strtoupper($headerType),
+                'example' => ['header_url' => [$data['header_media_url']]],
+                'media_url' => $data['header_media_url'],
+            ];
         }
 
         $body = ['type' => 'BODY', 'text' => $data['body']];
@@ -403,16 +413,17 @@ class MessageTemplateService
 
     protected function storeHeaderMedia(array $data): array
     {
-        if (! isset($data['header_media_file'])
-            || ! in_array(data_get($data, 'header.type'), ['image', 'video', 'document'], true)) {
-            unset($data['header_media_file']);
+        if (! in_array(data_get($data, 'header.type'), ['image', 'video', 'document'], true)) {
+            unset($data['header_media_file'], $data['header_media_url']);
 
             return $data;
         }
 
-        $media = $this->media->upload($data['header_media_file']);
-        $data['header']['media_id'] = $media->id;
-        unset($data['header_media_file']);
+        if (isset($data['header_media_file'])) {
+            $media = $this->media->upload($data['header_media_file']);
+            $data['header']['media_id'] = $media->id;
+            unset($data['header_media_file']);
+        }
 
         return $data;
     }
@@ -623,10 +634,13 @@ class MessageTemplateService
             ->map(function (array $component) use ($channel): array {
                 if (($component['type'] ?? null) === 'HEADER'
                     && in_array($component['format'] ?? null, ['IMAGE', 'VIDEO', 'DOCUMENT'], true)) {
-                    $handle = data_get($component, 'example.header_handle.0')
-                        ?: $this->templateMediaHandle((int) ($component['media_id'] ?? 0), $channel);
+                    
+                    if (blank(data_get($component, 'example.header_url.0'))) {
+                        $handle = data_get($component, 'example.header_handle.0')
+                            ?: $this->templateMediaHandle((int) ($component['media_id'] ?? 0), $channel);
 
-                    $component['example'] = ['header_handle' => [$handle]];
+                        $component['example'] = ['header_handle' => [$handle]];
+                    }
                 }
 
                 unset($component['media_id'], $component['media_name'], $component['media_url'], $component['media_mime_type']);

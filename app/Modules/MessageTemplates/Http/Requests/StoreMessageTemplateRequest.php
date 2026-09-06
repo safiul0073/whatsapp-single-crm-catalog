@@ -30,6 +30,7 @@ class StoreMessageTemplateRequest extends FormRequest
             'header.handle' => ['nullable', 'string', 'max:1000'],
             'header.example' => ['nullable', 'string', 'max:60'],
             'header_media_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,pdf', 'max:16384'],
+            'header_media_url' => ['nullable', 'url', 'max:2000'],
             'footer' => ['nullable', 'array'],
             'footer.text' => ['nullable', 'string', 'max:60'],
             'buttons' => ['nullable', 'array', 'max:10'],
@@ -104,8 +105,9 @@ class StoreMessageTemplateRequest extends FormRequest
             if (in_array($headerType, ['image', 'video', 'document'], true)
                 && blank($this->input('header.media_id'))
                 && blank($this->input('header.handle'))
+                && blank($this->input('header_media_url'))
                 && ! $this->hasFile('header_media_file')) {
-                $validator->errors()->add('header_media_file', 'Upload a media example for the selected header type.');
+                $validator->errors()->add('header_media_file', 'Provide a media URL or upload a file for the selected header type.');
             }
 
             if ($this->hasFile('header_media_file')) {
