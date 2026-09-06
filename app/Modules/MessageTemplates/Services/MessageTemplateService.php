@@ -207,12 +207,7 @@ class MessageTemplateService
             ])->save();
         }
 
-        $payload = $template->submission_payload ?: [
-            'name' => $template->name,
-            'language' => $template->language,
-            'category' => strtoupper($template->category),
-            'components' => $template->components ?? [],
-        ];
+        $payload = $compiled['payload'];
 
         return $this->submitToMeta($template, $channel, $payload);
     }
