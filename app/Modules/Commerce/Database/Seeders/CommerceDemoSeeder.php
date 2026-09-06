@@ -217,7 +217,7 @@ class CommerceDemoSeeder extends Seeder
             // But let's construct a direct unsplash random URL since source.unsplash is down, we can use images.unsplash.com with some IDs, but since we don't have 60 IDs, let's use random images from a known list or just use unsplash source URL alternative. Wait! I will provide a list of Unsplash URLs later or just use random seed.
             // Let's use standard Unsplash IDs
             $unsplashIds = [
-                '1521572163474-6864f9cf17ab', '1586790170083-2f9ceadc732d', '1602810318383-e386cc2a3ccf', '1542272604-787c3835535d', '1551028719-00167b16eac5', '1549298916-b41d501d3772', '1595777457583-95e059d581b8', '1566174053879-31528523f8ae', '1564859228273-274232fdb516', '1541099649105-f69ad21f3246', '1543163521-1bf539c55dd2', '1548036328-c9fa89d128fa', '1523170335258-f5ed11844a49', '1515886657613-9f3515b0c78f', '1489987707023-af7e9e8f85e4', '1509319117193-57bab727e09d', '1512436991502-26f500f40fb1', '1434389670869-bac3984d4da5', '1550614000-4b95d852a32c', '1485230895905-ec40ba36b9bc'
+                '1521572163474-6864f9cf17ab', '1586790170083-2f9ceadc732d', '1602810318383-e386cc2a3ccf', '1542272604-787c3835535d', '1551028719-00167b16eac5', '1549298916-b41d501d3772', '1595777457583-95e059d581b8', '1566174053879-31528523f8ae', '1564859228273-274232fdb516', '1541099649105-f69ad21f3246', '1543163521-1bf539c55dd2', '1548036328-c9fa89d128fa', '1523170335258-f5ed11844a49', '1515886657613-9f3515b0c78f', '1509319117193-57bab727e09d', '1485230895905-ec40ba36b9bc'
             ];
             $randomId = $unsplashIds[$index % count($unsplashIds)];
             $url = "https://images.unsplash.com/photo-{$randomId}?w=800&h=1000&fit=crop";
