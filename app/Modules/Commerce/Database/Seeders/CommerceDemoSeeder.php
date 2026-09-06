@@ -653,7 +653,7 @@ class CommerceDemoSeeder extends Seeder
                 'ws_min_sizes' => min(3, count($definition['sizes'])),
                 'ws_color_moq' => 1,
                 'ws_main_moq' => 10,
-                'ws_size_ratios' => collect($definition['sizes'])->mapWithKeys(fn($s) => [$s => 1])->all(),
+                'ws_size_ratios' => [],
                 'ws_ratio_multiplier' => 1,
                 'default_unit_weight_kg' => $definition['default_unit_weight_kg'],
                 'default_package_dimensions' => ['length_cm' => 35, 'width_cm' => 28, 'height_cm' => 6],
@@ -708,6 +708,12 @@ class CommerceDemoSeeder extends Seeder
                 );
             }
         }
+
+        $sizeRatios = [];
+        foreach ($colorModels as $colorModel) {
+            $sizeRatios[$colorModel->id] = collect($definition['sizes'])->mapWithKeys(fn($s) => [$s => 1])->all();
+        }
+        $product->update(['ws_size_ratios' => $sizeRatios]);
 
         // Seed Wholesale Volume Tier Pricing
         $tiers = [
