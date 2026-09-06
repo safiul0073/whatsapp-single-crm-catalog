@@ -571,13 +571,9 @@ class CommerceDemoSeeder extends Seeder
 
         $collections = [
             ['name' => 'Essential', 'price_offset' => 0.00],
-            ['name' => 'Heritage', 'price_offset' => 4.00],
-            ['name' => 'Urban Export', 'price_offset' => 7.50],
-            ['name' => 'Studio', 'price_offset' => 10.00],
-            ['name' => 'Premium', 'price_offset' => 14.00],
         ];
 
-        return collect($collections)->flatMap(fn (array $collection) => collect($styles)->map(fn (array $style): array => array_merge($style, [
+        return collect($collections)->flatMap(fn (array $collection) => collect(array_slice($styles, 0, 5))->map(fn (array $style): array => array_merge($style, [
             'name' => $collection['name'].' '.$style['name'],
             'single_piece_price' => $style['base_price'] + $collection['price_offset'],
             'default_unit_weight_kg' => $style['weight_kg'],
@@ -671,17 +667,8 @@ class CommerceDemoSeeder extends Seeder
         );
 
         // Build realistic colorways
-        $colorsToSeed = [
-            ['name' => 'Light Blue', 'hex_code' => '#60A5FA', 'color_family' => 'Blue'],
-            ['name' => 'Green', 'hex_code' => '#10B981', 'color_family' => 'Green'],
-            ['name' => 'Royal Blue', 'hex_code' => '#1E3A8A', 'color_family' => 'Blue'],
-            ['name' => 'Purple', 'hex_code' => '#8B5CF6', 'color_family' => 'Purple'],
-            ['name' => 'Dark Grey', 'hex_code' => '#374151', 'color_family' => 'Grey'],
-            ['name' => 'Camel', 'hex_code' => '#D97706', 'color_family' => 'Earth'],
-            ['name' => 'Pink', 'hex_code' => '#EC4899', 'color_family' => 'Pink'],
-            ['name' => 'Brown', 'hex_code' => '#78350F', 'color_family' => 'Earth'],
-            ['name' => 'Yellow', 'hex_code' => '#F59E0B', 'color_family' => 'Yellow'],
-            ['name' => 'Red', 'hex_code' => '#EF4444', 'color_family' => 'Red'],
+        $colorsToSeed = $definition['colors'] ?? [
+            ['name' => 'Jet Black', 'hex_code' => '#111827', 'color_family' => 'Black'],
         ];
 
         // Seed Product Media Gallery & Color Swatches
