@@ -542,11 +542,29 @@ class MessageTemplateService
         $payload = $this->payloadForMeta($payload, $channel);
         $this->validateMetaPayload($payload);
 
-        $response = $this->client->submitTemplate(
-            (string) $channel->provider_account_id,
-            (string) $channel->credential('access_token'),
-            $payload
-        );
+        $submission = MessageTemplateSubmission::query()->where([
+            'workspace_id' => $template->workspace_id,
+            'message_template_id' => $template->id,
+            'provider_account_id' => (string) $channel->provider_account_id,
+        ])->first();
+
+        $templateId = $submission?->whatsapp_template_id;
+
+        if ($templateId) {
+            unset($payload['name'], $payload['language']);
+            $response = $this->client->editTemplate(
+                $templateId,
+                (string) $channel->credential('access_token'),
+                $payload
+            );
+        } else {
+            $response = $this->client->submitTemplate(
+                (string) $channel->provider_account_id,
+                (string) $channel->credential('access_token'),
+                $payload
+            );
+        }
+        
         $json = $response->json() ?? [];
 
         MessageTemplateSubmission::query()->updateOrCreate(
@@ -558,7 +576,7 @@ class MessageTemplateService
             [
                 'channel_account_id' => $channel->id,
                 'provider' => 'whatsapp',
-                'whatsapp_template_id' => Arr::get($json, 'id'),
+                'whatsapp_template_id' => Arr::get($json, 'id') ?? $templateId,
                 'status' => $response->successful() ? MessageTemplateStatus::Submitted->value : MessageTemplateStatus::Failed->value,
                 'submission_payload' => $payload,
                 'meta_response' => $json,
