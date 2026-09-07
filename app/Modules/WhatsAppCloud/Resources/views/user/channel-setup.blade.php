@@ -333,47 +333,51 @@
 
           <div x-show="selectedProvider === 'whatsapp'" x-cloak>
             <div class="mt-5 rounded-xl border border-neutral-100 bg-section p-4">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-sm font-bold text-title">Connect with Meta</p>
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#1877F2]/10 text-[#1877F2]">
+                    <i class="ph-fill ph-facebook-logo text-2xl"></i>
+                  </span>
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-base font-bold text-title">Connect with Meta</p>
+                      @if ($embeddedSignup['enabled'])
+                        <span class="badge badge-soft text-primary">Recommended</span>
+                      @else
+                        <span class="badge badge-warning">Admin setup required</span>
+                      @endif
+                    </div>
                     @if ($embeddedSignup['enabled'])
-                      <span class="badge badge-soft text-primary">Recommended</span>
-                    @else
-                      <span class="badge badge-warning">Admin setup required</span>
+                      <p class="mt-0.5 text-xs font-medium text-body" data-whatsapp-embedded-status>Official WhatsApp Business connection flow</p>
                     @endif
                   </div>
-                  <p class="mt-1 text-sm text-body">Use Meta Embedded Signup so each workspace owner connects their own WhatsApp Business account through the official flow.</p>
                 </div>
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <i class="ph ph-facebook-logo text-xl"></i>
-                </span>
-              </div>
 
-              @if ($embeddedSignup['enabled'])
-                <form id="whatsappEmbeddedSignupForm" method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.embedded') }}" class="hidden">
-                  @csrf
-                  <input type="hidden" name="code" data-embedded-field="code">
-                  <input type="hidden" name="waba_id" data-embedded-field="waba_id">
-                  <input type="hidden" name="phone_number_id" data-embedded-field="phone_number_id">
-                  <input type="hidden" name="business_id" data-embedded-field="business_id">
-                  <input type="hidden" name="display_name" data-embedded-field="display_name">
-                </form>
-                <div class="mt-4 flex flex-wrap items-center gap-3">
+                @if ($embeddedSignup['enabled'])
+                  <form id="whatsappEmbeddedSignupForm" method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.embedded') }}" class="hidden">
+                    @csrf
+                    <input type="hidden" name="code" data-embedded-field="code">
+                    <input type="hidden" name="waba_id" data-embedded-field="waba_id">
+                    <input type="hidden" name="phone_number_id" data-embedded-field="phone_number_id">
+                    <input type="hidden" name="business_id" data-embedded-field="business_id">
+                    <input type="hidden" name="display_name" data-embedded-field="display_name">
+                  </form>
+                  
                   <button
                     type="button"
-                    class="btn btn-primary"
+                    class="btn btn-primary shrink-0"
                     data-whatsapp-embedded-signup
                     data-app-id="{{ $embeddedSignup['app_id'] }}"
                     data-config-id="{{ $embeddedSignup['config_id'] }}"
                     data-graph-api-version="{{ $embeddedSignup['graph_api_version'] }}"
                   >
-                    <i class="ph ph-facebook-logo text-base"></i>
+                    <i class="ph-fill ph-facebook-logo text-base"></i>
                     Connect with Meta
                   </button>
-                  <p class="text-xs font-medium text-body" data-whatsapp-embedded-status>Meta will ask you to choose a Business Manager, WABA, and phone number.</p>
-                </div>
-              @else
+                @endif
+              </div>
+
+              @if (! $embeddedSignup['enabled'])
                 <div class="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm font-medium text-warning">
                   Ask an administrator to enable Embedded Signup and add the Meta App ID, App Secret, and Configuration ID.
                 </div>
