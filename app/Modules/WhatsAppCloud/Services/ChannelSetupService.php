@@ -356,16 +356,23 @@ class ChannelSetupService
             ]);
         }
 
-        $workspace = $this->workspaces->current($user);
-        $response = $this->client->exchangeEmbeddedSignupCode($data['code']);
+        $code = $data['code'];
 
-        if (! $response->successful() || ! $response->json('access_token')) {
-            throw ValidationException::withMessages([
-                'embedded_signup' => __('Meta code exchange failed. Please try connecting again.'),
-            ]);
+        if (str_starts_with($code, 'EA')) {
+            $token = $code;
+        } else {
+            $response = $this->client->exchangeEmbeddedSignupCode($code);
+
+            if (! $response->successful() || ! $response->json('access_token')) {
+                throw ValidationException::withMessages([
+                    'embedded_signup' => __('Meta code exchange failed. Please try connecting again. ' . $response->body()),
+                ]);
+            }
+
+            $token = (string) $response->json('access_token');
         }
 
-        $token = (string) $response->json('access_token');
+        $workspace = $this->workspaces->current($user);
         $wabaId = $this->firstFilled(
             $data['waba_id'] ?? null,
             data_get($data, 'metadata.waba_id'),

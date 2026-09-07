@@ -768,15 +768,16 @@
               setStatus('Opening Meta Embedded Signup...');
 
               window.FB.login((response) => {
-                if (response.authResponse?.code) {
-                  pendingCode = response.authResponse.code;
+                if (response.authResponse?.code || response.authResponse?.accessToken) {
+                  pendingCode = response.authResponse.code || response.authResponse.accessToken;
                   window.setTimeout(submit, 800);
-
                   return;
                 }
 
                 if (response.status !== 'connected') {
                   setStatus('Meta login was not completed. No credentials were saved.', true);
+                } else {
+                  setStatus('Meta login completed, but no code was returned. Try again or check permissions.', true);
                 }
               }, {
                 config_id: trigger.dataset.configId,
