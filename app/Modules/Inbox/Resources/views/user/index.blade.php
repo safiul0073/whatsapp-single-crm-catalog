@@ -1,4 +1,4 @@
-<x-layouts.user :title="__('Inbox')">
+<x-layouts.user :title="__('Inbox')" :hide-help="true">
   <div
     class="inbox"
     :class="{ 'is-rail-collapsed': railCollapsed, 'is-list-collapsed': listCollapsed }"
