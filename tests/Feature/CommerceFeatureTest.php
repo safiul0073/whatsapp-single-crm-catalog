@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Modules\Commerce\Database\Seeders\CommerceDemoSeeder;
+use App\Modules\Commerce\Jobs\ReconcileMetaCatalogsJob;
 use App\Modules\Commerce\Jobs\SyncMetaCatalogJob;
 use App\Modules\Commerce\Models\Audience;
 use App\Modules\Commerce\Models\Brand;
@@ -13,6 +14,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\VariantPreset;
+use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogFeedService;
 use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
@@ -1024,4 +1026,162 @@ it('supports color-dedicated multi-image galleries and connects them to swatches
         ->assertSee('1000+')
         ->assertSee('USA Buyers Trust Us')
         ->assertSee($product->name);
+});
+
+function readyApiCatalog(array $context, string $token = 'catalog-access'): Catalog
+{
+    config([
+        'app.url' => 'https://store.example.com',
+        'app.asset_url' => 'https://store.example.com',
+        'filesystems.disks.public.url' => 'https://store.example.com/storage',
+    ]);
+    URL::forceRootUrl('https://store.example.com');
+    URL::forceScheme('https');
+    $context['workspace']->update(['settings' => array_merge((array) $context['workspace']->settings, ['commerce' => ['currency' => 'USD']])]);
+    $context['channel']->update(['credentials' => ['access_token' => 'secret-token']]);
+    $product = commerceProduct($context['workspace']->id);
+    $front = commerceMedia($context['user'], 'access-'.$token);
+    app(ProductService::class)->updateGallery($product, [['id' => $front->id, 'alt_text' => 'Front', 'is_primary' => true]]);
+
+    return Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $context['channel']->id,
+        'meta_catalog_id' => $token,
+        'feed_token' => str_repeat('e', 64),
+        'sync_mode' => 'api',
+        'currency' => 'USD',
+    ]);
+}
+
+it('surfaces catalog sync validation errors on the catalog page', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request. Object with ID does not exist']], 400)]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    $this->actingAs($context['user'])
+        ->post(route('user.commerce.catalog.sync', $catalog))
+        ->assertRedirect()
+        ->assertSessionHasErrors('catalog');
+
+    $this->actingAs($context['user'])
+        ->withSession(['errors' => session()->get('errors')])
+        ->get(route('user.commerce.catalog'))
+        ->assertOk()
+        ->assertSeeText('Unsupported get request. Object with ID does not exist');
+});
+
+it('does not mark a catalog queued when the Meta access probe fails', function (): void {
+    Queue::fake();
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['message' => 'Object does not exist']], 400)]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    $this->actingAs($context['user'])->post(route('user.commerce.catalog.sync', $catalog));
+
+    expect($catalog->fresh()->last_sync_status)->toBeNull();
+    Queue::assertNothingPushed();
+});
+
+it('shows the Meta access check on the catalog page', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access', 'name' => 'US Store'], 200)]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    readyApiCatalog($context);
+
+    $this->actingAs($context['user'])
+        ->get(route('user.commerce.catalog'))
+        ->assertOk()
+        ->assertSeeText('Meta catalog access verified.')
+        ->assertSeeText('Ready');
+});
+
+it('does not report a catalog as ready when the Meta access probe fails', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['message' => 'Object does not exist']], 400)]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    readyApiCatalog($context);
+
+    $this->actingAs($context['user'])
+        ->get(route('user.commerce.catalog'))
+        ->assertOk()
+        ->assertSeeText('Object does not exist')
+        ->assertDontSeeText('>Ready<', false);
+});
+
+it('caches the Meta catalog access probe between page renders', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200)]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    $diagnostics = app(CatalogDiagnosticsService::class);
+    $diagnostics->probeCatalogAccess($catalog);
+    $diagnostics->probeCatalogAccess($catalog);
+
+    Http::assertSentCount(1);
+
+    $diagnostics->probeCatalogAccess($catalog, true);
+
+    Http::assertSentCount(2);
+});
+
+it('verifies Meta access on demand and busts the cached probe', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fakeSequence('graph.facebook.com/*')
+        ->push(['error' => ['message' => 'Object does not exist']], 400)
+        ->push(['id' => 'catalog-access'], 200);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    expect(app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog)['passed'])->toBeFalse();
+
+    $this->actingAs($context['user'])
+        ->post(route('user.commerce.catalog.verify-access', $catalog))
+        ->assertRedirect()
+        ->assertSessionHas('success', 'Meta catalog access verified.');
+});
+
+it('continues reconciling remaining catalogs when one catalog is not ready', function (): void {
+    Queue::fake();
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200)]);
+    $context = commerceContext();
+    $ready = readyApiCatalog($context);
+    $secondChannel = ChannelAccount::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'provider' => 'whatsapp',
+        'name' => 'EU Sales',
+        'status' => 'connected',
+        'provider_account_id' => 'waba-2',
+        'provider_phone_id' => 'phone-2',
+        'provider_display_id' => '+14155550200',
+    ]);
+    $blocked = Catalog::query()->create([
+        'workspace_id' => $context['workspace']->id,
+        'channel_account_id' => $secondChannel->id,
+        'meta_catalog_id' => null,
+        'feed_token' => str_repeat('f', 64),
+        'sync_mode' => 'api',
+        'currency' => 'USD',
+    ]);
+
+    app()->call([new ReconcileMetaCatalogsJob, 'handle']);
+
+    Queue::assertPushed(SyncMetaCatalogJob::class, 1);
+    expect($blocked->fresh()->last_sync_status)->toBe('blocked')
+        ->and($blocked->fresh()->last_error)->not->toBeNull()
+        ->and($ready->fresh()->last_sync_status)->toBe('queued');
 });

@@ -2,6 +2,7 @@
 
 namespace App\Modules\SchedulerQueue\Services;
 
+use App\Modules\Commerce\Jobs\ReconcileMetaCatalogsJob;
 use App\Modules\Crm\Jobs\SendCrmTaskRemindersJob;
 use App\Modules\PlansSubscriptions\Jobs\ExpireSubscriptionsJob;
 use App\Modules\PlansSubscriptions\Jobs\SendSubscriptionExpiryReminderJob;
@@ -40,6 +41,15 @@ class SchedulerRegistry
                 'label' => 'Subscription Expiry Processing',
                 'type' => self::TYPE_JOB,
                 'target' => ExpireSubscriptionsJob::class,
+                'frequency' => 'hourly',
+                'queue' => 'default',
+                'enabled' => true,
+                'options' => [],
+            ],
+            'meta-catalog-reconciliation' => [
+                'label' => 'Meta Catalog Reconciliation',
+                'type' => self::TYPE_JOB,
+                'target' => ReconcileMetaCatalogsJob::class,
                 'frequency' => 'hourly',
                 'queue' => 'default',
                 'enabled' => true,

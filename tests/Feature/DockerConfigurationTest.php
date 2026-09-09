@@ -11,6 +11,8 @@ it('defines the application database migrations and queue worker services', func
         ->toContain('app:')
         ->toContain('queue:')
         ->toContain('["php", "artisan", "queue:work"')
+        ->toContain('scheduler:')
+        ->toContain('["php", "artisan", "schedule:work"]')
         ->toContain('QUEUE_CONNECTION: database');
 });
 

@@ -42,6 +42,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog', [CommerceController::class, 'storeCatalog'])->name('catalog.store');
     Route::post('catalog/{catalog}/token', [CommerceController::class, 'rotateFeedToken'])->name('catalog.token.rotate');
     Route::post('catalog/{catalog}/sync', [CommerceController::class, 'syncCatalog'])->name('catalog.sync');
+    Route::post('catalog/{catalog}/verify-access', [CommerceController::class, 'verifyCatalogAccess'])->name('catalog.verify-access');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->name('orders.index');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->name('orders.show');

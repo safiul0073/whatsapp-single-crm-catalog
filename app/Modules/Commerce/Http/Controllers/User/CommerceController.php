@@ -55,7 +55,7 @@ use Illuminate\View\View;
 
 class CommerceController extends Controller implements HasMiddleware
 {
-    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders) {}
+    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders, protected CatalogDiagnosticsService $catalogDiagnostics) {}
 
     public static function middleware(): array
     {
@@ -474,7 +474,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
         $catalogs = Catalog::query()->with(['channelAccount', 'itemSyncs', 'syncRuns' => fn ($query) => $query->latest()->limit(5)])->where('workspace_id', $workspace->id)->get();
-        $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => app(CatalogDiagnosticsService::class)->diagnose($catalog)])->all();
+        $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->diagnose($catalog, true)])->all();
 
         return view('commerce::user.catalog', ['catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
     }
@@ -504,6 +504,18 @@ class CommerceController extends Controller implements HasMiddleware
         $sync->queue($catalog);
 
         return back()->with('success', __('Catalog synchronization queued.'));
+    }
+
+    public function verifyCatalogAccess(Request $request, Catalog $catalog): RedirectResponse
+    {
+        $this->assertWorkspace($request, $catalog->workspace_id);
+        $access = $this->catalogDiagnostics->probeCatalogAccess($catalog, true);
+
+        if ($access === null) {
+            return back()->with('warning', __('Configure the Meta catalog ID and connect the channel before verifying access.'));
+        }
+
+        return back()->with($access['passed'] ? 'success' : 'error', $access['message']);
     }
 
     public function updateCommerceSettings(CommerceSettingsRequest $request, Catalog $catalog, MetaCatalogClient $meta): RedirectResponse
