@@ -20,6 +20,7 @@ use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -115,6 +116,18 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 $this->persistStatus($account, $status);
             }
 
+            foreach ($this->historyThreads($payload) as $thread) {
+                $this->persistHistoryThread($account, $thread);
+            }
+
+            foreach ($this->messageEchoes($payload) as $echo) {
+                $this->persistMessageEcho($account, $echo);
+            }
+
+            foreach ($this->syncedContacts($payload) as $contact) {
+                $this->persistSyncedContact($account, $contact);
+            }
+
             $event->update(['status' => ChannelWebhookEventStatus::Processed->value, 'processed_at' => now()]);
 
             return ['ok' => true, 'event_id' => $event->id, 'type' => $eventType];
@@ -184,14 +197,56 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         ];
     }
 
+    /**
+     * Collects one webhook value key across every entry and change, discarding the
+     * null placeholders data_get() yields for changes that omit the key.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function flattenValues(array $payload, string $key): array
+    {
+        return array_values(array_filter(
+            Arr::flatten(data_get($payload, 'entry.*.changes.*.value.'.$key, []), 1),
+            static fn ($item): bool => is_array($item),
+        ));
+    }
+
     protected function messages(array $payload): array
     {
-        return Arr::flatten(data_get($payload, 'entry.*.changes.*.value.messages', []), 1);
+        return $this->flattenValues($payload, 'messages');
     }
 
     protected function statuses(array $payload): array
     {
-        return Arr::flatten(data_get($payload, 'entry.*.changes.*.value.statuses', []), 1);
+        return $this->flattenValues($payload, 'statuses');
+    }
+
+    /**
+     * Chat history threads Meta backfills after a coexistence onboarding.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function historyThreads(array $payload): array
+    {
+        return $this->flattenValues($payload, 'history');
+    }
+
+    /**
+     * Echoes of messages the business sent from the WhatsApp Business app while in coexistence.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function messageEchoes(array $payload): array
+    {
+        return $this->flattenValues($payload, 'message_echoes');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function syncedContacts(array $payload): array
+    {
+        return $this->flattenValues($payload, 'contacts');
     }
 
     protected function eventType(array $payload): string
@@ -202,6 +257,14 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
         if ($this->statuses($payload) !== []) {
             return 'message.status';
+        }
+
+        if ($this->historyThreads($payload) !== []) {
+            return 'history.synced';
+        }
+
+        if ($this->messageEchoes($payload) !== []) {
+            return 'message.echo';
         }
 
         return data_get($payload, 'entry.0.changes.0.field', 'unknown');
@@ -295,6 +358,180 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         if (($message['type'] ?? null) === 'order') {
             app(OrderIntakeService::class)->intake($account, $contact, $conversation, $message);
         }
+    }
+
+    /**
+     * Replays one backfilled history thread. Meta delivers threads in batches after a
+     * coexistence onboarding, so every message is upserted by its provider id to stay idempotent.
+     */
+    protected function persistHistoryThread(ChannelAccount $account, array $thread): void
+    {
+        foreach (data_get($thread, 'messages', []) as $message) {
+            if (! is_array($message)) {
+                continue;
+            }
+
+            $this->persistHistoryMessage($account, $message, (string) data_get($thread, 'metadata.phone_number', ''));
+        }
+    }
+
+    protected function persistHistoryMessage(ChannelAccount $account, array $message, string $threadPhone): void
+    {
+        $isOutbound = ($message['from'] ?? null) === $account->provider_display_id
+            || data_get($message, 'history_context.from_me') === true;
+
+        $counterpartId = $isOutbound
+            ? (string) ($message['to'] ?? $threadPhone)
+            : (string) ($message['from'] ?? $threadPhone);
+
+        if ($counterpartId === '') {
+            return;
+        }
+
+        $context = $this->resolveContactContext($account, $counterpartId, (string) data_get($message, 'profile.name', ''));
+        $timestamp = $this->messageTimestamp($message);
+
+        Message::query()->updateOrCreate(
+            ['provider_message_id' => $message['id'] ?? Str::uuid()->toString()],
+            [
+                'workspace_id' => $account->workspace_id,
+                'conversation_id' => $context['conversation']->id,
+                'contact_id' => $context['contact']->id,
+                'channel_account_id' => $account->id,
+                'provider' => $this->provider(),
+                'direction' => $isOutbound ? 'outbound' : 'inbound',
+                'type' => $message['type'] ?? 'text',
+                'body' => $this->inboundMessageBody($message),
+                'payload' => $message,
+                'status' => $isOutbound ? MessageStatus::Sent->value : MessageStatus::Received->value,
+                'whatsapp_message_id' => $message['id'] ?? null,
+            ]
+        );
+
+        $this->backdateMessage($message['id'] ?? null, $timestamp);
+
+        $context['conversation']->forceFill([
+            'last_message_at' => max($timestamp, $context['conversation']->last_message_at ?? $timestamp),
+        ])->save();
+    }
+
+    /**
+     * Mirrors a message the business sent from the WhatsApp Business app so the platform
+     * inbox stays in sync with the phone during coexistence.
+     */
+    protected function persistMessageEcho(ChannelAccount $account, array $echo): void
+    {
+        $recipient = (string) ($echo['to'] ?? '');
+
+        if ($recipient === '') {
+            return;
+        }
+
+        $context = $this->resolveContactContext($account, $recipient, '');
+        $timestamp = $this->messageTimestamp($echo);
+
+        Message::query()->updateOrCreate(
+            ['provider_message_id' => $echo['id'] ?? Str::uuid()->toString()],
+            [
+                'workspace_id' => $account->workspace_id,
+                'conversation_id' => $context['conversation']->id,
+                'contact_id' => $context['contact']->id,
+                'channel_account_id' => $account->id,
+                'provider' => $this->provider(),
+                'direction' => 'outbound',
+                'type' => $echo['type'] ?? 'text',
+                'body' => $this->inboundMessageBody($echo),
+                'payload' => $echo,
+                'status' => MessageStatus::Sent->value,
+                'whatsapp_message_id' => $echo['id'] ?? null,
+            ]
+        );
+
+        $this->backdateMessage($echo['id'] ?? null, $timestamp);
+
+        $context['conversation']->forceFill(['last_message_at' => $timestamp])->save();
+    }
+
+    protected function persistSyncedContact(ChannelAccount $account, array $contact): void
+    {
+        $providerContactId = (string) ($contact['wa_id'] ?? '');
+
+        if ($providerContactId === '') {
+            return;
+        }
+
+        $this->resolveContactContext($account, $providerContactId, (string) data_get($contact, 'profile.name', ''));
+    }
+
+    /**
+     * Resolves (creating when absent) the contact, provider identity and conversation a
+     * coexistence message belongs to.
+     *
+     * @return array{contact: Contact, conversation: Conversation}
+     */
+    protected function resolveContactContext(ChannelAccount $account, string $providerContactId, string $profileName): array
+    {
+        $phone = $this->normalizeInboundPhone($providerContactId);
+        $name = $profileName !== '' ? $profileName : $phone;
+
+        $contact = Contact::query()->firstOrCreate(
+            ['workspace_id' => $account->workspace_id, 'phone' => $phone],
+            [
+                'name' => $name,
+                'opt_in_status' => ContactOptInStatus::Subscribed->value,
+                'opt_in_at' => now(),
+                'last_interaction_at' => now(),
+            ]
+        );
+
+        ContactProviderIdentity::query()->updateOrCreate(
+            [
+                'workspace_id' => $account->workspace_id,
+                'provider' => $this->provider(),
+                'provider_contact_id' => $providerContactId,
+            ],
+            [
+                'contact_id' => $contact->id,
+                'channel_account_id' => $account->id,
+                'address' => $phone,
+                'identity_type' => 'phone',
+                'metadata' => ['profile_name' => $name],
+            ]
+        );
+
+        $conversation = Conversation::query()->firstOrCreate(
+            ['workspace_id' => $account->workspace_id, 'contact_id' => $contact->id, 'channel_account_id' => $account->id],
+            [
+                'provider' => $this->provider(),
+                'provider_conversation_id' => $providerContactId,
+                'status' => ConversationStatus::Open->value,
+                'labels' => [],
+            ]
+        );
+
+        return ['contact' => $contact, 'conversation' => $conversation];
+    }
+
+    /**
+     * Restores a replayed message's original send time, which Eloquent's automatic
+     * timestamps would otherwise overwrite with the moment of ingestion.
+     */
+    protected function backdateMessage(?string $providerMessageId, CarbonImmutable $timestamp): void
+    {
+        if ($providerMessageId === null) {
+            return;
+        }
+
+        Message::query()
+            ->where('provider_message_id', $providerMessageId)
+            ->update(['created_at' => $timestamp, 'updated_at' => $timestamp]);
+    }
+
+    protected function messageTimestamp(array $message): CarbonImmutable
+    {
+        $timestamp = $message['timestamp'] ?? null;
+
+        return is_numeric($timestamp) ? CarbonImmutable::createFromTimestamp((int) $timestamp) : CarbonImmutable::now();
     }
 
     protected function normalizeInboundPhone(string $phone): string

@@ -363,17 +363,32 @@
                     <input type="hidden" name="display_name" data-embedded-field="display_name">
                   </form>
                   
-                  <button
-                    type="button"
-                    class="btn btn-primary shrink-0"
-                    data-whatsapp-embedded-signup
-                    data-app-id="{{ $embeddedSignup['app_id'] }}"
-                    data-config-id="{{ $embeddedSignup['config_id'] }}"
-                    data-graph-api-version="{{ $embeddedSignup['graph_api_version'] }}"
-                  >
-                    <i class="ph-fill ph-facebook-logo text-base"></i>
-                    Connect with Meta
-                  </button>
+                  <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      data-whatsapp-embedded-signup
+                      data-signup-mode="coexistence"
+                      data-app-id="{{ $embeddedSignup['app_id'] }}"
+                      data-config-id="{{ $embeddedSignup['config_id'] }}"
+                      data-graph-api-version="{{ $embeddedSignup['graph_api_version'] }}"
+                    >
+                      <i class="ph-fill ph-whatsapp-logo text-base"></i>
+                      Connect existing number
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline"
+                      data-whatsapp-embedded-signup
+                      data-signup-mode="new"
+                      data-app-id="{{ $embeddedSignup['app_id'] }}"
+                      data-config-id="{{ $embeddedSignup['config_id'] }}"
+                      data-graph-api-version="{{ $embeddedSignup['graph_api_version'] }}"
+                    >
+                      <i class="ph-fill ph-facebook-logo text-base"></i>
+                      Register new number
+                    </button>
+                  </div>
                 @endif
               </div>
 
@@ -745,7 +760,7 @@
                 return;
               }
 
-              if (payload.event === 'FINISH' || payload.event === 'FINISH_ONLY_WABA') {
+              if (payload.event === 'FINISH' || payload.event === 'FINISH_ONLY_WABA' || payload.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
                 signupData = payload.data || {};
                 submit();
               }
@@ -769,7 +784,21 @@
               submitted = false;
               pendingCode = null;
               signupData = {};
-              setStatus('Opening Meta Embedded Signup...');
+
+              const isCoexistence = trigger.dataset.signupMode === 'coexistence';
+              const extras = {
+                feature: 'whatsapp_embedded_signup',
+                sessionInfoVersion: '3',
+                setup: {},
+              };
+
+              if (isCoexistence) {
+                extras.featureType = 'whatsapp_business_app_onboarding';
+              }
+
+              setStatus(isCoexistence
+                ? 'Opening Meta Embedded Signup. You will receive a verification code on WhatsApp to paste into your WhatsApp Business app.'
+                : 'Opening Meta Embedded Signup...');
 
               window.FB.login((response) => {
                 if (response.authResponse?.code || response.authResponse?.accessToken) {
@@ -787,11 +816,7 @@
                 config_id: trigger.dataset.configId,
                 response_type: 'code',
                 override_default_response_type: true,
-                extras: {
-                  feature: 'whatsapp_embedded_signup',
-                  sessionInfoVersion: '3',
-                  setup: {},
-                },
+                extras,
               });
             });
           });
