@@ -26,6 +26,7 @@
     .wapro-send,.wapro-attach{border:0;border-radius:12px;background:var(--wapro-primary,#16a34a);color:#fff;font-weight:800;padding:10px 14px;cursor:pointer}.wapro-attach{width:42px;padding:0;background:#eef6f1;color:var(--wapro-primary,#16a34a)}
     .wapro-row{display:flex;gap:8px}.wapro-row .wapro-text{flex:1}.wapro-note{font-size:12px;color:#647067}.wapro-file-input{display:none}.wapro-file-pill{display:none;align-items:center;justify-content:space-between;gap:8px;border:1px solid #d8e2dc;border-radius:12px;background:#f6faf7;padding:8px 10px;font-size:12px;color:#17211b}.wapro-file-pill.visible{display:flex}.wapro-file-clear{border:0;background:transparent;color:#647067;cursor:pointer;font-size:16px}
     .wapro-attachment{display:block;margin-bottom:7px;overflow:hidden;border-radius:12px;color:inherit;text-decoration:none}.wapro-attachment img{display:block;max-width:100%;max-height:220px;object-fit:cover}.wapro-file-card{display:flex;align-items:center;gap:10px;border:1px solid #e3ebe6;background:rgba(255,255,255,.35);padding:10px}.wapro-file-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:rgba(22,163,74,.12);font-weight:900}.wapro-file-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}.wapro-file-size{display:block;font-size:11px;opacity:.72}
+    .wapro-product-link{display:inline-block;margin-top:4px;padding:6px 12px;background:rgba(255,255,255,0.2);border:1px solid currentColor;border-radius:6px;text-decoration:none;font-weight:bold;color:inherit;font-size:13px;transition:opacity 0.2s;}.wapro-msg.outbound .wapro-product-link{background:var(--wapro-primary,#16a34a);color:#fff;border-color:transparent;}
   `;
   document.head.appendChild(style);
 
@@ -79,7 +80,15 @@
     if (message.attachment) bubble.appendChild(renderAttachment(message.attachment));
     if (message.body && (!message.attachment || message.body !== message.attachment.name)) {
       const text = document.createElement("div");
-      text.textContent = message.body;
+      
+      const bodyHtml = message.body
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="wapro-product-link">$1</a>')
+        .replace(/\n/g, '<br>');
+
+      text.innerHTML = bodyHtml;
       bubble.appendChild(text);
     }
     messages.appendChild(bubble);

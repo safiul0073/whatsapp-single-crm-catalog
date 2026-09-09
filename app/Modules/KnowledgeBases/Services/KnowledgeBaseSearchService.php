@@ -3,6 +3,7 @@
 namespace App\Modules\KnowledgeBases\Services;
 
 use App\Modules\Chatbots\Models\Chatbot;
+use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseChunk;
 use Illuminate\Support\Str;
 
@@ -10,7 +11,7 @@ class KnowledgeBaseSearchService
 {
     public function __construct(
         protected KnowledgeBaseEmbeddingService $embeddings,
-        protected QdrantVectorStoreService $vectors,
+        protected VectorStoreService $vectors,
     ) {}
 
     public function search(Chatbot $chatbot, string $query, int $limit = 5): KnowledgeBaseSearchResult
@@ -30,7 +31,11 @@ class KnowledgeBaseSearchService
             $matches = $this->vectors->search($knowledgeBaseIds, $queryEmbedding, $limit);
 
             if ($matches->isNotEmpty()) {
-                return new KnowledgeBaseSearchResult($matches, 'qdrant');
+                $mode = $this->vectors instanceof JsonFileVectorStoreService
+                    ? 'json_file'
+                    : 'qdrant';
+
+                return new KnowledgeBaseSearchResult($matches, $mode);
             }
         }
 

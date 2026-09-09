@@ -2,6 +2,7 @@
 
 namespace App\Modules\KnowledgeBases\Services;
 
+use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseSource;
 use Throwable;
 
@@ -12,7 +13,7 @@ class KnowledgeBaseIndexingService
         protected KnowledgeBaseExtractionService $extractor,
         protected KnowledgeBaseChunker $chunker,
         protected KnowledgeBaseEmbeddingService $embeddings,
-        protected QdrantVectorStoreService $vectors,
+        protected VectorStoreService $vectors,
     ) {}
 
     public function index(KnowledgeBaseSource $source): void

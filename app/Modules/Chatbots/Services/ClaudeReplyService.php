@@ -5,6 +5,7 @@ namespace App\Modules\Chatbots\Services;
 use App\Modules\AiSettings\Services\AiSettingsService;
 use App\Modules\AiSettings\Services\AiUsageLogger;
 use App\Modules\Chatbots\Models\Chatbot;
+use App\Modules\Commerce\AiTools\SearchProductsTool;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseChunk;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchResult;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchService;
@@ -78,7 +79,9 @@ class ClaudeReplyService
             $agent = new AnonymousAgent(
                 instructions: $this->instructions($chatbot, $search->chunks),
                 messages: [],
-                tools: [],
+                tools: [
+                    new SearchProductsTool($chatbot->workspace_id),
+                ],
             );
 
             $response = $this->usageLogger->measure(
@@ -155,6 +158,8 @@ Knowledge context:
 {$knowledgeContext}
 
 Keep replies concise and helpful. If the customer asks for a human or the answer is outside your knowledge, reply with: {$handoffMessage}
+
+If you recommend products, always format them as exact Markdown links like this: `[Product Name](URL)` so the widget can render them properly.
 PROMPT);
     }
 

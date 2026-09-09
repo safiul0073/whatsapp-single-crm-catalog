@@ -2,7 +2,9 @@
 
 namespace App\Modules\KnowledgeBases\Providers;
 
+use App\Modules\AiSettings\Services\AiSettingsService;
 use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
+use App\Modules\KnowledgeBases\Services\JsonFileVectorStoreService;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseChunker;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseEmbeddingService;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseExtractionService;
@@ -23,6 +25,15 @@ class KnowledgeBasesServiceProvider extends BasePanelModuleProvider
         $this->app->singleton(KnowledgeBaseIndexingService::class);
         $this->app->singleton(KnowledgeBaseSearchService::class);
         $this->app->singleton(QdrantVectorStoreService::class);
-        $this->app->alias(QdrantVectorStoreService::class, VectorStoreService::class);
+        $this->app->singleton(JsonFileVectorStoreService::class);
+
+        $this->app->singleton(VectorStoreService::class, function ($app): VectorStoreService {
+            $provider = $app->make(AiSettingsService::class)->get('vector_database_provider', 'qdrant');
+
+            return match ($provider) {
+                'json_file' => $app->make(JsonFileVectorStoreService::class),
+                default => $app->make(QdrantVectorStoreService::class),
+            };
+        });
     }
 }

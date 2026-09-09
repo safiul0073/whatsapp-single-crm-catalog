@@ -3,6 +3,7 @@
 namespace App\Modules\KnowledgeBases\Services;
 
 use App\Models\User;
+use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
 use App\Modules\KnowledgeBases\Jobs\IndexKnowledgeBaseSourceJob;
 use App\Modules\KnowledgeBases\Models\KnowledgeBase;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseSource;
@@ -15,7 +16,7 @@ class KnowledgeBaseService
 {
     public function __construct(
         protected WorkspaceResolver $workspaces,
-        protected QdrantVectorStoreService $vectors,
+        protected VectorStoreService $vectors,
     ) {}
 
     public function listForUser(?User $user, array $filters = []): LengthAwarePaginator
@@ -98,11 +99,6 @@ class KnowledgeBaseService
         $filePath = null;
         $content = $data['content'] ?? null;
 
-        if ($type === 'qa') {
-            $content = "Question: {$data['question']}\nAnswer: {$data['answer']}";
-            $metadata = ['question' => $data['question'], 'answer' => $data['answer']];
-        }
-
         if ($type === 'file' && $file) {
             $filePath = $file->store('knowledge-bases/'.$knowledgeBase->id, 'local');
             $metadata = [
@@ -110,10 +106,6 @@ class KnowledgeBaseService
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
             ];
-        }
-
-        if ($type === 'sitemap') {
-            $metadata = ['crawl_limit' => (int) ($data['crawl_limit'] ?? 10)];
         }
 
         $source = $knowledgeBase->sources()->create([

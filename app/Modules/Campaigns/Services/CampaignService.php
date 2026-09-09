@@ -10,6 +10,7 @@ use App\Modules\Campaigns\Enums\CampaignStatus;
 use App\Modules\Campaigns\Jobs\PrepareCampaignRecipientsJob;
 use App\Modules\Campaigns\Jobs\SendCampaignRecipientJob;
 use App\Modules\Campaigns\Models\Campaign;
+use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Services\CommerceTemplatePayloadService;
 use App\Modules\Contacts\Models\Contact;
@@ -561,6 +562,24 @@ class CampaignService
                 throw ValidationException::withMessages([
                     'settings.commerce.variant_ids' => 'Select products for a multi-product WhatsApp template.',
                 ]);
+            }
+
+            if (in_array($template->template_kind, ['catalog', 'multi_product'], true) && $provider === 'whatsapp') {
+                $channelAccountId = $data['channel_account_id'] ?? null;
+
+                if (filled($channelAccountId)) {
+                    $hasCatalog = Catalog::query()
+                        ->where('workspace_id', $workspaceId)
+                        ->where('channel_account_id', $channelAccountId)
+                        ->where('is_active', true)
+                        ->exists();
+
+                    if (! $hasCatalog) {
+                        throw ValidationException::withMessages([
+                            'message_template_id' => 'The selected WhatsApp channel does not have an active Meta Catalog connected. Connect a catalog in Commerce settings before sending catalog templates.',
+                        ]);
+                    }
+                }
             }
 
             return;
