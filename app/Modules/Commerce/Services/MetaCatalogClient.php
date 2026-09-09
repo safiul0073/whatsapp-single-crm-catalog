@@ -12,7 +12,16 @@ class MetaCatalogClient
 
     public function catalog(string $catalogId, string $token): Response
     {
-        return Http::withToken($token)->get($this->url($catalogId), ['fields' => 'id,name,vertical']);
+        return Http::withToken($token)->get($this->url($catalogId), ['fields' => 'id,name']);
+    }
+
+    /**
+     * Lists catalogs linked to a WhatsApp Business Account. WhatsApp system user tokens can
+     * read this edge even when they lack the catalog_management scope a direct node read needs.
+     */
+    public function wabaCatalogs(string $wabaId, string $token): Response
+    {
+        return Http::withToken($token)->get($this->url($wabaId.'/product_catalogs'), ['fields' => 'id,name']);
     }
 
     public function commerceSettings(string $phoneNumberId, string $token): Response

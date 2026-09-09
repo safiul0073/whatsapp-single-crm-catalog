@@ -61,15 +61,49 @@ class CatalogDiagnosticsService
             Cache::forget($key);
         }
 
-        return Cache::remember($key, static::META_ACCESS_CACHE_SECONDS, function () use ($catalog, $token): array {
+        $wabaId = (string) $catalog->channelAccount?->provider_account_id;
+
+        return Cache::remember($key, static::META_ACCESS_CACHE_SECONDS, function () use ($catalog, $token, $wabaId): array {
             try {
                 $response = $this->meta->catalog((string) $catalog->meta_catalog_id, $token);
+                if ($response->successful()) {
+                    return $this->check('catalog_access', true, 'Meta catalog access verified.');
+                }
+
+                return $this->checkLinkedCatalog($catalog, $token, $wabaId, (string) ($response->json('error.message') ?: 'Meta catalog access failed.'));
             } catch (\Throwable $exception) {
                 return $this->check('catalog_access', false, 'Meta catalog access failed: '.$exception->getMessage());
             }
-
-            return $this->check('catalog_access', $response->successful(), $response->successful() ? 'Meta catalog access verified.' : ($response->json('error.message') ?: 'Meta catalog access failed.'));
         });
+    }
+
+    /**
+     * Falls back to the WhatsApp Business Account catalog edge, which a WhatsApp system user token
+     * can read without the catalog_management scope that a direct catalog node read requires.
+     *
+     * @return array{code: string, passed: bool, message: string}
+     */
+    protected function checkLinkedCatalog(Catalog $catalog, string $token, string $wabaId, string $directError): array
+    {
+        if (blank($wabaId)) {
+            return $this->check('catalog_access', false, $directError);
+        }
+
+        $response = $this->meta->wabaCatalogs($wabaId, $token);
+        if (! $response->successful()) {
+            return $this->check('catalog_access', false, $directError);
+        }
+
+        $linked = collect($response->json('data') ?: [])->pluck('id')->map(fn ($id): string => (string) $id);
+        if ($linked->contains((string) $catalog->meta_catalog_id)) {
+            return $this->check('catalog_access', true, 'Meta catalog access verified via the WhatsApp Business Account.');
+        }
+
+        if ($linked->isEmpty()) {
+            return $this->check('catalog_access', false, 'No catalog is linked to this WhatsApp Business Account. Link it in Meta Commerce Manager.');
+        }
+
+        return $this->check('catalog_access', false, 'This WhatsApp Business Account is linked to catalog '.$linked->implode(', ').', not '.$catalog->meta_catalog_id.'.');
     }
 
     /**

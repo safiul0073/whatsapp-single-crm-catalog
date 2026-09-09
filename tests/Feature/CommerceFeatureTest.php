@@ -1118,41 +1118,32 @@ it('does not report a catalog as ready when the Meta access probe fails', functi
         ->assertDontSeeText('>Ready<', false);
 });
 
-it('caches the Meta catalog access probe between page renders', function (): void {
+it('verifies Meta access on demand and flashes the probe result', function (): void {
     Permission::findOrCreate('commerce.view', 'web');
     Permission::findOrCreate('commerce.manage', 'web');
-    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200)]);
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access', 'name' => 'US Store'], 200)]);
     $context = commerceContext();
     $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
     $catalog = readyApiCatalog($context);
-
-    $diagnostics = app(CatalogDiagnosticsService::class);
-    $diagnostics->probeCatalogAccess($catalog);
-    $diagnostics->probeCatalogAccess($catalog);
-
-    Http::assertSentCount(1);
-
-    $diagnostics->probeCatalogAccess($catalog, true);
-
-    Http::assertSentCount(2);
-});
-
-it('verifies Meta access on demand and busts the cached probe', function (): void {
-    Permission::findOrCreate('commerce.view', 'web');
-    Permission::findOrCreate('commerce.manage', 'web');
-    Http::fakeSequence('graph.facebook.com/*')
-        ->push(['error' => ['message' => 'Object does not exist']], 400)
-        ->push(['id' => 'catalog-access'], 200);
-    $context = commerceContext();
-    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
-    $catalog = readyApiCatalog($context);
-
-    expect(app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog)['passed'])->toBeFalse();
 
     $this->actingAs($context['user'])
         ->post(route('user.commerce.catalog.verify-access', $catalog))
         ->assertRedirect()
         ->assertSessionHas('success', 'Meta catalog access verified.');
+});
+
+it('busts the cached probe when access is verified on demand', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200)]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $diagnostics = app(CatalogDiagnosticsService::class);
+
+    $diagnostics->probeCatalogAccess($catalog);
+    $diagnostics->probeCatalogAccess($catalog);
+    Http::assertSentCount(1);
+
+    $diagnostics->probeCatalogAccess($catalog, true);
+    Http::assertSentCount(2);
 });
 
 it('continues reconciling remaining catalogs when one catalog is not ready', function (): void {
@@ -1184,4 +1175,46 @@ it('continues reconciling remaining catalogs when one catalog is not ready', fun
     expect($blocked->fresh()->last_sync_status)->toBe('blocked')
         ->and($blocked->fresh()->last_error)->not->toBeNull()
         ->and($ready->fresh()->last_sync_status)->toBe('queued');
+});
+
+it('verifies catalog access through the WhatsApp Business Account when the direct read is unauthorized', function (): void {
+    Http::fake([
+        'graph.facebook.com/*/product_catalogs*' => Http::response(['data' => [['id' => 'catalog-access', 'name' => 'US Store']]], 200),
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request.', 'code' => 100]], 400),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+
+    $access = app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog);
+
+    expect($access['passed'])->toBeTrue()
+        ->and($access['message'])->toContain('WhatsApp Business Account');
+});
+
+it('reports the linked catalog id when it differs from the configured catalog', function (): void {
+    Http::fake([
+        'graph.facebook.com/*/product_catalogs*' => Http::response(['data' => [['id' => 'other-catalog', 'name' => 'EU Store']]], 200),
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request.', 'code' => 100]], 400),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+
+    $access = app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog);
+
+    expect($access['passed'])->toBeFalse()
+        ->and($access['message'])->toContain('other-catalog');
+});
+
+it('reports when no catalog is linked to the WhatsApp Business Account', function (): void {
+    Http::fake([
+        'graph.facebook.com/*/product_catalogs*' => Http::response(['data' => []], 200),
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request.', 'code' => 100]], 400),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+
+    $access = app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog);
+
+    expect($access['passed'])->toBeFalse()
+        ->and($access['message'])->toContain('No catalog is linked');
 });
