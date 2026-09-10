@@ -8,6 +8,7 @@ use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelAccountSetupService;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,14 +25,31 @@ class EmailChannelSetupController extends Controller
     public function index(Request $request): View
     {
         $workspace = $this->workspaces->current($request->user());
+        $channel = ChannelAccount::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('provider', 'email')
+            ->first();
 
         return view('email::user.setup', [
-            'channel' => ChannelAccount::query()
-                ->where('workspace_id', $workspace->id)
-                ->where('provider', 'email')
-                ->first(),
+            'channel' => $channel,
             'providers' => config('email.providers', []),
             'defaultProvider' => config('email.default_provider', 'log'),
+            'steps' => $this->setupSteps($channel),
+        ]);
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, description: string, state: string}>
+     */
+    protected function setupSteps(?ChannelAccount $channel): array
+    {
+        $isConnected = $channel?->status === ChannelAccountStatus::Connected;
+        $settings = $channel?->settings ?? [];
+
+        return ChannelSetupSteps::build([
+            ['key' => 'provider', 'label' => __('Choose an email provider'), 'description' => __('Pick SMTP, Mailgun, Sendmail, or Log for safe testing.'), 'done' => $channel !== null],
+            ['key' => 'connect', 'label' => __('Enter credentials and connect'), 'description' => __('Save the sender address and provider credentials. We run a connection test automatically.'), 'done' => $isConnected],
+            ['key' => 'test', 'label' => __('Confirm delivery'), 'description' => __('Run a connection test whenever credentials change, then use this channel in a campaign.'), 'done' => $isConnected && filled($settings['last_connection_tested_at'] ?? null) && blank($settings['last_error'] ?? null)],
         ]);
     }
 

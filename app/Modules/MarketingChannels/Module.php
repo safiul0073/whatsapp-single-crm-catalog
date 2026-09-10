@@ -24,4 +24,9 @@ class Module extends BasePanelModule
     {
         $navigation->group('Operations')->item('Channels', 'admin.marketing-channels.*', 'broadcast', 'marketing-channels.view', 34);
     }
+
+    public function userNavigation(NavigationBuilder $navigation): void
+    {
+        $navigation->group('Channels')->item('All channels', 'user.channels.*', 'plugs-connected', 'workspace.view', 10);
+    }
 }

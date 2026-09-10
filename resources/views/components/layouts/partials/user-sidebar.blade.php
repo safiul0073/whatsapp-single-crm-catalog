@@ -223,11 +223,25 @@
             'label' => __('Channels'),
             'items' => [
                 [
+                    'label' => __('All channels'),
+                    'route' => 'user.channels.index',
+                    'active' => 'user.channels.*',
+                    'icon' => 'ph-plugs-connected',
+                    'permission' => 'workspace.view',
+                ],
+                [
                     'label' => __('WhatsApp Cloud'),
                     'route' => 'user.whatsapp-cloud.channel-setup',
                     'active' => 'user.whatsapp-cloud.*',
                     'icon' => 'ph-whatsapp-logo',
                     'permission' => 'channels.manage',
+                ],
+                [
+                    'label' => __('Social'),
+                    'route' => 'user.meta-social.setup',
+                    'active' => 'user.meta-social.*',
+                    'icon' => 'ph-share-network',
+                    'permission' => 'meta-social.manage',
                 ],
                 [
                     'label' => __('Telegram'),

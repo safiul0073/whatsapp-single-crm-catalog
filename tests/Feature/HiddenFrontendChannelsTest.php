@@ -1,23 +1,22 @@
 <?php
 
-use App\Modules\WhatsAppCloud\Services\ChannelSetupService;
 use Illuminate\Support\Facades\Route;
 
-it('hides meta social providers from the user channel setup', function () {
-    expect(ChannelSetupService::HIDDEN_USER_PROVIDERS)
-        ->toBe(['messenger', 'instagram', 'threads']);
+it('keeps meta social providers off the whatsapp channel setup page', function () {
+    $view = file_get_contents(app_path('Modules/WhatsAppCloud/Resources/views/user/channel-setup.blade.php'));
 
-    $service = file_get_contents(app_path('Modules/WhatsAppCloud/Services/ChannelSetupService.php'));
-
-    expect($service)
-        ->toContain('except(self::HIDDEN_USER_PROVIDERS)')
-        ->toContain('in_array($channel->provider, self::HIDDEN_USER_PROVIDERS, true)');
+    expect($view)
+        ->not->toContain('channelSettingsDrawer')
+        ->not->toContain('store-generic')
+        ->not->toContain('ph-messenger-logo')
+        ->not->toContain('ph-instagram-logo')
+        ->not->toContain('ph-threads-logo');
 });
 
-it('does not register the meta social user routes', function () {
-    expect(Route::has('user.meta-social.setup'))->toBeFalse()
-        ->and(Route::has('user.meta-social.setup.embedded'))->toBeFalse()
-        ->and(Route::has('user.meta-social.setup.disconnect'))->toBeFalse();
+it('registers the meta social user routes on their own page', function () {
+    expect(Route::has('user.meta-social.setup'))->toBeTrue()
+        ->and(Route::has('user.meta-social.setup.embedded'))->toBeTrue()
+        ->and(Route::has('user.meta-social.setup.disconnect'))->toBeTrue();
 });
 
 it('does not render instagram in the public footer', function () {

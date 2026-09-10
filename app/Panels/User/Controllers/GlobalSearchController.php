@@ -101,7 +101,9 @@ class GlobalSearchController extends Controller
                 'icon' => 'ph-chat-text',
                 'items' => [
                     ['label' => __('Inbox'), 'route' => 'user.inbox.index', 'permission' => 'inbox.view|inbox.assigned_only', 'keywords' => 'chat conversations messages replies'],
+                    ['label' => __('All channels'), 'route' => 'user.channels.index', 'permission' => 'workspace.view', 'keywords' => 'channels connect telegram email sms social messenger instagram threads hub'],
                     ['label' => __('Channel Setup'), 'route' => 'user.whatsapp-cloud.channel-setup', 'permission' => 'channels.manage', 'keywords' => 'whatsapp cloud api phone waba connect'],
+                    ['label' => __('Social Channels'), 'route' => 'user.meta-social.setup', 'permission' => 'meta-social.manage', 'keywords' => 'messenger instagram threads facebook social'],
                 ],
             ],
             [

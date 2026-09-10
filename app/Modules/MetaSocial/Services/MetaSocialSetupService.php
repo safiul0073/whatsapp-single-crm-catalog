@@ -5,6 +5,7 @@ namespace App\Modules\MetaSocial\Services;
 use App\Models\User;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -22,13 +23,71 @@ class MetaSocialSetupService
     {
         $workspace = $this->workspaces->current($user);
 
+        $messengerAccounts = $this->accounts($workspace->id, 'messenger');
+        $instagramAccounts = $this->accounts($workspace->id, 'instagram');
+        $threadsAccounts = $this->accounts($workspace->id, 'threads');
+
         return [
             'workspace' => $workspace,
-            'messengerAccounts' => $this->accounts($workspace->id, 'messenger'),
-            'instagramAccounts' => $this->accounts($workspace->id, 'instagram'),
+            'messengerAccounts' => $messengerAccounts,
+            'instagramAccounts' => $instagramAccounts,
+            'threadsAccounts' => $threadsAccounts,
             'messengerSignup' => $this->embeddedSignupConfig('messenger'),
             'instagramSignup' => $this->embeddedSignupConfig('instagram'),
+            'sections' => [
+                $this->section('messenger', $messengerAccounts, $this->embeddedSignupConfig('messenger')),
+                $this->section('instagram', $instagramAccounts, $this->embeddedSignupConfig('instagram')),
+                $this->section('threads', $threadsAccounts, null),
+            ],
         ];
+    }
+
+    /**
+     * @param  Collection<int, ChannelAccount>  $accounts
+     * @return array<string, mixed>
+     */
+    protected function section(string $provider, Collection $accounts, ?array $signup): array
+    {
+        return [
+            'key' => $provider,
+            'config' => config("marketing-channels.providers.{$provider}", []),
+            'accounts' => $accounts,
+            'primary' => $accounts->first(fn (ChannelAccount $account): bool => $account->status === ChannelAccountStatus::Connected) ?? $accounts->first(),
+            'signup' => $signup,
+            'steps' => $this->setupSteps($provider, $accounts),
+            'webhook_url' => $provider === 'threads' ? $this->threadsWebhookUrl() : null,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, ChannelAccount>  $accounts
+     * @return array<int, array{key: string, label: string, description: string, state: string}>
+     */
+    protected function setupSteps(string $provider, Collection $accounts): array
+    {
+        $connected = $accounts->filter(fn (ChannelAccount $account): bool => $account->status === ChannelAccountStatus::Connected);
+        $hasError = $accounts->contains(fn (ChannelAccount $account): bool => filled(data_get($account->settings, 'last_error')));
+        $hasEvents = $connected->contains(fn (ChannelAccount $account): bool => $account->webhookEvents()->exists());
+
+        $labels = match ($provider) {
+            'messenger' => [__('Prepare your Facebook Page'), __('You need admin access to the Page and a Page access token.')],
+            'instagram' => [__('Prepare your Instagram Business account'), __('Link the account to a Facebook Page and note the account ID.')],
+            default => [__('Prepare your Threads account'), __('Note the Threads account ID and a long-lived access token.')],
+        };
+
+        return ChannelSetupSteps::build([
+            ['key' => 'prepare', 'label' => $labels[0], 'description' => $labels[1], 'done' => $accounts->isNotEmpty()],
+            ['key' => 'connect', 'label' => __('Connect the account'), 'description' => __('Save the account details. We validate them before marking the channel connected.'), 'done' => $connected->isNotEmpty()],
+            ['key' => 'webhook', 'label' => __('Receive webhook events'), 'description' => __('Add the webhook URL to your Meta app, then send a test message.'), 'done' => $hasEvents, 'skipped' => $provider === 'threads' && $connected->isEmpty()],
+            ['key' => 'test', 'label' => __('Test the connection'), 'description' => __('Run a connection test and resolve any token errors.'), 'done' => $connected->isNotEmpty() && ! $hasError],
+        ]);
+    }
+
+    protected function threadsWebhookUrl(): string
+    {
+        $baseUrl = $this->settings->webhookBaseUrl() ?: rtrim((string) config('app.url'), '/');
+
+        return $baseUrl.'/webhooks/channels/threads';
     }
 
     public function embeddedSignupConfig(string $provider): array

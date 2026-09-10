@@ -336,7 +336,7 @@ it('shows Messenger validation errors on Channel Setup', function (): void {
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.meta-social.setup'))
         ->assertOk()
         ->assertSee('Messenger')
         ->assertSee('Invalid OAuth access token.')
@@ -360,7 +360,7 @@ it('shows Instagram validation errors on Channel Setup', function (): void {
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.meta-social.setup'))
         ->assertOk()
         ->assertSee('Instagram')
         ->assertSee('Unsupported get request.')

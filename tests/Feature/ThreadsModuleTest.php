@@ -67,7 +67,7 @@ it('connects a Threads channel from Channel Setup and shows test action', functi
 
     withoutThreadsPanelMiddleware($this)
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.meta-social.setup'))
         ->assertOk()
         ->assertSee('Threads')
         ->assertSee('Test Connection');

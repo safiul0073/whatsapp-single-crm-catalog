@@ -7,19 +7,17 @@ use App\Modules\Commerce\Models\Catalog;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MetaSocial\Services\MetaSocialClient;
 use App\Modules\Telegram\Services\TelegramBotProvider;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ChannelSetupService
 {
-    public const HIDDEN_USER_PROVIDERS = ['messenger', 'instagram', 'threads'];
-
     public function __construct(
         protected WorkspaceResolver $workspaces,
         protected ChannelManager $channels,
@@ -31,40 +29,64 @@ class ChannelSetupService
     public function pageData(?User $user): array
     {
         $workspace = $this->workspaces->current($user);
-        $providers = collect($this->providerCatalog())
-            ->except(self::HIDDEN_USER_PROVIDERS)
-            ->all();
-        $allChannels = $this->workspaceChannels($workspace->id)
-            ->reject(fn (ChannelAccount $channel): bool => in_array($channel->provider, self::HIDDEN_USER_PROVIDERS, true))
-            ->values();
-        $channelsByProvider = $allChannels->keyBy('provider');
-        $channels = $allChannels->where('provider', 'whatsapp')->values();
-        $channel = $channelsByProvider->get('whatsapp');
+        $channel = $this->whatsappChannel($workspace->id);
+        $approvedTemplatesCount = MessageTemplate::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('provider', 'whatsapp')
+            ->where('status', MessageTemplateStatus::Approved->value)
+            ->count();
 
         return [
             'workspace' => $workspace,
+            'provider' => $this->providerCatalog()['whatsapp'] ?? [],
             'channel' => $channel,
-            'channels' => $channels,
-            'allChannels' => $allChannels,
-            'channelsByProvider' => $channelsByProvider,
-            'channelProviders' => $providers,
-            'testableProviders' => collect($this->channels->providers())
-                ->except(self::HIDDEN_USER_PROVIDERS)
-                ->all(),
-            'approvedTemplatesCount' => MessageTemplate::query()
-                ->where('workspace_id', $workspace->id)
-                ->where('provider', 'whatsapp')
-                ->where('status', MessageTemplateStatus::Approved->value)
-                ->count(),
+            'steps' => $this->setupSteps($channel),
+            'approvedTemplatesCount' => $approvedTemplatesCount,
             'catalogs' => Catalog::query()
                 ->where('workspace_id', $workspace->id)
                 ->where('is_active', true)
                 ->latest()
                 ->get(),
             'webhookUrl' => $this->webhookUrlForProvider('whatsapp'),
-            'webhookUrls' => collect(array_keys($providers))->mapWithKeys(fn (string $provider): array => [$provider => $this->webhookUrlForProvider($provider)])->all(),
             'embeddedSignup' => $this->embeddedSignupConfig(),
         ];
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, description: string, state: string}>
+     */
+    public function setupSteps(?ChannelAccount $channel): array
+    {
+        $isConnected = $channel?->status === ChannelAccountStatus::Connected;
+        $settings = $channel?->settings ?? [];
+        $hasError = filled($settings['last_error'] ?? null);
+
+        return ChannelSetupSteps::build([
+            [
+                'key' => 'gather',
+                'label' => __('Gather your Meta details'),
+                'description' => __('Have the WhatsApp Business Account ID, Business ID, Phone Number ID and a System User token ready.'),
+                'done' => $channel !== null,
+            ],
+            [
+                'key' => 'connect',
+                'label' => __('Connect your number'),
+                'description' => __('Use Connect with Meta, or enter the details manually. We validate the token against Meta.'),
+                'done' => $isConnected && filled($channel?->credential('access_token')),
+            ],
+            [
+                'key' => 'webhook',
+                'label' => __('Configure the webhook in Meta'),
+                'description' => __('Paste the webhook URL and verify token into your Meta app, then send a test message so we receive the first event.'),
+                'done' => $isConnected && filled($channel?->webhook_verify_token) && ($channel?->webhookEvents()->exists() ?? false),
+            ],
+            [
+                'key' => 'verify',
+                'label' => __('Test and sync'),
+                'description' => __('Run a connection test and sync phone numbers and templates from Meta.'),
+                'done' => $isConnected && $channel?->last_synced_at !== null && ! $hasError,
+            ],
+        ]);
     }
 
     public function embeddedSignupConfig(): array
@@ -365,7 +387,7 @@ class ChannelSetupService
 
             if (! $response->successful() || ! $response->json('access_token')) {
                 throw ValidationException::withMessages([
-                    'embedded_signup' => __('Meta code exchange failed. Please try connecting again. ' . $response->body()),
+                    'embedded_signup' => __('Meta code exchange failed. Please try connecting again. '.$response->body()),
                 ]);
             }
 
@@ -501,22 +523,6 @@ class ChannelSetupService
             ->first();
     }
 
-    protected function workspaceChannels(int $workspaceId): Collection
-    {
-        return ChannelAccount::query()
-            ->where('workspace_id', $workspaceId)
-            ->whereIn('provider', array_keys($this->providerCatalog()))
-            ->where('status', '!=', ChannelAccountStatus::Disconnected->value)
-            ->latest()
-            ->get()
-            ->unique('provider')
-            ->each(fn (ChannelAccount $channel): ChannelAccount => $channel->setAttribute(
-                'webhook_url',
-                ($this->providerCatalog()[$channel->provider]['webhook_required'] ?? false) ? $this->webhookUrl($channel) : null
-            ))
-            ->values();
-    }
-
     protected function syncPhoneNumbers(ChannelAccount $source): array
     {
         $response = $this->client->phoneNumbers((string) $source->provider_account_id, (string) $source->credential('access_token'));
@@ -571,7 +577,7 @@ class ChannelSetupService
         return $baseUrl.'/webhooks/channels/'.$channel->provider.'/'.$channel->webhook_code;
     }
 
-    protected function webhookUrlForProvider(string $provider): string
+    public function webhookUrlForProvider(string $provider): string
     {
         $baseUrl = $this->settings->webhookBaseUrl()
             ?: rtrim((string) config('app.url'), '/');
