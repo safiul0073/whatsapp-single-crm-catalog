@@ -271,11 +271,11 @@
           })(document, 'facebook-jssdk');
 
           document.addEventListener('DOMContentLoaded', () => {
-            const trigger = document.querySelector('[data-whatsapp-embedded-signup]');
+            const triggers = document.querySelectorAll('[data-whatsapp-embedded-signup]');
             const form = document.getElementById('whatsappEmbeddedSignupForm');
             const status = document.querySelector('[data-whatsapp-embedded-status]');
 
-            if (! trigger || ! form) {
+            if (triggers.length === 0 || ! form) {
               return;
             }
 
@@ -355,49 +355,51 @@
               }
             });
 
-            trigger.addEventListener('click', () => {
-              if (! window.FB) {
-                setStatus('Meta SDK is still loading. Please try again in a moment.', true);
+            triggers.forEach(trigger => {
+              trigger.addEventListener('click', () => {
+                if (! window.FB) {
+                  setStatus('Meta SDK is still loading. Please try again in a moment.', true);
 
-                return;
-              }
-
-              submitted = false;
-              pendingCode = null;
-              signupData = {};
-
-              const isCoexistence = trigger.dataset.signupMode === 'coexistence';
-              const extras = {
-                feature: 'whatsapp_embedded_signup',
-                sessionInfoVersion: '3',
-                setup: {},
-              };
-
-              if (isCoexistence) {
-                extras.featureType = 'whatsapp_business_app_onboarding';
-              }
-
-              setStatus(isCoexistence
-                ? 'Opening Meta Embedded Signup. You will receive a verification code on WhatsApp to paste into your WhatsApp Business app.'
-                : 'Opening Meta Embedded Signup...');
-
-              window.FB.login((response) => {
-                if (response.authResponse?.code || response.authResponse?.accessToken) {
-                  pendingCode = response.authResponse.code || response.authResponse.accessToken;
-                  window.setTimeout(submit, 800);
                   return;
                 }
 
-                if (response.status !== 'connected') {
-                  setStatus('Meta login was not completed. No credentials were saved.', true);
-                } else {
-                  setStatus('Meta login completed, but no code was returned. Try again or check permissions.', true);
+                submitted = false;
+                pendingCode = null;
+                signupData = {};
+
+                const isCoexistence = trigger.dataset.signupMode === 'coexistence';
+                const extras = {
+                  feature: 'whatsapp_embedded_signup',
+                  sessionInfoVersion: '3',
+                  setup: {},
+                };
+
+                if (isCoexistence) {
+                  extras.featureType = 'whatsapp_business_app_onboarding';
                 }
-              }, {
-                config_id: trigger.dataset.configId,
-                response_type: 'code',
-                override_default_response_type: true,
-                extras,
+
+                setStatus(isCoexistence
+                  ? 'Opening Meta Embedded Signup. You will receive a verification code on WhatsApp to paste into your WhatsApp Business app.'
+                  : 'Opening Meta Embedded Signup...');
+
+                window.FB.login((response) => {
+                  if (response.authResponse?.code || response.authResponse?.accessToken) {
+                    pendingCode = response.authResponse.code || response.authResponse.accessToken;
+                    window.setTimeout(submit, 800);
+                    return;
+                  }
+
+                  if (response.status !== 'connected') {
+                    setStatus('Meta login was not completed. No credentials were saved.', true);
+                  } else {
+                    setStatus('Meta login completed, but no code was returned. Try again or check permissions.', true);
+                  }
+                }, {
+                  config_id: trigger.dataset.configId,
+                  response_type: 'code',
+                  override_default_response_type: true,
+                  extras,
+                });
               });
             });
           });
