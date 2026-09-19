@@ -308,7 +308,7 @@ Alpine.data("liveInbox", (config) => ({
     }
 
     this.olderMessagesLoading = true;
-    const pane = this.$refs.messagesPane;
+    const pane = this.messagesPaneElement();
     const previousHeight = pane?.scrollHeight || 0;
 
     try {
@@ -328,8 +328,9 @@ Alpine.data("liveInbox", (config) => ({
       this.updateMessagePage(response.data.messages_page);
 
       this.$nextTick(() => {
-        if (pane) {
-          pane.scrollTop = pane.scrollHeight - previousHeight;
+        const currentPane = this.messagesPaneElement();
+        if (currentPane) {
+          currentPane.scrollTop = currentPane.scrollHeight - previousHeight;
         }
       });
     } catch (error) {
@@ -955,8 +956,15 @@ Alpine.data("liveInbox", (config) => ({
     return document.querySelector('meta[name="csrf-token"]')?.content || "";
   },
 
+  messagesPaneElement() {
+    return this.$refs.messagesPane
+      || document.getElementById("messagesPane")
+      || this.$el?.querySelector("#messagesPane")
+      || document.querySelector("[data-messages-pane]");
+  },
+
   isNearBottom() {
-    const pane = this.$refs.messagesPane;
+    const pane = this.messagesPaneElement();
     if (!pane) {
       return true;
     }
@@ -965,13 +973,26 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   scrollToBottom() {
+    const executeScroll = () => {
+      const pane = this.messagesPaneElement();
+      if (pane) {
+        pane.scrollTop = pane.scrollHeight;
+      }
+      const anchor = document.getElementById("messagesBottomAnchor");
+      if (anchor && typeof anchor.scrollIntoView === "function") {
+        anchor.scrollIntoView({ block: "end", inline: "nearest" });
+      }
+    };
+
+    executeScroll();
+    requestAnimationFrame(executeScroll);
+
     this.$nextTick(() => {
-      setTimeout(() => {
-        const pane = this.$refs.messagesPane;
-        if (pane) {
-          pane.scrollTop = pane.scrollHeight;
-        }
-      }, 50);
+      executeScroll();
+      setTimeout(executeScroll, 50);
+      setTimeout(executeScroll, 150);
+      setTimeout(executeScroll, 300);
+      setTimeout(executeScroll, 600);
     });
   },
 

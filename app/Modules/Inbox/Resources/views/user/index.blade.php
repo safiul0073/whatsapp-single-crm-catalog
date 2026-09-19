@@ -200,7 +200,14 @@
             </div>
           </header>
 
-          <div class="min-h-0 flex-1 overflow-y-auto bg-section px-3 py-4 sm:px-5 flex flex-col" x-ref="messagesPane">
+          <div
+            id="messagesPane"
+            data-messages-pane
+            class="min-h-0 flex-1 overflow-y-auto bg-section px-3 py-4 sm:px-5 flex flex-col"
+            x-ref="messagesPane"
+            x-init="$nextTick(() => scrollToBottom())"
+            x-effect="messages.length && !olderMessagesLoading && scrollToBottom()"
+          >
             <div class="flex justify-center shrink-0" x-show="threadLoading">
               <span class="rounded-full bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
             </div>
@@ -228,7 +235,7 @@
                         <div class="mb-2">
                           <template x-if="message.attachment.type === 'image'">
                             <a :href="message.attachment.url" target="_blank" class="chat-attachment chat-attachment--image">
-                              <img :src="message.attachment.url" :alt="message.attachment.name">
+                              <img :src="message.attachment.url" :alt="message.attachment.name" @load="isNearBottom() && scrollToBottom()">
                             </a>
                           </template>
                           <template x-if="message.attachment.type === 'video'">
@@ -260,6 +267,7 @@
                   </div>
                 </div>
               </template>
+              <div id="messagesBottomAnchor" x-ref="messagesBottomAnchor" class="h-px w-full shrink-0"></div>
               <div class="flex flex-col items-center justify-center px-6 py-16 text-center" x-show="!threadLoading && messages.length === 0">
                 <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
                   <i class="ph ph-chat-circle-text text-2xl"></i>
