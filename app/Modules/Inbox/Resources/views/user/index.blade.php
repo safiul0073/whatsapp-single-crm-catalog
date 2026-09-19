@@ -200,12 +200,12 @@
             </div>
           </header>
 
-          <div class="min-h-0 flex-1 overflow-y-auto bg-section px-3 py-4 sm:px-5" x-ref="messagesPane">
-            <div class="flex justify-center" x-show="threadLoading">
+          <div class="min-h-0 flex-1 overflow-y-auto bg-section px-3 py-4 sm:px-5 flex flex-col" x-ref="messagesPane">
+            <div class="flex justify-center shrink-0" x-show="threadLoading">
               <span class="rounded-full bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
             </div>
-            <div class="mx-auto flex w-full max-w-4xl flex-col gap-1.5">
-              <div class="flex justify-center pb-2" x-show="hasOlderMessages && !threadLoading" x-cloak>
+            <div class="mx-auto flex w-full max-w-4xl flex-col gap-1.5 mt-auto">
+              <div class="flex justify-center pb-2 shrink-0" x-show="hasOlderMessages && !threadLoading" x-cloak>
                 <button type="button" class="btn-sm btn-outline" @click="loadOlderMessages()" :disabled="olderMessagesLoading">
                   <i class="ph ph-arrow-up text-base"></i>
                   <span x-text="olderMessagesLoading ? '{{ __('Loading...') }}' : '{{ __('Load older messages') }}'"></span>

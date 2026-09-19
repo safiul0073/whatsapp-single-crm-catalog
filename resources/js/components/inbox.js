@@ -966,10 +966,12 @@ Alpine.data("liveInbox", (config) => ({
 
   scrollToBottom() {
     this.$nextTick(() => {
-      const pane = this.$refs.messagesPane;
-      if (pane) {
-        pane.scrollTop = pane.scrollHeight;
-      }
+      setTimeout(() => {
+        const pane = this.$refs.messagesPane;
+        if (pane) {
+          pane.scrollTop = pane.scrollHeight;
+        }
+      }, 50);
     });
   },
 
