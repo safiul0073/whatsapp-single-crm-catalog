@@ -28,6 +28,8 @@ it('registers the WhatsApp SaaS tenant routes', function (): void {
     foreach ([
         'user.whatsapp-cloud.channel-setup',
         'user.whatsapp-cloud.channel-setup.embedded',
+        'user.channels.index',
+        'user.meta-social.setup',
         'user.inbox.index',
         'user.contacts.index',
         'user.segments.index',
@@ -60,21 +62,20 @@ it('serves the core WhatsApp SaaS user pages', function (): void {
         ->actingAs($user)
         ->get(route('user.whatsapp-cloud.channel-setup'))
         ->assertOk()
-        ->assertSee('Connect and manage provider channels')
-        ->assertSee('No channel connected yet')
-        ->assertSee('Choose a channel')
-        ->assertSee('WhatsApp')
-        ->assertSee('Facebook')
-        ->assertSee('Threads')
-        ->assertSee('Instagram')
-        ->assertSee('Telegram')
+        ->assertSee('WhatsApp Business')
+        ->assertSee('All channels')
+        ->assertSee(route('user.channels.index'))
+        ->assertSee('data-channel-hub-link', false)
+        ->assertSee('data-setup-steps', false)
+        ->assertSee('Setup steps')
         ->assertSee('Business ID')
         ->assertSee('Webhook Verify Token')
         ->assertSee('Connect with Meta')
         ->assertDontSee('Recommended')
         ->assertSee('Admin setup required')
-        ->assertSee('class="card mt-6 overflow-hidden p-0"', false)
-        ->assertSee('class="mt-5 rounded-xl border border-neutral-100 bg-section p-4"', false)
+        ->assertDontSee('Choose a channel')
+        ->assertDontSee('data-drawer-trigger="channelSettingsDrawer"', false)
+        ->assertDontSee('name="provider"', false)
         ->assertSee('/webhooks/channels/whatsapp');
 });
 
@@ -250,10 +251,10 @@ it('connects one manual channel per provider and updates it on reconnect', funct
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.telegram.index'))
         ->assertOk()
         ->assertSee('Updated Bot')
-        ->assertSee(route('webhooks.channels.receive', 'telegram'))
+        ->assertSee(route('webhooks.channels.account.receive', ['provider' => 'telegram', 'webhookCode' => $channel->webhook_code]))
         ->assertDontSee('bot-token-two');
 });
 
@@ -278,7 +279,7 @@ it('connects non-webhook channels without exposing webhook setup', function (): 
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.email.index'))
         ->assertOk()
         ->assertSee('Primary Email')
         ->assertDontSee('email-verify-should-not-store')
@@ -301,11 +302,11 @@ it('shows internal widget channels without exposing connect or edit drawer actio
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.channels.index'))
         ->assertOk()
         ->assertSee('Homepage Widget')
         ->assertSee('Website Chat Widget')
-        ->assertDontSee('data-drawer-provider="website_widget"', false)
+        ->assertDontSee('data-channel-setup-link="website_widget"', false)
         ->assertDontSee('Update Website widget')
         ->assertDontSee('Connect Website widget');
 });

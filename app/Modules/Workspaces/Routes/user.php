@@ -19,9 +19,10 @@ Route::middleware(['can:settings.view'])->group(function () {
 Route::middleware(['can:team.manage'])->group(function () {
     Route::get('team', [TeamController::class, 'index'])->name('workspaces.team');
     Route::post('team', [TeamController::class, 'store'])->name('workspaces.team.store');
+    Route::post('team/roles', [TeamController::class, 'storeRole'])->name('workspaces.team.roles.store');
     Route::put('team/roles/{role}/permissions', [TeamController::class, 'updateRolePermissions'])
-        ->where('role', 'administrator|manager|staff')
         ->name('workspaces.team.roles.permissions.update');
+    Route::delete('team/roles/{role}', [TeamController::class, 'destroyRole'])->name('workspaces.team.roles.destroy');
     Route::get('team/{member}/permissions', [TeamController::class, 'permissions'])
         ->name('workspaces.team.permissions');
     Route::put('team/{member}/permissions', [TeamController::class, 'updateMemberPermissions'])

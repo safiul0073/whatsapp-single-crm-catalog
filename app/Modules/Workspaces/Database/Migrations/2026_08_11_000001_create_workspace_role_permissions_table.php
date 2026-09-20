@@ -1,6 +1,5 @@
 <?php
 
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +12,7 @@ return new class extends Migration
         Schema::create('workspace_role_permissions', function (Blueprint $table): void {
             $table->id();
             $table->foreignIdFor(Workspace::class)->constrained()->cascadeOnDelete();
-            $table->enum('role', WorkspaceMemberRole::values());
+            $table->string('role');
             $table->string('permission_name');
             $table->timestamps();
 

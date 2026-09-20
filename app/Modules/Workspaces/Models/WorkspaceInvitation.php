@@ -3,7 +3,6 @@
 namespace App\Modules\Workspaces\Models;
 
 use App\Models\User;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +14,7 @@ class WorkspaceInvitation extends Model
     protected $fillable = [
         'workspace_id',
         'email',
-        'role',
+        'workspace_role_id',
         'token',
         'invited_by',
         'accepted_at',
@@ -25,7 +24,6 @@ class WorkspaceInvitation extends Model
     protected function casts(): array
     {
         return [
-            'role' => WorkspaceMemberRole::class,
             'accepted_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
@@ -39,6 +37,11 @@ class WorkspaceInvitation extends Model
     public function inviter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
+    }
+
+    public function workspaceRole(): BelongsTo
+    {
+        return $this->belongsTo(WorkspaceRole::class, 'workspace_role_id');
     }
 
     public function isExpired(): bool

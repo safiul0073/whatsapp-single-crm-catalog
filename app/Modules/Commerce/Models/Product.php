@@ -12,11 +12,78 @@ class Product extends Model
 {
     protected $table = 'commerce_products';
 
-    protected $fillable = ['workspace_id', 'category_id', 'brand_id', 'audience_id', 'primary_media_id', 'name', 'slug', 'brand', 'description', 'care_information', 'condition', 'audience', 'country_of_origin', 'status', 'wizard_step', 'published_at'];
+    protected $fillable = [
+        'workspace_id',
+        'category_id',
+        'brand_id',
+        'audience_id',
+        'primary_media_id',
+        'name',
+        'slug',
+        'sku',
+        'brand',
+        'short_description',
+        'description',
+        'care_information',
+        'features',
+        'feature_highlights',
+        'shipping_countries',
+        'specifications',
+        'fit',
+        'set_includes',
+        'gender',
+        'season',
+        'shipping_info',
+        'delivery_time',
+        'moq',
+        'rating',
+        'reviews_count',
+        'condition',
+        'visibility',
+        'audience',
+        'fabric_gsm',
+        'material',
+        'default_unit_weight_kg',
+        'default_package_dimensions',
+        'single_piece_price',
+        'wholesale_price',
+        'selling_mode',
+        'ws_enabled',
+        'ws_min_sizes',
+        'ws_color_moq',
+        'ws_main_moq',
+        'ws_size_ratios',
+        'ws_ratio_multiplier',
+        'country_of_origin',
+        'status',
+        'wizard_step',
+        'published_at',
+    ];
 
     protected function casts(): array
     {
-        return ['wizard_step' => 'integer', 'published_at' => 'datetime'];
+        return [
+            'wizard_step' => 'integer',
+            'published_at' => 'datetime',
+            'features' => 'array',
+            'feature_highlights' => 'array',
+            'shipping_countries' => 'array',
+            'specifications' => 'array',
+            'default_package_dimensions' => 'array',
+            'moq' => 'integer',
+            'rating' => 'decimal:2',
+            'reviews_count' => 'integer',
+            'default_unit_weight_kg' => 'decimal:3',
+            'single_piece_price' => 'decimal:2',
+            'wholesale_price' => 'decimal:2',
+            'selling_mode' => 'string',
+            'ws_enabled' => 'boolean',
+            'ws_min_sizes' => 'integer',
+            'ws_color_moq' => 'integer',
+            'ws_main_moq' => 'integer',
+            'ws_size_ratios' => 'array',
+            'ws_ratio_multiplier' => 'integer',
+        ];
     }
 
     public function workspace(): BelongsTo
@@ -49,6 +116,69 @@ class Product extends Model
         return $this->hasMany(ProductOption::class)->orderBy('position');
     }
 
+    public function colors(): HasMany
+    {
+        return $this->hasMany(ProductColor::class)->orderBy('position');
+    }
+
+    public function tierPrices(): HasMany
+    {
+        return $this->hasMany(ProductTierPrice::class)->orderBy('min_quantity');
+    }
+
+    public function isWholesaleEnabled(): bool
+    {
+        return $this->ws_enabled && in_array($this->selling_mode, ['wholesale', 'both'], true);
+    }
+
+    public function isRetailEnabled(): bool
+    {
+        return in_array($this->selling_mode, ['retail', 'both'], true);
+    }
+
+    public function getEffectiveSizeRatios(): array
+    {
+        if (!empty($this->ws_size_ratios)) {
+            return $this->ws_size_ratios;
+        }
+
+        $this->loadMissing('options.values', 'colors');
+        $sizeOption = $this->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
+        if (!$sizeOption) {
+            return [];
+        }
+
+        $colorMoq = max(1, $this->ws_color_moq ?? 1);
+        $defaultRatio = $sizeOption->values->pluck('value')->mapWithKeys(fn (string $size) => [$size => $colorMoq])->all();
+        
+        $ratios = [];
+        foreach ($this->colors as $color) {
+            $ratios[$color->id] = $defaultRatio;
+        }
+        
+        return $ratios;
+    }
+
+    public function calculateMinQtyPerColor(): int
+    {
+        $ratios = $this->getEffectiveSizeRatios();
+        if (empty($ratios)) {
+            return max(1, $this->ws_color_moq ?? 1);
+        }
+
+        $multiplier = max(1, $this->ws_ratio_multiplier ?? 1);
+        $minQty = null;
+
+        foreach ($ratios as $colorRatios) {
+            $sum = (int) array_sum($colorRatios) * $multiplier;
+            if ($minQty === null || $sum < $minQty) {
+                $minQty = $sum;
+            }
+        }
+
+        return $minQty ?? max(1, $this->ws_color_moq ?? 1);
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
@@ -57,5 +187,87 @@ class Product extends Model
     public function gallery(): HasMany
     {
         return $this->hasMany(ProductMedia::class)->with('media')->orderBy('position');
+    }
+
+    /**
+     * Resolve effective unit price for given quantity or mode (single vs wholesale).
+     */
+    public function resolveUnitPrice(int $quantity = 1, ?string $mode = null): float
+    {
+        $quantity = max(1, $quantity);
+
+        if ($mode === 'single' || ($mode === null && $quantity === 1)) {
+            if ($this->single_piece_price !== null && (float) $this->single_piece_price > 0) {
+                return (float) $this->single_piece_price;
+            }
+        }
+
+        if ($mode === 'wholesale' || ($mode === null && $quantity > 1)) {
+            if ($this->wholesale_price !== null && (float) $this->wholesale_price > 0) {
+                return (float) $this->wholesale_price;
+            }
+        }
+
+        if ($this->single_piece_price !== null && (float) $this->single_piece_price > 0) {
+            return (float) $this->single_piece_price;
+        }
+
+        $firstVariantPrice = $this->variants->first()?->price;
+        if ($firstVariantPrice !== null && (float) $firstVariantPrice > 0) {
+            return (float) $firstVariantPrice;
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Calculate comprehensive garment cost, weight, shipping, and landed per-unit price.
+     */
+    public function calculateCostBreakdown(
+        int $quantity,
+        float $baseShippingRatePerKg = 50.00,
+        float $minShippingKg = 1.0,
+        ?float $unitWeightKg = null
+    ): array {
+        $quantity = max(1, $quantity);
+        $singlePrice = $this->resolveUnitPrice(1, 'single');
+        $unitPrice = $quantity === 1 ? $singlePrice : $this->resolveUnitPrice($quantity, 'wholesale');
+        $garmentSubtotal = round($unitPrice * $quantity, 2);
+
+        $unitWeightKg = $unitWeightKg !== null ? (float) $unitWeightKg : (float) ($this->default_unit_weight_kg ?: 0.030);
+        $totalWeightKg = round(max(0.001, $unitWeightKg * $quantity), 3);
+
+        // International parcel shipping rules:
+        // - Minimum chargeable parcel is 1.0 kg = $50.00 base shipping
+        // - Additional weight: $50.00 for every additional 1.0 kg (or prorated bracket)
+        $chargeableWeightKg = max($minShippingKg, ceil($totalWeightKg));
+        $shippingCost = round($chargeableWeightKg * $baseShippingRatePerKg, 2);
+
+        $totalLandedCost = round($garmentSubtotal + $shippingCost, 2);
+        $effectivePricePerUnit = round($totalLandedCost / $quantity, 2);
+
+        // Calculate retail 1-pc landed cost for comparison
+        $singleShippingCost = round($minShippingKg * $baseShippingRatePerKg, 2);
+        $singleLandedCost = round($singlePrice + $singleShippingCost, 2);
+        $savingsPerUnit = max(0.0, round($singleLandedCost - $effectivePricePerUnit, 2));
+        $totalSavings = round($savingsPerUnit * $quantity, 2);
+
+        return [
+            'quantity' => $quantity,
+            'total_quantity' => $quantity,
+            'unit_price' => $unitPrice,
+            'single_price' => $singlePrice,
+            'garment_subtotal' => $garmentSubtotal,
+            'unit_weight_kg' => $unitWeightKg,
+            'total_weight_kg' => $totalWeightKg,
+            'chargeable_weight_kg' => $chargeableWeightKg,
+            'shipping_cost' => $shippingCost,
+            'total_landed_cost' => $totalLandedCost,
+            'effective_price_per_unit' => $effectivePricePerUnit,
+            'single_landed_cost' => $singleLandedCost,
+            'savings_per_unit' => $savingsPerUnit,
+            'total_savings' => $totalSavings,
+            'is_wholesale' => $quantity >= 10,
+        ];
     }
 }

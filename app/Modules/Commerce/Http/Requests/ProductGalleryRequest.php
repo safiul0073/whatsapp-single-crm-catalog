@@ -17,10 +17,14 @@ class ProductGalleryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'media' => ['required', 'array', 'min:1', 'max:11'],
+            'media' => ['required', 'array', 'min:1', 'max:40'],
             'media.*.id' => ['required', 'integer', 'distinct', Rule::exists('media', 'id')->where('uploaded_by', $this->user()?->id)],
+            'media.*.color_id' => ['nullable'],
             'media.*.alt_text' => ['nullable', 'string', 'max:255'],
-            'media.*.is_primary' => ['required', 'boolean'],
+            'media.*.is_primary' => ['nullable', 'boolean'],
+            'colors' => ['nullable', 'array'],
+            'colors.*.id' => ['nullable', 'integer'],
+            'colors.*.swatch_media_id' => ['nullable', 'integer'],
         ];
     }
 
@@ -33,8 +37,8 @@ class ProductGalleryRequest extends FormRequest
             $videos = $media->where('type', 'video');
             $primaryIds = $items->where('is_primary', true)->pluck('id');
 
-            if ($images->count() > 10) {
-                $validator->errors()->add('media', 'A product can contain at most 10 images.');
+            if ($images->count() > 40) {
+                $validator->errors()->add('media', 'A product can contain at most 40 images.');
             }
             if ($videos->count() > 1) {
                 $validator->errors()->add('media', 'A product can contain at most one video.');
@@ -44,9 +48,6 @@ class ProductGalleryRequest extends FormRequest
             }
             if ($videos->contains(fn (Media $item): bool => $item->mime_type !== 'video/mp4' || $item->size > 16 * 1024 * 1024)) {
                 $validator->errors()->add('media', 'Product video must be an MP4 no larger than 16 MB.');
-            }
-            if ($primaryIds->count() !== 1 || ! $images->has($primaryIds->first())) {
-                $validator->errors()->add('media', 'Choose exactly one image as the primary catalog image.');
             }
         }];
     }

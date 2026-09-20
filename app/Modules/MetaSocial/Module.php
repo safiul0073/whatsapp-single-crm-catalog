@@ -25,5 +25,8 @@ class Module extends BasePanelModule
         ];
     }
 
-    public function userNavigation(NavigationBuilder $navigation): void {}
+    public function userNavigation(NavigationBuilder $navigation): void
+    {
+        $navigation->group('Channels')->item('Social', 'user.meta-social.*', 'share-network', 'meta-social.manage', 13);
+    }
 }

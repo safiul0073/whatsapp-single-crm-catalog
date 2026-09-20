@@ -3,23 +3,19 @@
 namespace App\Modules\Workspaces\Services;
 
 use App\Models\User;
-use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
-use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\Shared\Support\PermissionRegistrar as ModulePermissionRegistrar;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Mail\TeamInvitationMail;
 use App\Modules\Workspaces\Mail\TeamMemberWelcomeMail;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceInvitation;
+use App\Modules\Workspaces\Models\WorkspaceRole;
 use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar as SpatiePermissionRegistrar;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TeamManagementService
@@ -27,11 +23,12 @@ class TeamManagementService
     public function getTeamData(Workspace $workspace): array
     {
         $members = $workspace->members()
-            ->with('roles')
+            ->withPivot('workspace_role_id', 'status')
             ->orderBy('workspace_members.created_at')
             ->get();
 
         $invitations = $workspace->invitations()
+            ->with('workspaceRole')
             ->whereNull('accepted_at')
             ->orderByDesc('created_at')
             ->get();
@@ -43,19 +40,33 @@ class TeamManagementService
         $seatLimit = $this->seatLimit($workspace);
         $seatsUsed = $activeMembers->count() + $invitations->count();
 
+        $roles = WorkspaceRole::where('workspace_id', $workspace->id)->get();
+
+        $counts = [
+            'total' => $activeMembers->count(),
+            'pending_invites' => $invitations->count(),
+            'seats_used' => $seatsUsed,
+            'seat_limit' => $seatLimit,
+        ];
+        
+        foreach ($roles as $role) {
+            $counts['role_' . $role->id] = $activeMembers->where('pivot.workspace_role_id', $role->id)->count();
+            if (strtolower($role->name) === 'administrator') {
+                $counts['administrators'] = $counts['role_' . $role->id];
+            }
+            if (strtolower($role->name) === 'manager') {
+                $counts['managers'] = $counts['role_' . $role->id];
+            }
+        }
+        $counts['administrators'] = $counts['administrators'] ?? 0;
+        $counts['managers'] = $counts['managers'] ?? 0;
+
         return [
             'members' => $members,
             'invitations' => $invitations,
             'owner' => $workspace->owner,
-            'counts' => [
-                'total' => $activeMembers->count(),
-                'administrators' => $activeMembers->where('pivot.role', WorkspaceMemberRole::Administrator->value)->count(),
-                'managers' => $activeMembers->where('pivot.role', WorkspaceMemberRole::Manager->value)->count(),
-                'staff' => $activeMembers->where('pivot.role', WorkspaceMemberRole::Staff->value)->count(),
-                'pending_invites' => $invitations->count(),
-                'seats_used' => $seatsUsed,
-                'seat_limit' => $seatLimit,
-            ],
+            'roles' => $roles,
+            'counts' => $counts,
         ];
     }
 
@@ -75,55 +86,39 @@ class TeamManagementService
 
     public function seatLimit(Workspace $workspace): ?int
     {
-        $subscription = Subscription::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
-            ->with('plan')
-            ->first();
-
-        if (! $subscription?->plan) {
-            return null;
-        }
-
-        $limit = data_get($subscription->plan->limits, 'team_members', data_get($subscription->plan->limits, 'team_seats'));
-
-        return $limit === null ? null : (int) $limit;
+        return null;
     }
 
     public function rolePermissionMatrix(Workspace $workspace): array
     {
         $permissionGroups = $this->workspacePermissionGroups();
 
-        $roles = collect(WorkspaceMemberRole::cases())
-            ->mapWithKeys(function (WorkspaceMemberRole $role) use ($workspace): array {
-                return [
-                    $role->value => [
-                        'label' => $role->label(),
-                        'permissions' => $this->permissionsForRole($workspace, $role),
-                    ],
-                ];
-            })
-            ->all();
+        $roles = WorkspaceRole::where('workspace_id', $workspace->id)->get();
+        $matrixRoles = [];
+
+        foreach ($roles as $role) {
+            $matrixRoles[$role->id] = [
+                'label' => $role->name,
+                'permissions' => $this->permissionsForRole($role),
+            ];
+        }
 
         return [
-            'roles' => $roles,
+            'roles' => $matrixRoles,
             'groups' => $permissionGroups,
         ];
     }
 
-    public function rolePermissionDetails(Workspace $workspace, WorkspaceMemberRole $role): array
+    public function rolePermissionDetails(WorkspaceRole $role): array
     {
         return [
-            'label' => $role->label(),
-            'permissions' => $this->permissionsForRole($workspace, $role),
+            'label' => $role->name,
+            'permissions' => $this->permissionsForRole($role),
             'groups' => $this->workspacePermissionGroups(),
         ];
     }
 
-    /**
-     * @param  array<string>  $permissions
-     */
-    public function updateRolePermissions(Workspace $workspace, WorkspaceMemberRole $role, array $permissions): void
+    public function updateRolePermissions(WorkspaceRole $role, array $permissions): void
     {
         $allowedPermissions = $this->workspacePermissionCatalog()->pluck('name')->all();
         $permissionNames = collect($permissions)
@@ -132,32 +127,19 @@ class TeamManagementService
             ->values()
             ->all();
 
-        DB::transaction(function () use ($workspace, $role, $permissionNames): void {
+        DB::transaction(function () use ($role, $permissionNames): void {
             WorkspaceRolePermission::query()
-                ->where('workspace_id', $workspace->id)
-                ->where('role', $role->value)
+                ->where('workspace_role_id', $role->id)
                 ->delete();
 
             foreach ($permissionNames as $permissionName) {
                 WorkspaceRolePermission::query()->create([
-                    'workspace_id' => $workspace->id,
-                    'role' => $role->value,
+                    'workspace_id' => $role->workspace_id,
+                    'workspace_role_id' => $role->id,
                     'permission_name' => $permissionName,
                 ]);
             }
-
-            $settings = $workspace->settings ?? [];
-            $customRoles = collect(data_get($settings, 'custom_role_permissions', []))
-                ->push($role->value)
-                ->unique()
-                ->values()
-                ->all();
-
-            data_set($settings, 'custom_role_permissions', $customRoles);
-            $workspace->forceFill(['settings' => $settings])->save();
         });
-
-        app(SpatiePermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     public function createMember(Workspace $workspace, array $data, User $actor): User
@@ -168,7 +150,7 @@ class TeamManagementService
             throw new HttpException(403, __('This workspace has reached its team member limit.'));
         }
 
-        $role = WorkspaceMemberRole::from($data['role']);
+        $role = $this->resolveRole($workspace, $data['role']);
 
         $user = User::query()->create([
             'first_name' => $data['first_name'],
@@ -192,8 +174,6 @@ class TeamManagementService
         $this->ensureNotOwner($workspace, $member);
         $this->ensureNotSelf($actor, $member);
 
-        $currentRole = $this->resolveRole($member->pivot->role);
-
         $member->update([
             'first_name' => $data['first_name'] ?? $member->first_name,
             'last_name' => $data['last_name'] ?? $member->last_name,
@@ -201,11 +181,10 @@ class TeamManagementService
         ]);
 
         if (isset($data['role'])) {
-            $newRole = $this->resolveRole($data['role']);
-
-            if ($currentRole !== $newRole) {
-                $workspace->members()->updateExistingPivot($member->id, ['role' => $newRole->value]);
-                $this->syncWorkspaceRole($member, $newRole);
+            $newRole = $this->resolveRole($workspace, $data['role']);
+            
+            if ($member->pivot->workspace_role_id !== $newRole->id) {
+                $workspace->members()->updateExistingPivot($member->id, ['workspace_role_id' => $newRole->id]);
             }
         }
 
@@ -219,7 +198,6 @@ class TeamManagementService
         $this->ensureNotSelf($actor, $member);
 
         $workspace->members()->detach($member->id);
-        $this->syncWorkspaceRolesFromMemberships($member);
     }
 
     public function inviteMember(Workspace $workspace, array $data, User $actor): WorkspaceInvitation
@@ -230,7 +208,7 @@ class TeamManagementService
             throw new HttpException(403, __('This workspace has reached its team member limit.'));
         }
 
-        $role = WorkspaceMemberRole::from($data['role']);
+        $role = $this->resolveRole($workspace, $data['role']);
 
         $existingUser = User::query()->where('email', $data['email'])->first();
 
@@ -245,7 +223,7 @@ class TeamManagementService
 
         $invitation = $workspace->invitations()->create([
             'email' => $data['email'],
-            'role' => $role->value,
+            'workspace_role_id' => $role->id,
             'token' => Str::random(64),
             'invited_by' => $actor->id,
             'expires_at' => now()->addDays(7),
@@ -305,7 +283,7 @@ class TeamManagementService
             ]);
         }
 
-        $role = $invitation->role;
+        $role = $invitation->workspaceRole;
 
         $this->attachMember($invitation->workspace, $user, $role);
 
@@ -314,119 +292,14 @@ class TeamManagementService
         return $user;
     }
 
-    protected function attachMember(Workspace $workspace, User $user, WorkspaceMemberRole $role): void
+    protected function attachMember(Workspace $workspace, User $user, WorkspaceRole $role): void
     {
         $workspace->members()->syncWithoutDetaching([
             $user->id => [
-                'role' => $role->value,
+                'workspace_role_id' => $role->id,
                 'status' => WorkspaceMemberStatus::Active->value,
             ],
         ]);
-
-        $this->syncWorkspaceRole($user, $role);
-    }
-
-    protected function syncWorkspaceRole(User $user, WorkspaceMemberRole $role): void
-    {
-        $this->syncWorkspaceRolesFromMemberships($user, $role);
-    }
-
-    protected function syncWorkspaceRolesFromMemberships(User $user, ?WorkspaceMemberRole $fallbackRole = null): void
-    {
-        $workspaceRoleNames = [
-            'workspace-administrator',
-            'workspace-manager',
-            'workspace-staff',
-        ];
-
-        $roleValues = DB::table('workspace_members')
-            ->where('user_id', $user->id)
-            ->where('status', WorkspaceMemberStatus::Active->value)
-            ->pluck('role')
-            ->all();
-
-        $role = $this->highestWorkspaceRole($roleValues) ?? $fallbackRole;
-
-        $roles = $user->roles()
-            ->whereNotIn('name', $workspaceRoleNames)
-            ->pluck('name')
-            ->all();
-
-        if ($role) {
-            $roles[] = $this->spatieRoleFor($role)->name;
-        }
-
-        $user->syncRoles(array_values(array_unique($roles)));
-    }
-
-    /**
-     * @param  array<string>  $roleValues
-     */
-    protected function highestWorkspaceRole(array $roleValues): ?WorkspaceMemberRole
-    {
-        foreach ([WorkspaceMemberRole::Administrator, WorkspaceMemberRole::Manager, WorkspaceMemberRole::Staff] as $role) {
-            if (in_array($role->value, $roleValues, true)) {
-                return $role;
-            }
-        }
-
-        return null;
-    }
-
-    protected function spatieRoleFor(WorkspaceMemberRole $role): Role
-    {
-        $spatieRole = match ($role) {
-            WorkspaceMemberRole::Administrator => Role::findOrCreate('workspace-administrator', 'web'),
-            WorkspaceMemberRole::Manager => Role::findOrCreate('workspace-manager', 'web'),
-            WorkspaceMemberRole::Staff => Role::findOrCreate('workspace-staff', 'web'),
-        };
-
-        if ($spatieRole->permissions()->doesntExist()) {
-            $spatieRole->syncPermissions($this->defaultPermissionsFor($role));
-        }
-
-        return $spatieRole;
-    }
-
-    /**
-     * @return array<string>
-     */
-    protected function defaultPermissionsFor(WorkspaceMemberRole $role): array
-    {
-        $availablePermissions = $this->workspacePermissionCatalog()->pluck('name');
-
-        $defaults = match ($role) {
-            WorkspaceMemberRole::Administrator => $availablePermissions->all(),
-            WorkspaceMemberRole::Manager => [
-                'workspace.view',
-                'contacts.view',
-                'contacts.manage',
-                'leads.view',
-                'leads.manage',
-                'campaigns.view',
-                'campaigns.create',
-                'templates.manage',
-                'inbox.view',
-                'inbox.reply',
-                'inbox.assign',
-                'reports.view',
-                'automations.manage',
-            ],
-            WorkspaceMemberRole::Staff => [
-                'workspace.view',
-                'contacts.view',
-                'leads.view',
-                'campaigns.view',
-                'inbox.view',
-                'inbox.assigned_only',
-                'inbox.reply',
-            ],
-        };
-
-        return $availablePermissions
-            ->intersect($defaults)
-            ->values()
-            ->all();
     }
 
     protected function workspacePermissionGroups(): array
@@ -455,32 +328,13 @@ class TeamManagementService
             ->values();
     }
 
-    /**
-     * @return array<string>
-     */
-    protected function permissionsForRole(Workspace $workspace, WorkspaceMemberRole $role): array
+    protected function permissionsForRole(WorkspaceRole $role): array
     {
-        if ($this->hasCustomPermissionSet($workspace, $role)) {
-            return WorkspaceRolePermission::query()
-                ->where('workspace_id', $workspace->id)
-                ->where('role', $role->value)
-                ->pluck('permission_name')
-                ->values()
-                ->all();
-        }
-
-        return $this->spatieRoleFor($role)
-            ->loadMissing('permissions')
-            ->permissions
-            ->pluck('name')
-            ->reject(fn (string $permission): bool => in_array($permission, ['team.manage', 'team.manage.staff_only'], true))
+        return WorkspaceRolePermission::query()
+            ->where('workspace_role_id', $role->id)
+            ->pluck('permission_name')
             ->values()
             ->all();
-    }
-
-    protected function hasCustomPermissionSet(Workspace $workspace, WorkspaceMemberRole $role): bool
-    {
-        return in_array($role->value, data_get($workspace->settings, 'custom_role_permissions', []), true);
     }
 
     protected function ensureNotOwner(Workspace $workspace, User $member): void
@@ -506,8 +360,12 @@ class TeamManagementService
         throw new HttpException(403, __('Only the workspace owner can manage team members.'));
     }
 
-    public function resolveRole(WorkspaceMemberRole|string $role): WorkspaceMemberRole
+    public function resolveRole(Workspace $workspace, mixed $roleId): WorkspaceRole
     {
-        return $role instanceof WorkspaceMemberRole ? $role : WorkspaceMemberRole::from($role);
+        $role = WorkspaceRole::where('workspace_id', $workspace->id)->where('id', $roleId)->first();
+        if (!$role) {
+            throw new HttpException(422, __('Invalid role selected.'));
+        }
+        return $role;
     }
 }

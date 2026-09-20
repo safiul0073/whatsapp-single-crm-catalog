@@ -6,15 +6,20 @@ use App\Models\User;
 use App\Modules\AiSettings\Services\AiSettingsService;
 use App\Modules\Chatbots\Models\Chatbot;
 use App\Modules\Chatbots\Services\ClaudeReplyService;
+use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
 use App\Modules\KnowledgeBases\Jobs\IndexKnowledgeBaseSourceJob;
 use App\Modules\KnowledgeBases\Models\KnowledgeBase;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseChunk;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseSource;
+use App\Modules\KnowledgeBases\Services\JsonFileVectorStoreService;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseIndexingService;
+use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchService;
+use App\Modules\KnowledgeBases\Services\KnowledgeBaseService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use PhpOffice\PhpWord\PhpWord;
@@ -77,7 +82,7 @@ it('lets a user create update and delete a knowledge base', function (): void {
     expect(KnowledgeBase::query()->exists())->toBeFalse();
 });
 
-it('adds text and qa sources and indexes searchable chunks', function (): void {
+it('adds text sources and indexes searchable chunks', function (): void {
     Queue::fake();
 
     $user = User::factory()->create(['email_verified_at' => now()]);
@@ -99,38 +104,25 @@ it('adds text and qa sources and indexes searchable chunks', function (): void {
         ->assertRedirect(route('user.knowledge-bases.show', $knowledgeBase))
         ->assertSessionHas('status', 'Source queued for indexing.');
 
-    $this->withoutMiddleware(knowledgeBaseTestMiddleware())
-        ->actingAs($user)
-        ->post(route('user.knowledge-bases.sources.store', $knowledgeBase), [
-            'type' => 'qa',
-            'title' => 'Refund answer',
-            'question' => 'Can I get a refund?',
-            'answer' => 'Refunds are available within 14 days of purchase.',
-        ])
-        ->assertRedirect(route('user.knowledge-bases.show', $knowledgeBase));
-
-    Queue::assertPushed(IndexKnowledgeBaseSourceJob::class, 2);
+    Queue::assertPushed(IndexKnowledgeBaseSourceJob::class, 1);
     KnowledgeBaseSource::query()->each(fn (KnowledgeBaseSource $source) => app(KnowledgeBaseIndexingService::class)->index($source));
 
     expect($knowledgeBase->refresh())
-        ->sources_count->toBe(2)
-        ->chunks_count->toBe(2)
+        ->sources_count->toBe(1)
+        ->chunks_count->toBe(1)
         ->status->toBe('ready')
         ->last_indexed_at->not->toBeNull();
 
-    expect(KnowledgeBaseSource::query()->pluck('status')->all())->toBe(['ready', 'ready'])
-        ->and(KnowledgeBaseSource::query()->pluck('vector_status')->all())->toBe(['fallback', 'fallback'])
+    expect(KnowledgeBaseSource::query()->pluck('status')->all())->toBe(['ready'])
+        ->and(KnowledgeBaseSource::query()->pluck('vector_status')->all())->toBe(['fallback'])
         ->and(KnowledgeBaseChunk::query()->pluck('content')->implode("\n"))
-        ->toContain('invoice exports')
-        ->toContain('Refunds are available within 14 days');
+        ->toContain('invoice exports');
 });
 
-it('adds url sitemap docx and pdf sources', function (): void {
+it('adds url docx and pdf sources', function (): void {
     Queue::fake();
     Http::fake([
         'https://example.com/help' => Http::response('<html><body>Enterprise onboarding includes migration support.</body></html>'),
-        'https://example.com/sitemap.xml' => Http::response('<urlset><url><loc>https://example.com/shipping</loc></url></urlset>'),
-        'https://example.com/shipping' => Http::response('<html><body>Shipping windows are three to five business days.</body></html>'),
     ]);
 
     $user = User::factory()->create(['email_verified_at' => now()]);
@@ -147,16 +139,6 @@ it('adds url sitemap docx and pdf sources', function (): void {
             'type' => 'url',
             'title' => 'Website help',
             'url' => 'https://example.com/help',
-        ])
-        ->assertRedirect(route('user.knowledge-bases.show', $knowledgeBase));
-
-    $this->withoutMiddleware(knowledgeBaseTestMiddleware())
-        ->actingAs($user)
-        ->post(route('user.knowledge-bases.sources.store', $knowledgeBase), [
-            'type' => 'sitemap',
-            'title' => 'Website sitemap',
-            'url' => 'https://example.com/sitemap.xml',
-            'crawl_limit' => 5,
         ])
         ->assertRedirect(route('user.knowledge-bases.show', $knowledgeBase));
 
@@ -191,11 +173,10 @@ it('adds url sitemap docx and pdf sources', function (): void {
         ->each(fn (KnowledgeBaseSource $source) => app(KnowledgeBaseIndexingService::class)->index($source));
 
     expect($knowledgeBase->refresh())
-        ->sources_count->toBe(4)
-        ->chunks_count->toBe(3)
+        ->sources_count->toBe(3)
+        ->chunks_count->toBe(2)
         ->and(KnowledgeBaseChunk::query()->pluck('content')->implode("\n"))
         ->toContain('Enterprise onboarding includes migration support')
-        ->toContain('Shipping windows are three to five business days')
         ->toContain('warranty and shipping instructions');
 });
 
@@ -330,4 +311,64 @@ it('syncs chunks to local qdrant and can retrieve them through vector search', f
     expect($reply['context']['search_mode'])->toBe('qdrant')
         ->and($reply['context']['knowledge_context_count'])->toBe(1)
         ->and($reply['reply'])->toContain('Vector search should find priority onboarding details.');
+});
+
+it('syncs chunks to json file store and retrieves them through vector search', function (): void {
+    app(AiSettingsService::class)->set('vector_database_enabled', true);
+    app(AiSettingsService::class)->set('vector_database_provider', 'json_file');
+
+    app()->forgetInstance(KnowledgeBaseIndexingService::class);
+    app()->forgetInstance(VectorStoreService::class);
+    app()->forgetInstance(JsonFileVectorStoreService::class);
+    app()->forgetInstance(KnowledgeBaseSearchService::class);
+    app()->forgetInstance(KnowledgeBaseService::class);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $workspace = app(WorkspaceResolver::class)->current($user);
+    $knowledgeBase = KnowledgeBase::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'JSON File KB',
+        'settings' => [],
+    ]);
+    $source = $knowledgeBase->sources()->create([
+        'type' => 'text',
+        'title' => 'JSON file policy',
+        'content' => 'JSON file vector search should locate enterprise migration details.',
+        'status' => 'pending',
+        'metadata' => [],
+    ]);
+
+    app(KnowledgeBaseIndexingService::class)->index($source);
+
+    expect($source->refresh())
+        ->status->toBe('ready')
+        ->vector_status->toBe('synced')
+        ->and(KnowledgeBaseChunk::query()->where('source_id', $source->id)->first()->vector_id)->not->toBeNull();
+
+    $vectorDir = storage_path('app/knowledge-bases/vectors/'.$knowledgeBase->id);
+
+    expect(file_exists($vectorDir.'/source_'.$source->id.'.json'))->toBeTrue();
+
+    $stored = json_decode(file_get_contents($vectorDir.'/source_'.$source->id.'.json'), true);
+
+    expect($stored)->toBeArray()
+        ->and($stored[0]['chunk_id'])->toBe(KnowledgeBaseChunk::query()->where('source_id', $source->id)->first()->id)
+        ->and($stored[0]['embedding'])->toBeArray()->not->toBeEmpty();
+
+    $chatbot = Chatbot::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'JSON File Bot',
+        'persona' => 'Answer from knowledge.',
+        'is_active' => true,
+    ]);
+    $chatbot->knowledgeBases()->sync([$knowledgeBase->id]);
+
+    $reply = app(ClaudeReplyService::class)->draftReply('enterprise migration', ['chatbot' => $chatbot->load('knowledgeBases')]);
+
+    expect($reply['context']['search_mode'])->toBe('json_file')
+        ->and($reply['context']['knowledge_context_count'])->toBe(1)
+        ->and($reply['reply'])->toContain('JSON file vector search should locate enterprise migration details.');
+
+    // Cleanup test vector files
+    File::deleteDirectory(storage_path('app/knowledge-bases/vectors'));
 });

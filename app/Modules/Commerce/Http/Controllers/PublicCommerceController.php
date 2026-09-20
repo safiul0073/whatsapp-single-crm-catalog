@@ -59,7 +59,7 @@ class PublicCommerceController extends Controller
         $categoryIds = $this->filteredCategoryIds($categoryId, $subcategoryId, $categoryTree);
 
         $products = Product::query()
-            ->with(['workspace', 'primaryMedia', 'category.parent', 'brandRecord'])
+            ->with(['workspace', 'primaryMedia', 'category.parent', 'brandRecord', 'colors', 'tierPrices'])
             ->withMin([
                 'variants as starting_price' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
@@ -95,7 +95,7 @@ class PublicCommerceController extends Controller
         abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
 
         $products = Product::query()
-            ->with(['primaryMedia', 'category', 'brandRecord'])
+            ->with(['primaryMedia', 'category', 'brandRecord', 'colors', 'tierPrices'])
             ->withCount([
                 'variants' => fn (Builder $query): Builder => $query->whereIn('status', ['active', 'out_of_stock']),
             ])
@@ -196,25 +196,50 @@ class PublicCommerceController extends Controller
         ], 301);
     }
 
+    public function directProduct(string $product): ViewContract
+    {
+        $record = Product::query()
+            ->with('workspace')
+            ->where('slug', $product)
+            ->first();
+
+        if (! $record && is_numeric($product)) {
+            $record = Product::query()->with('workspace')->find((int) $product);
+        }
+
+        abort_unless($record && $record->workspace, 404);
+
+        return $this->product($record->workspace, $record);
+    }
+
     public function product(Workspace $workspace, Product $product): ViewContract
     {
         abort_unless((bool) data_get($workspace->settings, 'commerce.shop_enabled', true), 404);
         abort_unless($product->workspace_id === $workspace->id, 404);
 
-        $record = Product::query()
+        $query = Product::query()
             ->with([
                 'primaryMedia',
                 'category',
                 'brandRecord',
                 'gallery.media',
+                'colors.swatchMedia',
+                'tierPrices',
                 'options.values',
                 'variants' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock'])->orderBy('price'),
                 'variants.media',
+                'variants.color',
             ])
             ->whereKey($product->id)
-            ->where('workspace_id', $workspace->id)
-            ->where('status', 'active')
-            ->firstOrFail();
+            ->where('workspace_id', $workspace->id);
+
+        $isOwnerOrStaff = auth()->check() && (auth()->user()->workspaces()->where('workspace_id', $workspace->id)->exists() || (bool) (auth()->user()->is_superadmin ?? false));
+
+        if (! $isOwnerOrStaff) {
+            $query->where('status', 'active');
+        }
+
+        $record = $query->firstOrFail();
 
         $phone = $this->resolveWorkspaceWhatsAppPhone($workspace->id);
 

@@ -27,6 +27,7 @@
 @once
 @push('scripts')
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill-image-resize@3.0.9/image-resize.min.js"></script>
 @endpush
 @endonce
 
@@ -41,6 +42,9 @@
                 theme: 'snow',
                 placeholder: @js($placeholder),
                 modules: {
+                    imageResize: {
+                        displaySize: true
+                    },
                     toolbar: {
                         container: [
                             [{ 'header': [1, 2, 3, 4, 5, 6, false] }],

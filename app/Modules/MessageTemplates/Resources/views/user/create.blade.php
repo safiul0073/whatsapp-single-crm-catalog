@@ -33,7 +33,7 @@
             'example' => old('header.example', data_get($header, 'example.header_text.0', 'Customer update')),
             'mediaId' => old('header.media_id', data_get($header, 'media_id')),
             'mediaName' => $media?->original_name ?? data_get($header, 'media_name', ''),
-            'mediaUrl' => $media?->url ?? data_get($header, 'media_url', ''),
+            'mediaUrl' => old('header_media_url', $media?->url ?? data_get($header, 'media_url', data_get($header, 'example.header_url.0', ''))),
             'handle' => data_get($header, 'example.header_handle.0', ''),
         ],
         'body' => $bodyText,
@@ -157,24 +157,40 @@
                 <div class="component-block mt-4" x-show="isMediaHeader">
                     <input type="hidden" name="header[media_id]" :value="header.mediaId || ''" />
                     <input type="hidden" name="header[handle]" :value="header.handle || ''" />
-                    <label for="headerMediaFile" class="upload-drop cursor-pointer transition-colors hover:border-primary/60 hover:bg-primary/5">
-                        <input id="headerMediaFile" name="header_media_file" type="file" class="sr-only" accept="image/*,video/mp4,application/pdf" @change="chooseMedia($event)" />
-                        <template x-if="!header.mediaUrl">
-                            <span>
-                                <i class="ph ph-upload-simple text-2xl"></i>
-                                <span class="mt-1 block text-sm">Upload image, video or document header sample</span>
-                            </span>
-                        </template>
-                        <template x-if="header.mediaUrl">
-                            <span class="w-full">
-                                <span class="block truncate text-sm font-semibold text-title" x-text="header.mediaName || 'Selected media'"></span>
-                                <span class="mt-1 block text-xs text-neutral-400">Choose another file to replace it.</span>
-                            </span>
-                        </template>
-                    </label>
-                    <p class="form-hint">The file is used for preview and uploaded to Meta as the required header example when submitting.</p>
-                    @error('header_media_file')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
-                    @error('header.media_id')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Provide Media URL</label>
+                            <input type="url" name="header_media_url" class="form-input" x-model="header.mediaUrl" placeholder="https://example.com/file.jpg" @input="header.mediaId = null; header.mediaName = 'Linked Media'" />
+                            <p class="form-hint">Provide a public URL for the image, video, or document.</p>
+                            @error('header_media_url')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="flex items-center gap-4 before:h-px before:flex-1 before:bg-neutral-200 after:h-px after:flex-1 after:bg-neutral-200">
+                            <span class="text-xs font-semibold text-neutral-400 uppercase">OR</span>
+                        </div>
+
+                        <div>
+                            <label for="headerMediaFile" class="upload-drop cursor-pointer transition-colors hover:border-primary/60 hover:bg-primary/5">
+                                <input id="headerMediaFile" name="header_media_file" type="file" class="sr-only" accept="image/*,video/mp4,application/pdf" @change="chooseMedia($event)" />
+                                <template x-if="!header.mediaId">
+                                    <span>
+                                        <i class="ph ph-upload-simple text-2xl"></i>
+                                        <span class="mt-1 block text-sm">Upload image, video or document</span>
+                                    </span>
+                                </template>
+                                <template x-if="header.mediaId">
+                                    <span class="w-full">
+                                        <span class="block truncate text-sm font-semibold text-title" x-text="header.mediaName || 'Selected media'"></span>
+                                        <span class="mt-1 block text-xs text-neutral-400">Choose another file to replace it.</span>
+                                    </span>
+                                </template>
+                            </label>
+                            <p class="form-hint">The file is used for preview and uploaded to Meta as the required header example when submitting.</p>
+                            @error('header_media_file')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
+                            @error('header.media_id')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
                 </div>
             </section>
             @endif

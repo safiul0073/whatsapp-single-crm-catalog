@@ -185,9 +185,10 @@ return [
                 'label' => 'Provider',
                 'hint' => 'Vector database provider',
                 'default' => 'qdrant',
-                'rules' => 'nullable|in:qdrant',
+                'rules' => 'nullable|in:qdrant,json_file',
                 'options' => [
                     'qdrant' => 'Qdrant',
+                    'json_file' => 'JSON File (Local Storage)',
                 ],
             ],
             'qdrant_url' => [

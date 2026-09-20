@@ -3,6 +3,7 @@
 namespace App\Modules\SchedulerQueue\Tests\Feature;
 
 use App\Models\Admin;
+use App\Modules\Commerce\Jobs\ReconcileMetaCatalogsJob;
 use App\Modules\PlansSubscriptions\Jobs\ExpireSubscriptionsJob;
 use App\Modules\PlansSubscriptions\Jobs\SendSubscriptionExpiryReminderJob;
 use App\Modules\SchedulerQueue\Models\SchedulerEntry;
@@ -37,6 +38,18 @@ class SchedulerQueueModuleTest extends TestCase
             ->assertSee('Scheduler &amp; Queues', false)
             ->assertSee('Subscription Expiry Reminders')
             ->assertSee('Subscription Expiry Processing');
+    }
+
+    public function test_meta_catalog_reconciliation_is_registered_and_syncs_into_entries(): void
+    {
+        $entry = $this->syncAndEntry('meta-catalog-reconciliation');
+
+        $this->assertSame(ReconcileMetaCatalogsJob::class, $entry->target);
+        $this->assertSame('hourly', $entry->frequency);
+        $this->assertDatabaseHas('scheduler_entries', [
+            'key' => 'meta-catalog-reconciliation',
+            'target' => ReconcileMetaCatalogsJob::class,
+        ]);
     }
 
     public function test_admin_without_permission_cannot_access_page(): void

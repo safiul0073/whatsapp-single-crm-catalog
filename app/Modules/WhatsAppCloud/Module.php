@@ -25,6 +25,6 @@ class Module extends BasePanelModule
 
     public function userNavigation(NavigationBuilder $navigation): void
     {
-        $navigation->group('Inbox')->item('Channel Setup', 'user.whatsapp-cloud.*', 'settings', null, 12);
+        $navigation->group('Channels')->item('WhatsApp Cloud', 'user.whatsapp-cloud.*', 'whatsapp-logo', 'channels.manage', 11);
     }
 }

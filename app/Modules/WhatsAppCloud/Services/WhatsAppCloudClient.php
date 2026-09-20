@@ -29,6 +29,11 @@ class WhatsAppCloudClient
         return Http::withToken($token)->post($this->graphUrl("{$businessAccountId}/message_templates"), $payload);
     }
 
+    public function editTemplate(string $templateId, string $token, array $payload): Response
+    {
+        return Http::withToken($token)->post($this->graphUrl("{$templateId}"), $payload);
+    }
+
     public function syncTemplates(string $businessAccountId, string $token): Response
     {
         return Http::withToken($token)->get($this->graphUrl("{$businessAccountId}/message_templates"));

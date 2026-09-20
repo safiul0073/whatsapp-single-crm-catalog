@@ -46,6 +46,15 @@ class MessageTemplateTokenService
 
                     if ($map !== []) {
                         $variables[strtolower($type)] = $map;
+                        
+                        if (empty($component['example'])) {
+                            if ($type === 'BODY') {
+                                $examples = array_fill(0, count($map), 'Example');
+                                $component['example'] = ['body_text' => [$examples]];
+                            } elseif ($type === 'HEADER') {
+                                $component['example'] = ['header_text' => ['Example']];
+                            }
+                        }
                     }
                 }
 
@@ -57,6 +66,10 @@ class MessageTemplateTokenService
 
                                 if ($map !== []) {
                                     $variables['buttons'][$index] = $map;
+                                    
+                                    if (empty($button['example'])) {
+                                        $button['example'] = ['example'];
+                                    }
                                 }
                             }
 

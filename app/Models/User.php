@@ -39,6 +39,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'bio',
         'timezone',
         'locale',
+        'email_verified_at',
         'phone_verified_at',
         'phone_verification_code',
         'otp_two_factor_enabled',
@@ -120,7 +121,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function workspaces(): BelongsToMany
     {
         return $this->belongsToMany(Workspace::class, 'workspace_members', 'user_id', 'workspace_id')
-            ->withPivot(['role', 'status'])
+            ->withPivot(['workspace_role_id', 'status'])
             ->withTimestamps();
     }
 

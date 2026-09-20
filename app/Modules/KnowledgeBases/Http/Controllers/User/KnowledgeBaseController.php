@@ -3,19 +3,19 @@
 namespace App\Modules\KnowledgeBases\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Modules\KnowledgeBases\Contracts\VectorStoreService;
 use App\Modules\KnowledgeBases\Http\Requests\StoreKnowledgeBaseRequest;
 use App\Modules\KnowledgeBases\Http\Requests\StoreKnowledgeBaseSourceRequest;
 use App\Modules\KnowledgeBases\Models\KnowledgeBase;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseSource;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseService;
-use App\Modules\KnowledgeBases\Services\QdrantVectorStoreService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class KnowledgeBaseController extends Controller
 {
-    public function index(Request $request, KnowledgeBaseService $knowledgeBases, QdrantVectorStoreService $vectors): View
+    public function index(Request $request, KnowledgeBaseService $knowledgeBases, VectorStoreService $vectors): View
     {
         return view('knowledge-bases::user.index', [
             'knowledgeBases' => $knowledgeBases->listForUser($request->user(), $request->only(['status', 'q'])),
@@ -35,7 +35,7 @@ class KnowledgeBaseController extends Controller
         return redirect()->route('user.knowledge-bases.show', $knowledgeBase)->with('status', 'Knowledge base created.');
     }
 
-    public function show(Request $request, KnowledgeBase $knowledgeBase, KnowledgeBaseService $knowledgeBases, QdrantVectorStoreService $vectors): View
+    public function show(Request $request, KnowledgeBase $knowledgeBase, KnowledgeBaseService $knowledgeBases, VectorStoreService $vectors): View
     {
         $knowledgeBase = $knowledgeBases->forUser($request->user(), $knowledgeBase)
             ->load(['sources.chunks', 'chatbots']);

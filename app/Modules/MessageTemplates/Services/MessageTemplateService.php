@@ -207,12 +207,7 @@ class MessageTemplateService
             ])->save();
         }
 
-        $payload = $template->submission_payload ?: [
-            'name' => $template->name,
-            'language' => $template->language,
-            'category' => strtoupper($template->category),
-            'components' => $template->components ?? [],
-        ];
+        $payload = $compiled['payload'];
 
         return $this->submitToMeta($template, $channel, $payload);
     }
@@ -273,8 +268,8 @@ class MessageTemplateService
         if ($headerType === 'text' && filled($header['text'] ?? null)) {
             $component = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $header['text']];
 
-            if ($this->tokens->hasTokens($header['text']) && filled($header['example'] ?? null)) {
-                $component['example'] = ['header_text' => [$header['example']]];
+            if ($this->tokens->hasTokens($header['text'])) {
+                $component['example'] = ['header_text' => [filled($header['example'] ?? null) ? $header['example'] : 'Example']];
             }
 
             $components[] = $component;
@@ -304,6 +299,16 @@ class MessageTemplateService
                 'type' => 'HEADER',
                 'format' => strtoupper($headerType),
                 'example' => ['header_handle' => [$header['handle']]],
+            ];
+        } elseif (in_array($headerType, ['image', 'video', 'document'], true)
+            && blank($header['media_id'] ?? null)
+            && blank($header['handle'] ?? null)
+            && filled($data['header_media_url'] ?? null)) {
+            $components[] = [
+                'type' => 'HEADER',
+                'format' => strtoupper($headerType),
+                'example' => ['header_url' => [$data['header_media_url']]],
+                'media_url' => $data['header_media_url'],
             ];
         }
 
@@ -379,7 +384,9 @@ class MessageTemplateService
                         'type' => 'URL',
                         'text' => $button['text'],
                         'url' => $button['url'] ?? '',
-                        'example' => filled($button['example'] ?? null) ? [$button['example']] : null,
+                        'example' => $this->tokens->hasTokens($button['url'] ?? '') 
+                            ? [(filled($button['example'] ?? null) ? $button['example'] : 'example')] 
+                            : null,
                     ]),
                     'phone_number' => [
                         'type' => 'PHONE_NUMBER',
@@ -406,16 +413,17 @@ class MessageTemplateService
 
     protected function storeHeaderMedia(array $data): array
     {
-        if (! isset($data['header_media_file'])
-            || ! in_array(data_get($data, 'header.type'), ['image', 'video', 'document'], true)) {
-            unset($data['header_media_file']);
+        if (! in_array(data_get($data, 'header.type'), ['image', 'video', 'document'], true)) {
+            unset($data['header_media_file'], $data['header_media_url']);
 
             return $data;
         }
 
-        $media = $this->media->upload($data['header_media_file']);
-        $data['header']['media_id'] = $media->id;
-        unset($data['header_media_file']);
+        if (isset($data['header_media_file'])) {
+            $media = $this->media->upload($data['header_media_file']);
+            $data['header']['media_id'] = $media->id;
+            unset($data['header_media_file']);
+        }
 
         return $data;
     }
@@ -466,8 +474,7 @@ class MessageTemplateService
         $tokens = $this->tokens->extract($text);
 
         return collect($tokens)
-            ->map(fn (string $token): mixed => $examples[$token] ?? null)
-            ->filter(fn ($value): bool => filled($value))
+            ->map(fn (string $token): mixed => filled($examples[$token] ?? null) ? $examples[$token] : 'Example')
             ->values()
             ->all();
     }
@@ -546,11 +553,29 @@ class MessageTemplateService
         $payload = $this->payloadForMeta($payload, $channel);
         $this->validateMetaPayload($payload);
 
-        $response = $this->client->submitTemplate(
-            (string) $channel->provider_account_id,
-            (string) $channel->credential('access_token'),
-            $payload
-        );
+        $submission = MessageTemplateSubmission::query()->where([
+            'workspace_id' => $template->workspace_id,
+            'message_template_id' => $template->id,
+            'provider_account_id' => (string) $channel->provider_account_id,
+        ])->first();
+
+        $templateId = $submission?->whatsapp_template_id;
+
+        if ($templateId) {
+            unset($payload['name'], $payload['language']);
+            $response = $this->client->editTemplate(
+                $templateId,
+                (string) $channel->credential('access_token'),
+                $payload
+            );
+        } else {
+            $response = $this->client->submitTemplate(
+                (string) $channel->provider_account_id,
+                (string) $channel->credential('access_token'),
+                $payload
+            );
+        }
+        
         $json = $response->json() ?? [];
 
         MessageTemplateSubmission::query()->updateOrCreate(
@@ -562,7 +587,7 @@ class MessageTemplateService
             [
                 'channel_account_id' => $channel->id,
                 'provider' => 'whatsapp',
-                'whatsapp_template_id' => Arr::get($json, 'id'),
+                'whatsapp_template_id' => Arr::get($json, 'id') ?? $templateId,
                 'status' => $response->successful() ? MessageTemplateStatus::Submitted->value : MessageTemplateStatus::Failed->value,
                 'submission_payload' => $payload,
                 'meta_response' => $json,
@@ -609,10 +634,13 @@ class MessageTemplateService
             ->map(function (array $component) use ($channel): array {
                 if (($component['type'] ?? null) === 'HEADER'
                     && in_array($component['format'] ?? null, ['IMAGE', 'VIDEO', 'DOCUMENT'], true)) {
-                    $handle = data_get($component, 'example.header_handle.0')
-                        ?: $this->templateMediaHandle((int) ($component['media_id'] ?? 0), $channel);
+                    
+                    if (blank(data_get($component, 'example.header_url.0'))) {
+                        $handle = data_get($component, 'example.header_handle.0')
+                            ?: $this->templateMediaHandle((int) ($component['media_id'] ?? 0), $channel);
 
-                    $component['example'] = ['header_handle' => [$handle]];
+                        $component['example'] = ['header_handle' => [$handle]];
+                    }
                 }
 
                 unset($component['media_id'], $component['media_name'], $component['media_url'], $component['media_mime_type']);

@@ -317,6 +317,8 @@ it('renders failed outbound message status in the error color', function (): voi
         ->actingAs($user)
         ->get(route('user.inbox.index'))
         ->assertOk()
+        ->assertDontSee('data-page-help-banner', false)
+        ->assertDontSee('Handle customer conversations, review contact context, and turn important WhatsApp replies into CRM follow-up.')
         ->assertSee("message.status === 'failed' ? 'text-error'", false)
         ->assertSee('ph-paperclip', false)
         ->assertSee('attachmentPreviewUrl', false)

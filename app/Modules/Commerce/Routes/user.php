@@ -33,10 +33,16 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::put('audiences/{audience}', [CommerceController::class, 'updateAudience'])->name('audiences.update');
     Route::delete('audiences/bulk', [CommerceController::class, 'bulkDestroyAudiences'])->name('audiences.bulk-destroy');
     Route::delete('audiences/{audience}', [CommerceController::class, 'destroyAudience'])->name('audiences.destroy');
+    Route::get('variants', [CommerceController::class, 'variants'])->name('variants.index');
+    Route::post('variants', [CommerceController::class, 'storeVariantPreset'])->name('variants.store');
+    Route::put('variants/{preset}', [CommerceController::class, 'updateVariantPreset'])->name('variants.update');
+    Route::delete('variants/bulk', [CommerceController::class, 'bulkDestroyVariantPresets'])->name('variants.bulk-destroy');
+    Route::delete('variants/{preset}', [CommerceController::class, 'destroyVariantPreset'])->name('variants.destroy');
     Route::get('catalog', [CommerceController::class, 'catalog'])->name('catalog');
     Route::post('catalog', [CommerceController::class, 'storeCatalog'])->name('catalog.store');
     Route::post('catalog/{catalog}/token', [CommerceController::class, 'rotateFeedToken'])->name('catalog.token.rotate');
     Route::post('catalog/{catalog}/sync', [CommerceController::class, 'syncCatalog'])->name('catalog.sync');
+    Route::post('catalog/{catalog}/verify-access', [CommerceController::class, 'verifyCatalogAccess'])->name('catalog.verify-access');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->name('orders.index');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->name('orders.show');

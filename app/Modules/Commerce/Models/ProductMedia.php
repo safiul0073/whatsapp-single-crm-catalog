@@ -10,7 +10,7 @@ class ProductMedia extends Model
 {
     protected $table = 'commerce_product_media';
 
-    protected $fillable = ['workspace_id', 'product_id', 'media_id', 'media_type', 'role', 'alt_text', 'position', 'is_primary'];
+    protected $fillable = ['workspace_id', 'product_id', 'media_id', 'color_id', 'media_type', 'role', 'alt_text', 'position', 'is_primary'];
 
     protected function casts(): array
     {
@@ -25,5 +25,10 @@ class ProductMedia extends Model
     public function media(): BelongsTo
     {
         return $this->belongsTo(Media::class);
+    }
+
+    public function color(): BelongsTo
+    {
+        return $this->belongsTo(ProductColor::class, 'color_id');
     }
 }

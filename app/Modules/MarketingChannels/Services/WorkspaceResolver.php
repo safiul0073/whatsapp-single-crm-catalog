@@ -3,7 +3,7 @@
 namespace App\Modules\MarketingChannels\Services;
 
 use App\Models\User;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
+
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Enums\WorkspaceStatus;
 use App\Modules\Workspaces\Models\Workspace;
@@ -54,8 +54,29 @@ class WorkspaceResolver
             'timezone' => config('app.timezone', 'UTC'),
         ]);
 
+        $adminRole = \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Administrator',
+            'description' => 'Full access to the workspace',
+            'is_system' => true,
+        ]);
+
+        \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Manager',
+            'description' => 'Can manage most settings',
+            'is_system' => true,
+        ]);
+
+        \App\Modules\Workspaces\Models\WorkspaceRole::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Staff',
+            'description' => 'Standard user access',
+            'is_system' => true,
+        ]);
+
         $workspace->members()->attach($user->id, [
-            'role' => WorkspaceMemberRole::Administrator->value,
+            'workspace_role_id' => $adminRole->id,
             'status' => WorkspaceMemberStatus::Active->value,
         ]);
 

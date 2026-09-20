@@ -9,7 +9,7 @@ class ProductOptionValue extends Model
 {
     protected $table = 'commerce_product_option_values';
 
-    protected $fillable = ['workspace_id', 'option_id', 'value', 'position'];
+    protected $fillable = ['workspace_id', 'option_id', 'value', 'weight', 'weight_unit', 'position'];
 
     public function option(): BelongsTo
     {

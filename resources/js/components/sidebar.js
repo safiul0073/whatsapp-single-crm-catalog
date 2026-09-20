@@ -31,6 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const sidebarOverlay = document.getElementById("sidebarOverlay");
   const mainContent = document.getElementById("mainContent");
 
+  // Scroll active item into view
+  setTimeout(() => {
+    const activeItem = document.querySelector(".app-nav__link.is-active, .nav-item.active");
+    if (activeItem) {
+      activeItem.scrollIntoView({ behavior: "auto", block: "center" });
+    }
+  }, 50);
+
   // Restore collapse state
   const isCollapsed = localStorage.getItem("sidebar-collapsed") === "true";
   if (isCollapsed && window.innerWidth >= 992) {

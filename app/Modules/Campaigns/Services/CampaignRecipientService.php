@@ -212,8 +212,8 @@ class CampaignRecipientService
 
         $mappedComponents = $this->mapTemplateComponents($runtimeComponents, $components, $contact, $variables);
         $commerceComponent = match ($template?->template_kind) {
-            'catalog' => $this->commerceTemplates->catalogButtonComponent($campaign),
-            'multi_product' => $this->commerceTemplates->multiProductButtonComponent($campaign),
+            'catalog' => $this->commerceTemplates->catalogButtonComponent($campaign, $runtimeComponents),
+            'multi_product' => $this->commerceTemplates->multiProductButtonComponent($campaign, $runtimeComponents),
             default => null,
         };
 

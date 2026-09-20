@@ -115,7 +115,7 @@
                 <div class="mt-4">
                     <label for="type" class="form-label">{{ __('Source type') }}</label>
                     <select id="type" name="type" class="form-input">
-                        @foreach (['text' => __('Text'), 'qa' => __('Q&A'), 'url' => __('Website URL'), 'sitemap' => __('Sitemap'), 'file' => __('File')] as $value => $label)
+                        @foreach (['text' => __('Text'), 'url' => __('Website URL'), 'file' => __('File')] as $value => $label)
                             <option value="{{ $value }}" @selected(old('type', 'text') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
@@ -135,28 +135,9 @@
                 </div>
 
                 <div class="mt-4">
-                    <label for="crawl_limit" class="form-label">{{ __('Sitemap crawl limit') }}</label>
-                    <input id="crawl_limit" name="crawl_limit" type="number" min="1" max="50" value="{{ old('crawl_limit', 10) }}" class="form-input">
-                    @error('crawl_limit')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="mt-4">
                     <label for="content" class="form-label">{{ __('Text content') }}</label>
                     <textarea id="content" name="content" rows="5" class="form-input">{{ old('content') }}</textarea>
                     @error('content')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="mt-4 grid gap-4">
-                    <div>
-                        <label for="question" class="form-label">{{ __('Question') }}</label>
-                        <input id="question" name="question" type="text" value="{{ old('question') }}" class="form-input">
-                        @error('question')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
-                        <label for="answer" class="form-label">{{ __('Answer') }}</label>
-                        <textarea id="answer" name="answer" rows="4" class="form-input">{{ old('answer') }}</textarea>
-                        @error('answer')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                    </div>
                 </div>
 
                 <div class="mt-4">

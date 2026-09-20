@@ -8,7 +8,7 @@ class ProductReadinessService
 {
     public function issues(Product $product): array
     {
-        $product->loadMissing(['primaryMedia', 'gallery.media', 'variants']);
+        $product->loadMissing(['primaryMedia', 'gallery.media', 'variants', 'options.values']);
         $issues = [];
 
         if (! $product->primaryMedia || $product->primaryMedia->type !== 'image') {
@@ -31,6 +31,31 @@ class ProductReadinessService
 
         if ($product->variants->pluck('meta_retailer_id')->filter()->duplicates()->isNotEmpty()) {
             $issues[] = ['code' => 'duplicate_retailer_id', 'message' => 'Meta retailer IDs must be unique.'];
+        }
+
+        // Wholesale settings validation
+        if ($product->isWholesaleEnabled()) {
+            $sizeOption = $product->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
+            $totalSizes = $sizeOption ? $sizeOption->values->count() : 0;
+
+            if ($product->ws_min_sizes !== null && $totalSizes > 0 && $product->ws_min_sizes > $totalSizes) {
+                $issues[] = ['code' => 'ws_min_sizes_exceeds', 'message' => "Wholesale minimum sizes ({$product->ws_min_sizes}) cannot exceed total available sizes ({$totalSizes})."];
+            }
+
+            if ($product->ws_main_moq < 1) {
+                $issues[] = ['code' => 'ws_main_moq_invalid', 'message' => 'Wholesale main MOQ must be at least 1.'];
+            }
+
+            if (!empty($product->ws_size_ratios) && $sizeOption) {
+                $sizeValues = $sizeOption->values->pluck('value')->all();
+                foreach ($product->ws_size_ratios as $colorId => $ratios) {
+                    $ratioKeys = array_keys($ratios);
+                    $mismatched = array_diff($ratioKeys, $sizeValues);
+                    if (!empty($mismatched)) {
+                        $issues[] = ['code' => 'ws_ratios_mismatch', 'message' => "Wholesale size ratios for color '{$colorId}' contain sizes not defined in the product: " . implode(', ', $mismatched)];
+                    }
+                }
+            }
         }
 
         return $issues;

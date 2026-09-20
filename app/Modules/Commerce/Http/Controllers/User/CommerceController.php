@@ -21,6 +21,7 @@ use App\Modules\Commerce\Http\Requests\SendProductMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductVideoRequest;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
 use App\Modules\Commerce\Http\Requests\UploadCommerceMediaRequest;
+use App\Modules\Commerce\Http\Requests\VariantPresetRequest;
 use App\Modules\Commerce\Models\Audience;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Catalog;
@@ -28,6 +29,7 @@ use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Models\VariantPreset;
 use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
@@ -53,11 +55,11 @@ use Illuminate\View\View;
 
 class CommerceController extends Controller implements HasMiddleware
 {
-    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders) {}
+    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders, protected CatalogDiagnosticsService $catalogDiagnostics) {}
 
     public static function middleware(): array
     {
-        return [new Middleware('permission:commerce.view', only: ['index', 'show', 'categories', 'brands', 'audiences', 'orders', 'order', 'conversationProducts']), new Middleware('permission:commerce.manage', except: ['index', 'show', 'categories', 'brands', 'audiences', 'orders', 'order', 'conversationProducts'])];
+        return [new Middleware('permission:commerce.view', only: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'conversationProducts']), new Middleware('permission:commerce.manage', except: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'conversationProducts'])];
     }
 
     public function index(Request $request): View
@@ -66,7 +68,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.index', [
             'products' => Product::query()
-                ->with(['category', 'primaryMedia', 'workspace'])
+                ->with(['category', 'primaryMedia', 'workspace', 'brandRecord', 'audienceRecord'])
                 ->withCount('variants')
                 ->withMin('variants as starting_price', 'price')
                 ->withSum('variants as stock_total', 'stock_quantity')
@@ -85,7 +87,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $product = $this->products->createDraft($this->workspaces->current($request->user())->id, $request->validated());
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 2])->with('success', __('Draft created. Add product media next.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 2])->with('success', __('Draft created. Configure colors and sizes next.'));
     }
 
     public function edit(Request $request, Product $product): View
@@ -106,25 +108,34 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateDetails(ProductDetailsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 2);
         $this->products->updateDetails($product, $request->validated());
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 2])->with('success', __('Product details saved.'));
-    }
-
-    public function updateGallery(ProductGalleryRequest $request, Product $product): RedirectResponse
-    {
-        $this->assertWorkspace($request, $product->workspace_id);
-        $this->products->updateGallery($product, $request->validated('media'));
-
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 3])->with('success', __('Gallery saved.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
     }
 
     public function updateOptions(ProductOptionsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 4);
+        if ($request->has('colors')) {
+            $this->products->syncColors($product, $request->input('colors', []));
+        }
         $this->products->updateOptions($product, $request->validated('options'));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 4])->with('success', __('Options saved and variants generated.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Sizes and options saved.'));
+    }
+
+    public function updateGallery(ProductGalleryRequest $request, Product $product): RedirectResponse
+    {
+        $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 3);
+        $this->products->updateGallery($product, $request->validated('media'), $request->input('colors', []));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Photos saved.'));
     }
 
     public function previewVariants(Request $request, Product $product): JsonResponse
@@ -137,9 +148,14 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateVariants(ProductVariantsRequest $request, Product $product): RedirectResponse
     {
         $this->assertWorkspace($request, $product->workspace_id);
+        $nextStep = $request->integer('next_step', 6);
+        if ($request->has('tier_prices')) {
+            $this->products->syncTierPrices($product, $request->input('tier_prices', []));
+        }
         $this->products->updateVariants($product, $request->validated('variants'));
+        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => 5])->with('success', __('Variants and inventory saved.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Pricing, MOQ and inventory saved.'));
     }
 
     public function publish(PublishProductRequest $request, Product $product): RedirectResponse
@@ -147,7 +163,7 @@ class CommerceController extends Controller implements HasMiddleware
         $this->assertWorkspace($request, $product->workspace_id);
         $this->products->publish($product, $request->string('status')->toString());
 
-        return back()->with('success', __('Product status updated.'));
+        return redirect()->route('user.commerce.products.index')->with('success', __('Product published successfully.'));
     }
 
     public function uploadMedia(UploadCommerceMediaRequest $request, MediaService $media): JsonResponse
@@ -192,14 +208,23 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
 
+        $categories = Category::query()
+            ->withCount(['products', 'children'])
+            ->where('workspace_id', $workspace->id)
+            ->get();
+
+        foreach ($categories as $category) {
+            $path = [$category->name];
+            $parent = $categories->firstWhere('id', $category->parent_id);
+            while ($parent) {
+                array_unshift($path, $parent->name);
+                $parent = $categories->firstWhere('id', $parent->parent_id);
+            }
+            $category->path = implode(' > ', $path);
+        }
+
         return view('commerce::user.categories', [
-            'categories' => Category::query()
-                ->with('parent')
-                ->withCount(['products', 'children'])
-                ->where('workspace_id', $workspace->id)
-                ->orderByRaw('parent_id is not null')
-                ->orderBy('name')
-                ->get(),
+            'categories' => $categories->sortBy('name'),
         ]);
     }
 
@@ -369,11 +394,87 @@ class CommerceController extends Controller implements HasMiddleware
         return back()->with('success', trans_choice(':count audience deleted.|:count audiences deleted.', $audiences->count(), ['count' => $audiences->count()]));
     }
 
+    public function variants(Request $request): View
+    {
+        $workspace = $this->workspaces->current($request->user());
+
+        return view('commerce::user.variants', [
+            'presets' => VariantPreset::query()
+                ->where('workspace_id', $workspace->id)
+                ->orderBy('name')
+                ->get(),
+        ]);
+    }
+
+    public function storeVariantPreset(VariantPresetRequest $request): RedirectResponse|JsonResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $preset = VariantPreset::query()->create([
+            'workspace_id' => $workspace->id,
+            'name' => $request->string('name')->toString(),
+            'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
+            'price_delta' => (float) $request->input('price_delta', 0.00),
+            'weight' => $request->filled('weight') ? (float) $request->input('weight') : null,
+            'weight_unit' => $request->string('weight_unit', 'kg')->toString(),
+            'type' => $request->string('type', 'size')->toString(),
+            'values' => $request->input('values', []),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'preset' => $preset, 'message' => __('Variant option created.')]);
+        }
+
+        return back()->with('success', __('Variant option created.'));
+    }
+
+    public function updateVariantPreset(VariantPresetRequest $request, VariantPreset $preset): RedirectResponse|JsonResponse
+    {
+        $this->assertWorkspace($request, $preset->workspace_id);
+        $preset->update([
+            'name' => $request->string('name')->toString(),
+            'sku_suffix' => $request->string('sku_suffix')->toString() ?: null,
+            'price_delta' => (float) $request->input('price_delta', 0.00),
+            'weight' => $request->filled('weight') ? (float) $request->input('weight') : null,
+            'weight_unit' => $request->string('weight_unit', 'kg')->toString(),
+            'type' => $request->string('type', 'size')->toString(),
+            'values' => $request->input('values', []),
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'preset' => $preset, 'message' => __('Variant option updated.')]);
+        }
+
+        return back()->with('success', __('Variant option updated.'));
+    }
+
+    public function destroyVariantPreset(Request $request, VariantPreset $preset): RedirectResponse|JsonResponse
+    {
+        $this->assertWorkspace($request, $preset->workspace_id);
+        $preset->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'message' => __('Variant option deleted.')]);
+        }
+
+        return back()->with('success', __('Variant option deleted.'));
+    }
+
+    public function bulkDestroyVariantPresets(BulkDeleteCommerceRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $presets = $this->bulkRecords(VariantPreset::class, $workspace->id, $request->validated('ids'));
+        VariantPreset::query()->whereKey($presets->modelKeys())->delete();
+
+        return back()->with('success', trans_choice(':count variant option deleted.|:count variant options deleted.', $presets->count(), ['count' => $presets->count()]));
+    }
+
     public function catalog(Request $request): View
     {
         $workspace = $this->workspaces->current($request->user());
         $catalogs = Catalog::query()->with(['channelAccount', 'itemSyncs', 'syncRuns' => fn ($query) => $query->latest()->limit(5)])->where('workspace_id', $workspace->id)->get();
-        $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => app(CatalogDiagnosticsService::class)->diagnose($catalog)])->all();
+        $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->diagnose($catalog, true)])->all();
 
         return view('commerce::user.catalog', ['catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
     }
@@ -403,6 +504,18 @@ class CommerceController extends Controller implements HasMiddleware
         $sync->queue($catalog);
 
         return back()->with('success', __('Catalog synchronization queued.'));
+    }
+
+    public function verifyCatalogAccess(Request $request, Catalog $catalog): RedirectResponse
+    {
+        $this->assertWorkspace($request, $catalog->workspace_id);
+        $access = $this->catalogDiagnostics->probeCatalogAccess($catalog, true);
+
+        if ($access === null) {
+            return back()->with('warning', __('Configure the Meta catalog ID and connect the channel before verifying access.'));
+        }
+
+        return back()->with($access['passed'] ? 'success' : 'error', $access['message']);
     }
 
     public function updateCommerceSettings(CommerceSettingsRequest $request, Catalog $catalog, MetaCatalogClient $meta): RedirectResponse
@@ -518,12 +631,24 @@ class CommerceController extends Controller implements HasMiddleware
 
         $product?->load(['gallery.media', 'options.values', 'variants.media']);
 
+        $categories = Category::query()->where('workspace_id', $workspace->id)->get();
+        foreach ($categories as $category) {
+            $path = [$category->name];
+            $parent = $categories->firstWhere('id', $category->parent_id);
+            while ($parent) {
+                array_unshift($path, $parent->name);
+                $parent = $categories->firstWhere('id', $parent->parent_id);
+            }
+            $category->path = implode(' > ', $path);
+        }
+
         return view('commerce::user.form', [
             'product' => $product,
-            'step' => $product ? max(1, min(5, $request->integer('step', $product->wizard_step))) : 1,
-            'categories' => Category::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(),
+            'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,
+            'categories' => $categories->sortBy('path'),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'audiences' => Audience::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
+            'variantPresets' => VariantPreset::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'variantPreview' => $product ? $this->products->variantPreview($product) : [],
             'readinessIssues' => $product ? app(ProductReadinessService::class)->issues($product) : [],
         ]);

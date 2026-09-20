@@ -192,7 +192,7 @@
                             @empty
                                 <div class="rounded-xl border border-dashed border-border p-4 text-sm text-neutral-500">
                                     {{ __('No connected campaign sender is available yet.') }}
-                                    <a href="{{ route('user.whatsapp-cloud.channel-setup') }}" class="font-semibold text-primary">{{ __('Connect a channel') }}</a>
+                                    <a href="{{ route('user.channels.index') }}" class="font-semibold text-primary">{{ __('Connect a channel') }}</a>
                                 </div>
                             @endforelse
                         </div>

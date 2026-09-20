@@ -8,6 +8,7 @@ use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelAccountSetupService;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Telegram\Http\Requests\ConnectTelegramChannelRequest;
 use App\Modules\Telegram\Services\TelegramBotProvider;
@@ -38,6 +39,28 @@ class TelegramChannelSetupController extends Controller
         return view('telegram::user.setup', [
             'channel' => $channel,
             'telegramLinks' => $channel?->status === ChannelAccountStatus::Connected ? $optIns->publicLinksFor($channel) : null,
+            'steps' => $this->setupSteps($channel),
+            'webhookUrl' => $channel
+                ? route('webhooks.channels.account.receive', ['provider' => 'telegram', 'webhookCode' => $channel->webhook_code])
+                : route('webhooks.channels.receive', 'telegram'),
+        ]);
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, description: string, state: string}>
+     */
+    protected function setupSteps(?ChannelAccount $channel): array
+    {
+        $isConnected = $channel?->status === ChannelAccountStatus::Connected;
+        $settings = $channel?->settings ?? [];
+        $hasError = filled($settings['last_error'] ?? null);
+        $hasWebhook = filled($settings['last_webhook_set_at'] ?? null);
+
+        return ChannelSetupSteps::build([
+            ['key' => 'bot', 'label' => __('Create a bot with @BotFather'), 'description' => __('Open @BotFather in Telegram, run /newbot and copy the bot token.'), 'done' => $channel !== null],
+            ['key' => 'connect', 'label' => __('Connect the bot'), 'description' => __('Save the bot username and token. We verify the token with Telegram.'), 'done' => $isConnected],
+            ['key' => 'webhook', 'label' => __('Register the webhook'), 'description' => __('Registered automatically after connecting so inbound messages reach your inbox.'), 'done' => $isConnected && $hasWebhook && ! $hasError],
+            ['key' => 'share', 'label' => __('Test and share your links'), 'description' => __('Run a connection test, then share the bot or subscribe link with contacts.'), 'done' => $isConnected && $hasWebhook && ! $hasError && filled($settings['last_connection_tested_at'] ?? null)],
         ]);
     }
 
