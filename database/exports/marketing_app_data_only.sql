@@ -16,21 +16,6 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `admin_password_reset_tokens`
---
-
-DROP TABLE IF EXISTS `admin_password_reset_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `admin_password_reset_tokens` (
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `admin_password_reset_tokens`
 --
 
@@ -38,36 +23,6 @@ LOCK TABLES `admin_password_reset_tokens` WRITE;
 /*!40000 ALTER TABLE `admin_password_reset_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `admin_password_reset_tokens` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `admins`
---
-
-DROP TABLE IF EXISTS `admins`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `admins` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `last_login_at` timestamp NULL DEFAULT NULL,
-  `last_login_ip` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `two_factor_secret` text COLLATE utf8mb4_unicode_ci,
-  `two_factor_confirmed_at` timestamp NULL DEFAULT NULL,
-  `two_factor_recovery_codes` text COLLATE utf8mb4_unicode_ci,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `admins_email_unique` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `admins`
@@ -80,34 +35,6 @@ INSERT INTO `admins` VALUES (1,'Super Admin','admin@mail.com','2026-09-21 16:23:
 UNLOCK TABLES;
 
 --
--- Table structure for table `agent_conversation_messages`
---
-
-DROP TABLE IF EXISTS `agent_conversation_messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `agent_conversation_messages` (
-  `id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `conversation_id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `agent` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `attachments` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tool_calls` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tool_results` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `usage` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `meta` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `conversation_index` (`conversation_id`,`user_id`,`updated_at`),
-  KEY `agent_conversation_messages_user_id_index` (`user_id`),
-  KEY `agent_conversation_messages_conversation_id_index` (`conversation_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `agent_conversation_messages`
 --
 
@@ -117,24 +44,6 @@ LOCK TABLES `agent_conversation_messages` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `agent_conversations`
---
-
-DROP TABLE IF EXISTS `agent_conversations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `agent_conversations` (
-  `id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `agent_conversations_user_id_updated_at_index` (`user_id`,`updated_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `agent_conversations`
 --
 
@@ -142,24 +51,6 @@ LOCK TABLES `agent_conversations` WRITE;
 /*!40000 ALTER TABLE `agent_conversations` DISABLE KEYS */;
 /*!40000 ALTER TABLE `agent_conversations` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `ai_settings`
---
-
-DROP TABLE IF EXISTS `ai_settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `ai_settings` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `ai_settings_key_unique` (`key`)
-) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `ai_settings`
@@ -172,43 +63,6 @@ INSERT INTO `ai_settings` VALUES (1,'ai_default_text_provider','','2026-09-21 16
 UNLOCK TABLES;
 
 --
--- Table structure for table `ai_usage_logs`
---
-
-DROP TABLE IF EXISTS `ai_usage_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `ai_usage_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned DEFAULT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `feature` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `model` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `duration_ms` int unsigned DEFAULT NULL,
-  `input_tokens` int unsigned DEFAULT NULL,
-  `output_tokens` int unsigned DEFAULT NULL,
-  `total_tokens` int unsigned DEFAULT NULL,
-  `estimated_cost` decimal(12,6) DEFAULT NULL,
-  `request_excerpt` text COLLATE utf8mb4_unicode_ci,
-  `response_excerpt` text COLLATE utf8mb4_unicode_ci,
-  `error_message` text COLLATE utf8mb4_unicode_ci,
-  `metadata` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ai_usage_logs_user_id_foreign` (`user_id`),
-  KEY `ai_usage_logs_feature_created_at_index` (`feature`,`created_at`),
-  KEY `ai_usage_logs_provider_created_at_index` (`provider`,`created_at`),
-  KEY `ai_usage_logs_workspace_id_created_at_index` (`workspace_id`,`created_at`),
-  KEY `ai_usage_logs_status_index` (`status`),
-  CONSTRAINT `ai_usage_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `ai_usage_logs_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `ai_usage_logs`
 --
 
@@ -216,35 +70,6 @@ LOCK TABLES `ai_usage_logs` WRITE;
 /*!40000 ALTER TABLE `ai_usage_logs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `ai_usage_logs` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `audit_logs`
---
-
-DROP TABLE IF EXISTS `audit_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `audit_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `auditable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `auditable_id` bigint unsigned DEFAULT NULL,
-  `old_values` json DEFAULT NULL,
-  `new_values` json DEFAULT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `url` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `audit_logs_auditable_type_auditable_id_index` (`auditable_type`,`auditable_id`),
-  KEY `audit_logs_user_id_index` (`user_id`),
-  KEY `audit_logs_action_index` (`action`),
-  KEY `audit_logs_created_at_index` (`created_at`),
-  CONSTRAINT `audit_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `audit_logs`
@@ -256,33 +81,6 @@ LOCK TABLES `audit_logs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `auto_reply_rules`
---
-
-DROP TABLE IF EXISTS `auto_reply_rules`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `auto_reply_rules` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `trigger_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'keyword',
-  `trigger_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `match_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'contains',
-  `reply_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'text',
-  `reply_text` text COLLATE utf8mb4_unicode_ci,
-  `reply_payload` json DEFAULT NULL,
-  `priority` smallint unsigned NOT NULL DEFAULT '10',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `auto_reply_rules_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `auto_reply_rules_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `auto_reply_rules`
 --
 
@@ -290,55 +88,6 @@ LOCK TABLES `auto_reply_rules` WRITE;
 /*!40000 ALTER TABLE `auto_reply_rules` DISABLE KEYS */;
 /*!40000 ALTER TABLE `auto_reply_rules` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `automation_runs`
---
-
-DROP TABLE IF EXISTS `automation_runs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `automation_runs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `automation_id` bigint unsigned NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'running',
-  `trigger_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `trigger_node_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `event_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `campaign_id` bigint unsigned DEFAULT NULL,
-  `campaign_recipient_id` bigint unsigned DEFAULT NULL,
-  `message_id` bigint unsigned DEFAULT NULL,
-  `context` json DEFAULT NULL,
-  `result` json DEFAULT NULL,
-  `error` text COLLATE utf8mb4_unicode_ci,
-  `started_at` timestamp NULL DEFAULT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `failed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `automation_runs_event_unique` (`automation_id`,`trigger_node_id`,`event_key`),
-  KEY `automation_runs_workspace_id_foreign` (`workspace_id`),
-  KEY `automation_runs_contact_id_foreign` (`contact_id`),
-  KEY `automation_runs_conversation_id_foreign` (`conversation_id`),
-  KEY `automation_runs_campaign_id_foreign` (`campaign_id`),
-  KEY `automation_runs_campaign_recipient_id_foreign` (`campaign_recipient_id`),
-  KEY `automation_runs_message_id_foreign` (`message_id`),
-  KEY `automation_runs_status_index` (`status`),
-  KEY `automation_runs_trigger_type_index` (`trigger_type`),
-  KEY `automation_runs_event_key_index` (`event_key`),
-  CONSTRAINT `automation_runs_automation_id_foreign` FOREIGN KEY (`automation_id`) REFERENCES `automations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `automation_runs_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `automation_runs_campaign_recipient_id_foreign` FOREIGN KEY (`campaign_recipient_id`) REFERENCES `campaign_recipients` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `automation_runs_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `automation_runs_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `automation_runs_message_id_foreign` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `automation_runs_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `automation_runs`
@@ -350,41 +99,6 @@ LOCK TABLES `automation_runs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `automation_step_logs`
---
-
-DROP TABLE IF EXISTS `automation_step_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `automation_step_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `automation_run_id` bigint unsigned NOT NULL,
-  `automation_id` bigint unsigned NOT NULL,
-  `node_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `node_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `node_kind` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'running',
-  `selected_port` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `input` json DEFAULT NULL,
-  `output` json DEFAULT NULL,
-  `error` text COLLATE utf8mb4_unicode_ci,
-  `scheduled_until` timestamp NULL DEFAULT NULL,
-  `started_at` timestamp NULL DEFAULT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `failed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `automation_step_logs_automation_run_id_foreign` (`automation_run_id`),
-  KEY `automation_step_logs_automation_id_foreign` (`automation_id`),
-  KEY `automation_step_logs_node_id_index` (`node_id`),
-  KEY `automation_step_logs_status_index` (`status`),
-  CONSTRAINT `automation_step_logs_automation_id_foreign` FOREIGN KEY (`automation_id`) REFERENCES `automations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `automation_step_logs_automation_run_id_foreign` FOREIGN KEY (`automation_run_id`) REFERENCES `automation_runs` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `automation_step_logs`
 --
 
@@ -394,34 +108,6 @@ LOCK TABLES `automation_step_logs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `automations`
---
-
-DROP TABLE IF EXISTS `automations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `automations` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `trigger` json DEFAULT NULL,
-  `nodes` json DEFAULT NULL,
-  `edges` json DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '0',
-  `runs_count` int unsigned NOT NULL DEFAULT '0',
-  `completed_runs_count` int unsigned NOT NULL DEFAULT '0',
-  `failed_runs_count` int unsigned NOT NULL DEFAULT '0',
-  `last_run_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `automations_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `automations_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `automations`
 --
 
@@ -429,28 +115,6 @@ LOCK TABLES `automations` WRITE;
 /*!40000 ALTER TABLE `automations` DISABLE KEYS */;
 /*!40000 ALTER TABLE `automations` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `blog_categories`
---
-
-DROP TABLE IF EXISTS `blog_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `blog_categories` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `sort_order` smallint unsigned NOT NULL DEFAULT '0',
-  `active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `blog_categories_slug_unique` (`slug`),
-  KEY `blog_categories_active_sort_order_index` (`active`,`sort_order`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `blog_categories`
@@ -463,42 +127,6 @@ INSERT INTO `blog_categories` VALUES (1,'Automation','automation','Practical gui
 UNLOCK TABLES;
 
 --
--- Table structure for table `blog_posts`
---
-
-DROP TABLE IF EXISTS `blog_posts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `blog_posts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `blog_category_id` bigint unsigned DEFAULT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `author_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `excerpt` text COLLATE utf8mb4_unicode_ci,
-  `content` longtext COLLATE utf8mb4_unicode_ci,
-  `featured_image` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `featured_image_media_id` bigint unsigned DEFAULT NULL,
-  `read_time_minutes` smallint unsigned NOT NULL DEFAULT '0',
-  `sort_order` smallint unsigned NOT NULL DEFAULT '0',
-  `active` tinyint(1) NOT NULL DEFAULT '1',
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `meta_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `meta_description` text COLLATE utf8mb4_unicode_ci,
-  `published_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `blog_posts_slug_unique` (`slug`),
-  KEY `blog_posts_active_status_published_at_index` (`active`,`status`,`published_at`),
-  KEY `blog_posts_blog_category_id_index` (`blog_category_id`),
-  KEY `blog_posts_featured_image_media_id_index` (`featured_image_media_id`),
-  KEY `blog_posts_sort_order_index` (`sort_order`),
-  CONSTRAINT `blog_posts_blog_category_id_foreign` FOREIGN KEY (`blog_category_id`) REFERENCES `blog_categories` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `blog_posts`
 --
 
@@ -507,22 +135,6 @@ LOCK TABLES `blog_posts` WRITE;
 INSERT INTO `blog_posts` VALUES (1,1,'How WhatsApp Automation Helps SaaS Teams Reply Faster','whatsapp-automation-saas-teams-reply-faster','WaPro Editorial','A practical guide to using automation, routing, and saved replies without losing the human feel of customer conversations.','Fast replies are not only about speed. They are about context, routing, and giving your team the right next action before the customer asks twice.\n\nA strong WhatsApp automation setup starts with clear entry points. Welcome messages, qualification questions, and intent-based routing help every conversation land with the right owner.\n\nFor SaaS teams, the most useful automations are usually small. Trial questions, billing nudges, onboarding reminders, renewal prompts, and support triage can remove hours of repetitive work each week.\n\nThe best systems still leave space for humans. Automation should prepare the conversation, summarize the need, and hand off cleanly when a customer needs a personal answer.','assets/images/sections/solutions/1.webp',NULL,5,1,1,'published','WhatsApp Automation for SaaS Teams - WaPro Blog','Learn how SaaS teams can use WhatsApp automation to reply faster while keeping customer conversations personal.','2026-09-18 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,2,'Building Broadcast Campaigns That Customers Actually Read','building-broadcast-campaigns-customers-read','WaPro Growth Team','Better segmentation, cleaner copy, and timing can turn broadcast campaigns into useful customer touchpoints.','Broadcast campaigns work when they feel expected. Customers are more likely to read messages that match their lifecycle stage, recent behavior, and stated interests.\n\nStart with segmentation before writing copy. A campaign for new leads should not sound like a campaign for power users, and win-back messages should not look like product updates.\n\nKeep the message focused on one action. A single call to action gives the recipient less to parse and gives your team cleaner performance data after the send.\n\nFinally, measure replies as carefully as clicks. On WhatsApp, a thoughtful reply can be more valuable than a silent visit to a landing page.','assets/images/sections/solutions/2.webp',NULL,4,2,1,'published','Readable WhatsApp Broadcast Campaigns - WaPro Blog','Use segmentation, focused copy, and reply tracking to build WhatsApp broadcast campaigns customers read.','2026-09-15 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,3,'What to Track in a WhatsApp CRM Dashboard','what-to-track-whatsapp-crm-dashboard','WaPro Product Team','The most useful dashboards combine response speed, pipeline movement, campaign outcomes, and customer health.','A useful WhatsApp CRM dashboard should answer one question quickly: where does the team need to act now?\n\nResponse metrics show whether conversations are being handled on time. Track first response time, open conversations, overdue replies, and ownership by channel.\n\nPipeline metrics show whether conversations are becoming outcomes. Lead source, stage movement, conversion rate, and follow-up completion reveal the health of your sales motion.\n\nCampaign metrics complete the picture. Delivery, replies, opt-outs, and attributed revenue help you decide which messages deserve to be repeated.','assets/images/sections/solutions/03.webp',NULL,6,3,1,'published','WhatsApp CRM Dashboard Metrics - WaPro Blog','See which WhatsApp CRM metrics matter for support, sales, campaigns, and customer health.','2026-09-12 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,4,'Using Chatbots Without Making Support Feel Robotic','using-chatbots-without-robotic-support','WaPro Support Team','Chatbots work best when they handle repetitive structure and hand over gracefully when the conversation gets nuanced.','A chatbot does not need to pretend to be human. Customers are comfortable with automation when it is clear, useful, and easy to escape.\n\nBegin with narrow flows. Order status, appointment booking, qualification, and common troubleshooting are good candidates because they have predictable branches.\n\nWrite short prompts and give obvious choices. Long bot messages feel heavy inside chat, especially on mobile screens.\n\nMost importantly, design the handoff. A good bot collects context and passes it to a person with the conversation history intact.','assets/images/sections/solutions/04.webp',NULL,4,4,1,'published','Human-Friendly WhatsApp Chatbots - WaPro Blog','Design WhatsApp chatbots that automate repetitive support while keeping handoffs smooth and human.','2026-09-09 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `blog_posts` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `cache`
---
-
-DROP TABLE IF EXISTS `cache`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `cache` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expiration` int NOT NULL,
-  PRIMARY KEY (`key`),
-  KEY `cache_expiration_index` (`expiration`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `cache`
@@ -535,22 +147,6 @@ INSERT INTO `cache` VALUES ('laravel-cache-ai_settings_cache','a:0:{}',179009422
 UNLOCK TABLES;
 
 --
--- Table structure for table `cache_locks`
---
-
-DROP TABLE IF EXISTS `cache_locks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `cache_locks` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expiration` int NOT NULL,
-  PRIMARY KEY (`key`),
-  KEY `cache_locks_expiration_index` (`expiration`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `cache_locks`
 --
 
@@ -558,58 +154,6 @@ LOCK TABLES `cache_locks` WRITE;
 /*!40000 ALTER TABLE `cache_locks` DISABLE KEYS */;
 /*!40000 ALTER TABLE `cache_locks` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `campaign_recipients`
---
-
-DROP TABLE IF EXISTS `campaign_recipients`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `campaign_recipients` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workspace_id` bigint unsigned NOT NULL,
-  `campaign_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `contact_channel_id` bigint unsigned DEFAULT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `to` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `recipient_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
-  `provider_message_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payload` json DEFAULT NULL,
-  `error_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `error_message` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `queued_at` timestamp NULL DEFAULT NULL,
-  `sending_at` timestamp NULL DEFAULT NULL,
-  `sent_at` timestamp NULL DEFAULT NULL,
-  `delivered_at` timestamp NULL DEFAULT NULL,
-  `read_at` timestamp NULL DEFAULT NULL,
-  `opened_at` timestamp NULL DEFAULT NULL,
-  `clicked_at` timestamp NULL DEFAULT NULL,
-  `replied_at` timestamp NULL DEFAULT NULL,
-  `failed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `campaign_recipients_campaign_id_contact_id_unique` (`campaign_id`,`contact_id`),
-  UNIQUE KEY `campaign_recipients_uuid_unique` (`uuid`),
-  KEY `campaign_recipients_workspace_id_foreign` (`workspace_id`),
-  KEY `campaign_recipients_contact_id_foreign` (`contact_id`),
-  KEY `campaign_recipients_contact_channel_id_foreign` (`contact_channel_id`),
-  KEY `campaign_recipients_channel_account_id_foreign` (`channel_account_id`),
-  KEY `campaign_recipients_provider_index` (`provider`),
-  KEY `campaign_recipients_status_index` (`status`),
-  KEY `campaign_recipients_provider_message_id_index` (`provider_message_id`),
-  CONSTRAINT `campaign_recipients_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `campaign_recipients_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `campaign_recipients_contact_channel_id_foreign` FOREIGN KEY (`contact_channel_id`) REFERENCES `contact_provider_identities` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `campaign_recipients_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `campaign_recipients_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `campaign_recipients`
@@ -621,70 +165,6 @@ LOCK TABLES `campaign_recipients` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `campaigns`
---
-
-DROP TABLE IF EXISTS `campaigns`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `campaigns` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workspace_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `message_template_id` bigint unsigned DEFAULT NULL,
-  `automation_id` bigint unsigned DEFAULT NULL,
-  `audience_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `audience_ids` json DEFAULT NULL,
-  `segment_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('draft','scheduled','queued','sending','completed','paused','cancelled','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `message_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'custom',
-  `audience` json DEFAULT NULL,
-  `message_subject` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `message_body` text COLLATE utf8mb4_unicode_ci,
-  `variables` json DEFAULT NULL,
-  `settings` json DEFAULT NULL,
-  `message_payload` json DEFAULT NULL,
-  `scheduled_at` timestamp NULL DEFAULT NULL,
-  `queued_at` timestamp NULL DEFAULT NULL,
-  `started_at` timestamp NULL DEFAULT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `send_rate_per_minute` int unsigned NOT NULL DEFAULT '60',
-  `total_recipients` int unsigned NOT NULL DEFAULT '0',
-  `queued_count` int unsigned NOT NULL DEFAULT '0',
-  `sending_count` int unsigned NOT NULL DEFAULT '0',
-  `sent_count` int unsigned NOT NULL DEFAULT '0',
-  `delivered_count` int unsigned NOT NULL DEFAULT '0',
-  `opened_count` int unsigned NOT NULL DEFAULT '0',
-  `read_count` int unsigned NOT NULL DEFAULT '0',
-  `clicked_count` int unsigned NOT NULL DEFAULT '0',
-  `replied_count` int unsigned NOT NULL DEFAULT '0',
-  `failed_count` int unsigned NOT NULL DEFAULT '0',
-  `skipped_count` int unsigned NOT NULL DEFAULT '0',
-  `skipped_opt_out_count` int unsigned NOT NULL DEFAULT '0',
-  `skipped_invalid_count` int unsigned NOT NULL DEFAULT '0',
-  `skipped_policy_count` int unsigned NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `campaigns_uuid_unique` (`uuid`),
-  KEY `campaigns_workspace_id_foreign` (`workspace_id`),
-  KEY `campaigns_channel_account_id_foreign` (`channel_account_id`),
-  KEY `campaigns_message_template_id_foreign` (`message_template_id`),
-  KEY `campaigns_segment_id_foreign` (`segment_id`),
-  KEY `campaigns_provider_index` (`provider`),
-  KEY `campaigns_automation_id_index` (`automation_id`),
-  CONSTRAINT `campaigns_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `campaigns_message_template_id_foreign` FOREIGN KEY (`message_template_id`) REFERENCES `message_templates` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `campaigns_segment_id_foreign` FOREIGN KEY (`segment_id`) REFERENCES `segments` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `campaigns_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `campaigns`
 --
 
@@ -692,41 +172,6 @@ LOCK TABLES `campaigns` WRITE;
 /*!40000 ALTER TABLE `campaigns` DISABLE KEYS */;
 /*!40000 ALTER TABLE `campaigns` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `channel_accounts`
---
-
-DROP TABLE IF EXISTS `channel_accounts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `channel_accounts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('draft','connected','disconnected','error','suspended') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `credentials` text COLLATE utf8mb4_unicode_ci,
-  `webhook_verify_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `webhook_code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_account_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `provider_phone_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `provider_display_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `settings` json DEFAULT NULL,
-  `connected_at` timestamp NULL DEFAULT NULL,
-  `last_synced_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `channel_accounts_webhook_code_unique` (`webhook_code`),
-  KEY `channel_accounts_workspace_id_provider_status_index` (`workspace_id`,`provider`,`status`),
-  KEY `channel_accounts_provider_index` (`provider`),
-  KEY `channel_accounts_status_index` (`status`),
-  KEY `channel_accounts_provider_account_id_index` (`provider_account_id`),
-  KEY `channel_accounts_provider_phone_id_index` (`provider_phone_id`),
-  CONSTRAINT `channel_accounts_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `channel_accounts`
@@ -738,42 +183,6 @@ LOCK TABLES `channel_accounts` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `channel_webhook_events`
---
-
-DROP TABLE IF EXISTS `channel_webhook_events`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `channel_webhook_events` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `workspace_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `event_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
-  `provider_event_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payload_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payload` json NOT NULL,
-  `headers` json DEFAULT NULL,
-  `processed_at` timestamp NULL DEFAULT NULL,
-  `failed_at` timestamp NULL DEFAULT NULL,
-  `status` enum('pending','processed','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `error` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `channel_webhook_events_provider_provider_event_id_unique` (`provider`,`provider_event_id`),
-  UNIQUE KEY `channel_webhook_events_payload_hash_unique` (`payload_hash`),
-  KEY `channel_webhook_events_channel_account_id_foreign` (`channel_account_id`),
-  KEY `channel_webhook_events_workspace_id_foreign` (`workspace_id`),
-  KEY `channel_webhook_events_provider_index` (`provider`),
-  KEY `channel_webhook_events_event_type_index` (`event_type`),
-  KEY `channel_webhook_events_status_index` (`status`),
-  CONSTRAINT `channel_webhook_events_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `channel_webhook_events_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `channel_webhook_events`
 --
 
@@ -781,27 +190,6 @@ LOCK TABLES `channel_webhook_events` WRITE;
 /*!40000 ALTER TABLE `channel_webhook_events` DISABLE KEYS */;
 /*!40000 ALTER TABLE `channel_webhook_events` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `chatbot_knowledge_base`
---
-
-DROP TABLE IF EXISTS `chatbot_knowledge_base`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `chatbot_knowledge_base` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `chatbot_id` bigint unsigned NOT NULL,
-  `knowledge_base_id` bigint unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `chatbot_knowledge_base_chatbot_id_knowledge_base_id_unique` (`chatbot_id`,`knowledge_base_id`),
-  KEY `chatbot_knowledge_base_knowledge_base_id_foreign` (`knowledge_base_id`),
-  CONSTRAINT `chatbot_knowledge_base_chatbot_id_foreign` FOREIGN KEY (`chatbot_id`) REFERENCES `chatbots` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `chatbot_knowledge_base_knowledge_base_id_foreign` FOREIGN KEY (`knowledge_base_id`) REFERENCES `knowledge_bases` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `chatbot_knowledge_base`
@@ -813,44 +201,6 @@ LOCK TABLES `chatbot_knowledge_base` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `chatbot_widget_sessions`
---
-
-DROP TABLE IF EXISTS `chatbot_widget_sessions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `chatbot_widget_sessions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `widget_id` bigint unsigned NOT NULL,
-  `chatbot_id` bigint unsigned NOT NULL,
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `session_token` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `visitor_uid` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `visitor_metadata` json DEFAULT NULL,
-  `ip_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_seen_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `chatbot_widget_sessions_session_token_unique` (`session_token`),
-  KEY `chatbot_widget_sessions_workspace_id_foreign` (`workspace_id`),
-  KEY `chatbot_widget_sessions_chatbot_id_foreign` (`chatbot_id`),
-  KEY `chatbot_widget_sessions_conversation_id_foreign` (`conversation_id`),
-  KEY `chatbot_widget_sessions_contact_id_foreign` (`contact_id`),
-  KEY `chatbot_widget_sessions_widget_id_visitor_uid_index` (`widget_id`,`visitor_uid`),
-  KEY `chatbot_widget_sessions_visitor_uid_index` (`visitor_uid`),
-  CONSTRAINT `chatbot_widget_sessions_chatbot_id_foreign` FOREIGN KEY (`chatbot_id`) REFERENCES `chatbots` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `chatbot_widget_sessions_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `chatbot_widget_sessions_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `chatbot_widget_sessions_widget_id_foreign` FOREIGN KEY (`widget_id`) REFERENCES `chatbot_widgets` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `chatbot_widget_sessions_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `chatbot_widget_sessions`
 --
 
@@ -858,35 +208,6 @@ LOCK TABLES `chatbot_widget_sessions` WRITE;
 /*!40000 ALTER TABLE `chatbot_widget_sessions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `chatbot_widget_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `chatbot_widgets`
---
-
-DROP TABLE IF EXISTS `chatbot_widgets`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `chatbot_widgets` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `chatbot_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `public_token` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `allowed_domains` json DEFAULT NULL,
-  `lead_fields` json DEFAULT NULL,
-  `settings` json DEFAULT NULL,
-  `greeting` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `chatbot_widgets_public_token_unique` (`public_token`),
-  KEY `chatbot_widgets_chatbot_id_foreign` (`chatbot_id`),
-  KEY `chatbot_widgets_workspace_id_is_active_index` (`workspace_id`,`is_active`),
-  CONSTRAINT `chatbot_widgets_chatbot_id_foreign` FOREIGN KEY (`chatbot_id`) REFERENCES `chatbots` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `chatbot_widgets_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `chatbot_widgets`
@@ -898,33 +219,6 @@ LOCK TABLES `chatbot_widgets` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `chatbots`
---
-
-DROP TABLE IF EXISTS `chatbots`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `chatbots` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `persona` text COLLATE utf8mb4_unicode_ci,
-  `greeting` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `temperature` decimal(3,2) NOT NULL DEFAULT '0.40',
-  `max_tokens` smallint unsigned NOT NULL DEFAULT '512',
-  `fallback_only_knowledge_base` tinyint(1) NOT NULL DEFAULT '1',
-  `confidence_threshold` decimal(3,2) NOT NULL DEFAULT '0.70',
-  `handoff_rules` json DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `chatbots_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `chatbots_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `chatbots`
 --
 
@@ -932,27 +226,6 @@ LOCK TABLES `chatbots` WRITE;
 /*!40000 ALTER TABLE `chatbots` DISABLE KEYS */;
 /*!40000 ALTER TABLE `chatbots` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_audiences`
---
-
-DROP TABLE IF EXISTS `commerce_audiences`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_audiences` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_audiences_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  CONSTRAINT `commerce_audiences_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_audiences`
@@ -965,27 +238,6 @@ INSERT INTO `commerce_audiences` VALUES (1,1,'Unisex','unisex',1,'2026-09-21 16:
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_brands`
---
-
-DROP TABLE IF EXISTS `commerce_brands`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_brands` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_brands_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  CONSTRAINT `commerce_brands_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_brands`
 --
 
@@ -994,40 +246,6 @@ LOCK TABLES `commerce_brands` WRITE;
 INSERT INTO `commerce_brands` VALUES (1,1,'Dhaka Loom Studio','dhaka-loom-studio',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,'Bengal Threadworks','bengal-threadworks',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,'River & Reed Apparel','river-reed-apparel',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,1,'Northstar Garments','northstar-garments',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,1,'Urban Weave Co.','urban-weave-co',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,1,'Cotton House BD','cotton-house-bd',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,1,'Apex Knitwear Export','apex-knitwear-export',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(8,1,'Summit Activewear','summit-activewear',1,'2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `commerce_brands` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_catalog_item_syncs`
---
-
-DROP TABLE IF EXISTS `commerce_catalog_item_syncs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_catalog_item_syncs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `catalog_id` bigint unsigned NOT NULL,
-  `variant_id` bigint unsigned NOT NULL,
-  `retailer_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_item_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payload_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `attempts` int unsigned NOT NULL DEFAULT '0',
-  `provider_response` json DEFAULT NULL,
-  `last_error` text COLLATE utf8mb4_unicode_ci,
-  `synced_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_catalog_item_syncs_catalog_id_variant_id_unique` (`catalog_id`,`variant_id`),
-  UNIQUE KEY `commerce_catalog_item_syncs_catalog_id_retailer_id_unique` (`catalog_id`,`retailer_id`),
-  KEY `commerce_catalog_item_syncs_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_catalog_item_syncs_variant_id_foreign` (`variant_id`),
-  KEY `commerce_catalog_item_syncs_status_index` (`status`),
-  CONSTRAINT `commerce_catalog_item_syncs_catalog_id_foreign` FOREIGN KEY (`catalog_id`) REFERENCES `commerce_catalogs` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_catalog_item_syncs_variant_id_foreign` FOREIGN KEY (`variant_id`) REFERENCES `commerce_product_variants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_catalog_item_syncs_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_catalog_item_syncs`
@@ -1039,37 +257,6 @@ LOCK TABLES `commerce_catalog_item_syncs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_catalog_sync_runs`
---
-
-DROP TABLE IF EXISTS `commerce_catalog_sync_runs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_catalog_sync_runs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `catalog_id` bigint unsigned NOT NULL,
-  `mode` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
-  `total_items` int unsigned NOT NULL DEFAULT '0',
-  `successful_items` int unsigned NOT NULL DEFAULT '0',
-  `failed_items` int unsigned NOT NULL DEFAULT '0',
-  `summary` json DEFAULT NULL,
-  `last_error` text COLLATE utf8mb4_unicode_ci,
-  `started_at` timestamp NULL DEFAULT NULL,
-  `finished_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `commerce_catalog_sync_runs_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_catalog_sync_runs_catalog_id_foreign` (`catalog_id`),
-  KEY `commerce_catalog_sync_runs_status_index` (`status`),
-  CONSTRAINT `commerce_catalog_sync_runs_catalog_id_foreign` FOREIGN KEY (`catalog_id`) REFERENCES `commerce_catalogs` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_catalog_sync_runs_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_catalog_sync_runs`
 --
 
@@ -1079,43 +266,6 @@ LOCK TABLES `commerce_catalog_sync_runs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_catalogs`
---
-
-DROP TABLE IF EXISTS `commerce_catalogs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_catalogs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned NOT NULL,
-  `meta_catalog_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `feed_token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `sync_mode` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'feed',
-  `currency` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'USD',
-  `readiness_state` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'needs_setup',
-  `cart_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `catalog_visible` tinyint(1) NOT NULL DEFAULT '0',
-  `last_sync_status` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_sync_summary` json DEFAULT NULL,
-  `last_item_count` int unsigned NOT NULL DEFAULT '0',
-  `last_fetched_at` timestamp NULL DEFAULT NULL,
-  `last_successful_at` timestamp NULL DEFAULT NULL,
-  `last_reconciled_at` timestamp NULL DEFAULT NULL,
-  `last_error` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_catalogs_workspace_id_channel_account_id_unique` (`workspace_id`,`channel_account_id`),
-  UNIQUE KEY `commerce_catalogs_feed_token_unique` (`feed_token`),
-  KEY `commerce_catalogs_channel_account_id_foreign` (`channel_account_id`),
-  CONSTRAINT `commerce_catalogs_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_catalogs_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_catalogs`
 --
 
@@ -1123,30 +273,6 @@ LOCK TABLES `commerce_catalogs` WRITE;
 /*!40000 ALTER TABLE `commerce_catalogs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `commerce_catalogs` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_categories`
---
-
-DROP TABLE IF EXISTS `commerce_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_categories` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `parent_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_categories_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  KEY `commerce_categories_parent_id_foreign` (`parent_id`),
-  CONSTRAINT `commerce_categories_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `commerce_categories` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_categories_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_categories`
@@ -1159,34 +285,6 @@ INSERT INTO `commerce_categories` VALUES (1,1,NULL,'Men','men',1,'2026-09-21 16:
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_inventory_movements`
---
-
-DROP TABLE IF EXISTS `commerce_inventory_movements`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_inventory_movements` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `variant_id` bigint unsigned NOT NULL,
-  `order_id` bigint unsigned DEFAULT NULL,
-  `quantity_delta` int NOT NULL,
-  `reason` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `idempotency_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_inventory_movements_idempotency_key_unique` (`idempotency_key`),
-  KEY `commerce_inventory_movements_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_inventory_movements_variant_id_foreign` (`variant_id`),
-  KEY `commerce_inventory_movements_order_id_foreign` (`order_id`),
-  CONSTRAINT `commerce_inventory_movements_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `commerce_orders` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_inventory_movements_variant_id_foreign` FOREIGN KEY (`variant_id`) REFERENCES `commerce_product_variants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_inventory_movements_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_inventory_movements`
 --
 
@@ -1194,37 +292,6 @@ LOCK TABLES `commerce_inventory_movements` WRITE;
 /*!40000 ALTER TABLE `commerce_inventory_movements` DISABLE KEYS */;
 /*!40000 ALTER TABLE `commerce_inventory_movements` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_message_attempts`
---
-
-DROP TABLE IF EXISTS `commerce_message_attempts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_message_attempts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `conversation_id` bigint unsigned NOT NULL,
-  `message_id` bigint unsigned DEFAULT NULL,
-  `idempotency_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'processing',
-  `request_payload` json NOT NULL,
-  `last_error` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_message_attempts_idempotency_key_unique` (`idempotency_key`),
-  KEY `commerce_message_attempts_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_message_attempts_conversation_id_foreign` (`conversation_id`),
-  KEY `commerce_message_attempts_message_id_foreign` (`message_id`),
-  KEY `commerce_message_attempts_status_index` (`status`),
-  CONSTRAINT `commerce_message_attempts_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_message_attempts_message_id_foreign` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_message_attempts_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_message_attempts`
@@ -1236,40 +303,6 @@ LOCK TABLES `commerce_message_attempts` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_order_items`
---
-
-DROP TABLE IF EXISTS `commerce_order_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_order_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `order_id` bigint unsigned NOT NULL,
-  `variant_id` bigint unsigned DEFAULT NULL,
-  `retailer_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `product_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `attributes` json DEFAULT NULL,
-  `quantity` int unsigned NOT NULL,
-  `unit_price` decimal(12,2) NOT NULL,
-  `unit_weight_kg` decimal(8,3) DEFAULT NULL,
-  `total_weight_kg` decimal(8,3) DEFAULT NULL,
-  `line_total` decimal(12,2) NOT NULL,
-  `provider_unit_price` decimal(12,2) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `commerce_order_items_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_order_items_order_id_foreign` (`order_id`),
-  KEY `commerce_order_items_variant_id_foreign` (`variant_id`),
-  CONSTRAINT `commerce_order_items_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `commerce_orders` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_order_items_variant_id_foreign` FOREIGN KEY (`variant_id`) REFERENCES `commerce_product_variants` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_order_items_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_order_items`
 --
 
@@ -1279,66 +312,6 @@ LOCK TABLES `commerce_order_items` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_orders`
---
-
-DROP TABLE IF EXISTS `commerce_orders`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_orders` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `catalog_id` bigint unsigned DEFAULT NULL,
-  `number` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_message_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_catalog_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'requested',
-  `shipping_method_id` bigint unsigned DEFAULT NULL,
-  `shipping_zone_id` bigint unsigned DEFAULT NULL,
-  `shipping_weight_kg` decimal(8,3) DEFAULT NULL,
-  `currency` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'USD',
-  `subtotal` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `shipping_amount` decimal(12,2) DEFAULT NULL,
-  `shipping_subtotal` decimal(12,2) DEFAULT NULL,
-  `shipping_discount` decimal(12,2) DEFAULT NULL,
-  `shipping_currency` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `shipping_metadata` json DEFAULT NULL,
-  `total` decimal(12,2) DEFAULT NULL,
-  `shipping_address` json DEFAULT NULL,
-  `delivery_method` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `delivery_notes` text COLLATE utf8mb4_unicode_ci,
-  `duties_disclosure` text COLLATE utf8mb4_unicode_ci,
-  `payment_url` varchar(2048) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tracking_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tracking_url` varchar(2048) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `inventory_adjusted_at` timestamp NULL DEFAULT NULL,
-  `inventory_restored_at` timestamp NULL DEFAULT NULL,
-  `paid_at` timestamp NULL DEFAULT NULL,
-  `shipped_at` timestamp NULL DEFAULT NULL,
-  `issues` json DEFAULT NULL,
-  `provider_payload` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_orders_number_unique` (`number`),
-  UNIQUE KEY `commerce_orders_channel_account_id_provider_message_id_unique` (`channel_account_id`,`provider_message_id`),
-  KEY `commerce_orders_contact_id_foreign` (`contact_id`),
-  KEY `commerce_orders_conversation_id_foreign` (`conversation_id`),
-  KEY `commerce_orders_catalog_id_foreign` (`catalog_id`),
-  KEY `commerce_orders_workspace_id_status_created_at_index` (`workspace_id`,`status`,`created_at`),
-  KEY `commerce_orders_status_index` (`status`),
-  CONSTRAINT `commerce_orders_catalog_id_foreign` FOREIGN KEY (`catalog_id`) REFERENCES `commerce_catalogs` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_orders_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_orders_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_orders_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_orders_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_orders`
 --
 
@@ -1346,34 +319,6 @@ LOCK TABLES `commerce_orders` WRITE;
 /*!40000 ALTER TABLE `commerce_orders` DISABLE KEYS */;
 /*!40000 ALTER TABLE `commerce_orders` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_product_colors`
---
-
-DROP TABLE IF EXISTS `commerce_product_colors`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_colors` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `swatch_media_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `hex_code` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `color_family` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `commerce_product_colors_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_product_colors_swatch_media_id_foreign` (`swatch_media_id`),
-  KEY `commerce_product_colors_product_id_position_index` (`product_id`,`position`),
-  CONSTRAINT `commerce_product_colors_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `commerce_products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_colors_swatch_media_id_foreign` FOREIGN KEY (`swatch_media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_product_colors_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_product_colors`
@@ -1386,40 +331,6 @@ INSERT INTO `commerce_product_colors` VALUES (1,1,1,1,'Royal Blue','#1E3A8A','Bl
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_product_media`
---
-
-DROP TABLE IF EXISTS `commerce_product_media`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_media` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `media_id` bigint unsigned NOT NULL,
-  `color_id` bigint unsigned DEFAULT NULL,
-  `media_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'gallery',
-  `alt_text` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_product_media_unique` (`product_id`,`media_id`,`color_id`),
-  KEY `commerce_product_media_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_product_media_media_id_foreign` (`media_id`),
-  KEY `commerce_product_media_color_id_foreign` (`color_id`),
-  KEY `commerce_product_media_product_id_position_index` (`product_id`,`position`),
-  KEY `commerce_product_media_product_id_color_id_index` (`product_id`,`color_id`),
-  CONSTRAINT `commerce_product_media_color_id_foreign` FOREIGN KEY (`color_id`) REFERENCES `commerce_product_colors` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_product_media_media_id_foreign` FOREIGN KEY (`media_id`) REFERENCES `media` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_media_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `commerce_products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_media_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_product_media`
 --
 
@@ -1428,31 +339,6 @@ LOCK TABLES `commerce_product_media` WRITE;
 INSERT INTO `commerce_product_media` VALUES (1,1,1,1,1,'image','primary','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Royal Blue - Image 1',0,1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,1,6,1,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Royal Blue - Image 2',1,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,1,11,1,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Royal Blue - Image 3',2,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,1,1,16,1,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Royal Blue - Image 4',3,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,1,1,14,2,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Jet Black - Image 1',4,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,1,1,19,2,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Jet Black - Image 2',5,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,1,1,24,2,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Jet Black - Image 3',6,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(8,1,1,29,2,'image','gallery','Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt in Jet Black - Image 4',7,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(9,1,2,8,3,'image','primary','Essential 240 GSM Premium French Terry Oversized Tee in Washed Charcoal - Image 1',0,1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(10,1,2,13,3,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Washed Charcoal - Image 2',1,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(11,1,2,18,3,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Washed Charcoal - Image 3',2,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(12,1,2,23,3,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Washed Charcoal - Image 4',3,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(13,1,2,21,4,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Warm Cream - Image 1',4,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(14,1,2,26,4,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Warm Cream - Image 2',5,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(15,1,2,31,4,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Warm Cream - Image 3',6,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(16,1,2,36,4,'image','gallery','Essential 240 GSM Premium French Terry Oversized Tee in Warm Cream - Image 4',7,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(17,1,3,15,5,'image','primary','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Pitch Black - Image 1',0,1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(18,1,3,20,5,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Pitch Black - Image 2',1,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(19,1,3,25,5,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Pitch Black - Image 3',2,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(20,1,3,30,5,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Pitch Black - Image 4',3,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(21,1,3,28,6,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Athletic Heather - Image 1',4,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(22,1,3,33,6,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Athletic Heather - Image 2',5,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(23,1,3,38,6,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Athletic Heather - Image 3',6,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(24,1,3,43,6,'image','gallery','Essential 320 GSM Heavyweight Brushed Fleece Pullover Hoodie in Athletic Heather - Image 4',7,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(25,1,4,22,7,'image','primary','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Navy Blue - Image 1',0,1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(26,1,4,27,7,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Navy Blue - Image 2',1,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(27,1,4,32,7,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Navy Blue - Image 3',2,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(28,1,4,37,7,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Navy Blue - Image 4',3,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(29,1,4,35,8,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Bright White - Image 1',4,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(30,1,4,40,8,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Bright White - Image 2',5,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(31,1,4,45,8,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Bright White - Image 3',6,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(32,1,4,50,8,'image','gallery','Essential 220 GSM Long-Staple Pique Cotton Polo Shirt in Bright White - Image 4',7,0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(33,1,5,29,9,'image','primary','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Raw Indigo - Image 1',0,1,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(34,1,5,34,9,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Raw Indigo - Image 2',1,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(35,1,5,39,9,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Raw Indigo - Image 3',2,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(36,1,5,44,9,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Raw Indigo - Image 4',3,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(37,1,5,42,10,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Medium Stone Wash - Image 1',4,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(38,1,5,47,10,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Medium Stone Wash - Image 2',5,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(39,1,5,52,10,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Medium Stone Wash - Image 3',6,0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(40,1,5,57,10,'image','gallery','Essential 12 oz Ring-Spun Stretch Raw Indigo Denim Jeans in Medium Stone Wash - Image 4',7,0,'2026-09-21 16:23:49','2026-09-21 16:23:49');
 /*!40000 ALTER TABLE `commerce_product_media` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_product_option_values`
---
-
-DROP TABLE IF EXISTS `commerce_product_option_values`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_option_values` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `option_id` bigint unsigned NOT NULL,
-  `value` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `weight` decimal(8,3) DEFAULT NULL,
-  `weight_unit` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'kg',
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_product_option_values_option_id_value_unique` (`option_id`,`value`),
-  KEY `commerce_product_option_values_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `commerce_product_option_values_option_id_foreign` FOREIGN KEY (`option_id`) REFERENCES `commerce_product_options` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_option_values_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_product_option_values`
@@ -1465,30 +351,6 @@ INSERT INTO `commerce_product_option_values` VALUES (1,1,1,'S',NULL,'kg',0,'2026
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_product_options`
---
-
-DROP TABLE IF EXISTS `commerce_product_options`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_options` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_product_options_product_id_code_unique` (`product_id`,`code`),
-  KEY `commerce_product_options_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `commerce_product_options_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `commerce_products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_options_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_product_options`
 --
 
@@ -1497,31 +359,6 @@ LOCK TABLES `commerce_product_options` WRITE;
 INSERT INTO `commerce_product_options` VALUES (1,1,1,'Size','size',0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,1,'Color','color',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,2,'Size','size',0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,1,2,'Color','color',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,1,3,'Size','size',0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,1,3,'Color','color',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,1,4,'Size','size',0,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(8,1,4,'Color','color',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(9,1,5,'Size','size',0,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(10,1,5,'Color','color',1,'2026-09-21 16:23:49','2026-09-21 16:23:49');
 /*!40000 ALTER TABLE `commerce_product_options` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_product_tier_prices`
---
-
-DROP TABLE IF EXISTS `commerce_product_tier_prices`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_tier_prices` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `min_quantity` int unsigned NOT NULL DEFAULT '1',
-  `max_quantity` int unsigned DEFAULT NULL,
-  `unit_price` decimal(12,2) NOT NULL,
-  `discount_percentage` decimal(5,2) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `commerce_product_tier_prices_workspace_id_foreign` (`workspace_id`),
-  KEY `commerce_product_tier_prices_product_id_min_quantity_index` (`product_id`,`min_quantity`),
-  CONSTRAINT `commerce_product_tier_prices_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `commerce_products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_tier_prices_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_product_tier_prices`
@@ -1534,45 +371,6 @@ INSERT INTO `commerce_product_tier_prices` VALUES (1,1,1,10,49,7.92,12.00,'2026-
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_product_variants`
---
-
-DROP TABLE IF EXISTS `commerce_product_variants`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_product_variants` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `color_id` bigint unsigned DEFAULT NULL,
-  `media_id` bigint unsigned DEFAULT NULL,
-  `sku` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `meta_retailer_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `size` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `attributes` json DEFAULT NULL,
-  `price` decimal(12,2) NOT NULL,
-  `compare_at_price` decimal(12,2) DEFAULT NULL,
-  `stock_quantity` int unsigned NOT NULL DEFAULT '0',
-  `weight_kg` decimal(8,3) DEFAULT NULL,
-  `package_dimensions` json DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_product_variants_workspace_id_sku_unique` (`workspace_id`,`sku`),
-  UNIQUE KEY `commerce_product_variants_workspace_id_meta_retailer_id_unique` (`workspace_id`,`meta_retailer_id`),
-  KEY `commerce_product_variants_product_id_foreign` (`product_id`),
-  KEY `commerce_product_variants_color_id_foreign` (`color_id`),
-  KEY `commerce_product_variants_media_id_foreign` (`media_id`),
-  KEY `commerce_product_variants_status_index` (`status`),
-  CONSTRAINT `commerce_product_variants_color_id_foreign` FOREIGN KEY (`color_id`) REFERENCES `commerce_product_colors` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_product_variants_media_id_foreign` FOREIGN KEY (`media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_product_variants_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `commerce_products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `commerce_product_variants_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_product_variants`
 --
 
@@ -1581,77 +379,6 @@ LOCK TABLES `commerce_product_variants` WRITE;
 INSERT INTO `commerce_product_variants` VALUES (1,1,1,1,1,'DEMO-001-S-ROYAL-BLUE','demo-001-s-royal-blue','S','{\"fit\": \"Standard classic fit\", \"gsm\": \"180 GSM\", \"size\": \"S\", \"color\": \"Royal Blue\", \"material\": \"100% Combed Compact Cotton\"}',9.00,21.00,12,0.180,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,1,2,14,'DEMO-001-S-JET-BLACK','demo-001-s-jet-black','S','{\"fit\": \"Standard classic fit\", \"gsm\": \"180 GSM\", \"size\": \"S\", \"color\": \"Jet Black\", \"material\": \"100% Combed Compact Cotton\"}',9.00,21.00,13,0.180,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,1,1,1,'DEMO-001-M-ROYAL-BLUE','demo-001-m-royal-blue','M','{\"fit\": \"Standard classic fit\", \"gsm\": \"180 GSM\", \"size\": \"M\", \"color\": \"Royal Blue\", \"material\": \"100% Combed Compact Cotton\"}',11.00,23.00,13,0.180,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,1,1,2,14,'DEMO-001-M-JET-BLACK','demo-001-m-jet-black','M','{\"fit\": \"Standard classic fit\", \"gsm\": \"180 GSM\", \"size\": \"M\", \"color\": \"Jet Black\", \"material\": \"100% Combed Compact Cotton\"}',11.00,23.00,14,0.180,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,1,2,3,8,'DEMO-002-S-WASHED-CHARCOAL','demo-002-s-washed-charcoal','S','{\"fit\": \"Drop-shoulder boxy fit\", \"gsm\": \"240 GSM French Terry\", \"size\": \"S\", \"color\": \"Washed Charcoal\", \"material\": \"100% Bio-Washed Ring-Spun Cotton\"}',13.50,25.50,13,0.240,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,1,2,4,21,'DEMO-002-S-WARM-CREAM','demo-002-s-warm-cream','S','{\"fit\": \"Drop-shoulder boxy fit\", \"gsm\": \"240 GSM French Terry\", \"size\": \"S\", \"color\": \"Warm Cream\", \"material\": \"100% Bio-Washed Ring-Spun Cotton\"}',13.50,25.50,14,0.240,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,1,2,3,8,'DEMO-002-M-WASHED-CHARCOAL','demo-002-m-washed-charcoal','M','{\"fit\": \"Drop-shoulder boxy fit\", \"gsm\": \"240 GSM French Terry\", \"size\": \"M\", \"color\": \"Washed Charcoal\", \"material\": \"100% Bio-Washed Ring-Spun Cotton\"}',15.50,27.50,14,0.240,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(8,1,2,4,21,'DEMO-002-M-WARM-CREAM','demo-002-m-warm-cream','M','{\"fit\": \"Drop-shoulder boxy fit\", \"gsm\": \"240 GSM French Terry\", \"size\": \"M\", \"color\": \"Warm Cream\", \"material\": \"100% Bio-Washed Ring-Spun Cotton\"}',15.50,27.50,15,0.240,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(9,1,3,5,15,'DEMO-003-M-PITCH-BLACK','demo-003-m-pitch-black','M','{\"fit\": \"Relaxed streetwear fit\", \"gsm\": \"320 GSM Heavy Fleece\", \"size\": \"M\", \"color\": \"Pitch Black\", \"material\": \"80% Cotton / 20% Poly Anti-Pill Fleece\"}',24.00,36.00,14,0.550,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(10,1,3,6,28,'DEMO-003-M-ATHLETIC-HEATHER','demo-003-m-athletic-heather','M','{\"fit\": \"Relaxed streetwear fit\", \"gsm\": \"320 GSM Heavy Fleece\", \"size\": \"M\", \"color\": \"Athletic Heather\", \"material\": \"80% Cotton / 20% Poly Anti-Pill Fleece\"}',24.00,36.00,15,0.550,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(11,1,3,5,15,'DEMO-003-L-PITCH-BLACK','demo-003-l-pitch-black','L','{\"fit\": \"Relaxed streetwear fit\", \"gsm\": \"320 GSM Heavy Fleece\", \"size\": \"L\", \"color\": \"Pitch Black\", \"material\": \"80% Cotton / 20% Poly Anti-Pill Fleece\"}',26.00,38.00,15,0.550,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(12,1,3,6,28,'DEMO-003-L-ATHLETIC-HEATHER','demo-003-l-athletic-heather','L','{\"fit\": \"Relaxed streetwear fit\", \"gsm\": \"320 GSM Heavy Fleece\", \"size\": \"L\", \"color\": \"Athletic Heather\", \"material\": \"80% Cotton / 20% Poly Anti-Pill Fleece\"}',26.00,38.00,16,0.550,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(13,1,4,7,22,'DEMO-004-M-NAVY-BLUE','demo-004-m-navy-blue','M','{\"fit\": \"Tailored modern fit\", \"gsm\": \"220 GSM Pique\", \"size\": \"M\", \"color\": \"Navy Blue\", \"material\": \"100% Ring-Spun Cotton Pique\"}',14.50,26.50,15,0.220,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(14,1,4,8,35,'DEMO-004-M-BRIGHT-WHITE','demo-004-m-bright-white','M','{\"fit\": \"Tailored modern fit\", \"gsm\": \"220 GSM Pique\", \"size\": \"M\", \"color\": \"Bright White\", \"material\": \"100% Ring-Spun Cotton Pique\"}',14.50,26.50,16,0.220,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(15,1,4,7,22,'DEMO-004-L-NAVY-BLUE','demo-004-l-navy-blue','L','{\"fit\": \"Tailored modern fit\", \"gsm\": \"220 GSM Pique\", \"size\": \"L\", \"color\": \"Navy Blue\", \"material\": \"100% Ring-Spun Cotton Pique\"}',16.50,28.50,16,0.220,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(16,1,4,8,35,'DEMO-004-L-BRIGHT-WHITE','demo-004-l-bright-white','L','{\"fit\": \"Tailored modern fit\", \"gsm\": \"220 GSM Pique\", \"size\": \"L\", \"color\": \"Bright White\", \"material\": \"100% Ring-Spun Cotton Pique\"}',16.50,28.50,17,0.220,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:48','2026-09-21 16:23:48'),(17,1,5,9,29,'DEMO-005-30-RAW-INDIGO','demo-005-30-raw-indigo','30','{\"fit\": \"Slim straight 5-pocket fit\", \"gsm\": \"12 oz (400 GSM) Denim\", \"size\": \"30\", \"color\": \"Raw Indigo\", \"material\": \"98% Cotton / 2% Spandex Denim\"}',28.00,40.00,16,0.650,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:49','2026-09-21 16:23:49'),(18,1,5,10,42,'DEMO-005-30-MEDIUM-STONE-WASH','demo-005-30-medium-stone-wash','30','{\"fit\": \"Slim straight 5-pocket fit\", \"gsm\": \"12 oz (400 GSM) Denim\", \"size\": \"30\", \"color\": \"Medium Stone Wash\", \"material\": \"98% Cotton / 2% Spandex Denim\"}',28.00,40.00,17,0.650,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:49','2026-09-21 16:23:49'),(19,1,5,9,29,'DEMO-005-32-RAW-INDIGO','demo-005-32-raw-indigo','32','{\"fit\": \"Slim straight 5-pocket fit\", \"gsm\": \"12 oz (400 GSM) Denim\", \"size\": \"32\", \"color\": \"Raw Indigo\", \"material\": \"98% Cotton / 2% Spandex Denim\"}',30.00,42.00,17,0.650,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:49','2026-09-21 16:23:49'),(20,1,5,10,42,'DEMO-005-32-MEDIUM-STONE-WASH','demo-005-32-medium-stone-wash','32','{\"fit\": \"Slim straight 5-pocket fit\", \"gsm\": \"12 oz (400 GSM) Denim\", \"size\": \"32\", \"color\": \"Medium Stone Wash\", \"material\": \"98% Cotton / 2% Spandex Denim\"}',30.00,42.00,18,0.650,'{\"width_cm\": 28, \"height_cm\": 6, \"length_cm\": 35}','active','2026-09-21 16:23:49','2026-09-21 16:23:49');
 /*!40000 ALTER TABLE `commerce_product_variants` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `commerce_products`
---
-
-DROP TABLE IF EXISTS `commerce_products`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_products` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `category_id` bigint unsigned DEFAULT NULL,
-  `brand_id` bigint unsigned DEFAULT NULL,
-  `audience_id` bigint unsigned DEFAULT NULL,
-  `primary_media_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `brand` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `short_description` text COLLATE utf8mb4_unicode_ci,
-  `description` longtext COLLATE utf8mb4_unicode_ci,
-  `care_information` text COLLATE utf8mb4_unicode_ci,
-  `features` json DEFAULT NULL,
-  `feature_highlights` json DEFAULT NULL,
-  `shipping_countries` json DEFAULT NULL,
-  `specifications` json DEFAULT NULL,
-  `fit` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'USA True-to-Size',
-  `set_includes` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `gender` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'Unisex (Boys & Girls)',
-  `season` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'All Season',
-  `shipping_info` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'USA & Canada Shipping',
-  `delivery_time` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '6–10 Working Days Delivery',
-  `moq` int unsigned NOT NULL DEFAULT '1',
-  `rating` decimal(3,2) NOT NULL DEFAULT '5.00',
-  `reviews_count` int unsigned NOT NULL DEFAULT '128',
-  `condition` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',
-  `visibility` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
-  `audience` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `fabric_gsm` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `material` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `default_unit_weight_kg` decimal(8,3) NOT NULL DEFAULT '0.030',
-  `default_package_dimensions` json DEFAULT NULL,
-  `single_piece_price` decimal(12,2) DEFAULT NULL,
-  `wholesale_price` decimal(12,2) DEFAULT NULL,
-  `country_of_origin` varchar(2) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BD',
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `wizard_step` tinyint unsigned NOT NULL DEFAULT '1',
-  `published_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `selling_mode` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'both',
-  `ws_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `ws_min_sizes` int unsigned DEFAULT NULL,
-  `ws_color_moq` int unsigned NOT NULL DEFAULT '1',
-  `ws_main_moq` int unsigned NOT NULL DEFAULT '1',
-  `ws_size_ratios` json DEFAULT NULL,
-  `ws_ratio_multiplier` int unsigned NOT NULL DEFAULT '1',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_products_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  KEY `commerce_products_category_id_foreign` (`category_id`),
-  KEY `commerce_products_brand_id_foreign` (`brand_id`),
-  KEY `commerce_products_audience_id_foreign` (`audience_id`),
-  KEY `commerce_products_primary_media_id_foreign` (`primary_media_id`),
-  KEY `commerce_products_status_index` (`status`),
-  CONSTRAINT `commerce_products_audience_id_foreign` FOREIGN KEY (`audience_id`) REFERENCES `commerce_audiences` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_products_brand_id_foreign` FOREIGN KEY (`brand_id`) REFERENCES `commerce_brands` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_products_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `commerce_categories` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_products_primary_media_id_foreign` FOREIGN KEY (`primary_media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `commerce_products_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `commerce_products`
@@ -1664,32 +391,6 @@ INSERT INTO `commerce_products` VALUES (1,1,3,1,1,1,'Essential 180 GSM Heavyweig
 UNLOCK TABLES;
 
 --
--- Table structure for table `commerce_variant_presets`
---
-
-DROP TABLE IF EXISTS `commerce_variant_presets`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `commerce_variant_presets` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku_suffix` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `price_delta` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `weight` decimal(8,3) DEFAULT NULL,
-  `weight_unit` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'kg',
-  `type` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'size',
-  `values` json DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `commerce_variant_presets_workspace_id_name_unique` (`workspace_id`,`name`),
-  CONSTRAINT `commerce_variant_presets_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `commerce_variant_presets`
 --
 
@@ -1698,27 +399,6 @@ LOCK TABLES `commerce_variant_presets` WRITE;
 INSERT INTO `commerce_variant_presets` VALUES (1,1,'Small','S',0.00,NULL,'kg','size','[\"S\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,'Medium','M',0.00,NULL,'kg','size','[\"M\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,'Large','L',0.00,NULL,'kg','size','[\"L\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,1,'XL','XL',0.00,NULL,'kg','size','[\"XL\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,1,'XXL','XXL',1.50,NULL,'kg','size','[\"XXL\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,1,'3XL','3XL',2.00,NULL,'kg','size','[\"3XL\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,1,'Adult Standard (S–XXL)','STD',0.00,NULL,'kg','size','[\"S\", \"M\", \"L\", \"XL\", \"XXL\"]',1,'2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `commerce_variant_presets` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `contact_group_contact`
---
-
-DROP TABLE IF EXISTS `contact_group_contact`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_group_contact` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `contact_group_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_group_contact_unique` (`contact_group_id`,`contact_id`),
-  KEY `contact_group_contact_contact_id_foreign` (`contact_id`),
-  CONSTRAINT `contact_group_contact_contact_group_id_foreign` FOREIGN KEY (`contact_group_id`) REFERENCES `contact_groups` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `contact_group_contact_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `contact_group_contact`
@@ -1730,30 +410,6 @@ LOCK TABLES `contact_group_contact` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `contact_groups`
---
-
-DROP TABLE IF EXISTS `contact_groups`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_groups` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'static',
-  `rules` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_groups_workspace_id_name_unique` (`workspace_id`,`name`),
-  UNIQUE KEY `contact_groups_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  CONSTRAINT `contact_groups_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `contact_groups`
 --
 
@@ -1761,42 +417,6 @@ LOCK TABLES `contact_groups` WRITE;
 /*!40000 ALTER TABLE `contact_groups` DISABLE KEYS */;
 /*!40000 ALTER TABLE `contact_groups` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `contact_imports`
---
-
-DROP TABLE IF EXISTS `contact_imports`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_imports` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'import',
-  `total_rows` int unsigned NOT NULL DEFAULT '0',
-  `created_rows` int unsigned NOT NULL DEFAULT '0',
-  `updated_rows` int unsigned NOT NULL DEFAULT '0',
-  `imported_rows` int unsigned NOT NULL DEFAULT '0',
-  `skipped_rows` int unsigned NOT NULL DEFAULT '0',
-  `failed_rows` int unsigned NOT NULL DEFAULT '0',
-  `column_mapping` json DEFAULT NULL,
-  `options` json DEFAULT NULL,
-  `errors` json DEFAULT NULL,
-  `summary` json DEFAULT NULL,
-  `status` enum('pending','processing','completed','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `contact_imports_workspace_id_foreign` (`workspace_id`),
-  KEY `contact_imports_user_id_foreign` (`user_id`),
-  CONSTRAINT `contact_imports_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `contact_imports_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `contact_imports`
@@ -1808,38 +428,6 @@ LOCK TABLES `contact_imports` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `contact_message_replies`
---
-
-DROP TABLE IF EXISTS `contact_message_replies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_message_replies` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `contact_message_id` bigint unsigned NOT NULL,
-  `admin_id` bigint unsigned DEFAULT NULL,
-  `notification_log_id` bigint unsigned DEFAULT NULL,
-  `source` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `template_slug` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `recipient_email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `body` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `template_variables` json DEFAULT NULL,
-  `queued_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `contact_message_replies_admin_id_foreign` (`admin_id`),
-  KEY `contact_message_replies_notification_log_id_foreign` (`notification_log_id`),
-  KEY `contact_message_replies_contact_message_id_created_at_index` (`contact_message_id`,`created_at`),
-  KEY `contact_message_replies_template_slug_index` (`template_slug`),
-  CONSTRAINT `contact_message_replies_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `contact_message_replies_contact_message_id_foreign` FOREIGN KEY (`contact_message_id`) REFERENCES `contact_messages` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `contact_message_replies_notification_log_id_foreign` FOREIGN KEY (`notification_log_id`) REFERENCES `notification_logs` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `contact_message_replies`
 --
 
@@ -1847,34 +435,6 @@ LOCK TABLES `contact_message_replies` WRITE;
 /*!40000 ALTER TABLE `contact_message_replies` DISABLE KEYS */;
 /*!40000 ALTER TABLE `contact_message_replies` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `contact_messages`
---
-
-DROP TABLE IF EXISTS `contact_messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_messages` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `first_name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `company` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `interest` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `source_url` varchar(2048) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `read_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `contact_messages_status_created_at_index` (`status`,`created_at`),
-  KEY `contact_messages_email_index` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `contact_messages`
@@ -1886,40 +446,6 @@ LOCK TABLES `contact_messages` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `contact_provider_identities`
---
-
-DROP TABLE IF EXISTS `contact_provider_identities`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_provider_identities` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_contact_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `username` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `identity_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'phone',
-  `metadata` json DEFAULT NULL,
-  `last_interaction_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_identity_unique` (`workspace_id`,`provider`,`provider_contact_id`),
-  KEY `contact_provider_identities_contact_id_foreign` (`contact_id`),
-  KEY `contact_provider_identities_channel_account_id_foreign` (`channel_account_id`),
-  KEY `contact_provider_identities_provider_index` (`provider`),
-  KEY `contact_provider_identities_provider_contact_id_index` (`provider_contact_id`),
-  CONSTRAINT `contact_provider_identities_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `contact_provider_identities_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `contact_provider_identities_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `contact_provider_identities`
 --
 
@@ -1927,27 +453,6 @@ LOCK TABLES `contact_provider_identities` WRITE;
 /*!40000 ALTER TABLE `contact_provider_identities` DISABLE KEYS */;
 /*!40000 ALTER TABLE `contact_provider_identities` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `contact_segment`
---
-
-DROP TABLE IF EXISTS `contact_segment`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_segment` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `segment_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_segment_segment_id_contact_id_unique` (`segment_id`,`contact_id`),
-  KEY `contact_segment_contact_id_foreign` (`contact_id`),
-  CONSTRAINT `contact_segment_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `contact_segment_segment_id_foreign` FOREIGN KEY (`segment_id`) REFERENCES `segments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `contact_segment`
@@ -1959,27 +464,6 @@ LOCK TABLES `contact_segment` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `contact_tag_contact`
---
-
-DROP TABLE IF EXISTS `contact_tag_contact`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_tag_contact` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `contact_tag_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_tag_contact_unique` (`contact_tag_id`,`contact_id`),
-  KEY `contact_tag_contact_contact_id_foreign` (`contact_id`),
-  CONSTRAINT `contact_tag_contact_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `contact_tag_contact_contact_tag_id_foreign` FOREIGN KEY (`contact_tag_id`) REFERENCES `contact_tags` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `contact_tag_contact`
 --
 
@@ -1987,28 +471,6 @@ LOCK TABLES `contact_tag_contact` WRITE;
 /*!40000 ALTER TABLE `contact_tag_contact` DISABLE KEYS */;
 /*!40000 ALTER TABLE `contact_tag_contact` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `contact_tags`
---
-
-DROP TABLE IF EXISTS `contact_tags`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contact_tags` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `color` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contact_tags_workspace_id_name_unique` (`workspace_id`,`name`),
-  UNIQUE KEY `contact_tags_workspace_id_slug_unique` (`workspace_id`,`slug`),
-  CONSTRAINT `contact_tags_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `contact_tags`
@@ -2020,41 +482,6 @@ LOCK TABLES `contact_tags` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `contacts`
---
-
-DROP TABLE IF EXISTS `contacts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `contacts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `assigned_to` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `country` varchar(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `custom_fields` json DEFAULT NULL,
-  `source` enum('website','form','import','manual','ai_generated') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `opt_in_status` enum('unknown','subscribed','unsubscribed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
-  `opt_in_at` timestamp NULL DEFAULT NULL,
-  `opt_out_at` timestamp NULL DEFAULT NULL,
-  `blocked_at` timestamp NULL DEFAULT NULL,
-  `last_interaction_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `contacts_workspace_id_phone_unique` (`workspace_id`,`phone`),
-  UNIQUE KEY `contacts_workspace_id_email_unique` (`workspace_id`,`email`),
-  KEY `contacts_assigned_to_foreign` (`assigned_to`),
-  KEY `contacts_workspace_id_assigned_to_index` (`workspace_id`,`assigned_to`),
-  CONSTRAINT `contacts_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `contacts_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `contacts`
 --
 
@@ -2062,41 +489,6 @@ LOCK TABLES `contacts` WRITE;
 /*!40000 ALTER TABLE `contacts` DISABLE KEYS */;
 /*!40000 ALTER TABLE `contacts` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `conversations`
---
-
-DROP TABLE IF EXISTS `conversations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `conversations` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `provider_conversation_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `assigned_to` bigint unsigned DEFAULT NULL,
-  `status` enum('open','pending','resolved','closed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
-  `last_message_at` timestamp NULL DEFAULT NULL,
-  `session_expires_at` timestamp NULL DEFAULT NULL,
-  `labels` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `conversations_workspace_id_foreign` (`workspace_id`),
-  KEY `conversations_channel_account_id_foreign` (`channel_account_id`),
-  KEY `conversations_contact_id_foreign` (`contact_id`),
-  KEY `conversations_assigned_to_foreign` (`assigned_to`),
-  KEY `conversations_provider_index` (`provider`),
-  KEY `conversations_provider_conversation_id_index` (`provider_conversation_id`),
-  CONSTRAINT `conversations_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `conversations_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `conversations_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `conversations_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `conversations`
@@ -2108,44 +500,6 @@ LOCK TABLES `conversations` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `crm_activities`
---
-
-DROP TABLE IF EXISTS `crm_activities`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `crm_activities` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `lead_id` bigint unsigned DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `created_by` bigint unsigned DEFAULT NULL,
-  `due_at` timestamp NULL DEFAULT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `crm_activities_lead_id_foreign` (`lead_id`),
-  KEY `crm_activities_contact_id_foreign` (`contact_id`),
-  KEY `crm_activities_conversation_id_foreign` (`conversation_id`),
-  KEY `crm_activities_created_by_foreign` (`created_by`),
-  KEY `crm_activities_workspace_id_lead_id_created_at_index` (`workspace_id`,`lead_id`,`created_at`),
-  KEY `crm_activities_workspace_id_contact_id_created_at_index` (`workspace_id`,`contact_id`,`created_at`),
-  KEY `crm_activities_type_index` (`type`),
-  CONSTRAINT `crm_activities_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_activities_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_activities_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_activities_lead_id_foreign` FOREIGN KEY (`lead_id`) REFERENCES `crm_leads` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `crm_activities_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `crm_activities`
 --
 
@@ -2153,52 +507,6 @@ LOCK TABLES `crm_activities` WRITE;
 /*!40000 ALTER TABLE `crm_activities` DISABLE KEYS */;
 /*!40000 ALTER TABLE `crm_activities` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `crm_leads`
---
-
-DROP TABLE IF EXISTS `crm_leads`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `crm_leads` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `campaign_id` bigint unsigned DEFAULT NULL,
-  `pipeline_id` bigint unsigned NOT NULL,
-  `stage_id` bigint unsigned NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` decimal(12,2) DEFAULT NULL,
-  `source` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual',
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
-  `assigned_to` bigint unsigned DEFAULT NULL,
-  `next_follow_up_at` timestamp NULL DEFAULT NULL,
-  `won_at` timestamp NULL DEFAULT NULL,
-  `lost_at` timestamp NULL DEFAULT NULL,
-  `lost_reason` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `crm_leads_contact_id_foreign` (`contact_id`),
-  KEY `crm_leads_conversation_id_foreign` (`conversation_id`),
-  KEY `crm_leads_campaign_id_foreign` (`campaign_id`),
-  KEY `crm_leads_pipeline_id_foreign` (`pipeline_id`),
-  KEY `crm_leads_stage_id_foreign` (`stage_id`),
-  KEY `crm_leads_assigned_to_foreign` (`assigned_to`),
-  KEY `crm_leads_board_index` (`workspace_id`,`pipeline_id`,`stage_id`,`status`),
-  KEY `crm_leads_contact_index` (`workspace_id`,`contact_id`,`pipeline_id`,`status`),
-  KEY `crm_leads_workspace_id_assigned_to_status_index` (`workspace_id`,`assigned_to`,`status`),
-  CONSTRAINT `crm_leads_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_leads_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_leads_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `crm_leads_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_leads_pipeline_id_foreign` FOREIGN KEY (`pipeline_id`) REFERENCES `crm_pipelines` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `crm_leads_stage_id_foreign` FOREIGN KEY (`stage_id`) REFERENCES `crm_stages` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `crm_leads_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `crm_leads`
@@ -2210,27 +518,6 @@ LOCK TABLES `crm_leads` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `crm_pipelines`
---
-
-DROP TABLE IF EXISTS `crm_pipelines`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `crm_pipelines` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_default` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `crm_pipelines_workspace_id_name_unique` (`workspace_id`,`name`),
-  KEY `crm_pipelines_workspace_id_is_default_index` (`workspace_id`,`is_default`),
-  CONSTRAINT `crm_pipelines_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `crm_pipelines`
 --
 
@@ -2238,30 +525,6 @@ LOCK TABLES `crm_pipelines` WRITE;
 /*!40000 ALTER TABLE `crm_pipelines` DISABLE KEYS */;
 /*!40000 ALTER TABLE `crm_pipelines` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `crm_stages`
---
-
-DROP TABLE IF EXISTS `crm_stages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `crm_stages` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `pipeline_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `color` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `crm_stages_pipeline_id_name_unique` (`pipeline_id`,`name`),
-  KEY `crm_stages_workspace_id_pipeline_id_position_index` (`workspace_id`,`pipeline_id`,`position`),
-  CONSTRAINT `crm_stages_pipeline_id_foreign` FOREIGN KEY (`pipeline_id`) REFERENCES `crm_pipelines` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `crm_stages_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `crm_stages`
@@ -2273,41 +536,6 @@ LOCK TABLES `crm_stages` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `crm_tasks`
---
-
-DROP TABLE IF EXISTS `crm_tasks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `crm_tasks` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `lead_id` bigint unsigned DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `assigned_to` bigint unsigned DEFAULT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `priority` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
-  `due_at` timestamp NOT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL,
-  `reminded_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `crm_tasks_lead_id_foreign` (`lead_id`),
-  KEY `crm_tasks_contact_id_foreign` (`contact_id`),
-  KEY `crm_tasks_assigned_to_foreign` (`assigned_to`),
-  KEY `crm_tasks_workspace_id_status_due_at_index` (`workspace_id`,`status`,`due_at`),
-  KEY `crm_tasks_workspace_id_assigned_to_status_index` (`workspace_id`,`assigned_to`,`status`),
-  CONSTRAINT `crm_tasks_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_tasks_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `crm_tasks_lead_id_foreign` FOREIGN KEY (`lead_id`) REFERENCES `crm_leads` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `crm_tasks_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `crm_tasks`
 --
 
@@ -2315,30 +543,6 @@ LOCK TABLES `crm_tasks` WRITE;
 /*!40000 ALTER TABLE `crm_tasks` DISABLE KEYS */;
 /*!40000 ALTER TABLE `crm_tasks` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `currencies`
---
-
-DROP TABLE IF EXISTS `currencies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `currencies` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `symbol` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `exchange_rate` decimal(20,8) NOT NULL DEFAULT '1.00000000',
-  `rate_synced_at` timestamp NULL DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `sort_order` int NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `currencies_code_unique` (`code`),
-  KEY `currencies_is_active_index` (`is_active`)
-) ENGINE=InnoDB AUTO_INCREMENT=166 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `currencies`
@@ -2351,26 +555,6 @@ INSERT INTO `currencies` VALUES (1,'AED','United Arab Emirates dirham','د.إ',0
 UNLOCK TABLES;
 
 --
--- Table structure for table `device_tokens`
---
-
-DROP TABLE IF EXISTS `device_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `device_tokens` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tokenable_id` bigint unsigned NOT NULL,
-  `token` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `platform` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'web',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `device_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `device_tokens`
 --
 
@@ -2378,26 +562,6 @@ LOCK TABLES `device_tokens` WRITE;
 /*!40000 ALTER TABLE `device_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `device_tokens` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `failed_jobs`
---
-
-DROP TABLE IF EXISTS `failed_jobs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `failed_jobs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `failed_jobs`
@@ -2410,29 +574,6 @@ INSERT INTO `failed_jobs` VALUES (1,'e80a7307-8811-4dd3-8638-127d34ece5a8','data
 UNLOCK TABLES;
 
 --
--- Table structure for table `faqs`
---
-
-DROP TABLE IF EXISTS `faqs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `faqs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `question` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `answer` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sort_order` int unsigned NOT NULL DEFAULT '0',
-  `active` tinyint(1) NOT NULL DEFAULT '1',
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `published_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `faqs_status_active_index` (`status`,`active`),
-  KEY `faqs_sort_order_index` (`sort_order`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `faqs`
 --
 
@@ -2441,36 +582,6 @@ LOCK TABLES `faqs` WRITE;
 INSERT INTO `faqs` VALUES (1,'How do you structure a new project kickoff?','We begin with a discovery sprint to align on goals, constraints, users, and delivery scope. That sprint ends with a prioritized roadmap, milestones, and a shared definition of done.',1,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,'How often will we see progress during delivery?','Most engagements run in one or two week sprints with regular demos, written updates, and direct access to the people building the work so feedback stays fast and concrete.',2,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,'Do you work on fixed scope or monthly retainers?','We support both. Fixed scope works well when deliverables are well defined, while retainers fit ongoing product, design, or growth work that benefits from continuous iteration.',3,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,'Can you help us estimate budget before a full engagement?','Yes. We can start with a short scoping engagement or advisory workshop to clarify complexity, timeline, and likely budget ranges before committing to a larger build.',4,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,'Who owns the code, designs, and deliverables after launch?','You do. Once the work is delivered and paid for, your team retains ownership of the agreed deliverables, including repositories, assets, and documentation.',5,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,'Do you provide post-launch support?','Yes. We can provide a structured support window after launch and longer-term retainers for maintenance, improvements, analytics, and roadmap execution.',6,1,'published','2026-09-21 16:23:48','2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `faqs` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `frontend_menu_items`
---
-
-DROP TABLE IF EXISTS `frontend_menu_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `frontend_menu_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `frontend_menu_id` bigint unsigned NOT NULL,
-  `parent_id` bigint unsigned DEFAULT NULL,
-  `item_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `label` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `linkable_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `linkable_id` bigint unsigned DEFAULT NULL,
-  `url` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `target` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '_self',
-  `sort_order` int unsigned NOT NULL DEFAULT '0',
-  `is_visible` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `frontend_menu_items_frontend_menu_id_foreign` (`frontend_menu_id`),
-  KEY `frontend_menu_items_parent_id_foreign` (`parent_id`),
-  KEY `frontend_menu_items_linkable_type_linkable_id_index` (`linkable_type`,`linkable_id`),
-  CONSTRAINT `frontend_menu_items_frontend_menu_id_foreign` FOREIGN KEY (`frontend_menu_id`) REFERENCES `frontend_menus` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `frontend_menu_items_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `frontend_menu_items` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `frontend_menu_items`
@@ -2483,25 +594,6 @@ INSERT INTO `frontend_menu_items` VALUES (1,1,NULL,'internal','Home','App\\Modul
 UNLOCK TABLES;
 
 --
--- Table structure for table `frontend_menus`
---
-
-DROP TABLE IF EXISTS `frontend_menus`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `frontend_menus` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `frontend_menus_slug_unique` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `frontend_menus`
 --
 
@@ -2510,31 +602,6 @@ LOCK TABLES `frontend_menus` WRITE;
 INSERT INTO `frontend_menus` VALUES (1,'Primary Navigation','primary-navigation','published','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,'Footer Links','footer-links','published','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,'Mobile Navigation','mobile-navigation','published','2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,'Header Menu','header-menu','published','2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,'Footer Menu','footer-menu','published','2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `frontend_menus` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `frontend_sections`
---
-
-DROP TABLE IF EXISTS `frontend_sections`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `frontend_sections` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `data` json NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `theme_overrides` json DEFAULT NULL,
-  `preview_image_media_id` bigint unsigned DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `frontend_sections_slug_unique` (`slug`),
-  KEY `frontend_sections_type_status_index` (`type`,`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `frontend_sections`
@@ -2547,24 +614,6 @@ INSERT INTO `frontend_sections` VALUES (1,'Homepage Hero','homepage-hero','home_
 UNLOCK TABLES;
 
 --
--- Table structure for table `frontend_theme_settings`
---
-
-DROP TABLE IF EXISTS `frontend_theme_settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `frontend_theme_settings` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` longtext COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `frontend_theme_settings_key_unique` (`key`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `frontend_theme_settings`
 --
 
@@ -2573,28 +622,6 @@ LOCK TABLES `frontend_theme_settings` WRITE;
 INSERT INTO `frontend_theme_settings` VALUES (1,'active_theme','classic','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,'theme.classic.enabled','1','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,'theme.classic.logo_text','WaPro','2026-09-21 16:23:48','2026-09-21 16:23:48'),(4,'theme.classic.primary_color','#25D366','2026-09-21 16:23:48','2026-09-21 16:23:48'),(5,'theme.classic.accent_color','#F59E0B','2026-09-21 16:23:48','2026-09-21 16:23:48'),(6,'theme.classic.show_hero_kicker','1','2026-09-21 16:23:48','2026-09-21 16:23:48'),(7,'theme.classic.footer_link_cookies','/cookie-policy','2026-09-21 16:23:48','2026-09-21 16:23:48'),(8,'theme.classic.menu.header','4','2026-09-21 16:23:48','2026-09-21 16:23:48'),(9,'theme.classic.menu.footer','5','2026-09-21 16:23:48','2026-09-21 16:23:48'),(10,'theme.classic.menu.mobile','3','2026-09-21 16:23:48','2026-09-21 16:23:48'),(11,'theme.classic.footer_email','hello@wapro.com','2026-09-21 16:23:48','2026-09-21 16:23:48'),(12,'theme.classic.footer_phone','+1 (406) 555-0120','2026-09-21 16:23:48','2026-09-21 16:23:48'),(13,'theme.classic.footer_address','123 Business Street, Suite 456, New York, NY 10001, USA','2026-09-21 16:23:48','2026-09-21 16:23:48'),(14,'theme.classic.footer_newsletter_heading','Newsletter','2026-09-21 16:23:48','2026-09-21 16:23:48'),(15,'theme.classic.footer_newsletter_subheading','Subscribe to our newsletter','2026-09-21 16:23:48','2026-09-21 16:23:48'),(16,'theme.classic.footer_copyright','2026 WaPro. All rights reserved.','2026-09-21 16:23:48','2026-09-21 16:23:48'),(17,'theme.classic.footer_link_terms','/legal-information','2026-09-21 16:23:48','2026-09-21 16:23:48'),(18,'theme.classic.footer_link_privacy','/confidentiality-privacy','2026-09-21 16:23:48','2026-09-21 16:23:48'),(19,'theme.classic.footer_social_facebook','#','2026-09-21 16:23:48','2026-09-21 16:23:48'),(20,'theme.classic.footer_social_x','#','2026-09-21 16:23:48','2026-09-21 16:23:48'),(21,'theme.classic.footer_social_instagram','','2026-09-21 16:23:48','2026-09-21 16:23:48'),(22,'theme.classic.show_auth_links','true','2026-09-21 16:23:48','2026-09-21 16:23:48'),(23,'theme.classic.sign_in_text','Sign in','2026-09-21 16:23:48','2026-09-21 16:23:48'),(24,'theme.classic.sign_up_text','Sign up','2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `frontend_theme_settings` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `job_batches`
---
-
-DROP TABLE IF EXISTS `job_batches`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `job_batches` (
-  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `total_jobs` int NOT NULL,
-  `pending_jobs` int NOT NULL,
-  `failed_jobs` int NOT NULL,
-  `failed_job_ids` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `options` mediumtext COLLATE utf8mb4_unicode_ci,
-  `cancelled_at` int DEFAULT NULL,
-  `created_at` int NOT NULL,
-  `finished_at` int DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `job_batches`
@@ -2606,26 +633,6 @@ LOCK TABLES `job_batches` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `jobs`
---
-
-DROP TABLE IF EXISTS `jobs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `jobs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `attempts` tinyint unsigned NOT NULL,
-  `reserved_at` int unsigned DEFAULT NULL,
-  `available_at` int unsigned NOT NULL,
-  `created_at` int unsigned NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `jobs_queue_index` (`queue`)
-) ENGINE=InnoDB AUTO_INCREMENT=67 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `jobs`
 --
 
@@ -2633,36 +640,6 @@ LOCK TABLES `jobs` WRITE;
 /*!40000 ALTER TABLE `jobs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `jobs` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `knowledge_base_chunks`
---
-
-DROP TABLE IF EXISTS `knowledge_base_chunks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `knowledge_base_chunks` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `knowledge_base_id` bigint unsigned NOT NULL,
-  `source_id` bigint unsigned NOT NULL,
-  `content` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `embedding` json DEFAULT NULL,
-  `vector_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `token_count` int unsigned NOT NULL DEFAULT '0',
-  `position` int unsigned NOT NULL DEFAULT '0',
-  `metadata` json DEFAULT NULL,
-  `score` double DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `knowledge_base_chunks_source_id_foreign` (`source_id`),
-  KEY `knowledge_base_chunks_knowledge_base_id_source_id_index` (`knowledge_base_id`,`source_id`),
-  KEY `knowledge_base_chunks_vector_id_index` (`vector_id`),
-  FULLTEXT KEY `knowledge_base_chunks_content_fulltext` (`content`),
-  CONSTRAINT `knowledge_base_chunks_knowledge_base_id_foreign` FOREIGN KEY (`knowledge_base_id`) REFERENCES `knowledge_bases` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `knowledge_base_chunks_source_id_foreign` FOREIGN KEY (`source_id`) REFERENCES `knowledge_base_sources` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `knowledge_base_chunks`
@@ -2674,42 +651,6 @@ LOCK TABLES `knowledge_base_chunks` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `knowledge_base_sources`
---
-
-DROP TABLE IF EXISTS `knowledge_base_sources`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `knowledge_base_sources` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `knowledge_base_id` bigint unsigned NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `url` text COLLATE utf8mb4_unicode_ci,
-  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `token_count` int unsigned NOT NULL DEFAULT '0',
-  `chunks_count` int unsigned NOT NULL DEFAULT '0',
-  `checksum` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `vector_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `vector_error` text COLLATE utf8mb4_unicode_ci,
-  `error` text COLLATE utf8mb4_unicode_ci,
-  `metadata` json DEFAULT NULL,
-  `last_indexed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `knowledge_base_sources_knowledge_base_id_status_index` (`knowledge_base_id`,`status`),
-  KEY `knowledge_base_sources_type_index` (`type`),
-  KEY `knowledge_base_sources_status_index` (`status`),
-  KEY `knowledge_base_sources_checksum_index` (`checksum`),
-  KEY `knowledge_base_sources_vector_status_index` (`vector_status`),
-  CONSTRAINT `knowledge_base_sources_knowledge_base_id_foreign` FOREIGN KEY (`knowledge_base_id`) REFERENCES `knowledge_bases` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `knowledge_base_sources`
 --
 
@@ -2719,33 +660,6 @@ LOCK TABLES `knowledge_base_sources` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `knowledge_bases`
---
-
-DROP TABLE IF EXISTS `knowledge_bases`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `knowledge_bases` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ready',
-  `visibility` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'workspace',
-  `settings` json DEFAULT NULL,
-  `sources_count` int unsigned NOT NULL DEFAULT '0',
-  `chunks_count` int unsigned NOT NULL DEFAULT '0',
-  `last_indexed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `knowledge_bases_workspace_id_foreign` (`workspace_id`),
-  KEY `knowledge_bases_status_index` (`status`),
-  CONSTRAINT `knowledge_bases_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `knowledge_bases`
 --
 
@@ -2753,30 +667,6 @@ LOCK TABLES `knowledge_bases` WRITE;
 /*!40000 ALTER TABLE `knowledge_bases` DISABLE KEYS */;
 /*!40000 ALTER TABLE `knowledge_bases` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `languages`
---
-
-DROP TABLE IF EXISTS `languages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `languages` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `native_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `direction` enum('ltr','rtl') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ltr',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `is_default` tinyint(1) NOT NULL DEFAULT '0',
-  `sort_order` int NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `languages_code_unique` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `languages`
@@ -2789,47 +679,6 @@ INSERT INTO `languages` VALUES (1,'en','English','English','ltr',1,1,1,'2026-09-
 UNLOCK TABLES;
 
 --
--- Table structure for table `leads`
---
-
-DROP TABLE IF EXISTS `leads`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `leads` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `company` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `country` varchar(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `place` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `category` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `stage` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',
-  `source` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `external_source` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `external_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `score` tinyint unsigned DEFAULT NULL,
-  `contact_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `verification_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unverified',
-  `ai_prompt` text COLLATE utf8mb4_unicode_ci,
-  `criteria` json DEFAULT NULL,
-  `value` decimal(12,2) DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_unicode_ci,
-  `metadata` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `leads_workspace_id_external_source_external_id_unique` (`workspace_id`,`external_source`,`external_id`),
-  KEY `leads_contact_id_foreign` (`contact_id`),
-  CONSTRAINT `leads_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `leads_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `leads`
 --
 
@@ -2839,32 +688,6 @@ LOCK TABLES `leads` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `login_activities`
---
-
-DROP TABLE IF EXISTS `login_activities`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `login_activities` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `event` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `device` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `browser` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `platform` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `login_activities_user_type_user_id_index` (`user_type`,`user_id`),
-  KEY `login_activities_event_index` (`event`),
-  KEY `login_activities_created_at_index` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `login_activities`
 --
 
@@ -2872,34 +695,6 @@ LOCK TABLES `login_activities` WRITE;
 /*!40000 ALTER TABLE `login_activities` DISABLE KEYS */;
 /*!40000 ALTER TABLE `login_activities` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `media`
---
-
-DROP TABLE IF EXISTS `media`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `media` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mime_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `extension` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `size` bigint unsigned NOT NULL,
-  `disk` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'public',
-  `path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `alt` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `uploaded_by` bigint unsigned DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `media_created_at_index` (`created_at`),
-  KEY `media_type_index` (`type`)
-) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `media`
@@ -2912,41 +707,6 @@ INSERT INTO `media` VALUES (1,'Commerce product image 01','commerce-demo-01.jpg'
 UNLOCK TABLES;
 
 --
--- Table structure for table `message_template_submissions`
---
-
-DROP TABLE IF EXISTS `message_template_submissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `message_template_submissions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `message_template_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `provider_account_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `whatsapp_template_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('draft','submitted','pending','approved','rejected','paused','disabled','failed','in_appeal','pending_deletion') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'submitted',
-  `submission_payload` json DEFAULT NULL,
-  `meta_response` json DEFAULT NULL,
-  `submitted_at` timestamp NULL DEFAULT NULL,
-  `synced_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `template_submission_waba_unique` (`workspace_id`,`message_template_id`,`provider_account_id`),
-  KEY `message_template_submissions_message_template_id_foreign` (`message_template_id`),
-  KEY `message_template_submissions_channel_account_id_foreign` (`channel_account_id`),
-  KEY `message_template_submissions_provider_index` (`provider`),
-  KEY `message_template_submissions_provider_account_id_index` (`provider_account_id`),
-  KEY `message_template_submissions_status_index` (`status`),
-  CONSTRAINT `message_template_submissions_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `message_template_submissions_message_template_id_foreign` FOREIGN KEY (`message_template_id`) REFERENCES `message_templates` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `message_template_submissions_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `message_template_submissions`
 --
 
@@ -2954,39 +714,6 @@ LOCK TABLES `message_template_submissions` WRITE;
 /*!40000 ALTER TABLE `message_template_submissions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `message_template_submissions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `message_templates`
---
-
-DROP TABLE IF EXISTS `message_templates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `message_templates` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `template_kind` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'standard',
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `language` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'en_US',
-  `category` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'marketing',
-  `status` enum('draft','submitted','pending','approved','rejected','paused','disabled','failed','in_appeal','pending_deletion') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `subject` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `body` text COLLATE utf8mb4_unicode_ci,
-  `components` json DEFAULT NULL,
-  `buttons` json DEFAULT NULL,
-  `variables` json DEFAULT NULL,
-  `rejection_reason` text COLLATE utf8mb4_unicode_ci,
-  `provider_template_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `submission_payload` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `message_templates_workspace_provider_name_language_unique` (`workspace_id`,`provider`,`name`,`language`),
-  KEY `message_templates_provider_index` (`provider`),
-  CONSTRAINT `message_templates_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `message_templates`
@@ -2998,47 +725,6 @@ LOCK TABLES `message_templates` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `messages`
---
-
-DROP TABLE IF EXISTS `messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `messages` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned DEFAULT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'whatsapp',
-  `conversation_id` bigint unsigned DEFAULT NULL,
-  `contact_id` bigint unsigned DEFAULT NULL,
-  `direction` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'text',
-  `body` text COLLATE utf8mb4_unicode_ci,
-  `payload` json DEFAULT NULL,
-  `status` enum('received','queued','sending','sent','delivered','read','replied','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'received',
-  `provider_message_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `campaign_id` bigint unsigned DEFAULT NULL,
-  `whatsapp_message_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `messages_workspace_id_foreign` (`workspace_id`),
-  KEY `messages_channel_account_id_foreign` (`channel_account_id`),
-  KEY `messages_conversation_id_foreign` (`conversation_id`),
-  KEY `messages_contact_id_foreign` (`contact_id`),
-  KEY `messages_campaign_id_foreign` (`campaign_id`),
-  KEY `messages_provider_index` (`provider`),
-  KEY `messages_provider_message_id_index` (`provider_message_id`),
-  KEY `messages_whatsapp_message_id_index` (`whatsapp_message_id`),
-  CONSTRAINT `messages_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `messages_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `messages_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `messages_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `messages_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `messages`
 --
 
@@ -3046,21 +732,6 @@ LOCK TABLES `messages` WRITE;
 /*!40000 ALTER TABLE `messages` DISABLE KEYS */;
 /*!40000 ALTER TABLE `messages` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `migrations`
---
-
-DROP TABLE IF EXISTS `migrations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `migrations` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `batch` int NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=83 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `migrations`
@@ -3073,23 +744,6 @@ INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,
 UNLOCK TABLES;
 
 --
--- Table structure for table `model_has_permissions`
---
-
-DROP TABLE IF EXISTS `model_has_permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `model_has_permissions` (
-  `permission_id` bigint unsigned NOT NULL,
-  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `model_id` bigint unsigned NOT NULL,
-  PRIMARY KEY (`permission_id`,`model_id`,`model_type`),
-  KEY `model_has_permissions_model_id_model_type_index` (`model_id`,`model_type`),
-  CONSTRAINT `model_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `model_has_permissions`
 --
 
@@ -3097,23 +751,6 @@ LOCK TABLES `model_has_permissions` WRITE;
 /*!40000 ALTER TABLE `model_has_permissions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `model_has_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `model_has_roles`
---
-
-DROP TABLE IF EXISTS `model_has_roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `model_has_roles` (
-  `role_id` bigint unsigned NOT NULL,
-  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `model_id` bigint unsigned NOT NULL,
-  PRIMARY KEY (`role_id`,`model_id`,`model_type`),
-  KEY `model_has_roles_model_id_model_type_index` (`model_id`,`model_type`),
-  CONSTRAINT `model_has_roles_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `model_has_roles`
@@ -3126,33 +763,6 @@ INSERT INTO `model_has_roles` VALUES (1,'App\\Models\\Admin',1),(2,'App\\Models\
 UNLOCK TABLES;
 
 --
--- Table structure for table `notification_logs`
---
-
-DROP TABLE IF EXISTS `notification_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `notification_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `template_slug` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `channel` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notifiable_id` bigint unsigned NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
-  `metadata` json DEFAULT NULL,
-  `sent_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `notification_logs_notifiable_type_notifiable_id_index` (`notifiable_type`,`notifiable_id`),
-  KEY `notification_logs_status_index` (`status`),
-  KEY `notification_logs_created_at_index` (`created_at`),
-  KEY `notification_logs_template_slug_index` (`template_slug`),
-  KEY `notification_logs_channel_index` (`channel`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `notification_logs`
 --
 
@@ -3160,37 +770,6 @@ LOCK TABLES `notification_logs` WRITE;
 /*!40000 ALTER TABLE `notification_logs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `notification_logs` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `notification_templates`
---
-
-DROP TABLE IF EXISTS `notification_templates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `notification_templates` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `email_subject` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email_body` longtext COLLATE utf8mb4_unicode_ci,
-  `sms_body` text COLLATE utf8mb4_unicode_ci,
-  `in_app_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `in_app_body` text COLLATE utf8mb4_unicode_ci,
-  `push_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `push_body` text COLLATE utf8mb4_unicode_ci,
-  `channels` json DEFAULT NULL,
-  `variables` json DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `notification_templates_slug_unique` (`slug`),
-  KEY `notification_templates_is_active_index` (`is_active`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `notification_templates`
@@ -3203,29 +782,6 @@ INSERT INTO `notification_templates` VALUES (1,'welcome','Welcome','Sent to new 
 UNLOCK TABLES;
 
 --
--- Table structure for table `page_sections`
---
-
-DROP TABLE IF EXISTS `page_sections`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `page_sections` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `page_id` bigint unsigned NOT NULL,
-  `frontend_section_id` bigint unsigned NOT NULL,
-  `sort_order` int unsigned NOT NULL DEFAULT '0',
-  `visibility_rules` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `page_sections_page_id_frontend_section_id_unique` (`page_id`,`frontend_section_id`),
-  KEY `page_sections_frontend_section_id_foreign` (`frontend_section_id`),
-  CONSTRAINT `page_sections_frontend_section_id_foreign` FOREIGN KEY (`frontend_section_id`) REFERENCES `frontend_sections` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `page_sections_page_id_foreign` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `page_sections`
 --
 
@@ -3234,35 +790,6 @@ LOCK TABLES `page_sections` WRITE;
 INSERT INTO `page_sections` VALUES (15,2,28,0,NULL,NULL,NULL),(16,2,29,1,NULL,NULL,NULL),(17,2,30,2,NULL,NULL,NULL),(18,2,31,3,NULL,NULL,NULL),(19,2,37,4,NULL,NULL,NULL),(20,3,33,0,NULL,NULL,NULL),(21,3,34,1,NULL,NULL,NULL),(22,3,35,2,NULL,NULL,NULL),(23,3,36,3,NULL,NULL,NULL),(24,3,37,4,NULL,NULL,NULL),(25,4,38,0,NULL,NULL,NULL),(26,4,39,1,NULL,NULL,NULL),(27,4,40,2,NULL,NULL,NULL),(28,4,41,3,NULL,NULL,NULL),(29,5,19,0,NULL,NULL,NULL),(30,5,20,1,NULL,NULL,NULL),(31,5,21,2,NULL,NULL,NULL),(32,5,22,3,NULL,NULL,NULL),(33,6,23,0,NULL,NULL,NULL),(34,6,24,1,NULL,NULL,NULL),(35,6,25,2,NULL,NULL,NULL),(36,6,26,3,NULL,NULL,NULL),(37,6,27,4,NULL,NULL,NULL),(42,8,18,0,NULL,NULL,NULL),(43,8,13,1,NULL,NULL,NULL),(44,9,42,0,NULL,NULL,NULL),(45,9,43,1,NULL,NULL,NULL),(46,9,44,2,NULL,NULL,NULL),(47,9,13,3,NULL,NULL,NULL),(48,9,45,4,NULL,NULL,NULL),(49,10,14,0,NULL,NULL,NULL),(50,10,15,1,NULL,NULL,NULL),(51,10,16,2,NULL,NULL,NULL),(52,1,49,0,NULL,NULL,NULL),(53,1,50,1,NULL,NULL,NULL),(54,1,51,2,NULL,NULL,NULL),(55,1,52,3,NULL,NULL,NULL),(56,1,53,4,NULL,NULL,NULL),(57,1,54,5,NULL,NULL,NULL),(58,1,55,6,NULL,NULL,NULL),(59,1,56,7,NULL,NULL,NULL),(60,11,57,0,NULL,NULL,NULL),(61,11,58,1,NULL,NULL,NULL),(62,11,59,2,NULL,NULL,NULL),(63,11,60,3,NULL,NULL,NULL),(64,11,61,4,NULL,NULL,NULL),(65,11,62,5,NULL,NULL,NULL),(66,12,63,0,NULL,NULL,NULL),(67,12,64,1,NULL,NULL,NULL),(68,7,66,0,NULL,NULL,NULL),(69,7,67,1,NULL,NULL,NULL),(70,13,68,0,NULL,NULL,NULL),(71,14,69,0,NULL,NULL,NULL),(72,15,70,0,NULL,NULL,NULL),(73,16,71,0,NULL,NULL,NULL),(74,17,72,0,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `page_sections` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `pages`
---
-
-DROP TABLE IF EXISTS `pages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `pages` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `excerpt` text COLLATE utf8mb4_unicode_ci,
-  `default_layout` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'default',
-  `theme_overrides` json DEFAULT NULL,
-  `is_system` tinyint(1) NOT NULL DEFAULT '0',
-  `is_home` tinyint(1) NOT NULL DEFAULT '0',
-  `meta_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `meta_description` text COLLATE utf8mb4_unicode_ci,
-  `meta_image_media_id` bigint unsigned DEFAULT NULL,
-  `published_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `pages_slug_unique` (`slug`),
-  KEY `pages_status_slug_index` (`status`,`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `pages`
@@ -3275,21 +802,6 @@ INSERT INTO `pages` VALUES (1,'Home','home','published','WaPro — WhatsApp mark
 UNLOCK TABLES;
 
 --
--- Table structure for table `password_reset_tokens`
---
-
-DROP TABLE IF EXISTS `password_reset_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `password_reset_tokens` (
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `password_reset_tokens`
 --
 
@@ -3297,24 +809,6 @@ LOCK TABLES `password_reset_tokens` WRITE;
 /*!40000 ALTER TABLE `password_reset_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `password_reset_tokens` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `permissions`
---
-
-DROP TABLE IF EXISTS `permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `permissions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `permissions_name_guard_name_unique` (`name`,`guard_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=136 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `permissions`
@@ -3327,31 +821,6 @@ INSERT INTO `permissions` VALUES (1,'staffs.view','admin','2026-09-21 16:23:47',
 UNLOCK TABLES;
 
 --
--- Table structure for table `personal_access_tokens`
---
-
-DROP TABLE IF EXISTS `personal_access_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `personal_access_tokens` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tokenable_id` bigint unsigned NOT NULL,
-  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `abilities` text COLLATE utf8mb4_unicode_ci,
-  `last_used_at` timestamp NULL DEFAULT NULL,
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
-  KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
-  KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `personal_access_tokens`
 --
 
@@ -3359,24 +828,6 @@ LOCK TABLES `personal_access_tokens` WRITE;
 /*!40000 ALTER TABLE `personal_access_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `personal_access_tokens` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `place_api_settings`
---
-
-DROP TABLE IF EXISTS `place_api_settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `place_api_settings` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `place_api_settings_key_unique` (`key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `place_api_settings`
@@ -3388,29 +839,6 @@ LOCK TABLES `place_api_settings` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `push_subscriptions`
---
-
-DROP TABLE IF EXISTS `push_subscriptions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `push_subscriptions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `subscribable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subscribable_id` bigint unsigned NOT NULL,
-  `endpoint` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `public_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `auth_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `content_encoding` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `push_subscriptions_endpoint_unique` (`endpoint`),
-  KEY `push_subscriptions_subscribable_morph_idx` (`subscribable_type`,`subscribable_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `push_subscriptions`
 --
 
@@ -3418,23 +846,6 @@ LOCK TABLES `push_subscriptions` WRITE;
 /*!40000 ALTER TABLE `push_subscriptions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `push_subscriptions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `role_has_permissions`
---
-
-DROP TABLE IF EXISTS `role_has_permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `role_has_permissions` (
-  `permission_id` bigint unsigned NOT NULL,
-  `role_id` bigint unsigned NOT NULL,
-  PRIMARY KEY (`permission_id`,`role_id`),
-  KEY `role_has_permissions_role_id_foreign` (`role_id`),
-  CONSTRAINT `role_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `role_has_permissions_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `role_has_permissions`
@@ -3447,24 +858,6 @@ INSERT INTO `role_has_permissions` VALUES (10,2),(13,2),(14,2),(15,2),(16,2),(17
 UNLOCK TABLES;
 
 --
--- Table structure for table `roles`
---
-
-DROP TABLE IF EXISTS `roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `roles` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `roles_name_guard_name_unique` (`name`,`guard_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `roles`
 --
 
@@ -3473,36 +866,6 @@ LOCK TABLES `roles` WRITE;
 INSERT INTO `roles` VALUES (1,'super-admin','admin','2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,'user','web','2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,'workspace-owner','web','2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `scheduler_entries`
---
-
-DROP TABLE IF EXISTS `scheduler_entries`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `scheduler_entries` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `label` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `target` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `frequency` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'hourly',
-  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'default',
-  `enabled` tinyint(1) NOT NULL DEFAULT '1',
-  `last_run_at` timestamp NULL DEFAULT NULL,
-  `last_finished_at` timestamp NULL DEFAULT NULL,
-  `last_status` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_message` text COLLATE utf8mb4_unicode_ci,
-  `options` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `scheduler_entries_key_unique` (`key`),
-  KEY `scheduler_entries_enabled_frequency_index` (`enabled`,`frequency`),
-  KEY `scheduler_entries_queue_index` (`queue`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `scheduler_entries`
@@ -3515,28 +878,6 @@ INSERT INTO `scheduler_entries` VALUES (1,'crm-task-reminders','CRM Task Reminde
 UNLOCK TABLES;
 
 --
--- Table structure for table `segments`
---
-
-DROP TABLE IF EXISTS `segments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `segments` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'dynamic',
-  `rules` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `segments_workspace_id_name_unique` (`workspace_id`,`name`),
-  CONSTRAINT `segments_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `segments`
 --
 
@@ -3546,26 +887,6 @@ LOCK TABLES `segments` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `sessions`
---
-
-DROP TABLE IF EXISTS `sessions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `sessions` (
-  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_activity` int NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `sessions_user_id_index` (`user_id`),
-  KEY `sessions_last_activity_index` (`last_activity`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `sessions`
 --
 
@@ -3573,24 +894,6 @@ LOCK TABLES `sessions` WRITE;
 /*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `settings`
---
-
-DROP TABLE IF EXISTS `settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `settings` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `settings_key_unique` (`key`)
-) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `settings`
@@ -3603,32 +906,6 @@ INSERT INTO `settings` VALUES (1,'site_name','Admin Panel','2026-09-21 16:23:48'
 UNLOCK TABLES;
 
 --
--- Table structure for table `shipping_methods`
---
-
-DROP TABLE IF EXISTS `shipping_methods`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shipping_methods` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `carrier` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'custom',
-  `description` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `estimated_delivery_min_days` smallint unsigned DEFAULT NULL,
-  `estimated_delivery_max_days` smallint unsigned DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `shipping_methods_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `shipping_methods_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `shipping_methods`
 --
 
@@ -3637,36 +914,6 @@ LOCK TABLES `shipping_methods` WRITE;
 INSERT INTO `shipping_methods` VALUES (1,1,'DHL Express Air','DHL_EXPRESS','DHL','air','Premium fast shipping for small to medium orders.',3,5,1,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(2,1,'Standard Air Freight','STD_AIR','Multiple','air','Economical air shipping.',7,14,1,'2026-09-21 16:23:49','2026-09-21 16:23:49'),(3,1,'Sea Freight (LCL/FCL)','SEA_FREIGHT','Multiple','sea','Best for large wholesale orders (>100kg).',30,45,1,'2026-09-21 16:23:49','2026-09-21 16:23:49');
 /*!40000 ALTER TABLE `shipping_methods` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `shipping_rates`
---
-
-DROP TABLE IF EXISTS `shipping_rates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shipping_rates` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `shipping_zone_id` bigint unsigned NOT NULL,
-  `shipping_method_id` bigint unsigned NOT NULL,
-  `min_weight_kg` decimal(8,3) NOT NULL DEFAULT '0.000',
-  `max_weight_kg` decimal(8,3) DEFAULT NULL,
-  `price` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `price_per_kg` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `currency` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'USD',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `shipping_rates_workspace_id_foreign` (`workspace_id`),
-  KEY `shipping_rates_shipping_zone_id_foreign` (`shipping_zone_id`),
-  KEY `shipping_rates_shipping_method_id_foreign` (`shipping_method_id`),
-  CONSTRAINT `shipping_rates_shipping_method_id_foreign` FOREIGN KEY (`shipping_method_id`) REFERENCES `shipping_methods` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `shipping_rates_shipping_zone_id_foreign` FOREIGN KEY (`shipping_zone_id`) REFERENCES `shipping_zones` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `shipping_rates_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `shipping_rates`
@@ -3679,26 +926,6 @@ INSERT INTO `shipping_rates` VALUES (1,1,1,1,0.000,5.000,15.00,10.00,'USD',1,'20
 UNLOCK TABLES;
 
 --
--- Table structure for table `shipping_settings`
---
-
-DROP TABLE IF EXISTS `shipping_settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shipping_settings` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `default_packaging_weight_kg` decimal(8,3) NOT NULL DEFAULT '0.000',
-  `is_packaging_weight_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `shipping_settings_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `shipping_settings_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `shipping_settings`
 --
 
@@ -3706,28 +933,6 @@ LOCK TABLES `shipping_settings` WRITE;
 /*!40000 ALTER TABLE `shipping_settings` DISABLE KEYS */;
 /*!40000 ALTER TABLE `shipping_settings` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `shipping_zone_countries`
---
-
-DROP TABLE IF EXISTS `shipping_zone_countries`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shipping_zone_countries` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `shipping_zone_id` bigint unsigned NOT NULL,
-  `country_code` varchar(2) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `shipping_zone_countries_shipping_zone_id_country_code_unique` (`shipping_zone_id`,`country_code`),
-  KEY `shipping_zone_countries_workspace_id_foreign` (`workspace_id`),
-  CONSTRAINT `shipping_zone_countries_shipping_zone_id_foreign` FOREIGN KEY (`shipping_zone_id`) REFERENCES `shipping_zones` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `shipping_zone_countries_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `shipping_zone_countries`
@@ -3740,27 +945,6 @@ INSERT INTO `shipping_zone_countries` VALUES (1,1,1,'US','2026-09-21 16:23:49','
 UNLOCK TABLES;
 
 --
--- Table structure for table `shipping_zones`
---
-
-DROP TABLE IF EXISTS `shipping_zones`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shipping_zones` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `shipping_zones_workspace_id_name_unique` (`workspace_id`,`name`),
-  CONSTRAINT `shipping_zones_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `shipping_zones`
 --
 
@@ -3771,32 +955,6 @@ INSERT INTO `shipping_zones` VALUES (1,1,'North America','NORTH_AMERICA',1,'2026
 UNLOCK TABLES;
 
 --
--- Table structure for table `social_accounts`
---
-
-DROP TABLE IF EXISTS `social_accounts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `social_accounts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` bigint unsigned NOT NULL,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provider_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `provider_avatar` text COLLATE utf8mb4_unicode_ci,
-  `access_token` text COLLATE utf8mb4_unicode_ci,
-  `refresh_token` text COLLATE utf8mb4_unicode_ci,
-  `token_expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `social_accounts_provider_provider_user_id_unique` (`provider`,`provider_user_id`),
-  UNIQUE KEY `social_accounts_user_id_provider_unique` (`user_id`,`provider`),
-  CONSTRAINT `social_accounts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `social_accounts`
 --
 
@@ -3804,25 +962,6 @@ LOCK TABLES `social_accounts` WRITE;
 /*!40000 ALTER TABLE `social_accounts` DISABLE KEYS */;
 /*!40000 ALTER TABLE `social_accounts` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `subscribers`
---
-
-DROP TABLE IF EXISTS `subscribers`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `subscribers` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `subscribers_email_unique` (`email`),
-  KEY `subscribers_active_index` (`active`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `subscribers`
@@ -3835,35 +974,6 @@ INSERT INTO `subscribers` VALUES (1,'john.doe@example.com',1,'2026-09-21 16:23:4
 UNLOCK TABLES;
 
 --
--- Table structure for table `support_ticket_attachments`
---
-
-DROP TABLE IF EXISTS `support_ticket_attachments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `support_ticket_attachments` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `ticket_id` bigint unsigned NOT NULL,
-  `reply_id` bigint unsigned DEFAULT NULL,
-  `uploaded_by_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `uploaded_by_id` bigint unsigned NOT NULL,
-  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mime_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `size` bigint unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `support_ticket_attachments_ticket_id_foreign` (`ticket_id`),
-  KEY `support_ticket_attachments_reply_id_foreign` (`reply_id`),
-  KEY `support_ticket_attachments_uploaded_by_type_uploaded_by_id_index` (`uploaded_by_type`,`uploaded_by_id`),
-  CONSTRAINT `support_ticket_attachments_reply_id_foreign` FOREIGN KEY (`reply_id`) REFERENCES `support_ticket_replies` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `support_ticket_attachments_ticket_id_foreign` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `support_ticket_attachments`
 --
 
@@ -3871,32 +981,6 @@ LOCK TABLES `support_ticket_attachments` WRITE;
 /*!40000 ALTER TABLE `support_ticket_attachments` DISABLE KEYS */;
 /*!40000 ALTER TABLE `support_ticket_attachments` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `support_ticket_replies`
---
-
-DROP TABLE IF EXISTS `support_ticket_replies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `support_ticket_replies` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `ticket_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `admin_id` bigint unsigned DEFAULT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_staff` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `support_ticket_replies_ticket_id_foreign` (`ticket_id`),
-  KEY `support_ticket_replies_user_id_foreign` (`user_id`),
-  KEY `support_ticket_replies_admin_id_foreign` (`admin_id`),
-  CONSTRAINT `support_ticket_replies_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `support_ticket_replies_ticket_id_foreign` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `support_ticket_replies_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `support_ticket_replies`
@@ -3908,31 +992,6 @@ LOCK TABLES `support_ticket_replies` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `support_tickets`
---
-
-DROP TABLE IF EXISTS `support_tickets`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `support_tickets` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` bigint unsigned NOT NULL,
-  `assigned_admin_id` bigint unsigned DEFAULT NULL,
-  `subject` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('open','in_progress','resolved','closed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
-  `priority` enum('low','medium','high','urgent') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medium',
-  `last_replied_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `support_tickets_user_id_foreign` (`user_id`),
-  KEY `support_tickets_assigned_admin_id_foreign` (`assigned_admin_id`),
-  CONSTRAINT `support_tickets_assigned_admin_id_foreign` FOREIGN KEY (`assigned_admin_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `support_tickets_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `support_tickets`
 --
 
@@ -3940,28 +999,6 @@ LOCK TABLES `support_tickets` WRITE;
 /*!40000 ALTER TABLE `support_tickets` DISABLE KEYS */;
 /*!40000 ALTER TABLE `support_tickets` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `system_notifications`
---
-
-DROP TABLE IF EXISTS `system_notifications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `system_notifications` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'general',
-  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notifiable_id` bigint unsigned NOT NULL,
-  `data` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `read_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `system_notifications_notifiable_type_notifiable_id_index` (`notifiable_type`,`notifiable_id`),
-  KEY `system_notifications_read_at_index` (`read_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `system_notifications`
@@ -3973,34 +1010,6 @@ LOCK TABLES `system_notifications` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `telegram_opt_in_tokens`
---
-
-DROP TABLE IF EXISTS `telegram_opt_in_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `telegram_opt_in_tokens` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `contact_id` bigint unsigned NOT NULL,
-  `channel_account_id` bigint unsigned NOT NULL,
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `used_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `telegram_opt_in_tokens_token_unique` (`token`),
-  KEY `telegram_opt_in_tokens_contact_id_foreign` (`contact_id`),
-  KEY `telegram_opt_in_tokens_channel_account_id_foreign` (`channel_account_id`),
-  KEY `telegram_opt_in_lookup_idx` (`workspace_id`,`contact_id`,`channel_account_id`),
-  CONSTRAINT `telegram_opt_in_tokens_channel_account_id_foreign` FOREIGN KEY (`channel_account_id`) REFERENCES `channel_accounts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `telegram_opt_in_tokens_contact_id_foreign` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `telegram_opt_in_tokens_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `telegram_opt_in_tokens`
 --
 
@@ -4008,42 +1017,6 @@ LOCK TABLES `telegram_opt_in_tokens` WRITE;
 /*!40000 ALTER TABLE `telegram_opt_in_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `telegram_opt_in_tokens` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `users`
---
-
-DROP TABLE IF EXISTS `users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `users` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `first_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `email_verified_at` timestamp NULL DEFAULT NULL,
-  `last_login_at` timestamp NULL DEFAULT NULL,
-  `last_login_ip` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `bio` text COLLATE utf8mb4_unicode_ci,
-  `timezone` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'UTC',
-  `locale` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'en',
-  `phone_verified_at` timestamp NULL DEFAULT NULL,
-  `phone_verification_code` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `otp_two_factor_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `otp_two_factor_channel` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `users_email_unique` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
@@ -4056,36 +1029,6 @@ INSERT INTO `users` VALUES (1,'Application','Owner',NULL,'user@mail.com','$2y$12
 UNLOCK TABLES;
 
 --
--- Table structure for table `workspace_invitations`
---
-
-DROP TABLE IF EXISTS `workspace_invitations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `workspace_invitations` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `invited_by` bigint unsigned NOT NULL,
-  `accepted_at` timestamp NULL DEFAULT NULL,
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `workspace_role_id` bigint unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `workspace_invitations_token_unique` (`token`),
-  KEY `workspace_invitations_invited_by_foreign` (`invited_by`),
-  KEY `workspace_invitations_workspace_id_email_index` (`workspace_id`,`email`),
-  KEY `workspace_invitations_token_index` (`token`),
-  KEY `workspace_invitations_workspace_role_id_foreign` (`workspace_role_id`),
-  CONSTRAINT `workspace_invitations_invited_by_foreign` FOREIGN KEY (`invited_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `workspace_invitations_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `workspace_invitations_workspace_role_id_foreign` FOREIGN KEY (`workspace_role_id`) REFERENCES `workspace_roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `workspace_invitations`
 --
 
@@ -4093,31 +1036,6 @@ LOCK TABLES `workspace_invitations` WRITE;
 /*!40000 ALTER TABLE `workspace_invitations` DISABLE KEYS */;
 /*!40000 ALTER TABLE `workspace_invitations` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `workspace_members`
---
-
-DROP TABLE IF EXISTS `workspace_members`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `workspace_members` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned NOT NULL,
-  `status` enum('active','invited','suspended') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `workspace_role_id` bigint unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `workspace_members_workspace_id_user_id_unique` (`workspace_id`,`user_id`),
-  KEY `workspace_members_user_id_foreign` (`user_id`),
-  KEY `workspace_members_workspace_role_id_foreign` (`workspace_role_id`),
-  CONSTRAINT `workspace_members_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `workspace_members_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `workspace_members_workspace_role_id_foreign` FOREIGN KEY (`workspace_role_id`) REFERENCES `workspace_roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `workspace_members`
@@ -4130,29 +1048,6 @@ INSERT INTO `workspace_members` VALUES (1,1,1,'active','2026-09-21 16:23:48','20
 UNLOCK TABLES;
 
 --
--- Table structure for table `workspace_role_permissions`
---
-
-DROP TABLE IF EXISTS `workspace_role_permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `workspace_role_permissions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `permission_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `workspace_role_id` bigint unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `workspace_role_permissions_unique` (`workspace_id`,`permission_name`),
-  KEY `workspace_role_permissions_workspace_id_role_index` (`workspace_id`),
-  KEY `workspace_role_permissions_workspace_role_id_foreign` (`workspace_role_id`),
-  CONSTRAINT `workspace_role_permissions_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `workspace_role_permissions_workspace_role_id_foreign` FOREIGN KEY (`workspace_role_id`) REFERENCES `workspace_roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Dumping data for table `workspace_role_permissions`
 --
 
@@ -4160,27 +1055,6 @@ LOCK TABLES `workspace_role_permissions` WRITE;
 /*!40000 ALTER TABLE `workspace_role_permissions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `workspace_role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `workspace_roles`
---
-
-DROP TABLE IF EXISTS `workspace_roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `workspace_roles` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `workspace_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_system` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `workspace_roles_workspace_id_name_unique` (`workspace_id`,`name`),
-  CONSTRAINT `workspace_roles_workspace_id_foreign` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `workspace_roles`
@@ -4191,30 +1065,6 @@ LOCK TABLES `workspace_roles` WRITE;
 INSERT INTO `workspace_roles` VALUES (1,1,'Administrator','Full access to the workspace',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(2,1,'Manager','Can manage most settings',1,'2026-09-21 16:23:48','2026-09-21 16:23:48'),(3,1,'Staff','Standard user access',1,'2026-09-21 16:23:48','2026-09-21 16:23:48');
 /*!40000 ALTER TABLE `workspace_roles` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `workspaces`
---
-
-DROP TABLE IF EXISTS `workspaces`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `workspaces` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `owner_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('active','suspended','archived') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `timezone` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'UTC',
-  `settings` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `workspaces_slug_unique` (`slug`),
-  KEY `workspaces_owner_id_foreign` (`owner_id`),
-  CONSTRAINT `workspaces_owner_id_foreign` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `workspaces`
@@ -4235,4 +1085,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-21 17:40:20
+-- Dump completed on 2026-09-21 17:40:38
