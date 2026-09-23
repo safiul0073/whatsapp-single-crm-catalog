@@ -14,11 +14,24 @@
                 <button type="button" class="media-type-tab" data-media-type="image">{{ __('Images') }}</button>
                 <button type="button" class="media-type-tab" data-media-type="video">{{ __('Videos') }}</button>
                 <button type="button" class="media-type-tab" data-media-type="document">{{ __('Documents') }}</button>
-                <button type="button" class="media-type-tab" data-media-type="video">{{ __('Videos') }}</button>
             </div>
-            <div class="media-modal-search">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" placeholder="{{ __('Search media...') }}" data-media-search autocomplete="off">
+            <div class="flex items-center gap-2.5">
+                {{-- Enable or Disable Color Picker Button on Gallery Topbar --}}
+                <button
+                    type="button"
+                    class="btn btn-xs rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50"
+                    data-media-color-picker-toggle
+                    title="{{ __('Toggle Color Picker: tap to enable, then hover on any image to see color code and click to copy') }}"
+                >
+                    <i class="ph-bold ph-eyedropper text-sm text-primary"></i>
+                    <span>{{ __('Color Picker:') }}</span>
+                    <span class="media-color-picker-status uppercase text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">{{ __('Disabled') }}</span>
+                </button>
+
+                <div class="media-modal-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" placeholder="{{ __('Search media...') }}" data-media-search autocomplete="off">
+                </div>
             </div>
         </div>
         <div class="modal-body media-modal-body">

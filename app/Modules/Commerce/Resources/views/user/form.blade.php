@@ -335,27 +335,47 @@
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Images') }}</h2>
                             <p class="text-xs text-neutral-500 mt-0.5">{{ __('Upload product photography. Click star to make primary. Recommended size 800x1000px.') }}</p>
                         </div>
-                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="openMediaPicker()">
-                            <i class="ph ph-upload-simple"></i> {{ __('Upload Image') }}
-                        </button>
+                        <div class="flex items-center gap-2.5">
+                            {{-- Enable Color Picker Toggle Button --}}
+                            <button
+                                type="button"
+                                class="btn btn-sm text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border"
+                                :class="galleryColorPickerEnabled ? 'bg-primary text-white border-primary shadow-xs' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'"
+                                @click="toggleGalleryColorPicker()"
+                                title="{{ __('When enabled, hover over any chosen photo and click to copy color code.') }}"
+                            >
+                                <i class="ph-bold ph-eyedropper text-sm"></i>
+                                <span>{{ __('Color Picker:') }}</span>
+                                <span class="font-extrabold uppercase px-1 py-0.2 rounded text-[10px]" :class="galleryColorPickerEnabled ? 'bg-white/25 text-white' : 'bg-neutral-100 text-neutral-600'" x-text="galleryColorPickerEnabled ? '{{ __('Enabled') }}' : '{{ __('Disabled') }}'"></span>
+                            </button>
+
+                            <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="openMediaPicker()">
+                                <i class="ph ph-upload-simple"></i> {{ __('Upload Image') }}
+                            </button>
+                        </div>
                     </div>
 
                     {{-- Image Grid Showcase matching Step 2 --}}
                     <div class="mt-6 grid gap-6 lg:grid-cols-12">
-                        {{-- Left Column: Thumbnails List --}}
+                        {{-- Left Column: Thumbnails List (Choose any image) --}}
                         <div class="lg:col-span-3 space-y-3 max-h-[500px] overflow-y-auto pr-2">
                             <template x-for="(item, index) in gallery" :key="item.id">
                                 <div
                                     class="flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer"
-                                    :class="item.is_primary ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-neutral-200 bg-white hover:border-neutral-400'"
-                                    @click="setPrimaryById(item.id)"
+                                    :class="(selectedGalleryPreviewId ? String(selectedGalleryPreviewId) === String(item.id) : item.is_primary) ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-neutral-200 bg-white hover:border-neutral-400'"
+                                    @click="selectedGalleryPreviewId = item.id"
                                 >
-                                    <img :src="item.url" :alt="item.alt_text" class="h-14 w-14 rounded-lg object-cover border border-neutral-200">
+                                    <img :src="item.url" :alt="item.alt_text" class="h-14 w-14 rounded-lg object-cover border border-neutral-200 shrink-0">
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-semibold text-neutral-900 truncate" x-text="item.name || `Photo #${index + 1}`"></p>
-                                        <span x-show="item.is_primary" class="inline-block mt-0.5 text-[10px] font-bold text-primary">{{ __('Primary') }}</span>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span x-show="item.is_primary" class="inline-block text-[10px] font-bold text-primary">{{ __('Primary') }}</span>
+                                            <button type="button" x-show="!item.is_primary" class="text-[10px] text-neutral-400 hover:text-primary hover:underline font-semibold" @click.stop="setPrimaryById(item.id)">
+                                                {{ __('Set Primary') }}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click.stop="removeMedia(index)">
+                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click.stop="removeMedia(index)" title="{{ __('Remove Image') }}">
                                         <i class="ph ph-trash text-sm"></i>
                                     </button>
                                 </div>
@@ -365,10 +385,37 @@
                             </div>
                         </div>
 
-                        {{-- Center Column: Large Main Preview --}}
-                        <div class="lg:col-span-6 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-center p-4 min-h-[380px] overflow-hidden">
-                            <template x-if="gallery.find(g => g.is_primary) || gallery[0]">
-                                <img :src="(gallery.find(g => g.is_primary) || gallery[0]).url" alt="Preview" class="max-h-[420px] w-auto rounded-xl object-contain shadow-sm">
+                        {{-- Center Column: Large Main Preview with Hover Color Picker --}}
+                        <div class="lg:col-span-6 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-center p-4 min-h-[380px] overflow-hidden relative">
+                            <template x-if="getSelectedGalleryImage()">
+                                <div class="relative flex items-center justify-center max-h-[420px]">
+                                    <img
+                                        :src="getSelectedGalleryImage().url"
+                                        alt="Preview"
+                                        crossorigin="anonymous"
+                                        class="max-h-[420px] w-auto rounded-xl object-contain shadow-sm select-none transition"
+                                        :class="galleryColorPickerEnabled ? 'cursor-crosshair inspecting-color-target' : ''"
+                                        x-init="
+                                            $nextTick(() => {
+                                                if (window.ImageColorPicker?.attachColorPickerToImage) {
+                                                    window.ImageColorPicker.attachColorPickerToImage($el, {
+                                                        enabled: () => galleryColorPickerEnabled,
+                                                        autoCopy: () => false,
+                                                        onPick: (hex, name) => {
+                                                            galleryColorPickerEnabled = false;
+                                                            if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        "
+                                    >
+                                    {{-- Hint Overlay Badge when enabled --}}
+                                    <div x-show="galleryColorPickerEnabled" class="absolute bottom-2 inset-x-auto bg-neutral-900/85 backdrop-blur-md text-white px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1.5 shadow-lg pointer-events-none">
+                                        <i class="ph ph-hand-pointing text-emerald-400"></i>
+                                        <span>{{ __('Hover to inspect • Click to copy color code') }}</span>
+                                    </div>
+                                </div>
                             </template>
                             <div x-show="gallery.length === 0" class="text-center text-neutral-400">
                                 <i class="ph ph-image text-4xl text-neutral-300"></i>
@@ -392,7 +439,7 @@
                     </div>
 
                     {{-- Hidden Inputs to submit gallery --}}
-                    <template x-for="(item, index) in gallery" :key="item.id">
+                    <template x-for="(item, index) in gallery" :key="`${item.id}_${item.color_id || 'gen'}_${index}`">
                         <div>
                             <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
                             <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? '1' : '0'">
@@ -519,7 +566,7 @@
                                     <div class="max-h-60 overflow-y-auto border border-neutral-200 rounded-xl bg-white shadow-xs divide-y divide-neutral-100">
                                         <template x-for="(vp, idx) in variantPresets" :key="vp.id || idx">
                                             <label class="flex items-center gap-3 p-3 hover:bg-neutral-50 cursor-pointer transition">
-                                                <input type="checkbox" class="form-checkbox text-primary rounded shadow-xs" :value="vp" x-model="modalSelectedPresets">
+                                                <input type="checkbox" class="form-checkbox text-primary rounded shadow-xs" :checked="isPresetSelected(vp)" @change="togglePresetSelection(vp)">
                                                 <div class="flex-1 flex justify-between items-center">
                                                     <span class="text-sm font-semibold text-neutral-900" x-text="vp.name"></span>
                                                     <span class="text-xs text-neutral-500 font-medium" x-text="vp.weight ? `${vp.weight} ${vp.weight_unit || 'kg'}` : ''"></span>
@@ -626,7 +673,7 @@
                     </template>
 
                     {{-- Hidden inputs for Media --}}
-                    <template x-for="(item, index) in gallery" :key="item.id">
+                    <template x-for="(item, index) in gallery" :key="`${item.id}_${item.color_id || 'gen'}_${index}`">
                         <div>
                             <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
                             <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? '1' : '0'">
@@ -1231,9 +1278,24 @@
                             <span class="h-4 w-4 rounded-full border shadow-2xs" :style="`background-color: ${colors[editingColorIndex].hex_code || '#2563EB'}`"></span>
                             <span>{{ __('Manage Images for ') }}<span x-text="colors[editingColorIndex].name || 'Color'"></span></span>
                         </h3>
-                        <button type="button" class="text-neutral-400 hover:text-neutral-600 transition" @click="editingColorIndex = null">
-                            <i class="ph ph-x text-xl"></i>
-                        </button>
+                        <div class="flex items-center gap-3">
+                            {{-- Color Picker Enable/Disable Button --}}
+                            <button
+                                type="button"
+                                class="btn btn-xs rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border"
+                                :class="colorModalEyedropperEnabled ? 'bg-primary text-white border-primary shadow-xs' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'"
+                                @click="colorModalEyedropperEnabled = !colorModalEyedropperEnabled; if (!colorModalEyedropperEnabled && window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();"
+                                title="{{ __('When enabled, hover over any image to see color code, and click to copy color code.') }}"
+                            >
+                                <i class="ph-bold ph-eyedropper text-sm"></i>
+                                <span>{{ __('Color Picker:') }}</span>
+                                <span class="uppercase text-[10px] font-extrabold px-1.5 py-0.5 rounded" :class="colorModalEyedropperEnabled ? 'bg-white/25 text-white' : 'bg-neutral-100 text-neutral-600'" x-text="colorModalEyedropperEnabled ? '{{ __('Enabled') }}' : '{{ __('Disabled') }}'"></span>
+                            </button>
+
+                            <button type="button" class="text-neutral-400 hover:text-neutral-600 transition" @click="editingColorIndex = null; colorModalEyedropperEnabled = false; if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();">
+                                <i class="ph ph-x text-xl"></i>
+                            </button>
+                        </div>
                     </div>
 
                     {{-- Modal Body --}}
@@ -1252,21 +1314,48 @@
                                 <div class="relative group h-24 w-24">
                                     <img 
                                         :src="cMedia.url" 
-                                        class="h-full w-full rounded-xl object-cover border-2 shadow-2xs cursor-pointer transition" 
-                                        :class="colors[editingColorIndex].swatch_media_id == cMedia.id ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-neutral-200 hover:border-neutral-400'" 
-                                        @click="setColorPrimary(editingColorIndex, cMedia.id)" 
-                                        :title="colors[editingColorIndex].swatch_media_id == cMedia.id ? 'Primary Swatch' : 'Click to Set as Swatch'"
+                                        crossorigin="anonymous"
+                                        class="h-full w-full rounded-xl object-cover border-2 shadow-2xs cursor-pointer transition select-none" 
+                                        :class="[
+                                            colors[editingColorIndex].swatch_media_id == cMedia.id ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-neutral-200 hover:border-neutral-400',
+                                            colorModalEyedropperEnabled ? 'cursor-crosshair inspecting-color-target' : ''
+                                        ]" 
+                                        @click="
+                                            if (colorModalEyedropperEnabled) {
+                                                // Color picker handles click
+                                            } else {
+                                                setColorPrimary(editingColorIndex, cMedia.id);
+                                            }
+                                        " 
+                                        :title="colorModalEyedropperEnabled ? '{{ __('Click to copy color code') }}' : (colors[editingColorIndex].swatch_media_id == cMedia.id ? '{{ __('Primary Swatch') }}' : '{{ __('Click to Set as Swatch') }}')"
+                                        x-init="
+                                            $nextTick(() => {
+                                                if (window.ImageColorPicker?.attachColorPickerToImage) {
+                                                    window.ImageColorPicker.attachColorPickerToImage($el, {
+                                                        enabled: () => colorModalEyedropperEnabled,
+                                                        autoCopy: () => false,
+                                                        onPick: (hex, name) => {
+                                                            colors[editingColorIndex].hex_code = hex;
+                                                            colorModalEyedropperEnabled = false;
+                                                            editingColorIndex = null;
+                                                            if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();
+                                                            if (typeof window.closeAllModals === 'function') window.closeAllModals();
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        "
                                     >
                                     
                                     {{-- Primary Badge --}}
                                     <template x-if="colors[editingColorIndex].swatch_media_id == cMedia.id">
-                                        <div class="absolute -bottom-2 -left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 border border-white">
+                                        <div class="absolute -bottom-2 -left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 border border-white pointer-events-none">
                                             {{ __('PRIMARY') }}
                                         </div>
                                     </template>
 
                                     {{-- Remove Action --}}
-                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaFromColor(cMedia.id, editingColorIndex)" title="Remove Image">
+                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaFromColor(cMedia.id, editingColorIndex)" title="{{ __('Remove Image') }}">
                                         <i class="ph ph-trash text-xs"></i>
                                     </button>
                                 </div>

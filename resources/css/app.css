@@ -29,6 +29,7 @@
 @import "./components/settings.css";
 @import "./components/media-picker.css";
 @import "./components/portal.css";
+@import "./components/image-color-picker.css";
 
 /* WhatsApp Classic Theme — additional components */
 @import "./components/classic.css";

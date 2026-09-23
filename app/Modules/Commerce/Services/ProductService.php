@@ -97,12 +97,24 @@ class ProductService
     public function updateGallery(Product $product, array $items, array $colors = []): Product
     {
         return DB::transaction(function () use ($product, $items, $colors): Product {
+            // Sync colors first to ensure their IDs exist and get mapping for any index-based colors
+            $colorMap = ! empty($colors) ? $this->syncColors($product, $colors) : [];
+
             $retained = [];
             $primaryMediaId = null;
 
             foreach (array_values($items) as $position => $item) {
                 $record = Media::query()->where('uploaded_by', $product->workspace->owner_id ?? auth()->id())->whereKey($item['id'])->firstOrFail();
-                $colorId = ((int) ($item['color_id'] ?? 0)) > 0 ? (int) $item['color_id'] : null;
+                
+                $rawColorId = $item['color_id'] ?? null;
+                $colorId = null;
+                if (filled($rawColorId)) {
+                    if (isset($colorMap[$rawColorId])) {
+                        $colorId = $colorMap[$rawColorId];
+                    } elseif (((int) $rawColorId) > 0 && $product->colors()->whereKey((int) $rawColorId)->exists()) {
+                        $colorId = (int) $rawColorId;
+                    }
+                }
 
                 $galleryItem = ProductMedia::query()->updateOrCreate(
                     ['product_id' => $product->id, 'media_id' => $record->id, 'color_id' => $colorId],
@@ -119,10 +131,6 @@ class ProductService
                 if ($galleryItem->is_primary && $record->type === 'image') {
                     $primaryMediaId = $record->id;
                 }
-            }
-
-            if (! empty($colors)) {
-                $this->syncColors($product, $colors);
             }
 
             $product->gallery()->whereNotIn('id', $retained ?: [0])->delete();
@@ -255,9 +263,11 @@ class ProductService
         return $this->loadProduct($product);
     }
 
-    public function syncColors(Product $product, array $colors): void
+    public function syncColors(Product $product, array $colors): array
     {
         $retained = [];
+        $colorIndexMap = [];
+
         foreach (array_values($colors) as $position => $colorData) {
             if (blank($colorData['name'] ?? null) && blank($colorData['hex_code'] ?? null)) {
                 continue;
@@ -278,11 +288,18 @@ class ProductService
             ])->save();
 
             $retained[] = $color->id;
+            $colorIndexMap[$position] = $color->id;
+            $colorIndexMap['idx_'.$position] = $color->id;
+            if (filled($colorData['id'] ?? null)) {
+                $colorIndexMap[(string) $colorData['id']] = $color->id;
+            }
         }
 
         if (! empty($retained)) {
             $product->colors()->whereNotIn('id', $retained)->delete();
         }
+
+        return $colorIndexMap;
     }
 
     public function syncTierPrices(Product $product, array $tierPrices): void

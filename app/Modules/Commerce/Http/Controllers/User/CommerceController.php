@@ -199,7 +199,14 @@ class CommerceController extends Controller implements HasMiddleware
     public function storeCategory(CategoryRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        Category::query()->create(['workspace_id' => $workspace->id, 'parent_id' => $request->integer('parent_id') ?: null, 'name' => $request->string('name'), 'slug' => Str::slug($request->string('name')), 'is_active' => $request->boolean('is_active', true)]);
+        Category::query()->create([
+            'workspace_id' => $workspace->id,
+            'parent_id' => $request->integer('parent_id') ?: null,
+            'name' => $request->string('name'),
+            'slug' => Str::slug($request->string('name')),
+            'image' => $request->input('image'),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
 
         return back()->with('success', __('Category created.'));
     }
@@ -231,12 +238,16 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateCategory(CategoryRequest $request, Category $category): RedirectResponse
     {
         $this->assertWorkspace($request, $category->workspace_id);
-        $category->update([
+        $data = [
             'parent_id' => $request->integer('parent_id') ?: null,
             'name' => $request->string('name')->toString(),
             'slug' => Str::slug($request->string('name')->toString()),
             'is_active' => $request->boolean('is_active'),
-        ]);
+        ];
+        if ($request->has('image')) {
+            $data['image'] = $request->input('image');
+        }
+        $category->update($data);
 
         return back()->with('success', __('Category updated.'));
     }

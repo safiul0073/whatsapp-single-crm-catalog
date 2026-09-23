@@ -33,7 +33,49 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentPage = 1;
   let hasMore = false;
   let isLoading = false;
-  let searchTimeout = null;
+  const colorPickerToggleBtn = modal.querySelector('[data-media-color-picker-toggle]');
+  let galleryColorPickerActive = false;
+
+  function updateColorPickerToggle() {
+    if (!colorPickerToggleBtn) return;
+    const statusSpan = colorPickerToggleBtn.querySelector('.media-color-picker-status');
+    if (galleryColorPickerActive) {
+      colorPickerToggleBtn.classList.remove('bg-white', 'text-neutral-700', 'border-neutral-300', 'hover:bg-neutral-50');
+      colorPickerToggleBtn.classList.add('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+      if (statusSpan) {
+        statusSpan.textContent = 'Enabled';
+        statusSpan.className = 'media-color-picker-status uppercase text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-white/25 text-white';
+      }
+      grid.classList.add('gallery-color-picker-mode');
+    } else {
+      colorPickerToggleBtn.classList.remove('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+      colorPickerToggleBtn.classList.add('bg-white', 'text-neutral-700', 'border-neutral-300', 'hover:bg-neutral-50');
+      if (statusSpan) {
+        statusSpan.textContent = 'Disabled';
+        statusSpan.className = 'media-color-picker-status uppercase text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600';
+      }
+      grid.classList.remove('gallery-color-picker-mode');
+      if (window.ImageColorPicker?.loupe) {
+        window.ImageColorPicker.loupe.hide();
+      }
+    }
+  }
+
+  if (colorPickerToggleBtn) {
+    colorPickerToggleBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      galleryColorPickerActive = !galleryColorPickerActive;
+      updateColorPickerToggle();
+      if (window.showToast) {
+        window.showToast(
+          galleryColorPickerActive ? 'Color Picker Enabled' : 'Color Picker Disabled',
+          galleryColorPickerActive ? 'Hover on any image to view color code, and click to copy!' : 'Normal media selection enabled.',
+          galleryColorPickerActive ? 'success' : 'info'
+        );
+      }
+    });
+  }
 
   // ── Open Modal ──
   document.addEventListener('click', function (e) {
@@ -128,8 +170,53 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // ── Hover Color Inspection on Grid Images ──
+  grid.addEventListener('mousemove', function (e) {
+    if (!galleryColorPickerActive) return;
+    const img = e.target.closest('img') || e.target.closest('[data-media-item]')?.querySelector('img');
+    if (!img) {
+      if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();
+      return;
+    }
+    if (window.ImageColorPicker?.loupe) {
+      window.ImageColorPicker.loupe.show(e.clientX, e.clientY);
+      window.ImageColorPicker.loupe.renderPixel(img, e, false);
+    }
+  });
+
+  grid.addEventListener('mouseleave', function () {
+    if (window.ImageColorPicker?.loupe) {
+      window.ImageColorPicker.loupe.hide();
+    }
+  });
+
   // ── Select Item (delegated) ──
   grid.addEventListener('click', function (e) {
+    // If color picker mode is active on gallery, copy color and do NOT select item
+    if (galleryColorPickerActive) {
+      e.preventDefault();
+      e.stopPropagation();
+      const img = e.target.closest('img') || e.target.closest('[data-media-item]')?.querySelector('img');
+      if (img && window.ImageColorPicker?.loupe) {
+        const sample = window.ImageColorPicker.loupe.renderPixel(img, e, false);
+        if (sample && sample.hex) {
+          window.ImageColorPicker.copyColorToClipboard(sample.hex, sample.colorName, true);
+        }
+      }
+      // Disable color selection & hide loupe
+      galleryColorPickerActive = false;
+      updateColorPickerToggle();
+      if (window.ImageColorPicker?.loupe) {
+        window.ImageColorPicker.loupe.hide();
+      }
+      // Automatically close all modals
+      closeModal('mediaLibraryModal');
+      if (typeof window.closeAllModals === 'function') {
+        window.closeAllModals();
+      }
+      return;
+    }
+
     const item = e.target.closest('[data-media-item]');
     if (!item) return;
 
@@ -371,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
     div.setAttribute('data-media-item', JSON.stringify(item));
 
     if (item.type === 'image') {
-      div.innerHTML = '<img src="' + item.thumbnail_url + '" alt="' + (item.name || '') + '" loading="lazy">' +
+      div.innerHTML = '<img src="' + item.thumbnail_url + '" alt="' + (item.name || '') + '" loading="lazy" crossorigin="anonymous">' +
         '<div class="media-grid-item-info"><span>' + item.name + '</span><span class="text-neutral-400">' + item.human_size + '</span></div>';
     } else {
       var iconClass = getFileIcon(item.extension);
@@ -429,4 +516,27 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateUploadBar(percent) {
     if (uploadBar) uploadBar.style.width = Math.round(percent) + '%';
   }
+
+  // Reset color picker when media modal is closed
+  document.addEventListener('modal:closed', function (e) {
+    if (e.detail?.id === 'mediaLibraryModal') {
+      galleryColorPickerActive = false;
+      updateColorPickerToggle();
+      if (window.ImageColorPicker?.loupe) {
+        window.ImageColorPicker.loupe.hide();
+      }
+    }
+  });
+
+  // Automatically close media modal and disable color picker whenever any color is picked
+  window.addEventListener('color-picked', function () {
+    if (galleryColorPickerActive) {
+      galleryColorPickerActive = false;
+      updateColorPickerToggle();
+    }
+    if (window.ImageColorPicker?.loupe) {
+      window.ImageColorPicker.loupe.hide();
+    }
+    closeModal('mediaLibraryModal');
+  });
 });

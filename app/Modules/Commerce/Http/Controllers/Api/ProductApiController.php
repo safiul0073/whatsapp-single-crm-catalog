@@ -113,19 +113,21 @@ class ProductApiController extends Controller
     }
 
     /**
-     * Retrieve the latest 4 products to be showcased as new deals.
+     * Retrieve products to be showcased as deals or featured products.
      */
     public function deals(Request $request): AnonymousResourceCollection
     {
+        $limit = $request->integer('limit', $request->integer('per_page', 8));
+
         $products = Product::query()
-            ->with(['primaryMedia', 'category', 'brandRecord'])
+            ->with(['primaryMedia', 'category', 'brandRecord', 'colors', 'variants', 'options'])
             ->withMin([
                 'variants as starting_price' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
             ->where('status', 'active')
             ->orderByDesc('published_at')
             ->latest('id')
-            ->take(4)
+            ->take($limit)
             ->get();
 
         return ProductResource::collection($products);

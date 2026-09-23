@@ -25,6 +25,7 @@ import './components/auto-reply-editor.js';
 import './components/inbox.js';
 import './components/commerce-product-wizard.js';
 import './components/crm-board.js';
+import './components/image-color-picker.js';
 
 // Alpine.js components (register before Alpine.start())
 import './components/datatable.js';

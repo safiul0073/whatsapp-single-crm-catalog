@@ -938,7 +938,7 @@ it('provides reusable variant size presets CRUD and allows applying same sizes a
             ['name' => '', 'hex_code' => '#1E3A8A'],
             ['name' => '', 'hex_code' => '#111827'],
         ],
-    ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product1, 'step' => 3]));
+    ])->assertRedirect(route('user.commerce.products.edit', ['product' => $product1, 'step' => 4]));
 
     $p1Options = $product1->fresh()->options()->where('code', 'size')->first();
     expect($p1Options->values->pluck('value')->all())->toBe(['L', 'XL']);
@@ -973,6 +973,7 @@ it('supports color-dedicated multi-image galleries and connects them to swatches
 
     // Submit Step 3 Gallery with 2 photos for Blue, 2 photos for Black
     $response = $this->put(route('user.commerce.products.gallery.update', $product), [
+        'next_step' => 4,
         'media' => [
             ['id' => $media1->id, 'color_id' => $blueColor->id, 'alt_text' => 'Royal Blue Front', 'is_primary' => true],
             ['id' => $media2->id, 'color_id' => $blueColor->id, 'alt_text' => 'Royal Blue Back', 'is_primary' => false],
