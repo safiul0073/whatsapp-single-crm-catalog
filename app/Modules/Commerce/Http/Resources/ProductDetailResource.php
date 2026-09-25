@@ -58,6 +58,7 @@ class ProductDetailResource extends JsonResource
             'gallery' => $this->gallery->map(fn ($g) => [
                 'id' => $g->id,
                 'url' => $g->media?->url,
+                'color_id' => $g->color_id,
                 'position' => $g->position,
             ]),
             'colors' => $this->colors->map(fn ($color) => [
