@@ -15,38 +15,64 @@ class ProductDetailsRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $features = $this->input('features');
-        if (is_string($features)) {
-            $features = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $features))));
-        }
+        $merges = [];
 
-        $featureHighlights = $this->input('feature_highlights');
-        if (is_string($featureHighlights)) {
-            $featureHighlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $featureHighlights))));
-        }
-
-        // Parse ws_size_ratios from form inputs
-        $wsRatios = $this->input('ws_size_ratios');
-        if (is_array($wsRatios)) {
-            foreach ($wsRatios as $colorName => $ratios) {
-                if (is_array($ratios)) {
-                    $wsRatios[$colorName] = array_map('intval', array_filter($ratios, fn ($v) => $v !== null && $v !== ''));
-                }
+        if ($this->has('features')) {
+            $features = $this->input('features');
+            if (is_string($features)) {
+                $features = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $features))));
             }
-            $wsRatios = array_filter($wsRatios);
+            $merges['features'] = $features ?: null;
         }
 
-        $this->merge([
-            'features' => $features ?: null,
-            'feature_highlights' => $featureHighlights ?: null,
-            'ws_enabled' => $this->boolean('ws_enabled'),
-            'ws_size_ratios' => !empty($wsRatios) ? $wsRatios : null,
-            'moq' => max(1, (int) $this->input('moq', 1)),
-            'condition' => $this->input('condition', 'new') ?: 'new',
-            'country_of_origin' => $this->input('country_of_origin', 'BD') ?: 'BD',
-            'visibility' => $this->input('visibility', 'published') ?: 'published',
-            'status' => $this->input('status', 'active') ?: 'active',
-        ]);
+        if ($this->has('feature_highlights')) {
+            $featureHighlights = $this->input('feature_highlights');
+            if (is_string($featureHighlights)) {
+                $featureHighlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $featureHighlights))));
+            }
+            $merges['feature_highlights'] = $featureHighlights ?: null;
+        }
+
+        if ($this->has('ws_enabled')) {
+            $merges['ws_enabled'] = $this->boolean('ws_enabled');
+        }
+
+        if ($this->has('ws_size_ratios')) {
+            $wsRatios = $this->input('ws_size_ratios');
+            if (is_array($wsRatios)) {
+                foreach ($wsRatios as $colorName => $ratios) {
+                    if (is_array($ratios)) {
+                        $wsRatios[$colorName] = array_map('intval', array_filter($ratios, fn ($v) => $v !== null && $v !== ''));
+                    }
+                }
+                $wsRatios = array_filter($wsRatios);
+            }
+            $merges['ws_size_ratios'] = !empty($wsRatios) ? $wsRatios : null;
+        }
+
+        if ($this->has('moq')) {
+            $merges['moq'] = max(1, (int) $this->input('moq', 1));
+        }
+
+        if ($this->has('condition')) {
+            $merges['condition'] = $this->input('condition', 'new') ?: 'new';
+        }
+
+        if ($this->has('country_of_origin')) {
+            $merges['country_of_origin'] = $this->input('country_of_origin', 'BD') ?: 'BD';
+        }
+
+        if ($this->has('visibility')) {
+            $merges['visibility'] = $this->input('visibility', 'published') ?: 'published';
+        }
+
+        if ($this->has('status')) {
+            $merges['status'] = $this->input('status', 'active') ?: 'active';
+        }
+
+        if (!empty($merges)) {
+            $this->merge($merges);
+        }
     }
 
     public function rules(): array
