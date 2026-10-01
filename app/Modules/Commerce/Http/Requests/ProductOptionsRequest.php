@@ -3,6 +3,8 @@
 namespace App\Modules\Commerce\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProductOptionsRequest extends FormRequest
 {
@@ -60,7 +62,7 @@ class ProductOptionsRequest extends FormRequest
             if (is_array($size) && isset($size['value'])) {
                 $formattedSizes[] = [
                     'value' => trim((string) $size['value']),
-                    'weight' => isset($size['weight']) ? (float) $size['weight'] : null,
+                    'weight' => $size['weight'] ?? null,
                     'weight_unit' => $size['weight_unit'] ?? 'kg',
                 ];
             } elseif (is_string($size)) {
@@ -122,15 +124,24 @@ class ProductOptionsRequest extends FormRequest
             'options.*.name' => ['required', 'string', 'max:80', 'distinct'],
             'options.*.code' => ['required', 'alpha_dash', 'max:80', 'distinct'],
             'options.*.values' => ['required', 'array', 'min:1', 'max:30'],
-            'options.*.values.*' => ['required'],
+            'options.*.values.*' => ['required', function (string $attribute, mixed $value, \Closure $fail): void {
+                $rules = is_array($value)
+                    ? ['value' => ['required', 'string', 'max:80'], 'weight' => ['nullable', 'numeric', 'min:0', 'max:100000'], 'weight_unit' => ['nullable', 'in:kg,g,lb,oz']]
+                    : ['value' => ['required', 'string', 'max:80']];
+                $validation = Validator::make(is_array($value) ? $value : ['value' => $value], $rules);
+                if ($validation->fails()) {
+                    $fail($validation->errors()->first());
+                }
+            }],
             'sizes' => ['nullable'],
             'sizes_csv' => ['nullable', 'string'],
             'colors' => ['nullable', 'array'],
-            'colors.*.id' => ['nullable', 'integer'],
+            'colors.*.id' => ['nullable', 'integer', Rule::exists('commerce_product_colors', 'id')->where('product_id', $this->route('product')?->id)],
             'colors.*.name' => ['nullable', 'string', 'max:100'],
             'colors.*.hex_code' => ['nullable', 'string', 'max:30'],
             'colors.*.color_family' => ['nullable', 'string', 'max:50'],
-            'colors.*.swatch_media_id' => ['nullable', 'integer', 'exists:media,id'],
+            'colors.*.swatch_media_id' => ['nullable', 'integer', Rule::exists('media', 'id')->where('uploaded_by', $this->user()?->id)->where('type', 'image')],
+            'next_step' => ['sometimes', 'integer', 'between:1,9'],
         ];
     }
 }

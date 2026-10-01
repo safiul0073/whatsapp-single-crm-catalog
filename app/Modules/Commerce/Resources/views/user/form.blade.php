@@ -45,17 +45,17 @@
         ['value' => '14YRS', 'weight' => null, 'weight_unit' => 'kg'],
     ]);
 
-    $featureHighlightsState = is_array($product?->feature_highlights) && count($product->feature_highlights) > 0
+    $featureHighlightsState = is_array($product?->feature_highlights)
         ? $product->feature_highlights
         : [
             ['label' => 'Premium Tech Fleece', 'icon' => 'ph-t-shirt'],
         ];
 
-    $shippingCountriesState = is_array($product?->shipping_countries) && count($product->shipping_countries) > 0
+    $shippingCountriesState = is_array($product?->shipping_countries)
         ? $product->shipping_countries
         : ['USA', 'Canada'];
 
-    $specificationsState = is_array($product?->specifications) && count($product->specifications) > 0
+    $specificationsState = is_array($product?->specifications)
         ? $product->specifications
         : [
             ['attribute' => 'Material', 'value' => $product?->material ?: 'Tech Fleece (Premium Quality)'],
@@ -68,6 +68,12 @@
         ];
 
     $currentStep = (int) ($step ?? 1);
+    $colorState = old('colors', $colorState) ?: [];
+    $tierPricesState = old('tier_prices', $tierPricesState) ?: [];
+    $featureHighlightsState = old('feature_highlights', $featureHighlightsState) ?: [];
+    $shippingCountriesState = old('shipping_countries', $shippingCountriesState) ?: [];
+    $specificationsState = old('specifications', $specificationsState) ?: [];
+    $sizeState = old('options.0.values', $sizeState) ?: [];
 @endphp
 
 <x-layouts.user :title="$isEdit ? __('Edit product — :name', ['name' => $product->name]) : __('Add Product')" :hide-help="true">
@@ -299,8 +305,10 @@
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="status">{{ __('Status') }}</label>
                             <select id="status" class="form-input text-sm cursor-pointer" name="status">
-                                <option value="active" @selected(old('status', $product?->status ?? 'active') === 'active')>{{ __('Active') }}</option>
-                                <option value="draft" @selected(old('status', $product?->status) === 'draft')>{{ __('Draft') }}</option>
+                                @if($isEdit)
+                                    <option value="active" @selected(old('status', $product?->status) === 'active')>{{ __('Active') }}</option>
+                                @endif
+                                <option value="draft" @selected(old('status', $product?->status ?? 'draft') === 'draft')>{{ __('Draft') }}</option>
                                 <option value="archived" @selected(old('status', $product?->status) === 'archived')>{{ __('Archived') }}</option>
                             </select>
                         </div>
@@ -328,6 +336,7 @@
             <form method="POST" action="{{ route('user.commerce.products.gallery.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
                 <input type="hidden" name="next_step" value="3">
+                <input type="hidden" name="media" value="">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
@@ -603,6 +612,8 @@
             <form method="POST" action="{{ route('user.commerce.products.gallery.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
                 <input type="hidden" name="next_step" value="5">
+                <input type="hidden" name="media" value="">
+                <input type="hidden" name="colors" value="">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
@@ -694,6 +705,7 @@
             <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
                 <input type="hidden" name="next_step" value="6">
+                <input type="hidden" name="tier_prices" value="">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
@@ -1052,7 +1064,7 @@
                             <template x-if="(color.id || cIdx) != editingColorKey">
                                 <div>
                                     <template x-for="sz in productSizes" :key="sz">
-                                        <input type="hidden" :name="`ws_size_ratios[${color.id || cIdx}][${sz}]`" :value="wsRatios[color.id || cIdx]?.[sz] || 1">
+                                        <input type="hidden" :name="`ws_size_ratios[${color.id || cIdx}][${sz}]`" :value="wsRatios[color.id || cIdx]?.[sz] ?? 1">
                                     </template>
                                 </div>
                             </template>
@@ -1093,6 +1105,7 @@
             <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
                 <input type="hidden" name="next_step" value="8">
+                <input type="hidden" name="feature_highlights" value="">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
@@ -1186,6 +1199,7 @@
                 @csrf @method('PUT')
                 <input type="hidden" name="next_step" value="9">
                 <input type="hidden" name="name" value="{{ $product->name }}">
+                <input type="hidden" name="specifications" value="">
 
                 <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
@@ -1237,11 +1251,11 @@
                     </template>
 
                     {{-- Hidden inputs for Material, Fit, Gender, Season fields sync --}}
-                    <input type="hidden" name="material" :value="(specifications.find(s => s.attribute.toLowerCase() === 'material') || {}).value || '{{ $product->material }}'">
-                    <input type="hidden" name="fit" :value="(specifications.find(s => s.attribute.toLowerCase() === 'fit') || {}).value || '{{ $product->fit }}'">
-                    <input type="hidden" name="set_includes" :value="(specifications.find(s => s.attribute.toLowerCase().includes('include')) || {}).value || '{{ $product->set_includes }}'">
-                    <input type="hidden" name="gender" :value="(specifications.find(s => s.attribute.toLowerCase() === 'gender') || {}).value || '{{ $product->gender }}'">
-                    <input type="hidden" name="season" :value="(specifications.find(s => s.attribute.toLowerCase() === 'season') || {}).value || '{{ $product->season }}'">
+                    <input type="hidden" name="material" :value="(specifications.find(s => s.attribute.toLowerCase() === 'material') || {}).value || ''">
+                    <input type="hidden" name="fit" :value="(specifications.find(s => s.attribute.toLowerCase() === 'fit') || {}).value || ''">
+                    <input type="hidden" name="set_includes" :value="(specifications.find(s => s.attribute.toLowerCase().includes('include')) || {}).value || ''">
+                    <input type="hidden" name="gender" :value="(specifications.find(s => s.attribute.toLowerCase() === 'gender') || {}).value || ''">
+                    <input type="hidden" name="season" :value="(specifications.find(s => s.attribute.toLowerCase() === 'season') || {}).value || ''">
                 </section>
 
                 <div class="flex items-center justify-end gap-3 pt-2">

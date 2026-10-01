@@ -109,8 +109,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 2);
-        $this->products->updateDetails($product, $request->validated());
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateDetails($product, $request->validated());
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
     }
@@ -119,11 +121,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 4);
-        if ($request->has('colors')) {
-            $this->products->syncColors($product, $request->input('colors', []));
-        }
-        $this->products->updateOptions($product, $request->validated('options'));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateOptions($product, $request->validated('options'), $request->validated('colors'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Sizes and options saved.'));
     }
@@ -132,8 +133,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 3);
-        $this->products->updateGallery($product, $request->validated('media'), $request->input('colors', []));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateGallery($product, $request->validated('media'), $request->validated('colors'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Photos saved.'));
     }
@@ -149,11 +152,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 6);
-        if ($request->has('tier_prices')) {
-            $this->products->syncTierPrices($product, $request->input('tier_prices', []));
-        }
-        $this->products->updateVariants($product, $request->validated('variants'));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateVariants($product, $request->validated('variants'), $request->validated('tier_prices'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Pricing, MOQ and inventory saved.'));
     }

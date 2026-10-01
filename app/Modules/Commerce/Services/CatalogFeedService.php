@@ -54,9 +54,12 @@ class CatalogFeedService
         $primary = $variant->media?->url ?? $variant->product->primaryMedia?->url;
         $additional = $variant->product->gallery
             ->where('media_type', 'image')
+            ->filter(fn ($item): bool => $variant->color_id === null || (int) $item->color_id === (int) $variant->color_id)
+            ->sortBy('position')
             ->reject(fn ($item): bool => $item->media?->url === $primary)
             ->map(fn ($item): ?string => $item->media?->url)
             ->filter()
+            ->unique()
             ->take(9)
             ->values()
             ->all();

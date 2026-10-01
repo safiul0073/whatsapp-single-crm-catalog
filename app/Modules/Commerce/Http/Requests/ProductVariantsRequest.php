@@ -24,6 +24,7 @@ class ProductVariantsRequest extends FormRequest
             'variants.*.sku' => ['required', 'string', 'max:120', 'distinct', Rule::unique('commerce_product_variants', 'sku')->where('workspace_id', $product?->workspace_id)->whereNotIn('id', collect($this->input('variants'))->pluck('id')->filter()->all())],
             'variants.*.meta_retailer_id' => ['required', 'string', 'max:120', 'distinct'],
             'variants.*.attributes' => ['required', 'array'],
+            'variants.*.attributes_json' => ['sometimes', 'json'],
             'variants.*.media_id' => ['nullable', 'integer', Rule::exists('commerce_product_media', 'media_id')->where('product_id', $product?->id)->where('media_type', 'image')],
             'variants.*.price' => ['required', 'numeric', 'min:0.01'],
             'variants.*.compare_at_price' => ['nullable', 'numeric', 'gt:variants.*.price'],
@@ -39,13 +40,14 @@ class ProductVariantsRequest extends FormRequest
             'tier_prices.*.max_quantity' => ['nullable', 'integer', 'min:1'],
             'tier_prices.*.unit_price' => ['nullable', 'numeric', 'min:0.01'],
             'tier_prices.*.discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'next_step' => ['sometimes', 'integer', 'between:1,9'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $variants = collect($this->input('variants', []))->map(function (array $variant): array {
-            $attributes = json_decode((string) ($variant['attributes_json'] ?? '{}'), true);
+            $attributes = array_key_exists('attributes_json', $variant) ? json_decode((string) $variant['attributes_json'], true) : ($variant['attributes'] ?? []);
             $variant['attributes'] = is_array($attributes) ? $attributes : [];
 
             return $variant;

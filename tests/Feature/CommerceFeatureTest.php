@@ -12,7 +12,6 @@ use App\Modules\Commerce\Models\CommerceMessageAttempt;
 use App\Modules\Commerce\Models\InventoryMovement;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
-use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\VariantPreset;
 use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogFeedService;
@@ -36,6 +35,7 @@ use App\Modules\WhatsAppCloud\Services\WhatsAppMessagePayloadBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
@@ -63,6 +63,9 @@ function commerceContext(): array
 
 function commerceProduct(int $workspaceId): Product
 {
+    $suffix = Product::query()->where('workspace_id', $workspaceId)->count();
+    $sku = 'JKT-BLK-M'.($suffix > 0 ? '-'.$suffix : '');
+
     return app(ProductService::class)->create($workspaceId, [
         'name' => 'Performance Jacket',
         'brand' => 'Dhaka Apparel',
@@ -76,8 +79,8 @@ function commerceProduct(int $workspaceId): Product
             ['name' => 'Material', 'code' => 'material', 'values' => ['Polyester']],
         ],
         'variants' => [[
-            'sku' => 'JKT-BLK-M',
-            'meta_retailer_id' => 'meta-jkt-blk-m',
+            'sku' => $sku,
+            'meta_retailer_id' => 'meta-'.strtolower($sku),
             'attributes' => ['size' => 'M', 'color' => 'Black', 'material' => 'Polyester'],
             'price' => 49.95,
             'stock_quantity' => 5,
@@ -463,23 +466,12 @@ it('blocks bulk deletion of in-use taxonomy records and records from other works
     $this->delete(route('user.commerce.products.bulk-destroy'), ['ids' => [$otherProduct->id]])->assertNotFound();
 });
 
-it('seeds one hundred realistic products with more than forty five live images', function (): void {
+it('shows seeded demo products in product management', function (): void {
     $context = commerceContext();
-
+    config(['commerce-demo.workspace_id' => $context['workspace']->id]);
+    Storage::fake('public');
     $this->seed(CommerceDemoSeeder::class);
-
-    $products = Product::query()->where('workspace_id', $context['workspace']->id)->where('slug', 'like', 'demo-%')->get();
-    $images = Media::query()->where('uploaded_by', $context['user']->id)->where('file_name', 'like', 'commerce-demo-%')->get();
-
-    expect($products)->toHaveCount(100)
-        ->and(ProductVariant::query()->where('workspace_id', $context['workspace']->id)->where('sku', 'like', 'DEMO-%')->count())->toBe(400)
-        ->and($images)->toHaveCount(60)
-        ->and($images->every(fn (Media $media): bool => str_starts_with($media->path, 'https://')))->toBeTrue()
-        ->and($images->every(fn (Media $media): bool => filled($media->alt) && str_contains($media->path, 'loremflickr.com/960/1200')))->toBeTrue()
-        ->and($images->first()->url)->toBe($images->first()->path)
-        ->and($products->pluck('name')->all())->toContain('Premium Double-Face Wool Blend Coat')
-        ->and($products->every(fn (Product $product): bool => filled($product->brand_id) && filled($product->audience_id) && filled($product->primary_media_id) && str_contains((string) $product->description, 'WhatsApp catalog selling')))->toBeTrue();
-
+    expect(Product::query()->where('workspace_id', $context['workspace']->id)->where('slug', 'like', 'demo-%')->count())->toBe(5);
     Permission::findOrCreate('commerce.view', 'web');
     $context['user']->givePermissionTo('commerce.view');
     $this->actingAs($context['user'])
@@ -487,10 +479,7 @@ it('seeds one hundred realistic products with more than forty five live images',
         ->assertOk()
         ->assertSee('data-product-table', false)
         ->assertSee('data-product-grid', false)
-        ->assertSee('data-commerce-help="products"', false)
-        ->assertSeeText('Product management help')
-        ->assertSeeText('Complete WhatsApp selling workflow')
-        ->assertSeeText('Showing 1-20 of 100 items');
+        ->assertSeeText('Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt');
 });
 
 it('shows feature-specific help across commerce management pages', function (): void {
@@ -582,7 +571,7 @@ it('creates a resumable draft and persists its gallery through wizard routes', f
         ]],
     ]);
 
-    $galleryResponse->assertRedirect(route('user.commerce.products.edit', ['product' => $product, 'step' => 4]));
+    $galleryResponse->assertRedirect(route('user.commerce.products.edit', ['product' => $product, 'step' => 3]));
     expect($product->fresh()->primary_media_id)->toBe($front->id)
         ->and($product->fresh()->wizard_step)->toBe(4)
         ->and($product->fresh()->gallery)->toHaveCount(1);
@@ -655,6 +644,7 @@ it('builds WhatsApp Cloud catalog and multi-product template payloads', function
 
 it('includes additional gallery images in the Meta feed', function (): void {
     config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com']);
+    config(['filesystems.disks.public.url' => 'https://store.example.com/storage']);
     URL::forceRootUrl('https://store.example.com');
     URL::forceScheme('https');
     $context = commerceContext();

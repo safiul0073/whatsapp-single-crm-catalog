@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Http\Requests;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ProductDetailsRequest extends FormRequest
 {
@@ -17,32 +18,38 @@ class ProductDetailsRequest extends FormRequest
     {
         $merges = [];
 
-        if ($this->has('features')) {
+        foreach (['tier_prices', 'colors', 'specifications', 'shipping_countries'] as $field) {
+            if ($this->exists($field) && $this->input($field) === null) {
+                $merges[$field] = [];
+            }
+        }
+
+        if ($this->exists('features')) {
             $features = $this->input('features');
             if (is_string($features)) {
                 $features = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $features))));
             }
-            $merges['features'] = $features ?: null;
+            $merges['features'] = $features ?? [];
         }
 
-        if ($this->has('feature_highlights')) {
+        if ($this->exists('feature_highlights')) {
             $featureHighlights = $this->input('feature_highlights');
             if (is_string($featureHighlights)) {
                 $featureHighlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $featureHighlights))));
             }
-            $merges['feature_highlights'] = $featureHighlights ?: null;
+            $merges['feature_highlights'] = $featureHighlights ?? [];
         }
 
         if ($this->has('ws_enabled')) {
             $merges['ws_enabled'] = $this->boolean('ws_enabled');
         }
 
-        if ($this->has('ws_size_ratios')) {
+        if ($this->exists('ws_size_ratios')) {
             $wsRatios = $this->input('ws_size_ratios');
             if (is_array($wsRatios)) {
                 foreach ($wsRatios as $colorName => $ratios) {
                     if (is_array($ratios)) {
-                        $wsRatios[$colorName] = array_map('intval', array_filter($ratios, fn ($v) => $v !== null && $v !== ''));
+                        $wsRatios[$colorName] = array_filter($ratios, fn ($v) => $v !== null && $v !== '');
                     }
                 }
                 $wsRatios = array_filter($wsRatios);
@@ -105,7 +112,7 @@ class ProductDetailsRequest extends FormRequest
             'delivery_time' => ['nullable', 'string', 'max:200'],
             'moq' => ['nullable', 'integer', 'min:1'],
             'default_stock' => ['nullable', 'integer', 'min:0'],
-            'rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
+            'rating' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'reviews_count' => ['nullable', 'integer', 'min:0'],
             'condition' => ['nullable', 'in:new,refurbished,used'],
             'status' => ['nullable', 'in:active,draft,archived'],
@@ -122,20 +129,38 @@ class ProductDetailsRequest extends FormRequest
             'ws_main_moq' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'ws_size_ratios' => ['nullable', 'array'],
             'ws_size_ratios.*' => ['nullable', 'array'],
-            'ws_size_ratios.*.*' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'ws_size_ratios.*.*' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'ws_ratio_multiplier' => ['nullable', 'integer', 'min:1', 'max:100'],
             'country_of_origin' => ['nullable', 'string', 'max:2'],
             'tier_prices' => ['nullable', 'array'],
-            'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1'],
-            'tier_prices.*.max_quantity' => ['nullable', 'integer', 'min:1'],
+            'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1', 'distinct'],
+            'tier_prices.*.max_quantity' => ['nullable', 'integer', 'min:1', 'gte:tier_prices.*.min_quantity'],
             'tier_prices.*.unit_price' => ['nullable', 'numeric', 'min:0.01'],
             'tier_prices.*.discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'colors' => ['nullable', 'array'],
-            'colors.*.id' => ['nullable', 'integer'],
+            'colors.*.id' => ['nullable', 'integer', Rule::exists('commerce_product_colors', 'id')->where('product_id', $productId)->where('workspace_id', $workspaceId)],
             'colors.*.name' => ['nullable', 'string', 'max:100'],
             'colors.*.hex_code' => ['nullable', 'string', 'max:30'],
             'colors.*.color_family' => ['nullable', 'string', 'max:50'],
-            'colors.*.swatch_media_id' => ['nullable', 'integer', 'exists:media,id'],
+            'colors.*.swatch_media_id' => ['nullable', 'integer', Rule::exists('media', 'id')->where('uploaded_by', $this->user()?->id)->where('type', 'image')],
+            'next_step' => ['sometimes', 'integer', 'between:1,9'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty() || ! $this->route('product')) {
+                return;
+            }
+            $product = $this->route('product');
+            $colors = $product->colors()->pluck('id')->map(fn ($id): string => (string) $id)->all();
+            $sizes = $product->options()->where('code', 'size')->first()?->values()->pluck('value')->all() ?? [];
+            foreach ($this->input('ws_size_ratios', []) ?? [] as $colorId => $ratios) {
+                if (! in_array((string) $colorId, $colors, true) || array_diff(array_keys($ratios ?? []), $sizes) !== []) {
+                    $validator->errors()->add('ws_size_ratios', 'Size ratios must reference this product’s colors and sizes.');
+                }
+            }
+        }];
     }
 }
