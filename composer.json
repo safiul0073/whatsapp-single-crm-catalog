@@ -59,6 +59,7 @@
         }
     },
     "scripts": {
+        "orders": "npx concurrently --kill-others \"php artisan queue:work --queue=commerce-orders --sleep=1 --tries=5 --timeout=60\" \"ORDER_SCHEDULER_SCOPE=commerce php artisan schedule:work\" --names=orders,scheduler",
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
@@ -69,7 +70,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=commerce-orders,default --tries=1\" \"npm run dev\" --names='server,queue,vite'"
         ],
         "test": [
             "@php artisan config:clear --ansi",

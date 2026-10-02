@@ -58,7 +58,7 @@ return new class extends Migration
             $table->foreignId('shipping_method_id')->constrained('shipping_methods')->cascadeOnDelete();
             $table->decimal('min_weight_kg', 8, 3)->default(0);
             $table->decimal('max_weight_kg', 8, 3)->nullable(); // null means unlimited
-            $table->decimal('price', 12, 2)->default(0);
+            $table->decimal('price', 19, 4)->default(0);
             $table->string('currency', 3)->default('USD');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

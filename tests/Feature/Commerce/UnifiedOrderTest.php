@@ -1,0 +1,320 @@
+<?php
+
+use App\Models\User;
+use App\Modules\Commerce\Jobs\NotifyOrderEvent;
+use App\Modules\Commerce\Models\CommerceMessageAttempt;
+use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Services\OrderPackingService;
+use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
+use App\Modules\Commerce\Services\OrderWorkflowService;
+use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Inbox\Models\Conversation;
+use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\Shipping\Models\ShippingMethod;
+use App\Modules\Shipping\Models\ShippingZone;
+use App\Modules\SystemNotifications\Models\SystemNotification;
+use App\Modules\SystemNotifications\Services\SystemNotificationService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
+uses(RefreshDatabase::class);
+
+function unifiedContext(): array
+{
+    $user = User::factory()->create();
+    $workspace = app(WorkspaceResolver::class)->current($user);
+    $settings = StoreOrderSetting::forWorkspace($workspace->id);
+    $settings->update(['integration_token_hash' => hash('sha256', str_repeat('t', 64)), 'payment_instructions' => 'Bank transfer']);
+    $product = Product::query()->create(['workspace_id' => $workspace->id, 'name' => 'Cotton shirt', 'slug' => 'shirt-'.$workspace->id, 'sku' => 'shirt-'.$workspace->id, 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'single_piece_price' => '10.00', 'wholesale_price' => '6.00', 'ws_enabled' => true, 'ws_main_moq' => 12, 'ws_color_moq' => 6, 'ws_min_sizes' => 3, 'ws_ratio_multiplier' => 1]);
+    $color = $product->colors()->create(['workspace_id' => $workspace->id, 'name' => 'Red', 'hex_code' => '#ff0000']);
+    $product->update(['ws_size_ratios' => [$color->id => ['S' => 2, 'M' => 3, 'L' => 1]]]);
+    $variants = collect(['S', 'M', 'L'])->map(fn ($size) => $product->variants()->create(['workspace_id' => $workspace->id, 'color_id' => $color->id, 'sku' => $workspace->id.'-'.$size, 'meta_retailer_id' => $workspace->id.'-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active']));
+    $data = ['submission_reference' => (string) Str::uuid(), 'source' => 'manual', 'customer' => ['name' => 'Buyer', 'phone' => '+15555550100', 'email' => 'buyer@example.test'], 'shipping_address' => ['name' => 'Buyer', 'phone' => '+15555550100', 'line1' => '1 Main Street', 'city' => 'Boston', 'country' => 'US'], 'groups' => [['product_id' => $product->id, 'mode' => 'wholesale', 'color_id' => $color->id, 'box_count' => 3]]];
+
+    return compact('user', 'workspace', 'settings', 'product', 'color', 'variants', 'data');
+}
+
+beforeEach(function () {
+    Queue::fake([NotifyOrderEvent::class]);
+});
+
+it('snapshots three ratio boxes and reserves their exact variant pieces', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    expect($order->boxes)->toHaveCount(3)->and($order->items->sum('quantity'))->toBe(18)
+        ->and($order->subtotal)->toBe('108.0000')->and($order->shipping_quote_required)->toBeTrue()
+        ->and($order->total)->toBeNull()->and($order->reservations()->sum('quantity'))->toBe('18');
+    foreach ($order->boxes as $box) {
+        expect($box->contents->sum('quantity'))->toBe(6);
+    }
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
+    $c['product']->update(['ws_size_ratios' => [$c['color']->id => ['S' => 100]]]);
+    expect($order->groups->first()->ratio)->toEqual(['S' => 2, 'M' => 3, 'L' => 1]);
+});
+
+it('creates retail and mixed orders with server prices', function () {
+    $c = unifiedContext();
+    $c['data']['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2, 'price' => '0.01'];
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    expect($order->items->sum('quantity'))->toBe(20)->and($order->subtotal)->toBe('128.0000');
+});
+
+it('rejects duplicate payload changes but returns an identical submission', function () {
+    $c = unifiedContext();
+    $service = app(UnifiedOrderService::class);
+    $order = $service->create($c['workspace'], $c['data']);
+    expect($service->create($c['workspace'], $c['data'])->id)->toBe($order->id)->and(Order::count())->toBe(1);
+    $c['data']['groups'][0]['box_count'] = 4;
+    try {
+        $service->create($c['workspace'], $c['data']);
+        $this->fail('Expected conflict');
+    } catch (HttpException $exception) {
+        expect($exception->getStatusCode())->toBe(409);
+    }
+});
+
+it('enforces minimum quantities and owner ratios', function () {
+    $c = unifiedContext();
+    $c['data']['groups'][0]['box_count'] = 1;
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ValidationException::class);
+    $c['data']['groups'][0]['box_count'] = 3;
+    $c['data']['groups'][0]['ratio'] = ['S' => 1];
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ValidationException::class);
+    expect(Order::count())->toBe(0);
+});
+
+it('does not oversell stock already reserved by another order', function () {
+    $c = unifiedContext();
+    $c['variants'][0]->update(['stock_quantity' => 6]);
+    app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $c['data']['submission_reference'] = (string) Str::uuid();
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ValidationException::class);
+    expect(Order::count())->toBe(1);
+});
+
+it('keeps drafts unreserved and submits them through the workflow', function () {
+    $c = unifiedContext();
+    $c['data']['draft'] = true;
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    expect($order->status)->toBe('draft')->and($order->reservations()->count())->toBe(0);
+    app(OrderWorkflowService::class)->transition($order, 'requested');
+    expect($order->fresh()->status)->toBe('requested')->and($order->reservations()->sum('quantity'))->toBe('18');
+});
+
+it('deducts once after payment, packs every box and creates one shipment', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $workflow = app(OrderWorkflowService::class);
+    $workflow->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5, 'payment_url' => 'https://payment.example.test']);
+    $paid = $workflow->transition($order->fresh(), 'paid');
+    $workflow->transition($paid, 'paid');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(94);
+    foreach ($order->boxes as $box) {
+        app(OrderPackingService::class)->markPacked($order, $box->id);
+    }
+    expect($order->fresh()->status)->toBe('packed');
+    $shipped = $workflow->transition($order->fresh(), 'shipped', ['tracking_number' => 'CARRIER-1', 'carrier' => 'Carrier']);
+    $workflow->transition($shipped, 'shipped', ['tracking_number' => 'CARRIER-2']);
+    $workflow->transition($shipped, 'completed');
+    expect($order->shipment()->count())->toBe(1)->and($order->fresh()->delivered_at)->not->toBeNull();
+});
+
+it('releases cancellation and expiry reservations safely', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+    app(OrderInventoryService::class)->expire();
+    expect($order->reservations()->where('state', 'expired')->count())->toBe(3);
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'cancelled');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
+});
+
+it('protects the store API and ignores customer-selected workspaces', function () {
+    $c = unifiedContext();
+    $this->postJson('/api/commerce/store/orders', $c['data'])->assertUnauthorized();
+    unset($c['data']['source']);
+    $c['data']['workspace_id'] = 9999;
+    $response = $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders', $c['data'])->assertCreated();
+    expect(Order::find($response->json('data.id'))->workspace_id)->toBe($c['workspace']->id);
+    $this->getJson('/api/commerce/track/'.$response->json('data.tracking_code'))->assertOk()->assertDontSee('1 Main Street');
+});
+
+it('renders manual order management with appropriate permissions', function () {
+    $c = unifiedContext();
+    $outsider = User::factory()->create();
+    $c['workspace']->members()->attach($outsider, ['status' => 'active']);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $this->actingAs($outsider)->get(route('user.commerce.orders.create'))->assertForbidden();
+    $role = Role::findOrCreate('Order manager', 'web');
+    $role->givePermissionTo(Permission::findOrCreate('commerce.manage', 'web'));
+    $c['user']->assignRole($role);
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.create'))->assertOk()->assertSee('Create Order');
+});
+
+it('aggregates wholesale tiers across colors without changing each box ratio', function () {
+    $c = unifiedContext();
+    $second = $c['product']->colors()->create(['workspace_id' => $c['workspace']->id, 'name' => 'Blue', 'hex_code' => '#0000ff']);
+    $c['product']->update(['ws_size_ratios' => [$c['color']->id => ['S' => 2, 'M' => 3, 'L' => 1], $second->id => ['S' => 2, 'M' => 3, 'L' => 1]]]);
+    foreach (['S', 'M', 'L'] as $size) {
+        $c['product']->variants()->create(['workspace_id' => $c['workspace']->id, 'color_id' => $second->id, 'sku' => 'blue-'.$size, 'meta_retailer_id' => 'blue-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active']);
+    }
+    $c['product']->tierPrices()->create(['min_quantity' => 24, 'unit_price' => 4, 'workspace_id' => $c['workspace']->id]);
+    $c['data']['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $second->id, 'box_count' => 3];
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    expect($order->subtotal)->toBe('144.0000')->and($order->boxes()->count())->toBe(6)->and($order->items->sum('quantity'))->toBe(36);
+});
+
+it('reacquires expired stock before payment and rejects stock held by another order', function () {
+    $c = unifiedContext();
+    $c['variants'][0]->update(['stock_quantity' => 6]);
+    $service = app(UnifiedOrderService::class);
+    $order = $service->create($c['workspace'], $c['data']);
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+    $c['data']['submission_reference'] = (string) Str::uuid();
+    $service->create($c['workspace'], $c['data']);
+    $workflow = app(OrderWorkflowService::class);
+    $workflow->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
+    expect(fn () => $workflow->transition($order->fresh(), 'paid'))->toThrow(ValidationException::class);
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(6)->and($order->fresh()->payment_state)->toBe('unpaid');
+});
+
+it('blocks over-allocation and dispatch until every retail piece is packed', function () {
+    $c = unifiedContext();
+    $c['data']['groups'] = [['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2]];
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $workflow = app(OrderWorkflowService::class);
+    $workflow->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 1]);
+    $order = $workflow->transition($order->fresh(), 'paid');
+    $packing = app(OrderPackingService::class);
+    $item = $order->items->first();
+    expect(fn () => $packing->addRetailBox($order, [$item->id => 3]))->toThrow(ValidationException::class);
+    $box = $packing->addRetailBox($order, [$item->id => 1]);
+    $packing->markPacked($order, $box->id);
+    expect($packing->complete($order->fresh()))->toBeFalse();
+    expect(fn () => $workflow->transition($order->fresh(), 'shipped', ['tracking_number' => 'RETAIL-1']))->toThrow(ValidationException::class);
+    $box = $packing->addRetailBox($order, [$item->id => 1]);
+    $packing->markPacked($order, $box->id);
+    expect($packing->complete($order->fresh()))->toBeTrue()->and($order->fresh()->status)->toBe('packed');
+});
+
+it('keeps historical currency precision when store currency changes', function () {
+    $c = unifiedContext();
+    $c['settings']->update(['currency' => 'KWD']);
+    $c['product']->update(['single_piece_price' => '1.234']);
+    $c['data']['groups'] = [['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2]];
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $c['settings']->update(['currency' => 'JPY']);
+    app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => '0.111']);
+    expect($order->fresh()->currency)->toBe('KWD')->and($order->fresh()->total)->toBe('2.5790');
+});
+
+it('rejects cross-store products and cross-workspace staff access', function () {
+    $c = unifiedContext();
+    $c['settings']->update(['integration_token_hash' => null]);
+    $other = unifiedContext();
+    $c['data']['groups'][0]['product_id'] = $other['product']->id;
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ModelNotFoundException::class);
+    $order = app(UnifiedOrderService::class)->create($other['workspace'], $other['data']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id])->get(route('user.commerce.orders.packing-slip', $order))->assertNotFound();
+});
+
+it('accepts payment evidence for review without deducting stock', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
+    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/evidence', ['note' => 'Bank reference ABC'])->assertOk();
+    expect($order->fresh()->payment_state)->toBe('submitted')->and($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
+    $this->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/evidence', ['note' => 'Late receipt'])->assertUnprocessable();
+    expect($order->fresh()->payment_state)->toBe('paid');
+});
+
+it('renders summaries packing slips and currency settings', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('BOX-1');
+    $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Cotton shirt');
+    $this->get(route('user.commerce.orders.settings'))->assertOk()->assertSee('Store order settings');
+});
+
+it('keeps the selected shipping method and calculates its price in store precision', function () {
+    $c = unifiedContext();
+    $c['settings']->update(['currency' => 'KWD']);
+    $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
+    $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
+    $method = ShippingMethod::create(['workspace_id' => $c['workspace']->id, 'name' => 'Air', 'code' => 'AIR', 'type' => 'air', 'is_active' => true]);
+    $zone->rates()->create(['workspace_id' => $c['workspace']->id, 'shipping_method_id' => $method->id, 'min_weight_kg' => 0, 'price' => '1.234', 'price_per_kg' => 0, 'currency' => 'KWD', 'is_active' => true]);
+    $c['data']['shipping_method_id'] = $method->id;
+    $service = app(UnifiedOrderService::class);
+    $order = $service->create($c['workspace'], $c['data']);
+    expect($order->shipping_method_id)->toBe($method->id)->and($order->delivery_method)->toBe('Air')->and($order->shipping_amount)->toBe('1.2340')->and($order->total)->toBe('109.2340');
+    $c['data']['shipping_method_id'] = $method->id + 100;
+    expect(fn () => $service->preview($c['workspace'], $c['data']))->toThrow(ValidationException::class);
+});
+
+it('resolves an ambiguous native wholesale request without guessing its initial contents', function () {
+    $c = unifiedContext();
+    $order = Order::create(['workspace_id' => $c['workspace']->id, 'number' => 'ORD-NATIVE', 'source' => 'native_whatsapp', 'status' => 'needs_details', 'currency' => 'USD', 'subtotal' => 0, 'tracking_code' => 'TRK-NATIVE', 'issues' => ['Confirm catalog selections and delivery details.']]);
+    $resolved = app(UnifiedOrderService::class)->completeRequest($order, $c['workspace'], $c['data']);
+    expect($resolved->id)->toBe($order->id)->and($resolved->boxes()->count())->toBe(3)->and($resolved->reservations()->sum('quantity'))->toBe('18')->and($resolved->issues)->toBe([]);
+    expect(fn () => app(UnifiedOrderService::class)->completeRequest($resolved, $c['workspace'], $c['data']))->toThrow(HttpException::class);
+});
+
+it('respects WhatsApp eligibility and sends each order event once', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $event = $order->events()->first();
+    $channel = ChannelAccount::create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'Sales', 'status' => 'connected', 'provider_account_id' => 'waba-test', 'provider_phone_id' => 'phone-test']);
+    $conversation = Conversation::create(['workspace_id' => $c['workspace']->id, 'channel_account_id' => $channel->id, 'provider' => 'whatsapp', 'contact_id' => $order->contact_id, 'session_expires_at' => now()->subHour()]);
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()->andReturn(['ok' => true, 'provider_message_id' => 'outbound-event-1']);
+    $service = app(OrderWhatsAppNotificationService::class);
+    $service->send($order, $event);
+    $c['settings']->update(['whatsapp_notifications' => true, 'whatsapp_channel_id' => $channel->id]);
+    $service->send($order, $event);
+    expect(CommerceMessageAttempt::count())->toBe(0);
+    $conversation->update(['session_expires_at' => now()->addDay()]);
+    $service->send($order, $event);
+    $service->send($order, $event);
+    expect(CommerceMessageAttempt::count())->toBe(1)->and(CommerceMessageAttempt::first()->status)->toBe('completed');
+    $order->contact->update(['opt_out_at' => now()]);
+    $next = $order->events()->create(['key' => 'test-opt-out', 'label' => 'Update', 'occurred_at' => now()]);
+    $service->send($order->fresh('contact'), $next);
+    expect(CommerceMessageAttempt::count())->toBe(1);
+});
+
+it('rejects browser-provided order prices through the integration API', function () {
+    $c = unifiedContext();
+    $c['data']['groups'][0]['price'] = '0.01';
+    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.price');
+    expect(Order::count())->toBe(0);
+});
+
+it('retries durable order events without repeating completed notification channels', function () {
+    $c = unifiedContext();
+    $c['data']['customer']['email'] = null;
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $event = $order->events()->first();
+    $job = new NotifyOrderEvent($event->id);
+    $notifications = app(SystemNotificationService::class);
+    $job->handle($notifications);
+    $job->handle($notifications);
+    expect($event->fresh()->notification_attempts)->toBe(1)
+        ->and($event->fresh()->customer_notified_at)->not->toBeNull()
+        ->and(SystemNotification::where('type', 'commerce')->count())->toBe(1);
+    $event->update(['notification_attempts' => 10, 'whatsapp_notified_at' => null]);
+    $job->handle($notifications);
+    expect($event->fresh()->notification_attempts)->toBe(10);
+});

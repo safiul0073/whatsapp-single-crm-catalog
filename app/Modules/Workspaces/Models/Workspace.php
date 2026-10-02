@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 class Workspace extends Model
 {
@@ -78,10 +77,16 @@ class Workspace extends Model
             'leads',
             'crm_leads',
             'auto_reply_rules',
+            'commerce_products',
+            'commerce_orders',
+            'commerce_catalogs',
         ];
 
+        $connection = $this->getConnection();
+        $schema = $connection->getSchemaBuilder();
         foreach ($serviceTables as $table) {
-            if (DB::table($table)->where('workspace_id', $this->id)->exists()) {
+            if ($schema->hasTable($table) && $schema->hasColumn($table, 'workspace_id')
+                && $connection->table($table)->where('workspace_id', $this->id)->exists()) {
                 return true;
             }
         }

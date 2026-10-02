@@ -1,0 +1,63 @@
+/* =====================================================================
+   Image Color Picker & Eyedropper Styles
+   ===================================================================== */
+
+.color-loupe-overlay {
+  will-change: transform, left, top;
+  pointer-events: none;
+  z-index: 99999;
+}
+
+.color-loupe-lens {
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.35);
+  background-color: #0f172a;
+}
+
+.color-loupe-canvas {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.color-loupe-badge {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.35);
+}
+
+/* Gallery Color Picker Mode Styles */
+.gallery-color-picker-mode,
+.gallery-color-picker-mode .media-grid-item,
+.gallery-color-picker-mode .media-grid-item img,
+.gallery-color-picker-mode .media-item-thumb,
+.inspecting-color-target {
+  cursor: crosshair !important;
+}
+
+.gallery-color-picker-mode .media-grid-item:hover,
+.inspecting-color-target:hover {
+  outline: 2px dashed #1faa53 !important;
+  outline-offset: 2px;
+}
+
+/* Palette Swatch Hover & Copy Pulse */
+.palette-swatch-btn {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease;
+}
+
+.palette-swatch-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.palette-swatch-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* Copy Animation Flash */
+@keyframes copyPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.copied-pulse {
+  animation: copyPulse 0.3s ease-out;
+}

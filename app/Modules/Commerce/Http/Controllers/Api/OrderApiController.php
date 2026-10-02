@@ -10,38 +10,32 @@ class OrderApiController extends Controller
 {
     public function trackOrder(string $trackingNumber): JsonResponse
     {
-        $order = Order::query()
-            ->with(['items.variant.product.primaryMedia'])
-            ->where('tracking_number', $trackingNumber)
-            ->first();
+        $orders = Order::query()
+            ->where(fn ($query) => $query->where('tracking_number', trim($trackingNumber))->orWhere('tracking_code', trim($trackingNumber)))
+            ->limit(2)
+            ->get();
 
-        if (! $order) {
+        if (trim($trackingNumber) === '' || strlen($trackingNumber) > 150 || $orders->count() !== 1) {
             return response()->json([
                 'success' => false,
                 'message' => 'No order found with the provided tracking number.',
             ], 404);
         }
 
+        $order = $orders->first();
+
         return response()->json([
             'success' => true,
             'order' => [
                 'number' => $order->number,
                 'status' => $order->status,
-                'currency' => $order->currency,
-                'total' => $order->total,
-                'tracking_number' => $order->tracking_number,
+                'status_label' => $order->status === 'completed' ? 'Delivered' : str($order->status)->replace('_', ' ')->title()->toString(),
+                'tracking_number' => $order->tracking_number ?? $order->tracking_code,
                 'tracking_url' => $order->tracking_url,
                 'shipped_at' => $order->shipped_at,
                 'created_at' => $order->created_at,
-                'items' => $order->items->map(function ($item) {
-                    return [
-                        'name' => $item->variant?->product?->name ?? 'Product',
-                        'quantity' => $item->quantity,
-                        'price' => $item->unit_price,
-                        'image' => $item->variant?->product?->primaryMedia?->url,
-                    ];
-                }),
-            ]
+                'timeline' => $order->trackingTimeline(),
+            ],
         ]);
     }
 }

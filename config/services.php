@@ -2,6 +2,8 @@
 
 return [
 
+    'order_scheduler_scope' => env('ORDER_SCHEDULER_SCOPE', 'all'),
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

@@ -3,13 +3,13 @@
 namespace App\Modules\Commerce\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Commerce\Models\Product;
-use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Http\Resources\ProductDetailResource;
+use App\Modules\Commerce\Http\Resources\ProductResource;
 use App\Modules\Commerce\Models\Brand;
+use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductColor;
 use App\Modules\Commerce\Models\ProductVariant;
-use App\Modules\Commerce\Http\Resources\ProductResource;
-use App\Modules\Commerce\Http\Resources\ProductDetailResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -25,12 +25,12 @@ class ProductApiController extends Controller
             ->withMin([
                 'variants as starting_price' => fn ($q) => $q->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
-            ->where('status', 'active');
+            ->where('status', 'active')->where('visibility', 'published');
 
         // Apply Filters
         // Apply Filters
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         if ($request->filled('brand')) {
@@ -50,12 +50,12 @@ class ProductApiController extends Controller
                 ->orWhereIn('id', $catArray)
                 ->pluck('id')->toArray();
 
-            if (!empty($matchedCats)) {
+            if (! empty($matchedCats)) {
                 // Get Level 2 children
                 $childIds = Category::whereIn('parent_id', $matchedCats)->pluck('id')->toArray();
                 // Get Level 3 children
-                $grandchildIds = !empty($childIds) ? Category::whereIn('parent_id', $childIds)->pluck('id')->toArray() : [];
-                
+                $grandchildIds = ! empty($childIds) ? Category::whereIn('parent_id', $childIds)->pluck('id')->toArray() : [];
+
                 $allCategoryIds = array_unique(array_merge($matchedCats, $childIds, $grandchildIds));
 
                 $query->whereIn('category_id', $allCategoryIds);
@@ -63,24 +63,24 @@ class ProductApiController extends Controller
         }
 
         if ($request->filled('color')) {
-            $query->whereHas('colors', fn($q) => $q->where('name', $request->color)->orWhere('hex_code', $request->color));
+            $query->whereHas('colors', fn ($q) => $q->where('name', $request->color)->orWhere('hex_code', $request->color));
         }
 
         if ($request->filled('size')) {
-            $query->whereHas('variants', fn($q) => $q->where('size', $request->size));
+            $query->whereHas('variants', fn ($q) => $q->where('size', $request->size));
         }
 
         if ($request->filled('min_price')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('single_piece_price', '>=', $request->min_price)
-                  ->orWhereHas('variants', fn($qv) => $qv->where('price', '>=', $request->min_price));
+                    ->orWhereHas('variants', fn ($qv) => $qv->where('price', '>=', $request->min_price));
             });
         }
 
         if ($request->filled('max_price')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('single_piece_price', '<=', $request->max_price)
-                  ->orWhereHas('variants', fn($qv) => $qv->where('price', '<=', $request->max_price));
+                    ->orWhereHas('variants', fn ($qv) => $qv->where('price', '<=', $request->max_price));
             });
         }
 
@@ -113,19 +113,22 @@ class ProductApiController extends Controller
     }
 
     /**
-     * Retrieve the latest 4 products to be showcased as new deals.
+     * Retrieve products to be showcased as deals or featured products.
      */
     public function deals(Request $request): AnonymousResourceCollection
     {
+        $limit = $request->integer('limit', $request->integer('per_page', 8));
+
         $products = Product::query()
-            ->with(['primaryMedia', 'category', 'brandRecord'])
+            ->with(['primaryMedia', 'category', 'brandRecord', 'colors', 'variants', 'options'])
             ->withMin([
                 'variants as starting_price' => fn ($query) => $query->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
             ->where('status', 'active')
+            ->where('visibility', 'published')
             ->orderByDesc('published_at')
             ->latest('id')
-            ->take(4)
+            ->take($limit)
             ->get();
 
         return ProductResource::collection($products);
@@ -150,6 +153,7 @@ class ProductApiController extends Controller
                 'variants.color',
             ])
             ->where('status', 'active')
+            ->where('visibility', 'published')
             ->where(function ($q) use ($product) {
                 $q->where('slug', $product)->orWhere('id', $product);
             })
@@ -157,7 +161,6 @@ class ProductApiController extends Controller
 
         return new ProductDetailResource($record);
     }
-
 
     /**
      * Retrieve all available filters (Categories, Brands, Colors, etc.)
@@ -171,7 +174,7 @@ class ProductApiController extends Controller
             ->whereNull('parent_id')
             ->where('is_active', true)
             ->with(['children' => function ($q) {
-                $q->where('is_active', true)->with(['children' => function($q2) {
+                $q->where('is_active', true)->with(['children' => function ($q2) {
                     $q2->where('is_active', true);
                 }]);
             }])
@@ -203,8 +206,8 @@ class ProductApiController extends Controller
                 'categories' => $categories,
                 'brands' => $brands,
                 'colors' => $colors,
-                'sizes' => $sizes
-            ]
+                'sizes' => $sizes,
+            ],
         ]);
     }
 }

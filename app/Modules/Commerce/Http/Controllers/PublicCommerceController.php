@@ -107,6 +107,7 @@ class PublicCommerceController extends Controller
             ], 'stock_quantity')
             ->where('workspace_id', $workspace->id)
             ->where('status', 'active')
+            ->where('visibility', 'published')
             ->orderByDesc('published_at')
             ->latest('id')
             ->paginate(12)
@@ -183,6 +184,7 @@ class PublicCommerceController extends Controller
             ->with('workspace')
             ->where('slug', $product)
             ->where('status', 'active')
+            ->where('visibility', 'published')
             ->limit(2)
             ->get();
 
@@ -236,7 +238,7 @@ class PublicCommerceController extends Controller
         $isOwnerOrStaff = auth()->check() && (auth()->user()->workspaces()->where('workspace_id', $workspace->id)->exists() || (bool) (auth()->user()->is_superadmin ?? false));
 
         if (! $isOwnerOrStaff) {
-            $query->where('status', 'active');
+            $query->where('status', 'active')->where('visibility', 'published');
         }
 
         $record = $query->firstOrFail();

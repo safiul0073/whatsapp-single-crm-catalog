@@ -122,6 +122,7 @@ export function closeModal(elementOrId) {
   if (modal) {
     modal.classList.remove("active");
     modal.classList.remove("is-open");
+    document.dispatchEvent(new CustomEvent('modal:closed', { detail: { id: modal.id, modal } }));
     // Wait for transition to finish before hiding
     setTimeout(() => {
       modal.style.display = "none";
@@ -136,7 +137,7 @@ export function closeModal(elementOrId) {
  * Closes all active modals.
  */
 export function closeAllModals() {
-  document.querySelectorAll(".modal.active").forEach((modal) => {
+  document.querySelectorAll(".modal.active, .modal.is-open").forEach((modal) => {
     closeModal(modal);
   });
 }
@@ -222,3 +223,9 @@ document.addEventListener("keydown", (e) => {
     closeAllModals();
   }
 });
+
+// Expose on window for global and Alpine access
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.closeAllModals = closeAllModals;
+

@@ -44,7 +44,6 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     { attribute: 'MOQ', value: '40 Set' },
     { attribute: 'Shipping', value: 'USA & Canada (6-10 Working Days)' },
   ],
-  variantPresets: config.variantPresets || [],
   basePrice: config.basePrice || 0,
   productSlug: config.productSlug || 'PROD',
   customSize: '',
@@ -57,6 +56,17 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
 
   // Track which color's image management modal is open
   editingColorIndex: null,
+
+  // Gallery Preview & Color Picker State
+  selectedGalleryPreviewId: null,
+  galleryColorPickerEnabled: false,
+  colorModalEyedropperEnabled: false,
+  activeEyedropperRow: null,
+  activeInspectorImage: null,
+  extractedPalette: [],
+  paletteLoading: false,
+  autoCopyOnHover: false,
+  inspectAnyImageMode: false,
 
   init() {
     'use strict';
@@ -82,6 +92,34 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
         }
       });
     }
+
+    // Set initial inspector image from gallery if available
+    if (this.gallery.length > 0) {
+      const firstImg = this.gallery.find((g) => g.type === 'image') || this.gallery[0];
+      if (firstImg && firstImg.url) {
+        this.selectInspectorImage(firstImg.url);
+      }
+    }
+
+    // Listen for custom color-picked event (from loupe or screen eyedropper)
+    window.addEventListener('color-picked', (e) => {
+      const { hex, name } = e.detail || {};
+      if (hex) {
+        this.applyPickedColor(hex, name);
+      }
+      // Automatically disable color selection
+      this.galleryColorPickerEnabled = false;
+      this.colorModalEyedropperEnabled = false;
+      this.activeEyedropperRow = null;
+      if (window.ImageColorPicker?.loupe) {
+        window.ImageColorPicker.loupe.hide();
+      }
+      // Automatically close all modals
+      this.editingColorIndex = null;
+      if (typeof window.closeAllModals === 'function') {
+        window.closeAllModals();
+      }
+    });
   },
 
   openMediaPicker() {
@@ -172,9 +210,17 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
       
       // Check if this exact combination of media + color already exists
       const exists = this.gallery.some(g => String(g.id) === String(item.id) && String(g.color_id || '') === String(cId || ''));
-      
       if (exists) {
         return;
+      }
+
+      // If assigning to a color, and this item is already in gallery unassigned, assign it
+      if (cId) {
+        const generalItem = this.gallery.find(g => String(g.id) === String(item.id) && !g.color_id);
+        if (generalItem) {
+          generalItem.color_id = cId;
+          return;
+        }
       }
       
       const isVideo = item.type === 'video';
@@ -334,8 +380,145 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
         }
       });
     }
+    if (this.activeEyedropperRow === index) {
+      this.cancelRowEyedropper();
+    }
     this.colors.splice(index, 1);
     this.dirty = true;
+  },
+
+  getSelectedGalleryImage() {
+    if (this.selectedGalleryPreviewId) {
+      const found = this.gallery.find((g) => String(g.id) === String(this.selectedGalleryPreviewId));
+      if (found) return found;
+    }
+    return this.gallery.find((g) => g.is_primary) || this.gallery[0] || null;
+  },
+
+  toggleGalleryColorPicker() {
+    this.galleryColorPickerEnabled = !this.galleryColorPickerEnabled;
+    if (!this.galleryColorPickerEnabled && window.ImageColorPicker?.loupe) {
+      window.ImageColorPicker.loupe.hide();
+    }
+    if (window.showToast) {
+      window.showToast(
+        this.galleryColorPickerEnabled ? 'Color Picker Enabled' : 'Color Picker Disabled',
+        this.galleryColorPickerEnabled ? 'Hover over any image and click to copy its color code!' : 'Color picker disabled.',
+        this.galleryColorPickerEnabled ? 'success' : 'info'
+      );
+    }
+  },
+
+  startRowEyedropper(index) {
+    if (this.activeEyedropperRow === index) {
+      this.cancelRowEyedropper();
+      return;
+    }
+    this.activeEyedropperRow = index;
+    // Activate global image color inspection so clicking any image applies to this row
+    if (window.ImageColorPicker) {
+      window.ImageColorPicker.setGlobalInspectMode(true);
+    }
+    if (window.showToast) {
+      const rowName = this.colors[index]?.name || `Color #${index + 1}`;
+      window.showToast('Pick Color for ' + rowName, 'Hover over any image below or on this page and click to select the color!', 'info');
+    }
+  },
+
+  cancelRowEyedropper() {
+    this.activeEyedropperRow = null;
+    if (!this.inspectAnyImageMode && window.ImageColorPicker) {
+      window.ImageColorPicker.setGlobalInspectMode(false);
+    }
+  },
+
+  applyPickedColor(hex, name = '') {
+    if (this.activeEyedropperRow !== null && this.colors[this.activeEyedropperRow]) {
+      const col = this.colors[this.activeEyedropperRow];
+      col.hex_code = hex;
+      if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
+        col.name = name;
+      }
+      this.dirty = true;
+      if (window.showToast) {
+        window.showToast('Color Assigned', `Updated ${col.name || 'row'} to ${hex}!`, 'success');
+      }
+      this.cancelRowEyedropper();
+    } else if (this.editingColorIndex !== null && this.colors[this.editingColorIndex]) {
+      const col = this.colors[this.editingColorIndex];
+      col.hex_code = hex;
+      if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
+        col.name = name;
+      }
+      this.dirty = true;
+    }
+  },
+
+  async selectInspectorImage(url) {
+    this.activeInspectorImage = url;
+    this.paletteLoading = true;
+    this.extractedPalette = [];
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+
+    try {
+      if (window.ImageColorPicker?.extractImagePalette) {
+        const palette = await window.ImageColorPicker.extractImagePalette(img, 6);
+        this.extractedPalette = palette;
+      }
+    } catch (e) {
+      console.warn('Failed to extract palette:', e);
+    } finally {
+      this.paletteLoading = false;
+    }
+  },
+
+  toggleAutoCopyOnHover() {
+    this.autoCopyOnHover = !this.autoCopyOnHover;
+    window.__autoCopyColorOnHover = this.autoCopyOnHover;
+    if (window.showToast) {
+      window.showToast(
+        this.autoCopyOnHover ? 'Auto-Copy on Hover: ON' : 'Auto-Copy on Hover: OFF',
+        this.autoCopyOnHover ? 'Hovering on any image will automatically copy the color code (no need to click)!' : 'Now click to copy color codes.',
+        'info'
+      );
+    }
+  },
+
+  toggleInspectAnyImage() {
+    this.inspectAnyImageMode = !this.inspectAnyImageMode;
+    if (window.ImageColorPicker) {
+      window.ImageColorPicker.setGlobalInspectMode(this.inspectAnyImageMode);
+    }
+  },
+
+  openScreenEyeDropper(rowIndex = null) {
+    if (rowIndex !== null) {
+      this.activeEyedropperRow = rowIndex;
+    }
+    if (window.ImageColorPicker?.openNativeEyeDropper) {
+      window.ImageColorPicker.openNativeEyeDropper().then((res) => {
+        if (res && res.hex) {
+          this.applyPickedColor(res.hex, res.name);
+        }
+      });
+    }
+  },
+
+  addColorFromExtracted(hex, name = '') {
+    this.colors.push({
+      id: '',
+      name: name || 'Extracted Shade',
+      hex_code: hex,
+      color_family: '',
+      swatch_media_id: ''
+    });
+    this.dirty = true;
+    if (window.showToast) {
+      window.showToast('Color Added', `Added ${name || hex} to your product colors!`, 'success');
+    }
   },
 
   openSizeModal() {
@@ -345,16 +528,42 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.showSizeModal = true;
   },
 
+  togglePresetSelection(preset) {
+    const index = this.modalSelectedPresets.findIndex(p => 
+      (p.id != null && preset.id != null) ? p.id === preset.id : p.name === preset.name
+    );
+    if (index > -1) {
+      this.modalSelectedPresets.splice(index, 1);
+    } else {
+      this.modalSelectedPresets.push(preset);
+    }
+  },
+
+  isPresetSelected(preset) {
+    return this.modalSelectedPresets.some(p => 
+      (p.id != null && preset.id != null) ? p.id === preset.id : p.name === preset.name
+    );
+  },
+
   applyModalSelection() {
     this.modalSelectedPresets.forEach(preset => {
-      // Check if size already exists
-      if (!this.sizes.some(s => s.value.toLowerCase() === preset.name.toLowerCase())) {
-        this.sizes.push({
-          value: preset.name,
-          weight: preset.weight ? parseFloat(preset.weight) : null,
-          weight_unit: preset.weight_unit || 'kg'
-        });
+      let values = preset.values;
+      if (typeof values === 'string') {
+        try { values = JSON.parse(values); } catch (e) { values = null; }
       }
+      const valuesToAdd = (Array.isArray(values) && values.length > 1)
+        ? values
+        : [preset.name];
+
+      valuesToAdd.forEach(val => {
+        if (val && !this.sizes.some(s => s.value.toLowerCase() === String(val).toLowerCase())) {
+          this.sizes.push({
+            value: String(val),
+            weight: preset.weight != null && preset.weight !== '' ? parseFloat(preset.weight) : null,
+            weight_unit: preset.weight_unit || 'kg'
+          });
+        }
+      });
     });
     this.showSizeModal = false;
     this.dirty = true;
@@ -385,7 +594,9 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
       this.variantPresets.push(newPreset);
       
       // Auto-select it
-      this.modalSelectedPresets.push(newPreset);
+      if (!this.isPresetSelected(newPreset)) {
+        this.modalSelectedPresets.push(newPreset);
+      }
       
       // Reset form
       this.modalNewSize = { name: '', weight: '', weight_unit: 'kg' };

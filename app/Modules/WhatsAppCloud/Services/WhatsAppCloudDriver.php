@@ -4,6 +4,7 @@ namespace App\Modules\WhatsAppCloud\Services;
 
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\Commerce\Services\OrderIntakeService;
+use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
@@ -61,6 +62,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             'ok' => $response->successful(),
             'provider' => $this->provider(),
             'provider_message_id' => data_get($json, 'messages.0.id'),
+            'http_status' => $response->status(),
             'status' => $response->successful() ? MessageStatus::Sent->value : MessageStatus::Failed->value,
             'error_code' => data_get($json, 'error.code'),
             'error' => data_get($json, 'error.error_user_msg') ?: data_get($json, 'error.error_data.details') ?: data_get($json, 'error.message'),
@@ -543,6 +545,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
     protected function persistStatus(ChannelAccount $account, array $status): void
     {
+        app(WhatsAppCustomerAuthService::class)->recordWelcomeDelivery($account, $status);
         Message::query()
             ->where('workspace_id', $account->workspace_id)
             ->where(function ($query) use ($status): void {
@@ -670,6 +673,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         }
 
         foreach ($this->statuses($payload) as $status) {
+            app(WhatsAppCustomerAuthService::class)->recordWelcomeDelivery($account, $status);
             $events[] = [
                 'type' => 'status',
                 'provider_message_id' => $status['id'] ?? null,

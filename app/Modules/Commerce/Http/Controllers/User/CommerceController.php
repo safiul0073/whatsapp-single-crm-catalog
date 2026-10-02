@@ -29,6 +29,7 @@ use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\VariantPreset;
 use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogMessageService;
@@ -109,8 +110,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 2);
-        $this->products->updateDetails($product, $request->validated());
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateDetails($product, $request->validated());
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
     }
@@ -119,11 +122,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 4);
-        if ($request->has('colors')) {
-            $this->products->syncColors($product, $request->input('colors', []));
-        }
-        $this->products->updateOptions($product, $request->validated('options'));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateOptions($product, $request->validated('options'), $request->validated('colors'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Sizes and options saved.'));
     }
@@ -132,8 +134,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 3);
-        $this->products->updateGallery($product, $request->validated('media'), $request->input('colors', []));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateGallery($product, $request->validated('media'), $request->validated('colors'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Photos saved.'));
     }
@@ -149,11 +153,10 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $product->workspace_id);
         $nextStep = $request->integer('next_step', 6);
-        if ($request->has('tier_prices')) {
-            $this->products->syncTierPrices($product, $request->input('tier_prices', []));
-        }
-        $this->products->updateVariants($product, $request->validated('variants'));
-        $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
+            $this->products->updateVariants($product, $request->validated('variants'), $request->validated('tier_prices'));
+            $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
+        });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Pricing, MOQ and inventory saved.'));
     }
@@ -199,7 +202,14 @@ class CommerceController extends Controller implements HasMiddleware
     public function storeCategory(CategoryRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        Category::query()->create(['workspace_id' => $workspace->id, 'parent_id' => $request->integer('parent_id') ?: null, 'name' => $request->string('name'), 'slug' => Str::slug($request->string('name')), 'is_active' => $request->boolean('is_active', true)]);
+        Category::query()->create([
+            'workspace_id' => $workspace->id,
+            'parent_id' => $request->integer('parent_id') ?: null,
+            'name' => $request->string('name'),
+            'slug' => Str::slug($request->string('name')),
+            'image' => $request->input('image'),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
 
         return back()->with('success', __('Category created.'));
     }
@@ -231,12 +241,16 @@ class CommerceController extends Controller implements HasMiddleware
     public function updateCategory(CategoryRequest $request, Category $category): RedirectResponse
     {
         $this->assertWorkspace($request, $category->workspace_id);
-        $category->update([
+        $data = [
             'parent_id' => $request->integer('parent_id') ?: null,
             'name' => $request->string('name')->toString(),
             'slug' => Str::slug($request->string('name')->toString()),
             'is_active' => $request->boolean('is_active'),
-        ]);
+        ];
+        if ($request->has('image')) {
+            $data['image'] = $request->input('image');
+        }
+        $category->update($data);
 
         return back()->with('success', __('Category updated.'));
     }
@@ -476,14 +490,14 @@ class CommerceController extends Controller implements HasMiddleware
         $catalogs = Catalog::query()->with(['channelAccount', 'itemSyncs', 'syncRuns' => fn ($query) => $query->latest()->limit(5)])->where('workspace_id', $workspace->id)->get();
         $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->diagnose($catalog, true)])->all();
 
-        return view('commerce::user.catalog', ['catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
+        return view('commerce::user.catalog', ['currency' => StoreOrderSetting::catalogCurrency($workspace->id), 'catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
     }
 
     public function storeCatalog(CatalogRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
         $channel = ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->findOrFail($request->integer('channel_account_id'));
-        $currency = strtoupper($request->string('currency', 'USD')->toString());
+        $currency = StoreOrderSetting::forWorkspace($workspace->id)->currency;
         Catalog::query()->updateOrCreate(['workspace_id' => $workspace->id, 'channel_account_id' => $channel->id], ['meta_catalog_id' => $request->string('meta_catalog_id')->toString(), 'sync_mode' => $request->string('sync_mode')->toString(), 'currency' => $currency, 'readiness_state' => 'checking', 'feed_token' => Catalog::query()->where('channel_account_id', $channel->id)->value('feed_token') ?: Str::random(64), 'is_active' => $request->boolean('is_active', true)]);
         $workspace->update(['settings' => array_replace_recursive($workspace->settings ?? [], ['commerce' => ['shop_enabled' => $request->boolean('shop_enabled', true), 'currency' => $currency, 'storefront_title' => $request->string('storefront_title', $workspace->name)->toString(), 'storefront_description' => $request->string('storefront_description', 'Browse products and order directly on WhatsApp.')->toString(), 'default_channel_account_id' => $channel->id]])]);
 
@@ -543,7 +557,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        return view('commerce::user.order', ['order' => $order->load(['items', 'contact', 'conversation'])]);
+        return view('commerce::user.order', ['order' => $order->load(['items', 'groups', 'boxes.contents.item', 'contact', 'conversation', 'events', 'shipment'])]);
     }
 
     public function quote(QuoteOrderRequest $request, Order $order): RedirectResponse

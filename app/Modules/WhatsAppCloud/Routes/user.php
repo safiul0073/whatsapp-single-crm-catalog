@@ -1,10 +1,12 @@
 <?php
 
+use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\WhatsAppCloud\Http\Controllers\ChannelSetupController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['can:channels.manage'])->group(function () {
     Route::get('channel-setup', [ChannelSetupController::class, 'index'])->name('whatsapp-cloud.channel-setup');
+    Route::get('channel-setup/customer-login', [OrderManagementController::class, 'customerAuthSettings'])->middleware('can:commerce.manage')->name('whatsapp-cloud.customer-login');
     Route::post('channel-setup', [ChannelSetupController::class, 'store'])->name('whatsapp-cloud.channel-setup.store');
     Route::post('channel-setup/generic', [ChannelSetupController::class, 'storeGeneric'])->name('whatsapp-cloud.channel-setup.store-generic');
     Route::post('channel-setup/embedded', [ChannelSetupController::class, 'embedded'])->name('whatsapp-cloud.channel-setup.embedded');

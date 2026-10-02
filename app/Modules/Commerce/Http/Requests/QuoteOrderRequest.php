@@ -21,7 +21,7 @@ class QuoteOrderRequest extends FormRequest
             'city' => $this->input('shipping_city'),
             'state' => $this->input('shipping_state'),
             'postal_code' => $this->input('shipping_postal_code'),
-            'country' => 'US',
+            'country' => $this->input('shipping_country'),
         ]]);
     }
 
@@ -33,9 +33,9 @@ class QuoteOrderRequest extends FormRequest
             'shipping_address.line1' => ['required', 'string', 'max:255'],
             'shipping_address.line2' => ['nullable', 'string', 'max:255'],
             'shipping_address.city' => ['required', 'string', 'max:120'],
-            'shipping_address.state' => ['required', 'string', 'size:2'],
-            'shipping_address.postal_code' => ['required', 'regex:/^\d{5}(-\d{4})?$/'],
-            'shipping_address.country' => ['required', 'in:US'],
+            'shipping_address.state' => ['nullable', 'string', 'max:120'],
+            'shipping_address.postal_code' => ['nullable', 'string', 'max:30'],
+            'shipping_address.country' => ['required', 'string', 'size:2'],
             'shipping_amount' => ['required', 'numeric', 'min:0'],
             'delivery_method' => ['nullable', 'string', 'max:120'],
             'delivery_notes' => ['nullable', 'string', 'max:2000'],

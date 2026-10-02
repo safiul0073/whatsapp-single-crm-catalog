@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,7 +17,7 @@ class CatalogFeedService
         $variants = $this->activeVariants($catalog->workspace_id);
         $catalog->forceFill(['last_item_count' => $variants->count(), 'last_successful_at' => now(), 'last_sync_status' => 'completed', 'last_sync_summary' => ['successful' => $variants->count(), 'failed' => 0], 'last_error' => null])->save();
 
-        $currency = strtoupper((string) ($catalog->currency ?: 'USD'));
+        $currency = StoreOrderSetting::catalogCurrency($catalog->workspace_id);
 
         return response()->streamDownload(function () use ($variants, $currency): void {
             $stream = fopen('php://output', 'w');
@@ -54,9 +55,12 @@ class CatalogFeedService
         $primary = $variant->media?->url ?? $variant->product->primaryMedia?->url;
         $additional = $variant->product->gallery
             ->where('media_type', 'image')
+            ->filter(fn ($item): bool => $variant->color_id === null || (int) $item->color_id === (int) $variant->color_id)
+            ->sortBy('position')
             ->reject(fn ($item): bool => $item->media?->url === $primary)
             ->map(fn ($item): ?string => $item->media?->url)
             ->filter()
+            ->unique()
             ->take(9)
             ->values()
             ->all();
@@ -68,7 +72,7 @@ class CatalogFeedService
             'availability' => $variant->stock_quantity > 0 && $variant->status === 'active' ? 'in stock' : 'out of stock',
             'condition' => $variant->product->condition,
             'price' => (int) round((float) $variant->price * 100),
-            'currency' => $variant->product->workspace?->settings['commerce']['currency'] ?? 'USD',
+            'currency' => StoreOrderSetting::catalogCurrency($variant->workspace_id),
             'url' => URL::route('commerce.products.public', ['workspace' => $variant->product->workspace->slug, 'product' => $variant->product->slug]),
             'image_url' => $primary,
             'additional_image_urls' => $additional,

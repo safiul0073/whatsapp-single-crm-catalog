@@ -21,7 +21,7 @@ class WhatsAppCloudClient
 
     public function sendMessage(string $phoneNumberId, string $token, array $payload): Response
     {
-        return Http::withToken($token)->post($this->endpoint($phoneNumberId, 'messages'), $payload);
+        return Http::withToken($token)->connectTimeout(3)->timeout(8)->post($this->endpoint($phoneNumberId, 'messages'), $payload);
     }
 
     public function submitTemplate(string $businessAccountId, string $token, array $payload): Response

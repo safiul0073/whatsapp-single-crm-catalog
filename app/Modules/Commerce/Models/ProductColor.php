@@ -56,12 +56,16 @@ class ProductColor extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        if (filled($this->hex_code)) {
-            return strtoupper($this->hex_code);
-        }
-
         if (filled($this->name)) {
             return $this->name;
+        }
+
+        if (filled($this->color_family) && filled($this->hex_code)) {
+            return "{$this->color_family} ({$this->hex_code})";
+        }
+
+        if (filled($this->hex_code)) {
+            return strtoupper($this->hex_code);
         }
 
         if (filled($this->color_family)) {

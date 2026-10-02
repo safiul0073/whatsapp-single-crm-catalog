@@ -1,6 +1,10 @@
 <?php
 
+use App\Modules\Commerce\Http\Controllers\Api\OrderApiController;
 use App\Modules\Commerce\Http\Controllers\Api\ProductApiController;
+use App\Modules\Commerce\Http\Controllers\Api\StoreOrderController;
+use App\Modules\Commerce\Http\Controllers\Api\WhatsAppCustomerAuthController;
+use App\Modules\Commerce\Http\Middleware\AuthenticateStoreIntegration;
 use Illuminate\Support\Facades\Route;
 
 Route::get('commerce/filters', [ProductApiController::class, 'filters'])->name('commerce.api.filters');
@@ -8,5 +12,21 @@ Route::get('commerce/products', [ProductApiController::class, 'index'])->name('c
 Route::get('commerce/products/deals', [ProductApiController::class, 'deals'])->name('commerce.api.products.deals');
 Route::get('commerce/products/{product}', [ProductApiController::class, 'show'])->name('commerce.api.products.show');
 
-use App\Modules\Commerce\Http\Controllers\Api\OrderApiController;
-Route::get('commerce/track/{trackingNumber}', [OrderApiController::class, 'trackOrder'])->name('commerce.api.orders.track');
+Route::get('commerce/track/{trackingNumber}', [OrderApiController::class, 'trackOrder'])
+    ->middleware('throttle:60,1')->name('commerce.api.orders.track');
+
+Route::prefix('commerce/store')->middleware([AuthenticateStoreIntegration::class, 'throttle:120,1'])->group(function (): void {
+    $controller = StoreOrderController::class;
+    Route::get('settings', [$controller, 'settings']);
+    Route::post('orders/preview', [$controller, 'preview']);
+    Route::post('orders', [$controller, 'store']);
+    Route::get('orders', [$controller, 'history']);
+    Route::get('orders/{reference}', [$controller, 'show']);
+    Route::post('orders/{reference}/cancel', [$controller, 'cancel']);
+    Route::post('orders/{reference}/evidence', [$controller, 'evidence']);
+    $auth = WhatsAppCustomerAuthController::class;
+    Route::get('auth/whatsapp/status', [$auth, 'status']);
+    Route::post('auth/whatsapp/challenges', [$auth, 'challenge']);
+    Route::post('auth/whatsapp/challenges/{challenge}/verify', [$auth, 'verify']);
+    Route::post('auth/whatsapp/registrations', [$auth, 'register']);
+});

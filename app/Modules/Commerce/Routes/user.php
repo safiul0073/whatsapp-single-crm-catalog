@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
+use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
@@ -45,6 +46,22 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog/{catalog}/verify-access', [CommerceController::class, 'verifyCatalogAccess'])->name('catalog.verify-access');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->name('orders.index');
+    Route::middleware('permission:commerce.manage')->group(function (): void {
+        $controller = OrderManagementController::class;
+        Route::get('orders/create', [$controller, 'create'])->name('orders.create');
+        Route::post('orders/preview', [$controller, 'preview'])->name('orders.preview');
+        Route::post('orders', [$controller, 'store'])->name('orders.store');
+        Route::get('order-settings', [$controller, 'settings'])->name('orders.settings');
+        Route::put('order-settings', [$controller, 'updateSettings'])->name('orders.settings.update');
+        Route::put('order-settings/customer-auth', [$controller, 'updateAuthSettings'])->name('orders.settings.customer-auth');
+        Route::post('order-settings/token', [$controller, 'rotateToken'])->name('orders.token');
+        Route::get('orders/{order}/complete', [$controller, 'create'])->name('orders.complete.form');
+        Route::post('orders/{order}/complete', [$controller, 'complete'])->name('orders.complete');
+        Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');
+        Route::put('orders/{order}/boxes/{box}/packed', [$controller, 'packed'])->name('orders.boxes.packed');
+    });
+    Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.view')->name('orders.packing-slip');
+    Route::get('orders/{order}/receipt', [OrderManagementController::class, 'receipt'])->middleware('permission:commerce.manage')->name('orders.receipt');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->name('orders.show');
     Route::put('orders/{order}/quote', [CommerceController::class, 'quote'])->name('orders.quote');
     Route::put('orders/{order}/status', [CommerceController::class, 'transition'])->name('orders.transition');

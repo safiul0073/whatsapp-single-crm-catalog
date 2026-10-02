@@ -41,7 +41,7 @@ class ProductService
     public function createDraft(int $workspaceId, array $data): Product
     {
         return DB::transaction(function () use ($workspaceId, $data): Product {
-            $product = Product::query()->create($this->productData($workspaceId, $data) + ['status' => 'draft', 'wizard_step' => 2]);
+            $product = Product::query()->create(array_replace($this->productData($workspaceId, $data), ['status' => 'draft', 'wizard_step' => 2]));
             $this->syncColors($product, $data['colors'] ?? []);
             $this->syncTierPrices($product, $data['tier_prices'] ?? []);
             $this->audit->log($product, 'created');
@@ -54,11 +54,23 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data): Product {
             $product->update($this->productData($product->workspace_id, $data, $product));
-            $this->syncColors($product, $data['colors'] ?? []);
-            $this->syncOptions($product, $data['options'] ?? []);
-            $this->syncVariants($product, $data['variants'] ?? []);
-            $this->syncTierPrices($product, $data['tier_prices'] ?? []);
+            if (array_key_exists('colors', $data)) {
+                $this->syncColors($product, $data['colors']);
+            }
+            if (array_key_exists('options', $data)) {
+                $this->syncOptions($product, $data['options']);
+            }
+            if (array_key_exists('variants', $data)) {
+                $this->syncVariants($product, $data['variants']);
+            }
+            if (array_key_exists('tier_prices', $data)) {
+                $this->syncTierPrices($product, $data['tier_prices']);
+            }
             $this->audit->log($product, 'updated');
+
+            if (($data['status'] ?? null) === 'active') {
+                $this->publish($product, 'active');
+            }
 
             return $this->loadProduct($product);
         });
@@ -68,17 +80,15 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data): Product {
             $product->update($this->productData($product->workspace_id, $data, $product) + ['wizard_step' => max(2, $product->wizard_step)]);
-            if (isset($data['colors'])) {
+            if (array_key_exists('colors', $data)) {
                 $this->syncColors($product, $data['colors']);
             }
-            if (isset($data['tier_prices'])) {
+            if (array_key_exists('tier_prices', $data)) {
                 $this->syncTierPrices($product, $data['tier_prices']);
             }
             if (isset($data['default_stock'])) {
                 $stock = (int) $data['default_stock'];
-                if ($product->variants()->exists()) {
-                    $product->variants()->update(['stock_quantity' => $stock]);
-                } else {
+                if ($product->options()->exists()) {
                     $variants = $this->variantPreview($product);
                     if (! empty($variants)) {
                         foreach ($variants as &$v) {
@@ -86,23 +96,48 @@ class ProductService
                         }
                         $this->syncVariants($product, $variants);
                     }
+                } else {
+                    $product->variants()->update(['stock_quantity' => $stock]);
                 }
             }
             $this->audit->log($product, 'updated');
+
+            if (($data['status'] ?? null) === 'active') {
+                $this->publish($product, 'active');
+            }
 
             return $this->loadProduct($product);
         });
     }
 
-    public function updateGallery(Product $product, array $items, array $colors = []): Product
+    public function updateGallery(Product $product, array $items, ?array $colors = null): Product
     {
         return DB::transaction(function () use ($product, $items, $colors): Product {
+            // Sync colors first to ensure their IDs exist and get mapping for any index-based colors
+            $colorMap = $colors !== null ? $this->syncColors($product, $colors) : [];
+            if ($colors !== null) {
+                $option = $product->options()->firstOrCreate(['code' => 'color'], ['workspace_id' => $product->workspace_id, 'name' => 'Color', 'position' => 1]);
+                $option->values()->delete();
+                foreach ($product->colors()->orderBy('position')->get() as $position => $color) {
+                    $option->values()->create(['workspace_id' => $product->workspace_id, 'value' => $color->name ?: $color->hex_code, 'position' => $position]);
+                }
+            }
+
             $retained = [];
             $primaryMediaId = null;
 
             foreach (array_values($items) as $position => $item) {
-                $record = Media::query()->where('uploaded_by', $product->workspace->owner_id ?? auth()->id())->whereKey($item['id'])->firstOrFail();
-                $colorId = ((int) ($item['color_id'] ?? 0)) > 0 ? (int) $item['color_id'] : null;
+                $record = Media::query()->where('uploaded_by', auth()->id() ?? $product->workspace->owner_id)->whereKey($item['id'])->firstOrFail();
+
+                $rawColorId = $item['color_id'] ?? null;
+                $colorId = null;
+                if (filled($rawColorId)) {
+                    if (isset($colorMap[$rawColorId])) {
+                        $colorId = $colorMap[$rawColorId];
+                    } elseif (((int) $rawColorId) > 0 && $product->colors()->whereKey((int) $rawColorId)->exists()) {
+                        $colorId = (int) $rawColorId;
+                    }
+                }
 
                 $galleryItem = ProductMedia::query()->updateOrCreate(
                     ['product_id' => $product->id, 'media_id' => $record->id, 'color_id' => $colorId],
@@ -121,10 +156,6 @@ class ProductService
                 }
             }
 
-            if (! empty($colors)) {
-                $this->syncColors($product, $colors);
-            }
-
             $product->gallery()->whereNotIn('id', $retained ?: [0])->delete();
 
             // Set overall primary media fallback
@@ -140,9 +171,7 @@ class ProductService
             foreach ($product->colors()->get() as $color) {
                 $colorPrimary = $color->gallery()->where('is_primary', true)->first()?->media_id
                     ?? $color->gallery()->first()?->media_id;
-                if ($colorPrimary) {
-                    $color->update(['swatch_media_id' => $colorPrimary]);
-                }
+                $color->update(['swatch_media_id' => $colorPrimary]);
             }
 
             $product->update(['primary_media_id' => $primaryMediaId, 'wizard_step' => max(4, $product->wizard_step)]);
@@ -152,9 +181,15 @@ class ProductService
         });
     }
 
-    public function updateOptions(Product $product, array $options): Product
+    public function updateOptions(Product $product, array $options, ?array $colors = null): Product
     {
-        return DB::transaction(function () use ($product, $options): Product {
+        return DB::transaction(function () use ($product, $options, $colors): Product {
+            if ($colors !== null) {
+                $this->syncColors($product, $colors);
+            }
+            if (! collect($options)->contains('code', 'color') && $product->colors()->exists()) {
+                $options[] = ['name' => 'Color', 'code' => 'color', 'values' => $product->colors()->orderBy('position')->pluck('name')->all()];
+            }
             $this->syncOptions($product, $options);
             $product->update(['wizard_step' => max(3, $product->wizard_step)]);
             $this->audit->logCustom('commerce.product.options_updated', ['product_id' => $product->id]);
@@ -165,7 +200,7 @@ class ProductService
 
     public function variantPreview(Product $product): array
     {
-        $product->loadMissing(['options.values', 'variants', 'colors']);
+        $product->load(['options.values', 'variants', 'colors']);
         $combinations = [[]];
 
         foreach ($product->options as $option) {
@@ -229,11 +264,14 @@ class ProductService
         })->values()->all();
     }
 
-    public function updateVariants(Product $product, array $variants): Product
+    public function updateVariants(Product $product, array $variants, ?array $tierPrices = null): Product
     {
-        return DB::transaction(function () use ($product, $variants): Product {
+        return DB::transaction(function () use ($product, $variants, $tierPrices): Product {
+            if ($tierPrices !== null) {
+                $this->syncTierPrices($product, $tierPrices);
+            }
             $this->syncVariants($product, $variants);
-            $product->update(['wizard_step' => 5]);
+            $product->update(['wizard_step' => max(5, $product->wizard_step)]);
             $this->audit->logCustom('commerce.product.variants_updated', ['product_id' => $product->id, 'variant_count' => count($variants)]);
 
             return $this->loadProduct($product);
@@ -249,40 +287,46 @@ class ProductService
             }
         }
 
-        $product->update(['status' => $status, 'published_at' => $status === 'active' ? ($product->published_at ?? now()) : $product->published_at, 'wizard_step' => 5]);
+        $product->update(['status' => $status, 'published_at' => $status === 'active' ? ($product->published_at ?? now()) : $product->published_at, 'wizard_step' => max(5, $product->wizard_step)]);
         $this->audit->logCustom('commerce.product.status_changed', ['product_id' => $product->id, 'status' => $status]);
 
         return $this->loadProduct($product);
     }
 
-    public function syncColors(Product $product, array $colors): void
+    public function syncColors(Product $product, array $colors): array
     {
         $retained = [];
-        foreach (array_values($colors) as $position => $colorData) {
-            if (blank($colorData['name'] ?? null) && blank($colorData['hex_code'] ?? null)) {
-                continue;
-            }
+        $colorIndexMap = [];
 
+        foreach (array_values($colors) as $position => $colorData) {
             $color = filled($colorData['id'] ?? null)
                 ? ProductColor::query()->where('workspace_id', $product->workspace_id)->where('product_id', $product->id)->whereKey($colorData['id'])->firstOrNew()
                 : new ProductColor;
 
+            if (! $color->exists && blank($colorData['name'] ?? null) && blank($colorData['hex_code'] ?? null)) {
+                continue;
+            }
+
             $color->fill([
                 'workspace_id' => $product->workspace_id,
                 'product_id' => $product->id,
-                'swatch_media_id' => $colorData['swatch_media_id'] ?? null,
-                'name' => $colorData['name'] ?? null,
-                'hex_code' => $colorData['hex_code'] ?? null,
-                'color_family' => $colorData['color_family'] ?? null,
+                'swatch_media_id' => array_key_exists('swatch_media_id', $colorData) ? $colorData['swatch_media_id'] : $color->swatch_media_id,
+                'name' => array_key_exists('name', $colorData) ? $colorData['name'] : $color->name,
+                'hex_code' => array_key_exists('hex_code', $colorData) ? $colorData['hex_code'] : $color->hex_code,
+                'color_family' => array_key_exists('color_family', $colorData) ? $colorData['color_family'] : $color->color_family,
                 'position' => $position,
             ])->save();
 
             $retained[] = $color->id;
+            $colorIndexMap['idx_'.$position] = $color->id;
+            if (filled($colorData['id'] ?? null)) {
+                $colorIndexMap[(string) $colorData['id']] = $color->id;
+            }
         }
 
-        if (! empty($retained)) {
-            $product->colors()->whereNotIn('id', $retained)->delete();
-        }
+        $product->colors()->whereNotIn('id', $retained)->delete();
+
+        return $colorIndexMap;
     }
 
     public function syncTierPrices(Product $product, array $tierPrices): void
@@ -312,9 +356,7 @@ class ProductService
             $retained[] = $tier->id;
         }
 
-        if (! empty($retained)) {
-            $product->tierPrices()->whereNotIn('id', $retained)->delete();
-        }
+        $product->tierPrices()->whereNotIn('id', $retained)->delete();
     }
 
     protected function syncOptions(Product $product, array $options): void
@@ -362,7 +404,7 @@ class ProductService
 
             $variant = filled($variantData['id'] ?? null)
                 ? ProductVariant::query()->where('workspace_id', $product->workspace_id)->where('product_id', $product->id)->whereKey($variantData['id'])->firstOrNew()
-                : (ProductVariant::query()->where('workspace_id', $product->workspace_id)->where('sku', $variantData['sku'])->first() ?: new ProductVariant);
+                : (ProductVariant::query()->where('workspace_id', $product->workspace_id)->where('product_id', $product->id)->where('sku', $variantData['sku'])->first() ?: new ProductVariant);
 
             $variant->fill([
                 'workspace_id' => $product->workspace_id,
@@ -391,58 +433,76 @@ class ProductService
 
     protected function productData(int $workspaceId, array $data, ?Product $product = null): array
     {
-        $categoryId = filled($data['category_id'] ?? null)
-            ? Category::query()->where('workspace_id', $workspaceId)->whereKey($data['category_id'])->value('id')
-            : null;
+        $categoryId = array_key_exists('category_id', $data)
+            ? (filled($data['category_id']) ? Category::query()->where('workspace_id', $workspaceId)->whereKey($data['category_id'])->value('id') : null)
+            : $product?->category_id;
         $brandId = array_key_exists('brand_id', $data) ? $data['brand_id'] : $product?->brand_id;
         $audienceId = array_key_exists('audience_id', $data) ? $data['audience_id'] : $product?->audience_id;
         $brandName = $brandId ? Brand::query()->where('workspace_id', $workspaceId)->whereKey($brandId)->value('name') : ($data['brand'] ?? null);
         $audienceName = $audienceId ? Audience::query()->where('workspace_id', $workspaceId)->whereKey($audienceId)->value('name') : ($data['audience'] ?? null);
 
-        return array_filter([
+        $values = [
             'workspace_id' => $workspaceId,
             'category_id' => $categoryId,
             'brand_id' => $brandId,
             'audience_id' => $audienceId,
             'primary_media_id' => $data['primary_media_id'] ?? $product?->primary_media_id,
             'name' => $data['name'],
-            'slug' => $this->uniqueSlug($workspaceId, (string) ($data['slug'] ?? $data['name']), $product?->id),
+            'slug' => $this->uniqueSlug($workspaceId, (string) ($data['slug'] ?? $product?->slug ?? $data['name']), $product?->id),
             'sku' => $data['sku'] ?? $product?->sku,
             'visibility' => $data['visibility'] ?? $product?->visibility ?? 'published',
             'brand' => $brandName,
             'short_description' => array_key_exists('short_description', $data) ? $data['short_description'] : $product?->short_description,
             'description' => array_key_exists('description', $data) ? $data['description'] : $product?->description,
             'care_information' => array_key_exists('care_information', $data) ? $data['care_information'] : $product?->care_information,
-            'features' => $data['features'] ?? $product?->features,
-            'feature_highlights' => $data['feature_highlights'] ?? $product?->feature_highlights,
-            'shipping_countries' => $data['shipping_countries'] ?? $product?->shipping_countries,
-            'specifications' => $data['specifications'] ?? $product?->specifications,
-            'fit' => $data['fit'] ?? $product?->fit ?? 'USA True-to-Size',
-            'set_includes' => $data['set_includes'] ?? $product?->set_includes,
-            'gender' => $data['gender'] ?? $product?->gender ?? 'Unisex (Boys & Girls)',
-            'season' => $data['season'] ?? $product?->season ?? 'All Season',
-            'shipping_info' => $data['shipping_info'] ?? $product?->shipping_info ?? 'USA & Canada Shipping',
-            'delivery_time' => $data['delivery_time'] ?? $product?->delivery_time ?? '6–10 Working Days Delivery',
+            'features' => array_key_exists('features', $data) ? $data['features'] : $product?->features,
+            'feature_highlights' => array_key_exists('feature_highlights', $data) ? $data['feature_highlights'] : $product?->feature_highlights,
+            'shipping_countries' => array_key_exists('shipping_countries', $data) ? $data['shipping_countries'] : $product?->shipping_countries,
+            'specifications' => array_key_exists('specifications', $data) ? $data['specifications'] : $product?->specifications,
+            'fit' => array_key_exists('fit', $data) ? $data['fit'] : ($product?->fit ?? 'USA True-to-Size'),
+            'set_includes' => array_key_exists('set_includes', $data) ? $data['set_includes'] : $product?->set_includes,
+            'gender' => array_key_exists('gender', $data) ? $data['gender'] : ($product?->gender ?? 'Unisex (Boys & Girls)'),
+            'season' => array_key_exists('season', $data) ? $data['season'] : ($product?->season ?? 'All Season'),
+            'shipping_info' => array_key_exists('shipping_info', $data) ? $data['shipping_info'] : ($product?->shipping_info ?? 'USA & Canada Shipping'),
+            'delivery_time' => array_key_exists('delivery_time', $data) ? $data['delivery_time'] : ($product?->delivery_time ?? '6–10 Working Days Delivery'),
             'moq' => array_key_exists('moq', $data) ? (int) $data['moq'] : ($product?->moq ?? 1),
             'rating' => array_key_exists('rating', $data) ? (float) $data['rating'] : ($product?->rating ?? 5.00),
             'reviews_count' => array_key_exists('reviews_count', $data) ? (int) $data['reviews_count'] : ($product?->reviews_count ?? 128),
-            'condition' => $data['condition'] ?? 'new',
+            'condition' => array_key_exists('condition', $data) ? $data['condition'] : ($product?->condition ?? 'new'),
             'audience' => $audienceName,
-            'fabric_gsm' => $data['fabric_gsm'] ?? $product?->fabric_gsm,
-            'material' => $data['material'] ?? $product?->material,
-            'default_unit_weight_kg' => $data['default_unit_weight_kg'] ?? $product?->default_unit_weight_kg ?? 0.030,
-            'single_piece_price' => $data['single_piece_price'] ?? $product?->single_piece_price,
-            'wholesale_price' => $data['wholesale_price'] ?? $product?->wholesale_price,
-            'selling_mode' => $data['selling_mode'] ?? $product?->selling_mode ?? 'both',
+            'fabric_gsm' => array_key_exists('fabric_gsm', $data) ? $data['fabric_gsm'] : $product?->fabric_gsm,
+            'material' => array_key_exists('material', $data) ? $data['material'] : $product?->material,
+            'default_unit_weight_kg' => array_key_exists('default_unit_weight_kg', $data) ? $data['default_unit_weight_kg'] : ($product?->default_unit_weight_kg ?? 0.030),
+            'single_piece_price' => array_key_exists('single_piece_price', $data) ? $data['single_piece_price'] : $product?->single_piece_price,
+            'wholesale_price' => array_key_exists('wholesale_price', $data) ? $data['wholesale_price'] : $product?->wholesale_price,
+            'selling_mode' => array_key_exists('selling_mode', $data) ? $data['selling_mode'] : ($product?->selling_mode ?? 'both'),
             'ws_enabled' => array_key_exists('ws_enabled', $data) ? (bool) $data['ws_enabled'] : ($product?->ws_enabled ?? false),
             'ws_min_sizes' => array_key_exists('ws_min_sizes', $data) ? ($data['ws_min_sizes'] !== null ? (int) $data['ws_min_sizes'] : null) : $product?->ws_min_sizes,
             'ws_color_moq' => array_key_exists('ws_color_moq', $data) ? (int) ($data['ws_color_moq'] ?? 1) : ($product?->ws_color_moq ?? 1),
             'ws_main_moq' => array_key_exists('ws_main_moq', $data) ? (int) ($data['ws_main_moq'] ?? 1) : ($product?->ws_main_moq ?? 1),
             'ws_size_ratios' => array_key_exists('ws_size_ratios', $data) ? $data['ws_size_ratios'] : $product?->ws_size_ratios,
             'ws_ratio_multiplier' => array_key_exists('ws_ratio_multiplier', $data) ? (int) ($data['ws_ratio_multiplier'] ?? 1) : ($product?->ws_ratio_multiplier ?? 1),
-            'country_of_origin' => strtoupper($data['country_of_origin'] ?? 'BD'),
-            'status' => $data['status'] ?? $product?->status ?? 'draft',
-        ], fn (mixed $value, string $key): bool => $key !== 'primary_media_id' || $value !== null, ARRAY_FILTER_USE_BOTH);
+            'country_of_origin' => strtoupper(array_key_exists('country_of_origin', $data) ? $data['country_of_origin'] : ($product?->country_of_origin ?? 'BD')),
+            'status' => array_key_exists('status', $data) ? $data['status'] : ($product?->status ?? 'draft'),
+        ];
+
+        foreach (['short_description', 'description', 'care_information', 'features', 'feature_highlights', 'shipping_countries', 'specifications', 'fit', 'set_includes', 'gender', 'season', 'shipping_info', 'delivery_time', 'fabric_gsm', 'material', 'single_piece_price', 'wholesale_price', 'ws_min_sizes', 'ws_size_ratios'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === null) {
+                $values[$field] = null;
+            }
+        }
+
+        if ($product) {
+            $values = array_intersect_key($values, $data);
+            if (array_key_exists('brand_id', $data)) {
+                $values['brand'] = $brandName;
+            }
+            if (array_key_exists('audience_id', $data)) {
+                $values['audience'] = $audienceName;
+            }
+        }
+
+        return $values;
     }
 
     protected function uniqueSlug(int $workspaceId, string $value, ?int $ignoreId = null): string
