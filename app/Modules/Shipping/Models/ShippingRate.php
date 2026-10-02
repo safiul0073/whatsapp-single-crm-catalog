@@ -27,8 +27,8 @@ class ShippingRate extends Model
             'is_active' => 'boolean',
             'min_weight_kg' => 'decimal:3',
             'max_weight_kg' => 'decimal:3',
-            'price' => 'decimal:2',
-            'price_per_kg' => 'decimal:2',
+            'price' => 'decimal:4',
+            'price_per_kg' => 'decimal:4',
         ];
     }
 

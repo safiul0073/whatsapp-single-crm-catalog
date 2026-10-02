@@ -25,6 +25,7 @@
     />
 
     <x-marketing-channels::status-banner />
+    @include('whatsapp-cloud::user.setup-tabs')
 
     <x-marketing-channels::setup-layout>
         <section class="section-card">

@@ -59,9 +59,6 @@
 
         {{-- Main Content --}}
         <main class="px-4 py-6 sm:px-6 lg:px-8">
-            @unless($hideHelp)
-                <x-ui.page-help :page-title="$title" />
-            @endunless
             {{ $slot }}
         </main>
     </div>

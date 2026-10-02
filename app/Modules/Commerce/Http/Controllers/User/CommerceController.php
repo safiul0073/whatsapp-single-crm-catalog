@@ -29,6 +29,7 @@ use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\VariantPreset;
 use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogMessageService;
@@ -489,14 +490,14 @@ class CommerceController extends Controller implements HasMiddleware
         $catalogs = Catalog::query()->with(['channelAccount', 'itemSyncs', 'syncRuns' => fn ($query) => $query->latest()->limit(5)])->where('workspace_id', $workspace->id)->get();
         $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->diagnose($catalog, true)])->all();
 
-        return view('commerce::user.catalog', ['catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
+        return view('commerce::user.catalog', ['currency' => StoreOrderSetting::catalogCurrency($workspace->id), 'catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
     }
 
     public function storeCatalog(CatalogRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
         $channel = ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->findOrFail($request->integer('channel_account_id'));
-        $currency = strtoupper($request->string('currency', 'USD')->toString());
+        $currency = StoreOrderSetting::forWorkspace($workspace->id)->currency;
         Catalog::query()->updateOrCreate(['workspace_id' => $workspace->id, 'channel_account_id' => $channel->id], ['meta_catalog_id' => $request->string('meta_catalog_id')->toString(), 'sync_mode' => $request->string('sync_mode')->toString(), 'currency' => $currency, 'readiness_state' => 'checking', 'feed_token' => Catalog::query()->where('channel_account_id', $channel->id)->value('feed_token') ?: Str::random(64), 'is_active' => $request->boolean('is_active', true)]);
         $workspace->update(['settings' => array_replace_recursive($workspace->settings ?? [], ['commerce' => ['shop_enabled' => $request->boolean('shop_enabled', true), 'currency' => $currency, 'storefront_title' => $request->string('storefront_title', $workspace->name)->toString(), 'storefront_description' => $request->string('storefront_description', 'Browse products and order directly on WhatsApp.')->toString(), 'default_channel_account_id' => $channel->id]])]);
 
@@ -556,7 +557,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        return view('commerce::user.order', ['order' => $order->load(['items', 'contact', 'conversation'])]);
+        return view('commerce::user.order', ['order' => $order->load(['items', 'groups', 'boxes.contents.item', 'contact', 'conversation', 'events', 'shipment'])]);
     }
 
     public function quote(QuoteOrderRequest $request, Order $order): RedirectResponse

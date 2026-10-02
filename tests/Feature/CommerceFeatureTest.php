@@ -785,27 +785,26 @@ it('deducts inventory once when paid and restores it once on cancellation', func
     $variant = commerceProduct($context['workspace']->id)->variants->first();
     $message = ['id' => 'wamid-order-2', 'type' => 'order', 'order' => ['catalog_id' => 'catalog-1', 'product_items' => [['product_retailer_id' => $variant->meta_retailer_id, 'quantity' => 2, 'item_price' => '49.95', 'currency' => 'USD']]]];
     $order = app(OrderIntakeService::class)->intake($context['channel'], $context['contact'], $context['conversation'], $message);
-    $order->update(['status' => 'awaiting_payment']);
     $workflow = app(OrderWorkflowService::class);
 
+    $workflow->quote($order, ['shipping_address' => ['name' => 'Buyer', 'phone' => '+14155552671', 'line1' => '1 Main Street', 'city' => 'Boston', 'country' => 'US'], 'shipping_amount' => 0]);
     $paid = $workflow->transition($order->fresh(), 'paid');
     $cancelled = $workflow->transition($paid, 'cancelled');
 
     expect($variant->fresh()->stock_quantity)->toBe(5)
         ->and($cancelled->inventory_adjusted_at)->not->toBeNull()
         ->and($cancelled->inventory_restored_at)->not->toBeNull()
-        ->and(InventoryMovement::query()->count())->toBe(2);
+        ->and(InventoryMovement::query()->whereIn('reason', ['order_paid', 'order_cancelled'])->count())->toBe(2);
 });
 
-it('rejects payment when stock is insufficient', function (): void {
+it('requests details when a native catalog order cannot reserve stock', function (): void {
     $context = commerceContext();
     $variant = commerceProduct($context['workspace']->id)->variants->first();
     $message = ['id' => 'wamid-order-3', 'type' => 'order', 'order' => ['product_items' => [['product_retailer_id' => $variant->meta_retailer_id, 'quantity' => 10, 'item_price' => '49.95', 'currency' => 'USD']]]];
     $order = app(OrderIntakeService::class)->intake($context['channel'], $context['contact'], $context['conversation'], $message);
-    $order->update(['status' => 'awaiting_payment']);
-
-    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
-})->throws(ValidationException::class, 'Insufficient stock');
+    expect($order->status)->toBe('needs_details')->and($order->reservations()->count())->toBe(0);
+    expect($order->issues)->toContain('Insufficient available stock for JKT-BLK-M.');
+});
 
 it('calculates garment single-piece vs wholesale bulk shipping and costs accurately', function (): void {
     $pricingService = app(GarmentPricingService::class);

@@ -35,9 +35,6 @@
                                 @endif
                                 <span class="badge badge-deep">{{ $currentWorkspace->viewer_role === 'owner' ? __('Owner') : ucfirst($currentWorkspace->viewer_role) }}</span>
                             </div>
-                            <p class="m-text mt-1">
-                                {{ request()->getHost() }}/{{ $currentWorkspace->slug }}
-                            </p>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -52,14 +49,10 @@
                         <a href="{{ route('user.workspaces.team') }}" class="btn-sm btn-outline">{{ __('Team') }}</a>
                     </div>
                 </div>
-                <dl class="mt-5 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5 sm:grid-cols-4">
+                <dl class="mt-5 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5 sm:grid-cols-3">
                     <div>
                         <dt class="text-xs text-neutral-400">{{ __('Members') }}</dt>
                         <dd class="mt-0.5 font-semibold text-title">{{ $currentWorkspace->active_members_count }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs text-neutral-400">{{ __('Slug') }}</dt>
-                        <dd class="mt-0.5 font-semibold text-title">{{ $currentWorkspace->slug }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs text-neutral-400">{{ __('Timezone') }}</dt>
@@ -95,9 +88,6 @@
                             <h3 class="truncate font-title text-base font-bold text-title">
                                 {{ $workspace->name }}
                             </h3>
-                            <p class="truncate text-xs text-neutral-400">
-                                {{ request()->getHost() }}/{{ $workspace->slug }}
-                            </p>
                         </div>
                         <div class="flex flex-col items-end gap-2 shrink-0">
                             <span class="badge badge-deep">{{ __('Owner') }}</span>
@@ -200,9 +190,6 @@
                             <h3 class="truncate font-title text-base font-bold text-title">
                                 {{ $workspace->name }}
                             </h3>
-                            <p class="truncate text-xs text-neutral-400">
-                                {{ request()->getHost() }}/{{ $workspace->slug }}
-                            </p>
                         </div>
                         <div class="flex flex-col items-end gap-1">
                             @if ($isSuspended)
@@ -326,16 +313,6 @@
                         <label for="wsNewName" class="form-label">{{ __('Workspace name') }} <span class="text-error">*</span></label>
                         <input id="wsNewName" name="name" type="text" required placeholder="{{ __('e.g. Downtown Roasters') }}" class="form-input" value="{{ old('name') }}" />
                         @error('name')
-                            <p class="form-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
-                        <label for="wsNewSlug" class="form-label">{{ __('Workspace URL') }} <span class="text-error">*</span></label>
-                        <div class="flex items-center gap-1">
-                            <span class="text-sm text-neutral-400">{{ request()->getHost() }}/</span>
-                            <input id="wsNewSlug" name="slug" type="text" required placeholder="downtown" class="form-input" value="{{ old('slug') }}" />
-                        </div>
-                        @error('slug')
                             <p class="form-error">{{ $message }}</p>
                         @enderror
                     </div>

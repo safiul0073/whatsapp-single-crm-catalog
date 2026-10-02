@@ -9,11 +9,11 @@ class OrderItem extends Model
 {
     protected $table = 'commerce_order_items';
 
-    protected $fillable = ['workspace_id', 'order_id', 'variant_id', 'retailer_id', 'sku', 'product_name', 'attributes', 'quantity', 'unit_price', 'line_total', 'provider_unit_price'];
+    protected $fillable = ['group_id', 'workspace_id', 'order_id', 'variant_id', 'retailer_id', 'sku', 'product_name', 'attributes', 'quantity', 'unit_price', 'line_total', 'provider_unit_price'];
 
     protected function casts(): array
     {
-        return ['attributes' => 'array', 'quantity' => 'integer', 'unit_price' => 'decimal:2', 'line_total' => 'decimal:2', 'provider_unit_price' => 'decimal:2'];
+        return ['attributes' => 'array', 'quantity' => 'integer', 'unit_price' => 'decimal:4', 'line_total' => 'decimal:4', 'provider_unit_price' => 'decimal:4'];
     }
 
     public function order(): BelongsTo

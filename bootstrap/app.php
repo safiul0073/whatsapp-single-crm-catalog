@@ -72,7 +72,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash(['code', 'grant', 'session_binding']);
     })->create();
 
 $app->useLangPath(resource_path('lang'));

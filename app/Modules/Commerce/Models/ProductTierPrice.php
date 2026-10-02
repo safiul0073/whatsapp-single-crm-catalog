@@ -24,7 +24,7 @@ class ProductTierPrice extends Model
         return [
             'min_quantity' => 'integer',
             'max_quantity' => 'integer',
-            'unit_price' => 'decimal:2',
+            'unit_price' => 'decimal:4',
             'discount_percentage' => 'decimal:2',
         ];
     }

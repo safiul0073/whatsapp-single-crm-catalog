@@ -74,8 +74,8 @@ class Product extends Model
             'rating' => 'decimal:2',
             'reviews_count' => 'integer',
             'default_unit_weight_kg' => 'decimal:3',
-            'single_piece_price' => 'decimal:2',
-            'wholesale_price' => 'decimal:2',
+            'single_piece_price' => 'decimal:4',
+            'wholesale_price' => 'decimal:4',
             'selling_mode' => 'string',
             'ws_enabled' => 'boolean',
             'ws_min_sizes' => 'integer',
@@ -138,24 +138,24 @@ class Product extends Model
 
     public function getEffectiveSizeRatios(): array
     {
-        if (!empty($this->ws_size_ratios)) {
+        if (! empty($this->ws_size_ratios)) {
             return $this->ws_size_ratios;
         }
 
         $this->loadMissing('options.values', 'colors');
         $sizeOption = $this->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size');
-        if (!$sizeOption) {
+        if (! $sizeOption) {
             return [];
         }
 
         $colorMoq = max(1, $this->ws_color_moq ?? 1);
         $defaultRatio = $sizeOption->values->pluck('value')->mapWithKeys(fn (string $size) => [$size => $colorMoq])->all();
-        
+
         $ratios = [];
         foreach ($this->colors as $color) {
             $ratios[$color->id] = $defaultRatio;
         }
-        
+
         return $ratios;
     }
 

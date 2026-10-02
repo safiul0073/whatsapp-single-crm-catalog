@@ -5,15 +5,16 @@ namespace App\Modules\Workspaces\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
-
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Enums\WorkspaceStatus;
 use App\Modules\Workspaces\Http\Requests\User\StoreWorkspaceRequest;
 use App\Modules\Workspaces\Http\Requests\User\UpdateWorkspaceRequest;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceInvitation;
+use App\Modules\Workspaces\Models\WorkspaceRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -69,45 +70,43 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
-        // Enforce single active workspace per administrator
-        Workspace::query()
-            ->where('owner_id', $user->id)
-            ->where('status', WorkspaceStatus::Active)
-            ->update(['status' => WorkspaceStatus::Suspended]);
+        $workspace = (new Workspace)->getConnection()->transaction(function () use ($user, $request): Workspace {
+            $workspace = Workspace::query()->create([
+                'owner_id' => $user->id,
+                'name' => $request->name,
+                'slug' => $request->validated('slug') ?? (substr(Str::slug($request->validated('name')), 0, 72) ?: 'workspace').'-'.strtolower((string) Str::ulid()),
+                'status' => WorkspaceStatus::Active,
+                'timezone' => $request->timezone ?? config('app.timezone', 'UTC'),
+            ]);
 
-        $workspace = Workspace::query()->create([
-            'owner_id' => $user->id,
-            'name' => $request->name,
-            'slug' => $request->slug,
-            'status' => WorkspaceStatus::Active,
-            'timezone' => $request->timezone ?? config('app.timezone', 'UTC'),
-        ]);
+            $adminRole = WorkspaceRole::create([
+                'workspace_id' => $workspace->id,
+                'name' => 'Administrator',
+                'description' => 'Full access to the workspace',
+                'is_system' => true,
+            ]);
 
-        $adminRole = \App\Modules\Workspaces\Models\WorkspaceRole::create([
-            'workspace_id' => $workspace->id,
-            'name' => 'Administrator',
-            'description' => 'Full access to the workspace',
-            'is_system' => true,
-        ]);
+            WorkspaceRole::create([
+                'workspace_id' => $workspace->id,
+                'name' => 'Manager',
+                'description' => 'Can manage most settings',
+                'is_system' => true,
+            ]);
 
-        \App\Modules\Workspaces\Models\WorkspaceRole::create([
-            'workspace_id' => $workspace->id,
-            'name' => 'Manager',
-            'description' => 'Can manage most settings',
-            'is_system' => true,
-        ]);
+            WorkspaceRole::create([
+                'workspace_id' => $workspace->id,
+                'name' => 'Staff',
+                'description' => 'Standard user access',
+                'is_system' => true,
+            ]);
 
-        \App\Modules\Workspaces\Models\WorkspaceRole::create([
-            'workspace_id' => $workspace->id,
-            'name' => 'Staff',
-            'description' => 'Standard user access',
-            'is_system' => true,
-        ]);
+            $workspace->members()->attach($user->id, [
+                'workspace_role_id' => $adminRole->id,
+                'status' => WorkspaceMemberStatus::Active->value,
+            ]);
 
-        $workspace->members()->attach($user->id, [
-            'workspace_role_id' => $adminRole->id,
-            'status' => WorkspaceMemberStatus::Active->value,
-        ]);
+            return $workspace;
+        });
 
         $request->session()->put('active_workspace_id', $workspace->id);
 
@@ -134,13 +133,6 @@ class WorkspaceController extends Controller
             : WorkspaceStatus::Active;
 
         if ($newStatus === WorkspaceStatus::Active) {
-            // Enforce single active workspace per administrator
-            Workspace::query()
-                ->where('owner_id', $request->user()->id)
-                ->where('id', '!=', $workspace->id)
-                ->where('status', WorkspaceStatus::Active)
-                ->update(['status' => WorkspaceStatus::Suspended]);
-
             $request->session()->put('active_workspace_id', $workspace->id);
         } else {
             // Prevent deactivating the only active workspace
@@ -291,7 +283,7 @@ class WorkspaceController extends Controller
         if ($workspace->isOwner($user)) {
             $workspace->viewer_role = 'owner';
         } elseif ($membership) {
-            $role = \App\Modules\Workspaces\Models\WorkspaceRole::find($membership->pivot->workspace_role_id);
+            $role = WorkspaceRole::find($membership->pivot->workspace_role_id);
             $workspace->viewer_role = $role ? $role->name : null;
         } else {
             $workspace->viewer_role = null;

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Http\Resources;
 
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +17,8 @@ class ProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'category_id' => $this->category_id,
+            'currency' => StoreOrderSetting::catalogCurrency($this->workspace_id),
             'name' => $this->name,
             'slug' => $this->slug,
             'sku' => $this->sku,
@@ -34,19 +37,19 @@ class ProductResource extends JsonResource
             'published_at' => $this->published_at,
             // UI specific fields for ecommarce frontend
             'price' => (float) $this->resolveUnitPrice(1, 'single'),
-            'originalPrice' => $this->single_piece_price, 
+            'originalPrice' => $this->single_piece_price,
             'sale' => false,
             'saleText' => null,
             'hasVariants' => $this->variants->isNotEmpty(),
             'variantType' => count($this->colors) > 0 ? (count($this->options) > 0 ? 'color_size' : 'color') : (count($this->options) > 0 ? 'size' : null),
-            'colors' => collect($this->colors)->map(fn($color) => [
+            'colors' => collect($this->colors)->map(fn ($color) => [
                 'id' => $color->id,
                 'name' => $color->name ?? $color->color_family,
                 'code' => $color->hex_code ?? '#000000',
             ])->toArray(),
-            'sizes' => collect($this->variants)->pluck('size')->filter()->unique()->map(fn($size, $idx) => [
+            'sizes' => collect($this->variants)->pluck('size')->filter()->unique()->map(fn ($size, $idx) => [
                 'id' => $idx,
-                'name' => $size
+                'name' => $size,
             ])->values()->toArray(),
             'available' => $this->status === 'active',
         ];

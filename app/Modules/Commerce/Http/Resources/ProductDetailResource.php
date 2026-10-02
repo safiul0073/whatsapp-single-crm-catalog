@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Http\Resources;
 
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Shipping\Services\ShippingCalculatorService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ class ProductDetailResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'category_id' => $this->category_id,
+            'currency' => StoreOrderSetting::catalogCurrency($this->workspace_id),
             'name' => $this->name,
             'slug' => $this->slug,
             'sku' => $this->sku,

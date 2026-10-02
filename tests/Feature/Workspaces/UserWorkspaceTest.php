@@ -152,7 +152,7 @@ it('validates required fields when creating a workspace', function (): void {
 
     $this->actingAs($user)
         ->post(route('user.workspaces.store'), [])
-        ->assertSessionHasErrors(['name', 'slug']);
+        ->assertSessionHasErrors(['name']);
 });
 
 it('validates unique slug when creating a workspace', function (): void {
@@ -534,7 +534,7 @@ it('shows delete button only for workspaces without services', function (): void
         ->assertSee('Delete workspace');
 });
 
-it('deactivates other owned workspaces when a new workspace is created', function (): void {
+it('keeps other owned workspaces active when a new workspace is created', function (): void {
     $user = User::factory()->create();
     $firstWorkspace = onboardedWorkspace($user);
 
@@ -546,13 +546,13 @@ it('deactivates other owned workspaces when a new workspace is created', functio
         ])
         ->assertRedirect(route('user.workspaces.index'));
 
-    expect($firstWorkspace->fresh()->status)->toBe(WorkspaceStatus::Suspended);
+    expect($firstWorkspace->fresh()->status)->toBe(WorkspaceStatus::Active);
 
     $secondWorkspace = Workspace::query()->where('slug', 'second-ws')->first();
     expect($secondWorkspace->status)->toBe(WorkspaceStatus::Active);
 });
 
-it('deactivates other owned workspaces when a workspace is toggled to active', function (): void {
+it('keeps other owned workspaces active when a workspace is toggled to active', function (): void {
     $user = User::factory()->create();
     $firstWorkspace = onboardedWorkspace($user);
 
@@ -568,7 +568,7 @@ it('deactivates other owned workspaces when a workspace is toggled to active', f
         ->patch(route('user.workspaces.toggle-status', $secondWorkspace))
         ->assertRedirect(route('user.workspaces.index'));
 
-    expect($firstWorkspace->fresh()->status)->toBe(WorkspaceStatus::Suspended);
+    expect($firstWorkspace->fresh()->status)->toBe(WorkspaceStatus::Active);
     expect($secondWorkspace->fresh()->status)->toBe(WorkspaceStatus::Active);
 });
 
