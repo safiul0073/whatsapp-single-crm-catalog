@@ -60,8 +60,9 @@ return new class extends Migration
             }
             Schema::table($table, function (Blueprint $blueprint) use ($column): void {
                 $money = $blueprint->decimal($column['name'], 19, 4)->nullable($column['nullable']);
-                if ($column['default'] !== null) {
-                    $money->default($column['default']);
+                $default = $column['default'] === null ? null : trim((string) $column['default'], "'\"");
+                if ($default !== null && strtoupper($default) !== 'NULL') {
+                    $money->default($default);
                 }
                 $money->change();
             });
