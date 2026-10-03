@@ -369,15 +369,11 @@
                 signupData = {};
 
                 const isCoexistence = trigger.dataset.signupMode === 'coexistence';
-                const extras = {
-                  feature: 'whatsapp_embedded_signup',
-                  sessionInfoVersion: '3',
-                  setup: {},
-                };
-
-                if (isCoexistence) {
-                  extras.featureType = 'whatsapp_business_app_onboarding';
-                }
+                // Coexistence must use Meta's documented payload exactly; adding
+                // `feature` makes Meta fall back to the "new phone number" flow.
+                const extras = isCoexistence
+                  ? { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' }
+                  : { feature: 'whatsapp_embedded_signup', sessionInfoVersion: '3', setup: {} };
 
                 setStatus(isCoexistence
                   ? 'Opening Meta Embedded Signup. You will receive a verification code on WhatsApp to paste into your WhatsApp Business app.'
