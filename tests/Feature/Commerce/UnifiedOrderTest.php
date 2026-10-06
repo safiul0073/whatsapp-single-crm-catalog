@@ -402,3 +402,48 @@ it('allows destination-only storefront quotes while orders require full contact 
     $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders/preview', $data)->assertOk();
     $this->postJson('/api/commerce/store/orders', $data)->assertJsonValidationErrors(['customer.name', 'customer.phone', 'shipping_address.line1', 'shipping_address.city']);
 });
+
+it('creates edits and deletes payment services with workspace scoped icon uploads', function () {
+    Storage::fake('public');
+    $c = unifiedContext();
+    $url = route('user.commerce.orders.settings.update');
+    $method = ['id' => 'custom-transfer', 'name' => 'Custom transfer', 'active' => '1', 'recipient_details' => 'Store recipient', 'instructions' => 'Send then upload proof', 'sort_order' => 1, 'fields' => [['name' => 'sender_name', 'label' => 'Sender name', 'required' => '1']]];
+    $data = ['currency' => 'USD', 'reservation_hours' => 24, 'payment_methods' => [$method], 'payment_icons' => ['custom-transfer' => UploadedFile::fake()->image('icon.png')]];
+    $this->actingAs($c['user'])->put($url, $data)->assertSessionHasNoErrors();
+    $saved = StoreOrderSetting::paymentMethods($c['workspace']->id)[0];
+    Storage::disk('public')->assertExists($saved['icon_path']);
+    expect($saved['icon_path'])->toStartWith('payment-icons/'.$c['workspace']->id.'/');
+    $this->withToken(str_repeat('t', 64))->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.icon_url', Storage::disk('public')->url($saved['icon_path']));
+    unset($data['payment_icons']);
+    $data['payment_methods'][0]['name'] = 'Updated service';
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['icon_path'])->toBe($saved['icon_path']);
+    $data['payment_icons'] = ['custom-transfer' => UploadedFile::fake()->image('replacement.jpg')];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    Storage::disk('public')->assertMissing($saved['icon_path']);
+    $replacement = StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['icon_path'];
+    unset($data['payment_icons']);
+    $data['payment_methods'][0]['remove_icon'] = '1';
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    Storage::disk('public')->assertMissing($replacement);
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['icon_url'])->toEndWith('manual.svg');
+    $data['payment_methods'] = [];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id))->toBe([]);
+});
+
+it('rejects unsafe or oversized icons and protects payment configuration from other users', function () {
+    Storage::fake('public');
+    $c = unifiedContext();
+    $data = ['currency' => 'USD', 'reservation_hours' => 24, 'payment_methods' => StoreOrderSetting::defaultPaymentMethods(), 'payment_icons' => ['remitly' => UploadedFile::fake()->create('icon.svg', 1, 'image/svg+xml')]];
+    $url = route('user.commerce.orders.settings.update');
+    $this->actingAs($c['user'])->put($url, $data)->assertSessionHasErrors('payment_icons.remitly');
+    $data['payment_icons']['remitly'] = UploadedFile::fake()->image('icon.png')->size(2049);
+    $this->put($url, $data)->assertSessionHasErrors('payment_icons.remitly');
+    unset($data['payment_icons']);
+    $data['payment_methods'][0]['icon_path'] = 'payment-icons/another-workspace/icon.png';
+    $this->put($url, $data)->assertSessionHasErrors('payment_methods.0.icon_path');
+    $outsider = User::factory()->create();
+    $c['workspace']->members()->attach($outsider, ['status' => 'active']);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id])->actingAs($outsider)->put($url, $data)->assertForbidden();
+});

@@ -23,6 +23,11 @@ class StoreOrderSettingsRequest extends FormRequest
         return [
             'payment_methods' => ['sometimes', 'array', 'max:30'],
             'payment_methods.*.id' => ['required', 'string', 'regex:/^[a-z0-9-]+$/', 'max:60', 'distinct'],
+            'payment_icons' => ['sometimes', 'array', 'max:30'],
+            'payment_icons.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'payment_methods.*.icon_path' => ['prohibited'],
+            'payment_methods.*.icon_url' => ['prohibited'],
+            'payment_methods.*.remove_icon' => ['sometimes', 'boolean'],
             'payment_methods.*.name' => ['required', 'string', 'max:100'],
             'payment_methods.*.recipient_details' => ['nullable', 'string', 'max:2000'],
             'payment_methods.*.instructions' => ['nullable', 'string', 'max:4000'],
@@ -55,6 +60,6 @@ class StoreOrderSettingsRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['currency.in' => 'Choose a supported store currency.'];
+        return ['payment_icons.*.image' => 'Upload a JPEG, PNG, or WebP service icon.', 'payment_icons.*.max' => 'Service icons must be no larger than 2 MB.', 'currency.in' => 'Choose a supported store currency.'];
     }
 }

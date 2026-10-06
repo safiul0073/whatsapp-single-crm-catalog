@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Models;
 
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class StoreOrderSetting extends Model
 {
@@ -36,12 +37,30 @@ class StoreOrderSetting extends Model
     public static function paymentMethods(int $workspaceId, bool $activeOnly = false): array
     {
         $workspace = Workspace::findOrFail($workspaceId);
-        $methods = $workspace->settings['commerce']['payment_methods'] ?? array_map(fn ($name, $id) => [
-            'id' => $id, 'name' => $name, 'recipient_details' => '', 'instructions' => '', 'active' => '0', 'sort_order' => 0, 'fields' => [],
-        ], ['Remitly', 'Taptap Send', 'MoneyGram'], ['remitly', 'taptap-send', 'moneygram']);
+        $methods = $workspace->settings['commerce']['payment_methods'] ?? self::defaultPaymentMethods();
 
         return collect($methods)->filter(fn ($method) => ! $activeOnly || (! empty($method['active']) && filled($method['recipient_details'] ?? null)))
-            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
+            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['icon_url' => self::paymentIconUrl($workspaceId, $method), 'active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
+    }
+
+    public static function defaultPaymentMethods(): array
+    {
+        return array_map(fn ($name, $id, $index) => [
+            'id' => $id, 'name' => $name, 'recipient_details' => '',
+            'instructions' => 'Send the exact order total to the recipient shown above. Then enter your transaction ID and upload clear payment screenshots for review.',
+            'active' => '0', 'sort_order' => $index,
+            'fields' => [['name' => 'sender_name', 'label' => 'Sender name', 'required' => '1']],
+        ], ['Remitly', 'Taptap Send', 'MoneyGram'], ['remitly', 'taptap-send', 'moneygram'], [0, 1, 2]);
+    }
+
+    private static function paymentIconUrl(int $workspaceId, array $method): ?string
+    {
+        $path = $method['icon_path'] ?? null;
+        if (is_string($path) && preg_match('#^payment-icons/'.$workspaceId.'/[a-zA-Z0-9]+\.(png|jpg|jpeg|webp)$#', $path)) {
+            return Storage::disk('public')->url($path);
+        }
+
+        return asset('images/payment-services/'.(in_array($method['id'], ['remitly', 'taptap-send', 'moneygram']) ? $method['id'] : 'manual').'.svg');
     }
 
     public function precision(): int

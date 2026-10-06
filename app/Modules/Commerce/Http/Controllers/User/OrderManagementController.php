@@ -81,7 +81,7 @@ class OrderManagementController extends Controller
     {
         $workspaceId = $this->workspaces->current($request->user())->id;
 
-        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId), 'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId)]);
+        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId), 'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId), 'defaultPaymentMethods' => StoreOrderSetting::defaultPaymentMethods()]);
     }
 
     public function customerAuthSettings(Request $request): View
@@ -128,7 +128,33 @@ class OrderManagementController extends Controller
             }
         }
         $methods = $data['payment_methods'] ?? null;
-        unset($data['payment_methods']);
+        unset($data['payment_methods'], $data['payment_icons']);
+        $oldMethods = collect(StoreOrderSetting::paymentMethods($settings->workspace_id))->keyBy('id');
+        $obsoleteIcons = [];
+        if ($methods !== null) {
+            foreach ($methods as &$method) {
+                $oldIcon = $oldMethods->get($method['id'])['icon_path'] ?? null;
+                if ($oldIcon && empty($method['remove_icon'])) {
+                    $method['icon_path'] = $oldIcon;
+                }
+                if ($request->hasFile('payment_icons.'.$method['id'])) {
+                    $method['icon_path'] = $request->file('payment_icons.'.$method['id'])->store('payment-icons/'.$settings->workspace_id, 'public');
+                    if (! $method['icon_path']) {
+                        throw ValidationException::withMessages(['payment_icons' => 'The icon could not be saved. Please retry.']);
+                    }
+                }
+                if ($oldIcon && ($method['icon_path'] ?? null) !== $oldIcon) {
+                    $obsoleteIcons[] = $oldIcon;
+                }
+                unset($method['remove_icon']);
+            }
+            unset($method);
+            foreach ($oldMethods as $oldMethod) {
+                if (! in_array($oldMethod['id'], array_column($methods, 'id')) && ! empty($oldMethod['icon_path'])) {
+                    $obsoleteIcons[] = $oldMethod['icon_path'];
+                }
+            }
+        }
         $settings->update($data);
         Catalog::query()->where('workspace_id', $settings->workspace_id)->update(['currency' => $settings->currency]);
         $workspace = $this->workspaces->current($request->user());
@@ -138,6 +164,11 @@ class OrderManagementController extends Controller
             $workspaceSettings['commerce']['payment_methods'] = $methods;
         }
         $workspace->update(['settings' => $workspaceSettings]);
+        foreach ($obsoleteIcons as $path) {
+            if (str_starts_with($path, 'payment-icons/'.$settings->workspace_id.'/')) {
+                Storage::disk('public')->delete($path);
+            }
+        }
 
         return back()->with('success', 'Store order settings saved. Currency changes apply to new orders. Review product and shipping prices when changing currency.');
     }

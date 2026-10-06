@@ -150,6 +150,13 @@
                     'permission' => 'commerce.view',
                 ],
                 [
+                    'label' => __('Payment services'),
+                    'route' => 'user.commerce.orders.settings',
+                    'active' => 'user.commerce.orders.settings*',
+                    'icon' => 'ph-credit-card',
+                    'permission' => 'commerce.manage',
+                ],
+                [
                     'label' => __('Products'),
                     'route' => 'user.commerce.products.index',
                     'active' => 'user.commerce.products.*',

@@ -2,7 +2,7 @@
     <div class="section-card space-y-5 max-w-3xl">
         <h1 class="heading-3">{{ __('Store order settings') }}</h1>
         <p class="text-body">{{ __('Your selected currency applies to all new product quotes and orders. Existing orders keep their original prices and currency. Review prices and shipping rates before changing currency.') }}</p>
-        <form method="POST" action="{{ route('user.commerce.orders.settings.update') }}" class="space-y-4">
+        <form method="POST" enctype="multipart/form-data" action="{{ route('user.commerce.orders.settings.update') }}" class="space-y-4">
             @csrf @method('PUT')
             <label class="form-label" for="currency">{{ __('Store currency') }}</label>
             <select class="form-input" id="currency" name="currency">@foreach(['USD','BDT','EUR','GBP','CAD','AUD','JPY','KWD','BHD','OMR','CHF','SAR','AED','INR','SGD','NZD','CNY'] as $currency)<option value="{{ $currency }}" @selected($settings->currency === $currency)>{{ $currency }}</option>@endforeach</select>
@@ -15,18 +15,23 @@
             <label class="form-label">{{ __('WhatsApp channel') }}<select name="whatsapp_channel_id" class="form-input"><option value="">{{ __('Native order channel only') }}</option>@foreach($channels as $channel)<option value="{{ $channel->id }}" @selected($settings->whatsapp_channel_id == $channel->id)>{{ $channel->name }}</option>@endforeach</select></label>
             <label class="form-label">{{ __('Approved utility template for expired service windows') }}<select name="whatsapp_template_id" class="form-input"><option value="">{{ __('Do not send outside the service window') }}</option>@foreach($templates as $template)<option value="{{ $template->id }}" @selected($settings->whatsapp_template_id == $template->id)>{{ $template->name }}</option>@endforeach</select></label>
             <p class="text-sm text-body">{{ __('Use a utility template with one body parameter and no header or buttons. Outside the service window, only subscribed contacts with a template approved for the selected channel are eligible.') }}</p>
-            <fieldset class="space-y-4 rounded border border-line p-4" x-data="{ methods: {{ Illuminate\Support\Js::from(old('payment_methods', $paymentMethods)) }}, addMethod() { this.methods.push({ id: 'method-' + Date.now(), name: '', recipient_details: '', instructions: '', active: '0', sort_order: this.methods.length, fields: [] }); } }">
-                <legend class="heading-4">{{ __('Manual payment services') }}</legend>
+            <fieldset class="space-y-4 rounded border border-line p-4" x-data="{ methods: {{ Illuminate\Support\Js::from(old('payment_methods', $paymentMethods)) }}, init() { this.methods = this.methods.map(method => ({...method, fields: method.fields || []})); }, defaults: {{ Illuminate\Support\Js::from($defaultPaymentMethods) }}, restoreDefaults() { for (const method of this.defaults) { if (!this.methods.some(existing => existing.id === method.id)) this.methods.push(JSON.parse(JSON.stringify(method))); } }, applyDefaults(method) { const template = this.defaults.find(item => item.id === method.id); if (template) { method.instructions = template.instructions; method.fields = JSON.parse(JSON.stringify(template.fields)); } }, addMethod() { this.methods.push({ id: 'method-' + crypto.randomUUID(), name: '', recipient_details: '', instructions: '', active: '0', sort_order: this.methods.length, fields: [] }); } }">
+                <legend class="heading-4">{{ __('Payment services — add, edit, and remove') }}</legend>
                 <p class="text-body">{{ __('Configure receiving details before enabling a service. Customers pay manually and submit screenshots for staff review.') }}</p>
                 <input type="hidden" name="payment_methods" value="">
                 <template x-for="(method, index) in methods" :key="method.id">
                     <div class="space-y-3 border border-line rounded p-4">
                         <input type="hidden" :name="`payment_methods[${index}][id]`" :value="method.id">
+                        <div class="flex items-center gap-3"><img :src="method.icon_url || '{{ asset('images/payment-services') }}/' + (['remitly', 'taptap-send', 'moneygram'].includes(method.id) ? method.id : 'manual') + '.svg'" alt="" class="size-12 rounded object-contain"><strong x-text="method.name || '{{ __('New payment service') }}'"></strong></div>
+                        <label class="form-label">{{ __('Upload service icon') }}<input type="file" class="form-input" :name="`payment_icons[${method.id}]`" accept="image/png,image/jpeg,image/webp"></label>
+                        <p class="text-sm text-body">{{ __('JPEG, PNG, or WebP, up to 2 MB. Default icons are included.') }}</p>
+                        <label class="flex gap-2"><input type="checkbox" :name="`payment_methods[${index}][remove_icon]`" value="1">{{ __('Remove uploaded icon and use default') }}</label>
                         <label class="form-label">{{ __('Service name') }}<input class="form-input" :name="`payment_methods[${index}][name]`" x-model="method.name" maxlength="100" required></label>
                         <label class="form-label">{{ __('Recipient / receiving details') }}<textarea class="form-input" :name="`payment_methods[${index}][recipient_details]`" x-model="method.recipient_details" maxlength="2000" :required="Boolean(Number(method.active))" rows="3"></textarea></label>
                         <label class="form-label">{{ __('Payment instructions') }}<textarea class="form-input" :name="`payment_methods[${index}][instructions]`" x-model="method.instructions" maxlength="4000" rows="3"></textarea></label>
                         <label class="form-label">{{ __('Status') }}<select class="form-input" :name="`payment_methods[${index}][active]`" x-model="method.active"><option value="0">{{ __('Disabled') }}</option><option value="1">{{ __('Enabled') }}</option></select></label>
                         <label class="form-label">{{ __('Display order') }}<input type="number" class="form-input" :name="`payment_methods[${index}][sort_order]`" x-model="method.sort_order" min="0" max="999" required></label>
+                        <button type="button" class="btn btn-outline" x-show="defaults.some(item => item.id === method.id)" @click="applyDefaults(method)">{{ __('Use default instructions and fields') }}</button>
                         <p class="text-sm text-body">{{ __('Transaction ID and 1–5 payment screenshots are always required. Add any other details you need below.') }}</p>
                         <template x-for="(field, fieldIndex) in method.fields" :key="fieldIndex">
                             <div class="grid gap-2 sm:grid-cols-4">
@@ -39,6 +44,7 @@
                         <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" @click="method.fields.push({name: '', label: '', required: '0'})" :disabled="method.fields.length >= 10">{{ __('Add field') }}</button><button type="button" class="btn btn-outline" @click="methods.splice(index, 1)">{{ __('Remove service') }}</button></div>
                     </div>
                 </template>
+                <button type="button" class="btn btn-outline" @click="restoreDefaults()">{{ __('Add missing default services') }}</button>
                 <button type="button" class="btn btn-outline" @click="addMethod()" :disabled="methods.length >= 30">{{ __('Add payment service') }}</button>
             </fieldset>
             <x-forms.submit :label="__('Save settings')" />
