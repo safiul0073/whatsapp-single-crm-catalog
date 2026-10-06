@@ -110,7 +110,8 @@
                 <h1 class="text-2xl font-black tracking-tight text-neutral-900">{{ $isEdit ? $product->name : __('Add Product') }}</h1>
             </div>
             @if($isEdit)
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    @include('commerce::user.partials.product-catalog')
                     <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" target="_blank" class="btn btn-sm btn-outline text-xs inline-flex items-center gap-1.5 shadow-2xs">
                         <i class="ph ph-arrow-square-out text-sm"></i>
                         <span>{{ __('View Storefront') }}</span>
@@ -118,6 +119,8 @@
                 </div>
             @endif
         </header>
+
+        @include('commerce::user.partials.help', ['helpKey' => 'product_form'])
 
         {{-- Screenshot-Matched Tab Navigation --}}
         <div class="w-full overflow-x-auto no-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 border-b border-neutral-200 bg-white mb-8">

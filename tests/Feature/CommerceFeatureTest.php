@@ -32,6 +32,7 @@ use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
 use App\Modules\WhatsAppCloud\Services\WhatsAppMessagePayloadBuilder;
+use App\Modules\Workspaces\Services\WorkspacePermissionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -254,8 +255,9 @@ it('renders a modern active public product detail page', function (): void {
         ->assertSee('Modern Detail Jacket')
         ->assertSee('49.95')
         ->assertSee('JKT-BLK-M')
-        ->assertSee('Order on WhatsApp')
-        ->assertSee('https://wa.me/14155550100', false)
+        ->assertSee('WhatsApp Order')
+        ->assertViewHas('whatsappPhone', '14155550100')
+        ->assertSee(':href="whatsappOrderUrl"', false)
         ->assertSee('Front view')
         ->assertSee('Catalog')
         ->assertDontSee('ADD TO SHOPPING CART')
@@ -643,7 +645,7 @@ it('builds WhatsApp Cloud catalog and multi-product template payloads', function
 });
 
 it('includes additional gallery images in the Meta feed', function (): void {
-    config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com']);
+    config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com', 'filesystems.disks.public.url' => 'https://store.example.com/storage']);
     config(['filesystems.disks.public.url' => 'https://store.example.com/storage']);
     URL::forceRootUrl('https://store.example.com');
     URL::forceScheme('https');
@@ -668,7 +670,7 @@ it('includes additional gallery images in the Meta feed', function (): void {
 it('queues idempotent direct catalog synchronization after capability checks pass', function (): void {
     Queue::fake();
     Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-api', 'name' => 'US Store'], 200)]);
-    config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com']);
+    config(['app.url' => 'https://store.example.com', 'app.asset_url' => 'https://store.example.com', 'filesystems.disks.public.url' => 'https://store.example.com/storage']);
     URL::forceRootUrl('https://store.example.com');
     URL::forceScheme('https');
     $context = commerceContext();
@@ -1207,4 +1209,183 @@ it('reports when no catalog is linked to the WhatsApp Business Account', functio
 
     expect($access['passed'])->toBeFalse()
         ->and($access['message'])->toContain('No catalog is linked');
+});
+
+it('offers catalog upload for published products and queues only the selected product', function (): void {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/batch' => Http::response(['handles' => ['selected-handle']]),
+        'graph.facebook.com/*' => Http::response(['id' => 'catalog-access']),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $product = Product::query()->where('workspace_id', $context['workspace']->id)->firstOrFail();
+    commerceProduct($context['workspace']->id);
+    foreach (['commerce.view', 'commerce.manage'] as $permission) {
+        Permission::findOrCreate($permission, 'web');
+    }
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user'])
+        ->get(route('user.commerce.products.index'))
+        ->assertSuccessful()
+        ->assertSeeText('Send to Meta catalog');
+    $this->get(route('user.commerce.products.edit', $product))->assertSuccessful()->assertSeeText('Send to Meta catalog');
+    $this->post(route('user.commerce.products.catalog.sync', $product), ['catalog_id' => $catalog->id])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+    $run = $catalog->syncRuns()->latest('id')->firstOrFail();
+    expect($run->total_items)->toBe(1)->and($run->summary['product_id'])->toBe($product->id);
+    Queue::assertPushed(SyncMetaCatalogJob::class, fn ($job): bool => $job->runId === $run->id);
+    app(CatalogSyncService::class)->run($run);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'requests.0.retailer_id') === $product->variants()->first()->meta_retailer_id);
+    expect(collect(Http::recorded())->filter(fn ($pair): bool => str_ends_with($pair[0]->url(), '/batch')))->toHaveCount(1);
+});
+
+it('upserts existing local products with complete supported variant details and confirms batch results', function (): void {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/batch' => Http::response(['handles' => ['handle-1']], 200),
+        'graph.facebook.com/*/check_batch_request_status*' => Http::response(['data' => [['handle' => 'handle-1', 'status' => 'finished', 'errors_total_count' => 0]]], 200),
+        'graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $product = commerceProduct($context['workspace']->id);
+    $product->update(['primary_media_id' => commerceMedia($context['user'], 'bulk-image')->id, 'gender' => 'Unisex (Boys & Girls)']);
+    commerceProduct($context['workspace']->id)->update(['status' => 'draft']);
+    $sync = app(CatalogSyncService::class);
+    $run = $sync->queue($catalog);
+    $sync->run($run);
+    expect($run->fresh()->status)->toBe('running')->and($catalog->itemSyncs()->where('status', 'processing')->count())->toBe(2);
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/batch')
+        && $request['allow_upsert'] === true
+        && data_get($request->data(), 'requests.0.method') === 'UPDATE'
+        && data_get($request->data(), 'requests.0.data.name') === 'Performance Jacket - M / Black / Polyester'
+        && data_get($request->data(), 'requests.0.data.description') === 'Water-resistant garment'
+        && data_get($request->data(), 'requests.0.data.price') === 4995
+        && data_get($request->data(), 'requests.0.data.currency') === 'USD'
+        && data_get($request->data(), 'requests.0.data.brand') === 'Dhaka Apparel'
+        && data_get($request->data(), 'requests.0.data.color') === 'Black'
+        && data_get($request->data(), 'requests.0.data.size') === 'M'
+        && data_get($request->data(), 'requests.0.data.material') === 'Polyester'
+        && data_get($request->data(), 'requests.0.data.gender') === 'unisex'
+        && data_get($request->data(), 'requests.0.data.age_group') === 'adult'
+        && filled(data_get($request->data(), 'requests.0.data.retailer_product_group_id'))
+        && str_starts_with(data_get($request->data(), 'requests.0.data.image_url'), 'https://')
+        && str_starts_with(data_get($request->data(), 'requests.0.data.url'), 'https://'));
+    $sync->run($run->fresh());
+    expect($run->fresh()->status)->toBe('completed')->and($catalog->fresh()->last_item_count)->toBe(2);
+    $sync->run($run->fresh());
+    expect(collect(Http::recorded())->filter(fn ($pair): bool => str_ends_with($pair[0]->url(), '/batch')))->toHaveCount(2);
+});
+
+it('checks a pending batch without resubmitting and surfaces provider item errors', function (): void {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/batch' => Http::response(['handles' => ['handle-1']], 200),
+        'graph.facebook.com/*/check_batch_request_status*' => Http::sequence()
+            ->push(['data' => [['status' => 'in progress']]])
+            ->push(['data' => [['status' => 'finished', 'errors_total_count' => 1, 'errors' => [['message' => 'Invalid product image']]]]]),
+        'graph.facebook.com/*' => Http::response(['id' => 'catalog-access']),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $sync = app(CatalogSyncService::class);
+    $run = $sync->queue($catalog);
+    $sync->run($run);
+    $sync->run($run->fresh());
+    expect(fn () => $sync->run($run->fresh()))->toThrow(RuntimeException::class, 'failed items');
+    expect($run->fresh()->failed_items)->toBe(1)->and($catalog->fresh()->last_successful_at)->toBeNull();
+    expect($catalog->itemSyncs()->first()->last_error)->toContain('Invalid product image');
+    expect(collect(Http::recorded())->filter(fn ($pair): bool => str_ends_with($pair[0]->url(), '/batch')))->toHaveCount(1);
+});
+
+it('rejects product uploads to another workspace', function (): void {
+    Queue::fake();
+    $context = commerceContext();
+    $catalog = readyApiCatalog(commerceContext());
+    $product = commerceProduct($context['workspace']->id);
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $this->actingAs($context['user'])->post(route('user.commerce.products.catalog.sync', $product), ['catalog_id' => $catalog->id])->assertNotFound();
+    Queue::assertNothingPushed();
+});
+
+it('requires publishing before a product catalog upload', function (): void {
+    Queue::fake();
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $product = Product::query()->where('workspace_id', $context['workspace']->id)->firstOrFail();
+    $product->update(['status' => 'draft']);
+    expect(fn () => app(CatalogSyncService::class)->queue($catalog, $product))->toThrow(ValidationException::class);
+    Queue::assertNothingPushed();
+});
+
+it('uploads changed prices and recreates items when the configured Meta catalog changes', function (): void {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/batch' => Http::response(['handles' => ['handle-1']]),
+        'graph.facebook.com/*/check_batch_request_status*' => Http::response(['data' => [['status' => 'finished', 'errors_total_count' => 0]]]),
+        'graph.facebook.com/*' => Http::response(['id' => 'catalog-access']),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $sync = app(CatalogSyncService::class);
+    $run = $sync->queue($catalog);
+    $sync->run($run);
+    $sync->run($run->fresh());
+    $catalog->itemSyncs()->first()->variant->update(['price' => 60]);
+    $run = $sync->queue($catalog);
+    $sync->run($run);
+    $sync->run($run->fresh());
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/batch') && data_get($request->data(), 'requests.0.data.price') === 6000);
+    $catalog->update(['meta_catalog_id' => 'catalog-new']);
+    $run = $sync->queue($catalog);
+    $sync->run($run);
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/catalog-new/batch') && $request['allow_upsert'] === true);
+    expect($catalog->fresh()->last_item_count)->toBe(0);
+    $sync->run($run->fresh());
+    expect($catalog->fresh()->last_item_count)->toBe(1);
+});
+
+it('releases the catalog job while Meta is processing without reporting success', function (): void {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/batch' => Http::response(['handles' => ['handle-1']]),
+        'graph.facebook.com/*' => Http::response(['id' => 'catalog-access']),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $run = app(CatalogSyncService::class)->queue($catalog);
+    $job = (new SyncMetaCatalogJob($run->id))->withFakeQueueInteractions();
+    app()->call([$job, 'handle']);
+    $job->assertReleased(delay: 30)->assertNotFailed();
+    expect($run->fresh()->status)->toBe('running')->and($catalog->fresh()->last_successful_at)->toBeNull();
+});
+
+it('can recover a stale catalog containing only out of stock published variants', function (): void {
+    Queue::fake();
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'])]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $catalog->update(['last_successful_at' => now()->subDays(10)]);
+    $product = Product::query()->where('workspace_id', $context['workspace']->id)->firstOrFail();
+    $product->variants()->update(['status' => 'out_of_stock', 'stock_quantity' => 0]);
+    $run = app(CatalogSyncService::class)->queue($catalog, $product);
+    expect($run->status)->toBe('queued')->and($run->total_items)->toBe(1);
+});
+
+it('rejects a product catalog upload without management permission', function (): void {
+    Queue::fake();
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+    $product = Product::query()->where('workspace_id', $context['workspace']->id)->firstOrFail();
+    $this->mock(WorkspacePermissionResolver::class)
+        ->shouldReceive('can')->andReturnUsing(fn ($user, $ability) => $ability !== 'commerce.manage');
+    $this->actingAs($context['user'])
+        ->withSession(['active_workspace_id' => $context['workspace']->id])
+        ->post(route('user.commerce.products.catalog.sync', $product), ['catalog_id' => $catalog->id])
+        ->assertForbidden();
+    Queue::assertNothingPushed();
 });

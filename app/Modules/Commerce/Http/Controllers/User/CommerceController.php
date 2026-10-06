@@ -19,6 +19,7 @@ use App\Modules\Commerce\Http\Requests\QuoteOrderRequest;
 use App\Modules\Commerce\Http\Requests\SendProductListRequest;
 use App\Modules\Commerce\Http\Requests\SendProductMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductVideoRequest;
+use App\Modules\Commerce\Http\Requests\SyncProductCatalogRequest;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
 use App\Modules\Commerce\Http\Requests\UploadCommerceMediaRequest;
 use App\Modules\Commerce\Http\Requests\VariantPresetRequest;
@@ -68,6 +69,7 @@ class CommerceController extends Controller implements HasMiddleware
         $workspace = $this->workspaces->current($request->user());
 
         return view('commerce::user.index', [
+            'metaCatalogs' => Catalog::query()->with('channelAccount')->where('workspace_id', $workspace->id)->where('is_active', true)->where('sync_mode', 'api')->get(),
             'products' => Product::query()
                 ->with(['category', 'primaryMedia', 'workspace', 'brandRecord', 'audienceRecord'])
                 ->withCount('variants')
@@ -96,6 +98,15 @@ class CommerceController extends Controller implements HasMiddleware
         $this->assertWorkspace($request, $product->workspace_id);
 
         return $this->form($request, $product);
+    }
+
+    public function syncProductCatalog(SyncProductCatalogRequest $request, Product $product, CatalogSyncService $sync): RedirectResponse
+    {
+        $this->assertWorkspace($request, $product->workspace_id);
+        $catalog = Catalog::query()->where('workspace_id', $product->workspace_id)->where('is_active', true)->findOrFail($request->integer('catalog_id'));
+        $sync->queue($catalog, $product);
+
+        return back()->with('success', __('Product upload queued. Check Meta catalog sync status for confirmation.'));
     }
 
     public function update(ProductRequest $request, Product $product): RedirectResponse
@@ -658,6 +669,7 @@ class CommerceController extends Controller implements HasMiddleware
 
         return view('commerce::user.form', [
             'product' => $product,
+            'metaCatalogs' => Catalog::query()->with('channelAccount')->where('workspace_id', $workspace->id)->where('is_active', true)->where('sync_mode', 'api')->get(),
             'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,
             'categories' => $categories->sortBy('path'),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),

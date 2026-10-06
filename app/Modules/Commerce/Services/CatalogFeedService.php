@@ -79,12 +79,22 @@ class CatalogFeedService
             'brand' => $variant->product->brand ?: config('app.name'),
             'item_group_id' => 'product-'.$variant->product_id,
             'color' => $attributes['color'] ?? null,
-            'size' => $attributes['size'] ?? null,
-            'gender' => $attributes['gender'] ?? $variant->product->audience,
-            'age_group' => $attributes['age_group'] ?? null,
-            'material' => $attributes['material'] ?? null,
+            'size' => $attributes['size'] ?? $variant->size,
+            'gender' => $this->gender($attributes['gender'] ?? $variant->product->gender),
+            'age_group' => $attributes['age_group'] ?? (in_array($variant->product->audience, ['adult', 'kids', 'infant', 'newborn', 'toddler'], true) ? $variant->product->audience : null),
+            'material' => $attributes['material'] ?? $variant->product->material,
             'pattern' => $attributes['pattern'] ?? null,
         ];
+    }
+
+    protected function gender(?string $gender): ?string
+    {
+        return match (strtolower(trim((string) $gender))) {
+            'male', 'men', 'boys' => 'male',
+            'female', 'women', 'girls' => 'female',
+            'unisex', 'unisex (boys & girls)' => 'unisex',
+            default => null,
+        };
     }
 
     protected function activeVariants(int $workspaceId): Collection

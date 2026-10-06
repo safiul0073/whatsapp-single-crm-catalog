@@ -15,6 +15,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::put('products/{product}/options', [CommerceController::class, 'updateOptions'])->name('products.options.update');
     Route::get('products/{product}/variants/preview', [CommerceController::class, 'previewVariants'])->name('products.variants.preview');
     Route::put('products/{product}/variants', [CommerceController::class, 'updateVariants'])->name('products.variants.update');
+    Route::post('products/{product}/catalog', [CommerceController::class, 'syncProductCatalog'])->name('products.catalog.sync');
     Route::put('products/{product}/publish', [CommerceController::class, 'publish'])->name('products.publish');
     Route::post('products/media', [CommerceController::class, 'uploadMedia'])->name('products.media.upload');
     Route::delete('products/bulk', [CommerceController::class, 'bulkDestroyProducts'])->name('products.bulk-destroy');
