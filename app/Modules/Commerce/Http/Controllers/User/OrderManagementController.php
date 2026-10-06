@@ -81,7 +81,7 @@ class OrderManagementController extends Controller
     {
         $workspaceId = $this->workspaces->current($request->user())->id;
 
-        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId)]);
+        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId), 'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId)]);
     }
 
     public function customerAuthSettings(Request $request): View
@@ -127,10 +127,17 @@ class OrderManagementController extends Controller
                 abort_unless($model::query()->where('workspace_id', $settings->workspace_id)->whereKey($data[$field])->exists(), 404);
             }
         }
+        $methods = $data['payment_methods'] ?? null;
+        unset($data['payment_methods']);
         $settings->update($data);
         Catalog::query()->where('workspace_id', $settings->workspace_id)->update(['currency' => $settings->currency]);
         $workspace = $this->workspaces->current($request->user());
-        $workspace->update(['settings' => array_replace_recursive($workspace->settings ?? [], ['commerce' => ['currency' => $settings->currency]])]);
+        $workspaceSettings = $workspace->settings ?? [];
+        $workspaceSettings['commerce']['currency'] = $settings->currency;
+        if ($methods !== null) {
+            $workspaceSettings['commerce']['payment_methods'] = $methods;
+        }
+        $workspace->update(['settings' => $workspaceSettings]);
 
         return back()->with('success', 'Store order settings saved. Currency changes apply to new orders. Review product and shipping prices when changing currency.');
     }
@@ -169,7 +176,8 @@ class OrderManagementController extends Controller
     public function receipt(Request $request, Order $order): BinaryFileResponse
     {
         $this->assertOrder($request, $order);
-        $path = $order->payment_evidence['receipt_path'] ?? null;
+        $index = $request->integer('index', 0);
+        $path = $index >= 0 ? ($order->payment_evidence['receipts'][$index]['path'] ?? ($index === 0 ? ($order->payment_evidence['receipt_path'] ?? null) : null)) : null;
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
         return response()->file(Storage::disk('local')->path($path), ['Content-Disposition' => 'attachment']);

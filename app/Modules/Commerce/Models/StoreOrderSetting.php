@@ -33,6 +33,17 @@ class StoreOrderSetting extends Model
         return strtoupper($workspace->settings['commerce']['currency'] ?? Catalog::query()->where('workspace_id', $workspaceId)->value('currency') ?? 'USD');
     }
 
+    public static function paymentMethods(int $workspaceId, bool $activeOnly = false): array
+    {
+        $workspace = Workspace::findOrFail($workspaceId);
+        $methods = $workspace->settings['commerce']['payment_methods'] ?? array_map(fn ($name, $id) => [
+            'id' => $id, 'name' => $name, 'recipient_details' => '', 'instructions' => '', 'active' => '0', 'sort_order' => 0, 'fields' => [],
+        ], ['Remitly', 'Taptap Send', 'MoneyGram'], ['remitly', 'taptap-send', 'moneygram']);
+
+        return collect($methods)->filter(fn ($method) => ! $activeOnly || (! empty($method['active']) && filled($method['recipient_details'] ?? null)))
+            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
+    }
+
     public function precision(): int
     {
         return match ($this->currency) {

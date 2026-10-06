@@ -15,6 +15,32 @@
             <label class="form-label">{{ __('WhatsApp channel') }}<select name="whatsapp_channel_id" class="form-input"><option value="">{{ __('Native order channel only') }}</option>@foreach($channels as $channel)<option value="{{ $channel->id }}" @selected($settings->whatsapp_channel_id == $channel->id)>{{ $channel->name }}</option>@endforeach</select></label>
             <label class="form-label">{{ __('Approved utility template for expired service windows') }}<select name="whatsapp_template_id" class="form-input"><option value="">{{ __('Do not send outside the service window') }}</option>@foreach($templates as $template)<option value="{{ $template->id }}" @selected($settings->whatsapp_template_id == $template->id)>{{ $template->name }}</option>@endforeach</select></label>
             <p class="text-sm text-body">{{ __('Use a utility template with one body parameter and no header or buttons. Outside the service window, only subscribed contacts with a template approved for the selected channel are eligible.') }}</p>
+            <fieldset class="space-y-4 rounded border border-line p-4" x-data="{ methods: {{ Illuminate\Support\Js::from(old('payment_methods', $paymentMethods)) }}, addMethod() { this.methods.push({ id: 'method-' + Date.now(), name: '', recipient_details: '', instructions: '', active: '0', sort_order: this.methods.length, fields: [] }); } }">
+                <legend class="heading-4">{{ __('Manual payment services') }}</legend>
+                <p class="text-body">{{ __('Configure receiving details before enabling a service. Customers pay manually and submit screenshots for staff review.') }}</p>
+                <input type="hidden" name="payment_methods" value="">
+                <template x-for="(method, index) in methods" :key="method.id">
+                    <div class="space-y-3 border border-line rounded p-4">
+                        <input type="hidden" :name="`payment_methods[${index}][id]`" :value="method.id">
+                        <label class="form-label">{{ __('Service name') }}<input class="form-input" :name="`payment_methods[${index}][name]`" x-model="method.name" maxlength="100" required></label>
+                        <label class="form-label">{{ __('Recipient / receiving details') }}<textarea class="form-input" :name="`payment_methods[${index}][recipient_details]`" x-model="method.recipient_details" maxlength="2000" :required="Boolean(Number(method.active))" rows="3"></textarea></label>
+                        <label class="form-label">{{ __('Payment instructions') }}<textarea class="form-input" :name="`payment_methods[${index}][instructions]`" x-model="method.instructions" maxlength="4000" rows="3"></textarea></label>
+                        <label class="form-label">{{ __('Status') }}<select class="form-input" :name="`payment_methods[${index}][active]`" x-model="method.active"><option value="0">{{ __('Disabled') }}</option><option value="1">{{ __('Enabled') }}</option></select></label>
+                        <label class="form-label">{{ __('Display order') }}<input type="number" class="form-input" :name="`payment_methods[${index}][sort_order]`" x-model="method.sort_order" min="0" max="999" required></label>
+                        <p class="text-sm text-body">{{ __('Transaction ID and 1–5 payment screenshots are always required. Add any other details you need below.') }}</p>
+                        <template x-for="(field, fieldIndex) in method.fields" :key="fieldIndex">
+                            <div class="grid gap-2 sm:grid-cols-4">
+                                <label class="form-label">{{ __('Field key') }}<input class="form-input" :name="`payment_methods[${index}][fields][${fieldIndex}][name]`" x-model="field.name" pattern="[a-z][a-z0-9_]*" maxlength="60" required></label>
+                                <label class="form-label">{{ __('Label') }}<input class="form-input" :name="`payment_methods[${index}][fields][${fieldIndex}][label]`" x-model="field.label" maxlength="100" required></label>
+                                <label class="form-label">{{ __('Required') }}<select class="form-input" :name="`payment_methods[${index}][fields][${fieldIndex}][required]`" x-model="field.required"><option value="0">{{ __('Optional') }}</option><option value="1">{{ __('Required') }}</option></select></label>
+                                <button type="button" class="btn btn-outline" @click="method.fields.splice(fieldIndex, 1)">{{ __('Remove field') }}</button>
+                            </div>
+                        </template>
+                        <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" @click="method.fields.push({name: '', label: '', required: '0'})" :disabled="method.fields.length >= 10">{{ __('Add field') }}</button><button type="button" class="btn btn-outline" @click="methods.splice(index, 1)">{{ __('Remove service') }}</button></div>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-outline" @click="addMethod()" :disabled="methods.length >= 30">{{ __('Add payment service') }}</button>
+            </fieldset>
             <x-forms.submit :label="__('Save settings')" />
         </form>
         @can('channels.manage')

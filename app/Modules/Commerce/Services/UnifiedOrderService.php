@@ -137,7 +137,7 @@ class UnifiedOrderService
             $this->invalid('adjustments', 'Discounts cannot exceed the merchandise subtotal.');
         }
 
-        return ['availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => $selected?->shipping_method_id, 'delivery_method' => $selected?->method?->name, 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => $selected ? OrderMoney::decimal($shipping, $precision) : null, 'shipping_quote_required' => ! $selected, 'total' => $selected ? OrderMoney::decimal($subtotal + $shipping - $discount, $precision) : null, 'shipping_options' => $rates->map(fn ($rate) => ['id' => $rate->shipping_method_id, 'name' => $rate->method?->name ?? 'Shipping', 'currency' => $rate->currency, 'price' => OrderMoney::decimal($this->shippingAmount($rate, $precision), $precision)])->values()->all()];
+        return ['weight' => $quote['weight_data'] ?? [], 'chargeable_weight_kg' => $selected?->chargeable_weight_kg, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => $selected?->shipping_method_id, 'delivery_method' => $selected?->method?->name, 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => $selected ? OrderMoney::decimal($shipping, $precision) : null, 'shipping_quote_required' => ! $selected, 'total' => $selected ? OrderMoney::decimal($subtotal + $shipping - $discount, $precision) : null, 'shipping_options' => $rates->map(fn ($rate) => ['id' => $rate->shipping_method_id, 'name' => $rate->method?->name ?? 'Shipping', 'currency' => $rate->currency, 'price' => OrderMoney::decimal($this->shippingAmount($rate, $precision), $precision)])->values()->all()];
     }
 
     public function create(Workspace $workspace, array $data): Order
@@ -159,7 +159,7 @@ class UnifiedOrderService
                 'workspace_id' => $workspace->id, 'contact_id' => $contact->id,
                 'source' => $data['source'] ?? 'manual', 'submission_reference' => $data['submission_reference'], 'payload_hash' => $hash,
                 'customer_reference' => $data['customer_reference'] ?? null, 'customer_snapshot' => $data['customer'] ?? $contact->only(['name', 'phone', 'email']), 'number' => 'ORD-'.Str::upper(Str::random(12)),
-                'conversation_id' => $data['conversation_id'] ?? null, 'channel_account_id' => $data['channel_account_id'] ?? null, 'provider_message_id' => $data['provider_message_id'] ?? null, 'catalog_id' => $data['catalog_id'] ?? null, 'issues' => $data['issues'] ?? [], 'provider_payload' => $data['provider_payload'] ?? null,
+                'conversation_id' => $data['conversation_id'] ?? null, 'channel_account_id' => $data['channel_account_id'] ?? null, 'provider_message_id' => $data['provider_message_id'] ?? null, 'catalog_id' => $data['catalog_id'] ?? null, 'issues' => $data['issues'] ?? [], 'provider_payload' => array_replace($data['provider_payload'] ?? [], ['checkout_quote' => ['weight' => $preview['weight'], 'chargeable_weight_kg' => $preview['chargeable_weight_kg']]]),
                 'tracking_code' => 'TRK-'.Str::upper(Str::random(24)), 'status' => $draft ? 'draft' : (! empty($data['issues']) ? 'needs_details' : ($preview['shipping_quote_required'] ? 'requested' : 'awaiting_payment')),
                 'currency' => $preview['currency'], 'subtotal' => $preview['subtotal'], 'discount_amount' => $preview['discount_amount'], 'adjustments' => $data['adjustments'] ?? [],
                 'shipping_method_id' => $preview['shipping_method_id'] ?? null, 'delivery_method' => $preview['delivery_method'] ?? null,
@@ -239,6 +239,8 @@ class UnifiedOrderService
             return $item;
         }, $payload['items']);
         $payload['precision'] = $precision;
+        $payload['chargeable_weight_kg'] = $order->provider_payload['checkout_quote']['chargeable_weight_kg'] ?? null;
+        $payload['charges'] = [];
 
         return $payload;
 

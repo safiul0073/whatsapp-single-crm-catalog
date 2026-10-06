@@ -13,6 +13,7 @@ use App\Modules\Commerce\Services\UnifiedOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class StoreOrderController extends Controller
 {
@@ -20,7 +21,7 @@ class StoreOrderController extends Controller
     {
         $settings = StoreOrderSetting::forWorkspace($request->attributes->get('store_workspace')->id);
 
-        return response()->json(['currency' => $settings->currency, 'precision' => $settings->precision(), 'payment_instructions' => $settings->payment_instructions]);
+        return response()->json(['currency' => $settings->currency, 'precision' => $settings->precision(), 'payment_instructions' => $settings->payment_instructions, 'payment_methods' => StoreOrderSetting::paymentMethods($settings->workspace_id, true)]);
     }
 
     public function preview(CreateUnifiedOrderRequest $request, UnifiedOrderService $orders): JsonResponse
@@ -34,6 +35,8 @@ class StoreOrderController extends Controller
         $data['source'] = $request->header('X-Order-Source') === 'storefront_whatsapp' ? 'storefront_whatsapp' : 'storefront_checkout';
         $data['draft'] = false;
         unset($data['contact_id']);
+        $preview = $orders->preview($request->attributes->get('store_workspace'), $data);
+        abort_if($preview['shipping_quote_required'], 422, 'No shipping rate covers this destination and weight.');
         $order = $orders->create($request->attributes->get('store_workspace'), $data);
 
         return response()->json(['data' => $orders->payload($order)], 201);
@@ -64,9 +67,24 @@ class StoreOrderController extends Controller
         $data = $request->validated();
         DB::transaction(function () use ($request, $reference, $data): void {
             $order = Order::query()->where('workspace_id', $request->attributes->get('store_workspace')->id)->where('submission_reference', $reference)->lockForUpdate()->firstOrFail();
-            abort_unless($order->status === 'awaiting_payment' && ! $order->shipping_quote_required, 422, 'Payment evidence can be submitted after the final quote.');
-            $path = $request->hasFile('receipt') ? $request->file('receipt')->store('commerce-receipts', 'local') : ($order->payment_evidence['receipt_path'] ?? null);
-            $order->update(['payment_state' => 'submitted', 'payment_evidence' => ['note' => $data['note'] ?? null, 'receipt_path' => $path]]);
+            abort_unless($order->status === 'awaiting_payment' && ! $order->shipping_quote_required && $order->payment_state === 'unpaid', 422, 'Payment evidence can be submitted after the final quote.');
+            $method = collect(StoreOrderSetting::paymentMethods($order->workspace_id, true))->firstWhere('id', $data['payment_method_id']);
+            abort_unless($method, 422, 'This payment method is unavailable.');
+            $receipts = [];
+            try {
+                foreach ($request->file('receipts') as $file) {
+                    $receipts[] = ['path' => $file->store('commerce-receipts', 'local'), 'name' => $file->getClientOriginalName()];
+                }
+                $order->update(['payment_state' => 'submitted', 'payment_evidence' => [
+                    'method' => $method, 'transaction_id' => $data['transaction_id'], 'fields' => array_intersect_key($data['fields'] ?? [], array_flip(array_column($method['fields'] ?? [], 'name'))),
+                    'note' => $data['note'] ?? null, 'receipts' => $receipts,
+                ]]);
+            } catch (\Throwable $exception) {
+                foreach ($receipts as $receipt) {
+                    Storage::disk('local')->delete($receipt['path']);
+                }
+                throw $exception;
+            }
             app(UnifiedOrderService::class)->event($order, 'payment_submitted', 'Payment evidence submitted');
         });
 
