@@ -24,6 +24,7 @@ use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -838,6 +839,35 @@ it('stores inbound whatsapp text messages from channel webhooks and exposes them
         ->assertOk()
         ->assertJsonPath('messages.0.body', 'Hello from WhatsApp')
         ->assertJsonPath('messages.0.attachment', null);
+});
+
+it('processes inbound whatsapp webhooks without waiting for the queue worker', function (): void {
+    [, $workspace] = inboxChannelContext();
+    config(['queue.default' => 'database']);
+
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550199',
+                        'id' => 'wamid.instant.1',
+                        'type' => 'text',
+                        'text' => ['body' => 'Instant hello'],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    expect(Message::query()->where('provider_message_id', 'wamid.instant.1')->exists())->toBeTrue()
+        ->and(DB::table('jobs')->count())->toBe(0);
 });
 
 it('attaches inbound whatsapp messages to an existing contact with the same phone', function (): void {
