@@ -1,7 +1,6 @@
 <?php
 
 use App\Modules\Commerce\Models\CustomerAuthSetting;
-use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
@@ -24,8 +23,7 @@ uses(DatabaseTransactions::class);
 beforeEach(function () {
     Queue::fake();
     $this->workspace = Workspace::query()->create(['name' => 'Customer auth test', 'slug' => 'customer-auth-'.Str::uuid(), 'status' => 'active']);
-    $this->token = Str::random(64);
-    StoreOrderSetting::forWorkspace($this->workspace->id)->update(['integration_token_hash' => hash('sha256', $this->token)]);
+    config(['commerce.store_workspace_id' => $this->workspace->id]);
     $this->channel = ChannelAccount::query()->create(['workspace_id' => $this->workspace->id, 'provider' => 'whatsapp', 'name' => 'Login channel', 'status' => 'connected', 'provider_account_id' => 'waba-auth-test', 'provider_phone_id' => '123', 'credentials' => ['access_token' => 'test-token']]);
     $this->authentication = MessageTemplate::query()->create(['workspace_id' => $this->workspace->id, 'provider' => 'whatsapp', 'name' => 'login_code', 'language' => 'en_US', 'category' => 'authentication', 'status' => 'approved', 'components' => [['type' => 'BODY', 'text' => '{{1}} is your code'], ['type' => 'BUTTONS', 'buttons' => [['type' => 'OTP', 'otp_type' => 'COPY_CODE']]]]]);
     $this->welcome = MessageTemplate::query()->create(['workspace_id' => $this->workspace->id, 'provider' => 'whatsapp', 'name' => 'account_welcome', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved', 'components' => [['type' => 'BODY', 'text' => 'Welcome {{1}}. Your account is ready.']]]);
@@ -57,7 +55,7 @@ function customerAuthVerified($test): array
 it('sends the OTP without saving its content or creating a contact', function () {
     $beforeContacts = Contact::count();
     $beforeMessages = Message::count();
-    $response = $this->withToken($this->token)->postJson('/api/commerce/store/auth/whatsapp/challenges', $this->challengeData)->assertOk();
+    $response = $this->postJson('/api/commerce/store/auth/whatsapp/challenges', $this->challengeData)->assertOk();
     $code = $this->sent[0]['components'][0]['parameters'][0]['text'];
     $challenge = WhatsAppAuthChallenge::findOrFail($response->json('challenge_id'));
     expect($challenge->code_hash)->not->toBe($code)
@@ -101,10 +99,9 @@ it('enforces resend cooldown, invalidates older grants and limits hourly sends',
     expect($this->sent)->toHaveCount(5);
 });
 
-it('rejects cross-store, missing-credential and cross-session requests', function () {
+it('rejects cross-store and cross-session requests', function () {
     $payload = customerAuthVerified($this);
-    $this->postJson('/api/commerce/store/auth/whatsapp/challenges', $this->challengeData)->assertUnauthorized();
-    $this->withToken($this->token)->postJson('/api/commerce/store/auth/whatsapp/challenges/'.$payload['challenge_id'].'/verify', ['session_binding' => str_repeat('x', 64), 'code' => '000000'])->assertNotFound();
+    $this->postJson('/api/commerce/store/auth/whatsapp/challenges/'.$payload['challenge_id'].'/verify', ['session_binding' => str_repeat('x', 64), 'code' => '000000'])->assertNotFound();
     $other = Workspace::query()->create(['name' => 'Other', 'slug' => (string) Str::uuid()]);
     expect(fn () => $this->auth->register($other->id, $payload))->toThrow(ModelNotFoundException::class);
 });

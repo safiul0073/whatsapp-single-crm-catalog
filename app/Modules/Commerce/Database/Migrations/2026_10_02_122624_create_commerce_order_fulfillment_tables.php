@@ -17,7 +17,6 @@ return new class extends Migration
             $table->unsignedBigInteger('whatsapp_channel_id')->nullable();
             $table->unsignedBigInteger('whatsapp_template_id')->nullable();
             $table->text('payment_instructions')->nullable();
-            $table->string('integration_token_hash', 64)->nullable()->unique();
             $table->timestamps();
         });
         Schema::create('commerce_order_groups', function (Blueprint $table): void {

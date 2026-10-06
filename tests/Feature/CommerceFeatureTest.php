@@ -1211,6 +1211,21 @@ it('reports when no catalog is linked to the WhatsApp Business Account', functio
         ->and($access['message'])->toContain('No catalog is linked');
 });
 
+it('explains coexistence accounts when meta rejects the WABA catalog edge for SMB business type', function (): void {
+    Http::fake([
+        'graph.facebook.com/*/product_catalogs*' => Http::response(['error' => ['message' => '(#10) This operation can not be performed on SMB business type', 'code' => 10]], 400),
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request.', 'code' => 100]], 400),
+    ]);
+    $context = commerceContext();
+    $catalog = readyApiCatalog($context);
+
+    $access = app(CatalogDiagnosticsService::class)->probeCatalogAccess($catalog);
+
+    expect($access['passed'])->toBeFalse()
+        ->and($access['message'])->toContain('WhatsApp Business App')
+        ->and($access['message'])->toContain('catalog_management');
+});
+
 it('offers catalog upload for published products and queues only the selected product', function (): void {
     Queue::fake();
     Http::fake([

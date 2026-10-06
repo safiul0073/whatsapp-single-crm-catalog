@@ -90,6 +90,10 @@ class CatalogDiagnosticsService
 
         $response = $this->meta->wabaCatalogs($wabaId, $token);
         if (! $response->successful()) {
+            if (str_contains((string) $response->json('error.message'), 'SMB business type')) {
+                return $this->check('catalog_access', false, 'This number is connected in coexistence with the WhatsApp Business App, so Meta blocks catalog lookup through the WhatsApp Business Account. Link the catalog in the WhatsApp Business App or Commerce Manager, and grant the system user catalog_management access to catalog '.$catalog->meta_catalog_id.'.');
+            }
+
             return $this->check('catalog_access', false, $directError);
         }
 

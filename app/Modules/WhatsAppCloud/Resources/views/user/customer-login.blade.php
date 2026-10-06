@@ -26,9 +26,5 @@
                 <p class="text-sm text-body">{{ __('Failed welcomes retry up to three attempts. Uncertain deliveries wait for WhatsApp delivery confirmation and are not automatically resent.') }}</p>
             @endif
         </section>
-        <form method="POST" action="{{ route('user.commerce.orders.token') }}">@csrf<x-forms.submit :label="__('Generate storefront integration credential')" /></form>
-        @if(session('integration_token'))
-            <div class="rounded-xl border border-border p-4"><p>{{ __('Copy this credential into the Ecommarce server environment as MARKETING_API_TOKEN. It is displayed once. Generating another credential revokes the previous one.') }}</p><code class="break-all">{{ session('integration_token') }}</code></div>
-        @endif
     </div>
 </x-layouts.user>

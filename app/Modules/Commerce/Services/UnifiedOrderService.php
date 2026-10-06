@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
@@ -222,7 +223,10 @@ class UnifiedOrderService
 
     public function payload(Order $order): array
     {
-        $order->loadMissing(['items', 'groups', 'boxes.contents.item', 'events', 'shipment']);
+        $order->loadMissing(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'groups', 'boxes.contents.item', 'events', 'shipment']);
+        $imageUrlByItemId = $order->items->mapWithKeys(fn (OrderItem $item): array => [
+            $item->id => ($item->variant?->color?->swatchMedia ?? $item->variant?->product?->primaryMedia)?->url,
+        ]);
 
         $payload = array_merge($order->only(['id', 'number', 'source', 'submission_reference', 'status', 'currency', 'subtotal', 'discount_amount', 'adjustments', 'shipping_amount', 'shipping_quote_required', 'total', 'payment_state', 'payment_instructions', 'tracking_code', 'tracking_number', 'tracking_url', 'shipping_address']), ['items' => $order->items->toArray(), 'groups' => $order->groups->toArray(), 'boxes' => $order->boxes->toArray(), 'shipment' => $order->shipment?->toArray(), 'timeline' => $order->trackingTimeline()]);
         $precision = (new StoreOrderSetting(['currency' => $order->currency]))->precision();
@@ -231,13 +235,21 @@ class UnifiedOrderService
                 $payload[$field] = OrderMoney::decimal(OrderMoney::minor($payload[$field], $precision), $precision);
             }
         }
-        $payload['items'] = array_map(function (array $item) use ($precision): array {
+        $payload['items'] = array_map(function (array $item) use ($precision, $imageUrlByItemId): array {
             foreach (['unit_price', 'line_total'] as $field) {
                 $item[$field] = OrderMoney::decimal(OrderMoney::minor($item[$field], $precision), $precision);
             }
+            unset($item['variant']);
+            $item['image_url'] = $imageUrlByItemId[$item['id']] ?? null;
 
             return $item;
         }, $payload['items']);
+        $itemsById = collect($payload['items'])->keyBy('id');
+        $payload['boxes'] = array_map(function (array $box) use ($itemsById): array {
+            $box['contents'] = array_map(fn (array $content): array => array_merge($content, ['item' => $itemsById[$content['order_item_id']] ?? $content['item']]), $box['contents']);
+
+            return $box;
+        }, $payload['boxes']);
         $payload['precision'] = $precision;
         $payload['chargeable_weight_kg'] = $order->provider_payload['checkout_quote']['chargeable_weight_kg'] ?? null;
         $payload['charges'] = [];
@@ -255,7 +267,7 @@ class UnifiedOrderService
 
     private function item(ProductVariant $variant, int $quantity, int $price, int $precision): array
     {
-        return ['variant_id' => $variant->id, 'retailer_id' => $variant->meta_retailer_id ?? $variant->sku, 'sku' => $variant->sku, 'attributes' => array_merge($variant->attributes ?? [], ['size' => $variant->size]), 'quantity' => $quantity, 'unit_price' => OrderMoney::decimal($price, $precision)];
+        return ['variant_id' => $variant->id, 'retailer_id' => $variant->meta_retailer_id ?? $variant->sku, 'sku' => $variant->sku, 'attributes' => array_filter(array_merge($variant->attributes ?? [], ['size' => $variant->size, 'color' => $variant->color?->name ?? $variant->attributes['color'] ?? null]), fn ($value) => $value !== null), 'quantity' => $quantity, 'unit_price' => OrderMoney::decimal($price, $precision)];
     }
 
     private function invalid(string $field, string $message): never

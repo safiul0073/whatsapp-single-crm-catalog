@@ -99,4 +99,10 @@ class Order extends Model
     {
         return $this->belongsTo(ChannelAccount::class);
     }
+
+    public function hasCompleteShippingAddress(): bool
+    {
+        return collect(['name', 'phone', 'line1', 'city', 'country'])
+            ->every(fn (string $field): bool => filled($this->shipping_address[$field] ?? null));
+    }
 }

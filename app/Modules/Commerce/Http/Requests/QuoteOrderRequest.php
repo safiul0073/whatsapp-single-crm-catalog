@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Http\Requests;
 
+use App\Modules\Commerce\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 
 class QuoteOrderRequest extends FormRequest
@@ -11,8 +12,19 @@ class QuoteOrderRequest extends FormRequest
         return $this->user()?->can('commerce.manage') ?? false;
     }
 
+    /**
+     * The customer's delivery address is locked once complete; staff can only fill it in for
+     * orders that arrived without one (e.g. WhatsApp catalog orders).
+     */
     protected function prepareForValidation(): void
     {
+        $order = $this->route('order');
+        if ($order instanceof Order && $order->hasCompleteShippingAddress()) {
+            $this->merge(['shipping_address' => $order->shipping_address]);
+
+            return;
+        }
+
         $this->merge(['shipping_address' => [
             'name' => $this->input('shipping_name'),
             'phone' => $this->input('shipping_phone'),

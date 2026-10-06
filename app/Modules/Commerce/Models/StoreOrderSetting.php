@@ -12,7 +12,7 @@ class StoreOrderSetting extends Model
 
     protected $table = 'commerce_store_order_settings';
 
-    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'integration_token_hash'];
+    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions'];
 
     protected function casts(): array
     {

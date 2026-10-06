@@ -37,7 +37,8 @@ function unifiedContext(): array
     $user = User::factory()->create();
     $workspace = app(WorkspaceResolver::class)->current($user);
     $settings = StoreOrderSetting::forWorkspace($workspace->id);
-    $settings->update(['integration_token_hash' => hash('sha256', str_repeat('t', 64)), 'payment_instructions' => 'Bank transfer']);
+    $settings->update(['payment_instructions' => 'Bank transfer']);
+    config(['commerce.store_workspace_id' => config('commerce.store_workspace_id') ?? $workspace->id]);
     $product = Product::query()->create(['workspace_id' => $workspace->id, 'name' => 'Cotton shirt', 'slug' => 'shirt-'.$workspace->id, 'sku' => 'shirt-'.$workspace->id, 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'single_piece_price' => '10.00', 'wholesale_price' => '6.00', 'ws_enabled' => true, 'ws_main_moq' => 12, 'ws_color_moq' => 6, 'ws_min_sizes' => 3, 'ws_ratio_multiplier' => 1]);
     $color = $product->colors()->create(['workspace_id' => $workspace->id, 'name' => 'Red', 'hex_code' => '#ff0000']);
     $product->update(['ws_size_ratios' => [$color->id => ['S' => 2, 'M' => 3, 'L' => 1]]]);
@@ -143,16 +144,15 @@ it('releases cancellation and expiry reservations safely', function () {
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
 });
 
-it('protects the store API and ignores customer-selected workspaces', function () {
+it('ignores customer-selected workspaces on the store API', function () {
     $c = unifiedContext();
-    $this->postJson('/api/commerce/store/orders', $c['data'])->assertUnauthorized();
     unset($c['data']['source']);
     $c['data']['workspace_id'] = 9999;
     $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
     $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
     $method = ShippingMethod::create(['workspace_id' => $c['workspace']->id, 'name' => 'Air', 'code' => 'AIR', 'type' => 'air', 'is_active' => true]);
     $zone->rates()->create(['workspace_id' => $c['workspace']->id, 'shipping_method_id' => $method->id, 'min_weight_kg' => 0, 'price' => 5, 'price_per_kg' => 0, 'currency' => 'USD', 'is_active' => true]);
-    $response = $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders', $c['data'])->assertCreated();
+    $response = $this->postJson('/api/commerce/store/orders', $c['data'])->assertCreated();
     expect(Order::find($response->json('data.id'))->workspace_id)->toBe($c['workspace']->id);
     $this->getJson('/api/commerce/track/'.$response->json('data.tracking_code'))->assertOk()->assertDontSee('1 Main Street');
 });
@@ -229,7 +229,6 @@ it('keeps historical currency precision when store currency changes', function (
 
 it('rejects cross-store products and cross-workspace staff access', function () {
     $c = unifiedContext();
-    $c['settings']->update(['integration_token_hash' => null]);
     $other = unifiedContext();
     $c['data']['groups'][0]['product_id'] = $other['product']->id;
     expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ModelNotFoundException::class);
@@ -244,7 +243,7 @@ it('accepts payment evidence for review without deducting stock', function () {
     Storage::fake('local');
     $c['workspace']->update(['settings' => ['commerce' => ['payment_methods' => [['id' => 'remitly', 'name' => 'Remitly', 'active' => true, 'recipient_details' => 'Store account', 'instructions' => 'Transfer', 'sort_order' => 0, 'fields' => []]]]]]);
     $proof = ['payment_method_id' => 'remitly', 'transaction_id' => 'ABC', 'receipts' => [UploadedFile::fake()->image('one.png'), UploadedFile::fake()->image('two.jpg')]];
-    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/evidence', $proof)->assertOk();
+    $this->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/evidence', $proof)->assertOk();
     expect($order->fresh()->payment_evidence['receipts'])->toHaveCount(2);
     foreach ($order->fresh()->payment_evidence['receipts'] as $receipt) {
         Storage::disk('local')->assertExists($receipt['path']);
@@ -259,7 +258,8 @@ it('accepts payment evidence for review without deducting stock', function () {
 it('renders summaries packing slips and currency settings', function () {
     $c = unifiedContext();
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
-    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('BOX-1');
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('BOX-1')
+        ->assertSee('Pack 1 of 3')->assertSee('Color: Red')->assertDontSee('Ordered items')->assertSeeInOrder(['>S<', '>M<', '>L<'], false);
     $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Cotton shirt');
     $this->get(route('user.commerce.orders.settings'))->assertOk()->assertSee('Store order settings');
 });
@@ -312,7 +312,7 @@ it('respects WhatsApp eligibility and sends each order event once', function () 
 it('rejects browser-provided order prices through the integration API', function () {
     $c = unifiedContext();
     $c['data']['groups'][0]['price'] = '0.01';
-    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.price');
+    $this->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.price');
     expect(Order::count())->toBe(0);
 });
 
@@ -336,10 +336,10 @@ it('retries durable order events without repeating completed notification channe
 it('lists only enabled configured methods and saves methods in workspace settings', function () {
     $c = unifiedContext();
     expect(array_column(StoreOrderSetting::paymentMethods($c['workspace']->id), 'name'))->toBe(['Remitly', 'Taptap Send', 'MoneyGram']);
-    $this->withToken(str_repeat('t', 64))->getJson('/api/commerce/store/settings')->assertOk()->assertJsonPath('payment_methods', []);
+    $this->getJson('/api/commerce/store/settings')->assertOk()->assertJsonPath('payment_methods', []);
     $methods = [['id' => 'remitly', 'name' => 'Remitly', 'active' => '1', 'recipient_details' => 'Recipient details', 'instructions' => 'Transfer instructions', 'sort_order' => 0, 'fields' => [['name' => 'sender', 'label' => 'Sender name', 'required' => '1']]]];
     $this->actingAs($c['user'])->put(route('user.commerce.orders.settings.update'), ['currency' => 'USD', 'reservation_hours' => 24, 'payment_methods' => $methods])->assertSessionHasNoErrors();
-    $this->withToken(str_repeat('t', 64))->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.name', 'Remitly');
+    $this->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.name', 'Remitly');
     $methods[0]['recipient_details'] = '';
     $this->put(route('user.commerce.orders.settings.update'), ['currency' => 'USD', 'reservation_hours' => 24, 'payment_methods' => $methods])->assertSessionHasErrors('payment_methods.0.recipient_details');
 });
@@ -351,7 +351,7 @@ it('rejects invalid manual proof and protects private receipts', function () {
     app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
     $proof = ['payment_method_id' => 'remitly', 'transaction_id' => 'TX123', 'receipts' => [UploadedFile::fake()->image('proof.png')]];
     $url = '/api/commerce/store/orders/'.$order->submission_reference.'/evidence';
-    $this->withToken(str_repeat('t', 64))->postJson($url, $proof)->assertJsonValidationErrors('fields.sender');
+    $this->postJson($url, $proof)->assertJsonValidationErrors('fields.sender');
     $proof['fields'] = ['sender' => 'Buyer'];
     $proof['receipts'] = [UploadedFile::fake()->create('proof.pdf', 1, 'application/pdf')];
     $this->postJson($url, $proof)->assertJsonValidationErrors('receipts.0');
@@ -374,7 +374,7 @@ it('rejects invalid manual proof and protects private receipts', function () {
 
 it('blocks storefront creation without shipping while keeping staff quote workflow', function () {
     $c = unifiedContext();
-    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable();
+    $this->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable();
     expect(Order::count())->toBe(0);
     expect(app(UnifiedOrderService::class)->create($c['workspace'], $c['data'])->shipping_quote_required)->toBeTrue();
 });
@@ -399,7 +399,7 @@ it('allows destination-only storefront quotes while orders require full contact 
     $data['source'] = 'storefront_checkout';
     $data['customer'] = [];
     $data['shipping_address'] = ['country' => 'US'];
-    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders/preview', $data)->assertOk();
+    $this->postJson('/api/commerce/store/orders/preview', $data)->assertOk();
     $this->postJson('/api/commerce/store/orders', $data)->assertJsonValidationErrors(['customer.name', 'customer.phone', 'shipping_address.line1', 'shipping_address.city']);
 });
 
@@ -413,7 +413,7 @@ it('creates edits and deletes payment services with workspace scoped icon upload
     $saved = StoreOrderSetting::paymentMethods($c['workspace']->id)[0];
     Storage::disk('public')->assertExists($saved['icon_path']);
     expect($saved['icon_path'])->toStartWith('payment-icons/'.$c['workspace']->id.'/');
-    $this->withToken(str_repeat('t', 64))->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.icon_url', Storage::disk('public')->url($saved['icon_path']));
+    $this->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.icon_url', Storage::disk('public')->url($saved['icon_path']));
     unset($data['payment_icons']);
     $data['payment_methods'][0]['name'] = 'Updated service';
     $this->put($url, $data)->assertSessionHasNoErrors();
@@ -472,4 +472,25 @@ it('manages payment services through dedicated payment services page', function 
         ->assertRedirect();
 
     expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['name'])->toBe('Taptap Send');
+});
+
+it('serves the store api without credentials from the oldest active workspace', function () {
+    $c = unifiedContext();
+
+    $this->getJson('/api/commerce/store/settings')
+        ->assertOk()->assertJsonPath('currency', $c['settings']->fresh()->currency);
+});
+
+it('keeps the customer shipping address locked when staff save a quote', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))
+        ->assertOk()->assertDontSee('name="shipping_line1"', false)->assertSee('1 Main Street')->assertDontSee('Order review help');
+
+    $this->put(route('user.commerce.orders.quote', $order), ['shipping_line1' => 'Changed Road', 'shipping_country' => 'BD', 'shipping_amount' => 5])
+        ->assertSessionHasNoErrors();
+
+    expect($order->fresh()->shipping_address['line1'])->toBe('1 Main Street')
+        ->and($order->fresh()->shipping_address['country'])->toBe('US');
 });
