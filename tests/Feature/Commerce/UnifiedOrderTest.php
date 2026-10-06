@@ -392,3 +392,13 @@ it('quotes variant physical weight and shipping cost in the store currency', fun
     $c['data']['shipping_address']['country'] = 'BD';
     expect(app(UnifiedOrderService::class)->preview($c['workspace'], $c['data'])['shipping_quote_required'])->toBeTrue();
 });
+
+it('allows destination-only storefront quotes while orders require full contact details', function () {
+    $c = unifiedContext();
+    $data = $c['data'];
+    $data['source'] = 'storefront_checkout';
+    $data['customer'] = [];
+    $data['shipping_address'] = ['country' => 'US'];
+    $this->withToken(str_repeat('t', 64))->postJson('/api/commerce/store/orders/preview', $data)->assertOk();
+    $this->postJson('/api/commerce/store/orders', $data)->assertJsonValidationErrors(['customer.name', 'customer.phone', 'shipping_address.line1', 'shipping_address.city']);
+});
