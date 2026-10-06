@@ -711,7 +711,31 @@
                 <input type="hidden" name="tier_prices" value="">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                @php
+                    $matrixColorOption = $product->options->first(fn ($o) => strtolower($o->code) === 'color');
+                    $matrixSizeOption = $product->options->first(fn ($o) => strtolower($o->code) === 'size');
+                    $matrixColors = $matrixColorOption?->values->pluck('value')->values()->all() ?? [];
+                    $matrixSizes = $matrixSizeOption?->values->pluck('value')->values()->all() ?? [];
+                    $matrixHasGrid = count($matrixColors) > 0 && count($matrixSizes) > 0;
+                    $matrixStock = [];
+                    if ($matrixHasGrid) {
+                        foreach ($matrixColors as $ci => $mColor) {
+                            foreach ($matrixSizes as $si => $mSize) {
+                                $mColorModel = $product->colors->first(fn ($c) => strtolower((string) $c->hex_code) === strtolower($mColor) || strtolower((string) $c->name) === strtolower($mColor));
+                                $existingVariant = $product->variants->first(fn ($v) => ($mColorModel && $v->color_id === $mColorModel->id || strtolower((string) ($v->attributes['color'] ?? '')) === strtolower($mColor)) && (string) ($v->attributes['size'] ?? $v->size) === (string) $mSize);
+                                $matrixStock[$ci][$si] = (int) old("stock_matrix.{$ci}.{$si}.qty", $existingVariant?->stock_quantity ?? 0);
+                            }
+                        }
+                    }
+                    $matrixColorHex = $product->colors->mapWithKeys(fn ($c) => [strtolower((string) ($c->name ?: $c->hex_code)) => $c->hex_code])->all();
+                @endphp
+                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs"
+                    x-data="{
+                        stockGrid: @js($matrixStock),
+                        rowTotal(ci) { return Object.values(this.stockGrid[ci] || {}).reduce((s, v) => s + (parseInt(v) || 0), 0); },
+                        colTotal(si) { return Object.values(this.stockGrid).reduce((s, row) => s + (parseInt(row[si]) || 0), 0); },
+                        get grandTotal() { return Object.keys(this.stockGrid).reduce((s, ci) => s + this.rowTotal(ci), 0); },
+                    }">
                     <h2 class="text-lg font-bold text-neutral-900">{{ __('Pricing & Inventory') }}</h2>
                     <p class="text-xs text-neutral-500 mt-0.5">{{ __('Configure minimum order quantities, stock numbers, and optional bulk price breaks.') }}</p>
 
@@ -729,11 +753,69 @@
                         <div>
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="default_stock">{{ __('Stock / Inventory *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
-                                <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', $product->variants->isNotEmpty() ? $product->variants->first()->stock_quantity : "") }}" placeholder="500">
-                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
+                                @if($matrixHasGrid)
+                                    <input id="default_stock" type="number" class="form-input text-sm font-bold flex-1 bg-neutral-50" :value="grandTotal" readonly>
+                                @else
+                                    <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', $product->variants->isNotEmpty() ? $product->variants->first()->stock_quantity : "") }}" placeholder="500">
+                                @endif
+                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">{{ $matrixHasGrid ? __('Pcs') : 'Sets' }}</span>
                             </div>
+                            @if($matrixHasGrid)
+                                <p class="text-[11px] text-neutral-500 mt-1">{{ __('Auto-calculated from the color × size inventory below.') }}</p>
+                            @endif
                         </div>
                     </div>
+
+                    @if($matrixHasGrid)
+                        {{-- Color × Size Inventory Matrix --}}
+                        <div class="mt-8 border-t border-neutral-200 pt-5">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-800">{{ __('Inventory by Color & Size') }}</h3>
+                            <p class="text-[11px] text-neutral-500 mb-3">{{ __('Enter the piece count for each color and size. Totals update automatically.') }}</p>
+
+                            <div class="overflow-x-auto rounded-xl border border-neutral-200">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-neutral-50 text-[11px] font-bold uppercase tracking-wider text-neutral-600">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left">{{ __('Color') }}</th>
+                                            @foreach($matrixSizes as $mSize)
+                                                <th class="px-2 py-2 text-center">{{ $mSize }}</th>
+                                            @endforeach
+                                            <th class="px-3 py-2 text-right">{{ __('Total') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-neutral-100">
+                                        @foreach($matrixColors as $ci => $mColor)
+                                            <tr>
+                                                <td class="px-3 py-2 font-semibold text-neutral-800 whitespace-nowrap">
+                                                    <span class="inline-flex items-center gap-2">
+                                                        <span class="h-3.5 w-3.5 rounded-full border border-neutral-300" style="background-color: {{ $matrixColorHex[strtolower($mColor)] ?? $mColor }}"></span>
+                                                        {{ $mColor }}
+                                                    </span>
+                                                </td>
+                                                @foreach($matrixSizes as $si => $mSize)
+                                                    <td class="px-1.5 py-1.5">
+                                                        <input type="hidden" name="stock_matrix[{{ $ci }}][{{ $si }}][color]" value="{{ $mColor }}">
+                                                        <input type="hidden" name="stock_matrix[{{ $ci }}][{{ $si }}][size]" value="{{ $mSize }}">
+                                                        <input type="number" min="0" class="form-input h-9 w-full min-w-16 text-center text-sm font-bold" name="stock_matrix[{{ $ci }}][{{ $si }}][qty]" x-model.number="stockGrid[{{ $ci }}][{{ $si }}]" placeholder="0">
+                                                    </td>
+                                                @endforeach
+                                                <td class="px-3 py-2 text-right font-black text-neutral-900" x-text="rowTotal({{ $ci }})"></td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="bg-emerald-50 text-sm font-bold text-emerald-800">
+                                        <tr>
+                                            <td class="px-3 py-2.5 uppercase text-[11px] tracking-wider">{{ __('Total') }}</td>
+                                            @foreach($matrixSizes as $si => $mSize)
+                                                <td class="px-2 py-2.5 text-center" x-text="colTotal({{ $si }})"></td>
+                                            @endforeach
+                                            <td class="px-3 py-2.5 text-right text-lg font-black" x-text="grandTotal"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Price Break Rules (Optional) --}}
                     <div class="mt-8 border-t border-neutral-200 pt-5">

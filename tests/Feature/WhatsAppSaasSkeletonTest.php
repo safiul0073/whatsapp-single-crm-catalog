@@ -436,6 +436,11 @@ it('connects a WhatsApp channel from embedded signup', function (): void {
         ->and($channel->credential('source'))->toBe('embedded_signup')
         ->and($channel->provider_account_id)->toBe('102938475610293')
         ->and($channel->provider_display_id)->toBe('+1 503 555 0119');
+
+    Http::assertSent(fn ($request): bool => $request->method() === 'POST'
+        && $request->url() === 'https://graph.facebook.com/v20.0/102938475610293/subscribed_apps'
+        && $request['override_callback_uri'] === url('/webhooks/channels/whatsapp/'.$channel->webhook_code)
+        && $request['verify_token'] === $channel->webhook_verify_token);
 });
 
 it('does not save embedded signup credentials when meta code exchange fails', function (): void {
@@ -603,4 +608,35 @@ it('deletes existing whatsapp templates when updating to a new account', functio
 
     // 4. Assert that templates were deleted because the account changed
     expect(MessageTemplate::query()->where('workspace_id', $workspace->id)->count())->toBe(0);
+});
+
+it('subscribes the app to the WABA webhooks when syncing from meta', function (): void {
+    app(WhatsAppSettingsService::class)->update(['whatsapp_graph_api_version' => 'v20.0']);
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $workspace = app(WorkspaceResolver::class)->current($user);
+
+    $channel = ChannelAccount::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'whatsapp',
+        'name' => 'Synced WhatsApp',
+        'status' => 'connected',
+        'provider_account_id' => 'sync-waba-id',
+        'provider_phone_id' => 'sync-phone-id',
+        'credentials' => ['access_token' => 'sync-token'],
+        'webhook_verify_token' => 'sync-verify-token',
+        'connected_at' => now(),
+    ]);
+
+    Http::fake(['*' => Http::response(['success' => true, 'data' => []])]);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.whatsapp-cloud.channel-setup.sync'))
+        ->assertRedirect();
+
+    Http::assertSent(fn ($request): bool => $request->method() === 'POST'
+        && $request->url() === 'https://graph.facebook.com/v20.0/sync-waba-id/subscribed_apps'
+        && $request->hasHeader('Authorization', 'Bearer sync-token')
+        && $request['override_callback_uri'] === url('/webhooks/channels/whatsapp/'.$channel->fresh()->webhook_code)
+        && $request['verify_token'] === 'sync-verify-token');
 });

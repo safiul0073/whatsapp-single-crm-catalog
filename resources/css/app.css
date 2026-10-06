@@ -5,6 +5,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
+@source '../../app/Modules/**/*.blade.php';
 @source '../**/*.js';
 
 /* Safelist: dynamic classes used via PHP/JS concatenation (e.g. 'badge-' . $variant) */

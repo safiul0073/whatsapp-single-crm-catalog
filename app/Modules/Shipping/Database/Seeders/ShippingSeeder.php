@@ -14,8 +14,9 @@ class ShippingSeeder extends Seeder
     public function run(): void
     {
         $workspace = Workspace::query()->first();
-        if (!$workspace) {
+        if (! $workspace) {
             $this->command->warn('No workspace found. Skipping Shipping Seeder.');
+
             return;
         }
 
@@ -26,7 +27,7 @@ class ShippingSeeder extends Seeder
             'North America' => ['US', 'CA', 'MX'],
             'Europe' => ['GB', 'DE', 'FR', 'IT', 'ES'],
             'Middle East' => ['AE', 'SA', 'QA'],
-            'Asia Pacific' => ['AU', 'JP', 'SG'],
+            'Asia Pacific' => ['AU', 'JP', 'SG', 'BD', 'IN'],
         ];
 
         $createdZones = [];
@@ -160,11 +161,15 @@ class ShippingSeeder extends Seeder
 
         foreach ($ratesSetup as $zoneName => $methodsSetup) {
             $zone = $createdZones[$zoneName] ?? null;
-            if (!$zone) continue;
+            if (! $zone) {
+                continue;
+            }
 
             foreach ($methodsSetup as $methodName => $rates) {
                 $method = $createdMethods[$methodName] ?? null;
-                if (!$method) continue;
+                if (! $method) {
+                    continue;
+                }
 
                 foreach ($rates as $rateData) {
                     [$minWeight, $maxWeight, $price, $pricePerKg] = $rateData;

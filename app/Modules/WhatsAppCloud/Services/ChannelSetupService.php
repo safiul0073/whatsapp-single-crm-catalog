@@ -13,6 +13,7 @@ use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MetaSocial\Services\MetaSocialClient;
 use App\Modules\Telegram\Services\TelegramBotProvider;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -354,6 +355,8 @@ class ChannelSetupService
 
         abort_unless($channel, 404);
 
+        $this->subscribeToWebhooks($channel);
+
         $phoneResult = $this->settings->enabled('whatsapp_auto_sync_phone_numbers')
             ? $this->syncPhoneNumbers($channel)
             : ['ok' => true, 'synced' => 0];
@@ -482,6 +485,8 @@ class ChannelSetupService
             ]
         );
 
+        $this->subscribeToWebhooks($channel);
+
         $phoneResult = $this->settings->enabled('whatsapp_auto_sync_phone_numbers')
             ? $this->syncPhoneNumbers($channel)
             : ['ok' => true, 'synced' => 1];
@@ -567,6 +572,23 @@ class ChannelSetupService
         $source->update(['last_synced_at' => now(), 'status' => $response->successful() ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value]);
 
         return ['ok' => $response->successful(), 'synced' => $synced, 'response' => $response->json()];
+    }
+
+    protected function subscribeToWebhooks(ChannelAccount $channel): void
+    {
+        $response = $this->client->subscribeApp(
+            (string) $channel->provider_account_id,
+            (string) $channel->credential('access_token'),
+            $this->webhookUrl($channel),
+            (string) $channel->webhook_verify_token,
+        );
+
+        if (! $response->successful()) {
+            Log::warning('WhatsApp webhook subscription failed.', [
+                'channel_account_id' => $channel->id,
+                'error' => $this->metaError($response->json()),
+            ]);
+        }
     }
 
     protected function webhookUrl(ChannelAccount $channel): string

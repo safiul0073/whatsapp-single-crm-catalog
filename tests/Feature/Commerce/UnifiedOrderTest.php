@@ -447,3 +447,29 @@ it('rejects unsafe or oversized icons and protects payment configuration from ot
     $c['workspace']->members()->attach($outsider, ['status' => 'active']);
     $this->withSession(['active_workspace_id' => $c['workspace']->id])->actingAs($outsider)->put($url, $data)->assertForbidden();
 });
+
+it('manages payment services through dedicated payment services page', function () {
+    $c = unifiedContext();
+    $this->actingAs($c['user'])->get(route('user.commerce.payment-services.index'))
+        ->assertOk()
+        ->assertSee('Payment Services')
+        ->assertSee('Quick Presets');
+
+    $methods = [
+        [
+            'id' => 'taptap-send',
+            'name' => 'Taptap Send',
+            'active' => '1',
+            'recipient_details' => 'bKash +8801819876543',
+            'instructions' => 'Send exact amount',
+            'sort_order' => 0,
+            'fields' => [['name' => 'sender_name', 'label' => 'Sender Name', 'required' => '1']],
+        ],
+    ];
+
+    $this->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['name'])->toBe('Taptap Send');
+});

@@ -66,6 +66,18 @@ class WhatsAppCloudClient
         ]);
     }
 
+    /**
+     * Meta only delivers inbound webhooks for WABAs the app is subscribed to; the override keeps
+     * this WABA's events on our callback even when the app dashboard points elsewhere.
+     */
+    public function subscribeApp(string $businessAccountId, string $token, string $callbackUrl, string $verifyToken): Response
+    {
+        return Http::withToken($token)->asForm()->post($this->graphUrl("{$businessAccountId}/subscribed_apps"), [
+            'override_callback_uri' => $callbackUrl,
+            'verify_token' => $verifyToken,
+        ]);
+    }
+
     protected function endpoint(string $phoneNumberId, string $resource): string
     {
         return $this->graphUrl("{$phoneNumberId}/{$resource}");

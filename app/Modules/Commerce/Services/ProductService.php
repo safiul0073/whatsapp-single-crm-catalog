@@ -86,7 +86,24 @@ class ProductService
             if (array_key_exists('tier_prices', $data)) {
                 $this->syncTierPrices($product, $data['tier_prices']);
             }
-            if (isset($data['default_stock'])) {
+            if (! empty($data['stock_matrix']) && is_array($data['stock_matrix'])) {
+                $matrix = [];
+                foreach ($data['stock_matrix'] as $row) {
+                    foreach ((array) $row as $cell) {
+                        $key = Str::lower((string) ($cell['color'] ?? '')).'|'.(string) ($cell['size'] ?? '');
+                        $matrix[$key] = (int) ($cell['qty'] ?? 0);
+                    }
+                }
+                $variants = $this->variantPreview($product);
+                if (! empty($variants)) {
+                    foreach ($variants as &$v) {
+                        $key = Str::lower((string) ($v['attributes']['color'] ?? '')).'|'.(string) ($v['attributes']['size'] ?? '');
+                        $v['stock_quantity'] = $matrix[$key] ?? ($v['stock_quantity'] ?? 0);
+                    }
+                    unset($v);
+                    $this->syncVariants($product, $variants);
+                }
+            } elseif (isset($data['default_stock'])) {
                 $stock = (int) $data['default_stock'];
                 if ($product->options()->exists()) {
                     $variants = $this->variantPreview($product);

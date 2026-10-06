@@ -56,6 +56,8 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::put('order-settings', [$controller, 'updateSettings'])->name('orders.settings.update');
         Route::put('order-settings/customer-auth', [$controller, 'updateAuthSettings'])->name('orders.settings.customer-auth');
         Route::post('order-settings/token', [$controller, 'rotateToken'])->name('orders.token');
+        Route::get('payment-services', [$controller, 'paymentServices'])->name('payment-services.index');
+        Route::put('payment-services', [$controller, 'updatePaymentServices'])->name('payment-services.update');
         Route::get('orders/{order}/complete', [$controller, 'create'])->name('orders.complete.form');
         Route::post('orders/{order}/complete', [$controller, 'complete'])->name('orders.complete');
         Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');
