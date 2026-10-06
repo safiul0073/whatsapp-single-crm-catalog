@@ -63,7 +63,7 @@ class WebhookController extends Controller
                 if ($provider === 'telegram') {
                     ProcessChannelWebhookJob::dispatchSync($event->id);
                 } else {
-                    ProcessChannelWebhookJob::dispatch($event->id);
+                    ProcessChannelWebhookJob::dispatchAfterResponse($event->id);
                 }
             }
         } catch (InvalidArgumentException $exception) {
