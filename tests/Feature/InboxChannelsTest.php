@@ -840,6 +840,41 @@ it('stores inbound whatsapp text messages from channel webhooks and exposes them
         ->assertJsonPath('messages.0.attachment', null);
 });
 
+it('attaches inbound whatsapp messages to an existing contact with the same phone', function (): void {
+    [, $workspace] = inboxChannelContext();
+
+    $channel = inboxChannel($workspace->id, 'whatsapp');
+    $existingContact = Contact::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Existing Customer',
+        'phone' => '+15555550188',
+    ]);
+
+    $this->postJson(route('webhooks.channels.receive', ['provider' => 'whatsapp']), [
+        'object' => 'whatsapp_business_account',
+        'entry' => [[
+            'id' => 'waba-1',
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $channel->provider_phone_id],
+                    'messages' => [[
+                        'from' => '15555550188',
+                        'id' => 'wamid.existing.1',
+                        'type' => 'text',
+                        'text' => ['body' => 'Hello again'],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $message = Message::query()->where('provider_message_id', 'wamid.existing.1')->firstOrFail();
+
+    expect($message->conversation->contact_id)->toBe($existingContact->id)
+        ->and(Contact::query()->where('phone', '+15555550188')->count())->toBe(1);
+});
+
 it('downloads inbound whatsapp image media and exposes attachment metadata in inbox json', function (): void {
     [$user, $workspace] = inboxChannelContext();
 

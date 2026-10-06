@@ -334,7 +334,9 @@ class ProcessChannelWebhookJob implements ShouldQueue
             $contactData['opt_in_at'] = now();
         }
 
-        $contact = Contact::query()->create($contactData);
+        $contact = $phone
+            ? Contact::query()->firstOrCreate(['workspace_id' => $account->workspace_id, 'phone' => $phone], $contactData)
+            : Contact::query()->create($contactData);
 
         return ContactProviderIdentity::query()->create([
             'workspace_id' => $account->workspace_id,
