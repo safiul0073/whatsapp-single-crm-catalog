@@ -27,7 +27,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -204,14 +203,6 @@ class OrderManagementController extends Controller
                 Storage::disk('public')->delete($path);
             }
         }
-    }
-
-    public function rotateToken(Request $request): RedirectResponse
-    {
-        $token = Str::random(64);
-        StoreOrderSetting::forWorkspace($this->workspaces->current($request->user())->id)->update(['integration_token_hash' => hash('sha256', $token)]);
-
-        return back()->with('integration_token', $token)->with('success', 'New integration credential generated. Copy it into Ecommarce’s MARKETING_API_TOKEN setting.');
     }
 
     public function retailBox(PackOrderRequest $request, Order $order, OrderPackingService $packing): RedirectResponse

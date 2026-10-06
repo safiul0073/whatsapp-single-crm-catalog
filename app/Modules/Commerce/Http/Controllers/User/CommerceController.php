@@ -568,7 +568,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        return view('commerce::user.order', ['order' => $order->load(['items', 'groups', 'boxes.contents.item', 'contact', 'conversation', 'events', 'shipment'])]);
+        return view('commerce::user.order', ['order' => $order->load(['items', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'contact', 'conversation', 'events', 'shipment'])]);
     }
 
     public function quote(QuoteOrderRequest $request, Order $order): RedirectResponse
