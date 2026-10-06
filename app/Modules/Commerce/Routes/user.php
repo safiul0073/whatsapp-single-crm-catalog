@@ -15,6 +15,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::put('products/{product}/options', [CommerceController::class, 'updateOptions'])->name('products.options.update');
     Route::get('products/{product}/variants/preview', [CommerceController::class, 'previewVariants'])->name('products.variants.preview');
     Route::put('products/{product}/variants', [CommerceController::class, 'updateVariants'])->name('products.variants.update');
+    Route::post('products/{product}/catalog', [CommerceController::class, 'syncProductCatalog'])->name('products.catalog.sync');
     Route::put('products/{product}/publish', [CommerceController::class, 'publish'])->name('products.publish');
     Route::post('products/media', [CommerceController::class, 'uploadMedia'])->name('products.media.upload');
     Route::delete('products/bulk', [CommerceController::class, 'bulkDestroyProducts'])->name('products.bulk-destroy');
@@ -55,6 +56,8 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::put('order-settings', [$controller, 'updateSettings'])->name('orders.settings.update');
         Route::put('order-settings/customer-auth', [$controller, 'updateAuthSettings'])->name('orders.settings.customer-auth');
         Route::post('order-settings/token', [$controller, 'rotateToken'])->name('orders.token');
+        Route::get('payment-services', [$controller, 'paymentServices'])->name('payment-services.index');
+        Route::put('payment-services', [$controller, 'updatePaymentServices'])->name('payment-services.update');
         Route::get('orders/{order}/complete', [$controller, 'create'])->name('orders.complete.form');
         Route::post('orders/{order}/complete', [$controller, 'complete'])->name('orders.complete');
         Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');

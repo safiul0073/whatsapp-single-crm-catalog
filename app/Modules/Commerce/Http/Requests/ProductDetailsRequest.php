@@ -54,7 +54,7 @@ class ProductDetailsRequest extends FormRequest
                 }
                 $wsRatios = array_filter($wsRatios);
             }
-            $merges['ws_size_ratios'] = !empty($wsRatios) ? $wsRatios : null;
+            $merges['ws_size_ratios'] = ! empty($wsRatios) ? $wsRatios : null;
         }
 
         if ($this->has('moq')) {
@@ -77,7 +77,7 @@ class ProductDetailsRequest extends FormRequest
             $merges['status'] = $this->input('status', 'active') ?: 'active';
         }
 
-        if (!empty($merges)) {
+        if (! empty($merges)) {
             $this->merge($merges);
         }
     }
@@ -112,6 +112,11 @@ class ProductDetailsRequest extends FormRequest
             'delivery_time' => ['nullable', 'string', 'max:200'],
             'moq' => ['nullable', 'integer', 'min:1'],
             'default_stock' => ['nullable', 'integer', 'min:0'],
+            'stock_matrix' => ['nullable', 'array'],
+            'stock_matrix.*' => ['array'],
+            'stock_matrix.*.*.color' => ['required', 'string', 'max:255'],
+            'stock_matrix.*.*.size' => ['required', 'string', 'max:255'],
+            'stock_matrix.*.*.qty' => ['nullable', 'integer', 'min:0'],
             'rating' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'reviews_count' => ['nullable', 'integer', 'min:0'],
             'condition' => ['nullable', 'in:new,refurbished,used'],

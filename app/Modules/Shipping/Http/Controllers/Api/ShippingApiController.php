@@ -28,12 +28,11 @@ class ShippingApiController extends Controller
         $workspaceId = $request->input('workspace_id');
         $workspace = $workspaceId ? Workspace::query()->findOrFail($workspaceId) : Workspace::query()->firstOrFail();
 
-
         $countryCode = $request->input('shipping_address.country_code');
         $items = $request->input('items');
 
         $weightData = $this->calculator->calculateCartWeight($workspace, $items);
-        $rates = $this->calculator->getAvailableRates($workspace, $countryCode, $weightData['total_weight_kg']);
+        $rates = $this->calculator->getAvailableRates($workspace, $countryCode, $weightData);
 
         return response()->json([
             'weight_data' => $weightData,
@@ -42,7 +41,7 @@ class ShippingApiController extends Controller
                 'rate_id' => $rate->id,
                 'name' => $rate->method->name,
                 'carrier' => $rate->method->carrier,
-                'price' => $rate->price,
+                'price' => round((float) $rate->price + ((float) $rate->price_per_kg * ($rate->chargeable_weight_kg ?? 0)), 2),
                 'currency' => $rate->currency,
                 'estimated_delivery' => $this->formatEstimatedDelivery($rate->method->estimated_delivery_min_days, $rate->method->estimated_delivery_max_days),
             ]),
@@ -61,25 +60,28 @@ class ShippingApiController extends Controller
         $workspaceId = $request->input('workspace_id');
         $workspace = $workspaceId ? Workspace::query()->findOrFail($workspaceId) : Workspace::query()->firstOrFail();
 
-
         $countryCode = $request->input('shipping_address.country_code');
         $items = $request->input('items');
         $methodId = $request->input('shipping_method_id');
 
         $quote = $this->calculator->getQuote($workspace, $items, $countryCode, $methodId);
 
+        $weightKg = $quote['weight_data']['total_physical_weight_kg']
+            ?? $quote['weight_data']['product_weight_kg']
+            ?? 0;
+
         return response()->json([
             'shipping' => [
                 'method_id' => $quote['selected_rate'] ? $quote['selected_rate']->shipping_method_id : null,
                 'zone_id' => $quote['selected_rate'] ? $quote['selected_rate']->shipping_zone_id : null,
-                'weight_kg' => $quote['weight_data']['total_weight_kg'],
+                'weight_kg' => $weightKg,
                 'price' => $quote['shipping_price'],
                 'currency' => $quote['shipping_currency'],
             ],
             'available_rates' => $quote['available_rates']->map(fn ($rate) => [
                 'id' => $rate->method->id,
                 'name' => $rate->method->name,
-                'price' => $rate->price,
+                'price' => round((float) $rate->price + ((float) $rate->price_per_kg * ($rate->chargeable_weight_kg ?? 0)), 2),
                 'currency' => $rate->currency,
             ]),
         ]);

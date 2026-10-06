@@ -12,7 +12,7 @@ class MetaCatalogClient
 
     public function catalog(string $catalogId, string $token): Response
     {
-        return Http::withToken($token)->get($this->url($catalogId), ['fields' => 'id,name']);
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($catalogId), ['fields' => 'id,name']);
     }
 
     /**
@@ -21,17 +21,17 @@ class MetaCatalogClient
      */
     public function wabaCatalogs(string $wabaId, string $token): Response
     {
-        return Http::withToken($token)->get($this->url($wabaId.'/product_catalogs'), ['fields' => 'id,name']);
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($wabaId.'/product_catalogs'), ['fields' => 'id,name']);
     }
 
     public function commerceSettings(string $phoneNumberId, string $token): Response
     {
-        return Http::withToken($token)->get($this->url($phoneNumberId.'/whatsapp_commerce_settings'));
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($phoneNumberId.'/whatsapp_commerce_settings'));
     }
 
     public function updateCommerceSettings(string $phoneNumberId, string $token, bool $cartEnabled, bool $catalogVisible): Response
     {
-        return Http::withToken($token)->post($this->url($phoneNumberId.'/whatsapp_commerce_settings'), [
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->post($this->url($phoneNumberId.'/whatsapp_commerce_settings'), [
             'is_cart_enabled' => $cartEnabled,
             'is_catalog_visible' => $catalogVisible,
         ]);
@@ -39,7 +39,11 @@ class MetaCatalogClient
 
     public function upsertProduct(string $catalogId, string $token, string $retailerId, array $data): Response
     {
-        return Http::withToken($token)->post($this->url($catalogId.'/batch'), [
+        $data['retailer_product_group_id'] = $data['item_group_id'];
+        unset($data['item_group_id'], $data['retailer_id']);
+
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->post($this->url($catalogId.'/batch'), [
+            'allow_upsert' => true,
             'requests' => [[
                 'method' => 'UPDATE',
                 'retailer_id' => $retailerId,
@@ -48,9 +52,17 @@ class MetaCatalogClient
         ]);
     }
 
+    public function batchStatus(string $catalogId, string $token, string $handle): Response
+    {
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($catalogId.'/check_batch_request_status'), [
+            'handle' => $handle,
+            'fields' => 'handle,status,errors,errors_total_count,ids_of_invalid_requests',
+        ]);
+    }
+
     public function deleteProduct(string $catalogId, string $token, string $retailerId): Response
     {
-        return Http::withToken($token)->post($this->url($catalogId.'/batch'), [
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->post($this->url($catalogId.'/batch'), [
             'requests' => [['method' => 'DELETE', 'retailer_id' => $retailerId]],
         ]);
     }

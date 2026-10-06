@@ -604,6 +604,11 @@ select.form-input {
   @apply rounded-lg px-2.5 py-1.5 text-sm;
 }
 
+.form-input-compact,
+.input-subtle {
+  border-radius: 4px !important;
+}
+
 .input-search {
   padding-left: 2.75rem;
 }

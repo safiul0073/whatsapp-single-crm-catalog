@@ -15,7 +15,7 @@ class CatalogDiagnosticsService
     /**
      * @return array{ready: bool, checks: array<int, array{code: string, passed: bool, message: string}>, blocking_count: int, meta_verified: bool|null}
      */
-    public function diagnose(Catalog $catalog, bool $probeMeta = false): array
+    public function diagnose(Catalog $catalog, bool $probeMeta = false, ?int $productId = null): array
     {
         $catalog->loadMissing('channelAccount');
         $channel = $catalog->channelAccount;
@@ -27,10 +27,9 @@ class CatalogDiagnosticsService
             $this->check('https_app_url', str_starts_with((string) config('app.url'), 'https://'), 'Application URL uses public HTTPS.'),
         ];
 
-        $variants = ProductVariant::query()->with(['product.primaryMedia'])->where('workspace_id', $catalog->workspace_id)->where('status', 'active')->whereHas('product', fn ($query) => $query->where('status', 'active'))->get();
+        $variants = ProductVariant::query()->with(['product.primaryMedia', 'media'])->where('workspace_id', $catalog->workspace_id)->when($productId !== null, fn ($query) => $query->where('product_id', $productId))->whereIn('status', ['active', 'out_of_stock'])->whereHas('product', fn ($query) => $query->where('status', 'active'))->get();
         $checks[] = $this->check('active_items', $variants->isNotEmpty(), 'At least one active catalog item exists.');
         $checks[] = $this->check('public_images', $variants->every(fn ($variant): bool => str_starts_with((string) ($variant->media?->url ?? $variant->product->primaryMedia?->url), 'https://')), 'All active items have public HTTPS images.');
-        $checks[] = $this->check('sync_freshness', ! $catalog->last_successful_at || $catalog->last_successful_at->greaterThan(now()->subDays(7)), 'Catalog sync is fresh or has not run yet.');
 
         $access = $this->probeCatalogAccess($catalog, $probeMeta);
         if ($access !== null) {

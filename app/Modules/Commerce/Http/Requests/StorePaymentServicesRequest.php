@@ -4,7 +4,7 @@ namespace App\Modules\Commerce\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreOrderSettingsRequest extends FormRequest
+class StorePaymentServicesRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,7 +21,7 @@ class StoreOrderSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payment_methods' => ['sometimes', 'array', 'max:30'],
+            'payment_methods' => ['required', 'array', 'max:30'],
             'payment_methods.*.id' => ['required', 'string', 'regex:/^[a-z0-9-]+$/', 'max:60', 'distinct'],
             'payment_icons' => ['sometimes', 'array', 'max:30'],
             'payment_icons.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -37,7 +37,7 @@ class StoreOrderSettingsRequest extends FormRequest
             'payment_methods.*.fields.*.name' => ['required', 'string', 'regex:/^[a-z][a-z0-9_]*$/', 'max:60'],
             'payment_methods.*.fields.*.label' => ['required', 'string', 'max:100'],
             'payment_methods.*.fields.*.required' => ['required', 'boolean'],
-            'whatsapp_notifications' => ['sometimes', 'boolean'], 'whatsapp_channel_id' => ['nullable', 'integer'], 'whatsapp_template_id' => ['nullable', 'integer'], 'currency' => ['required', 'in:USD,BDT,EUR,GBP,CAD,AUD,JPY,KWD,BHD,OMR,CHF,SAR,AED,INR,SGD,NZD,CNY'], 'reservation_hours' => ['required', 'integer', 'min:1', 'max:168'], 'payment_instructions' => ['nullable', 'string', 'max:4000']];
+        ];
     }
 
     public function after(): array
@@ -56,10 +56,5 @@ class StoreOrderSettingsRequest extends FormRequest
                 }
             }
         }];
-    }
-
-    public function messages(): array
-    {
-        return ['payment_icons.*.image' => 'Upload a JPEG, PNG, or WebP service icon.', 'payment_icons.*.max' => 'Service icons must be no larger than 2 MB.', 'currency.in' => 'Choose a supported store currency.'];
     }
 }

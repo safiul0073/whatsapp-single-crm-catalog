@@ -20,7 +20,7 @@ class CreateUnifiedOrderRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $rules = [
             'submission_reference' => ['required', 'uuid'], 'draft' => ['sometimes', 'boolean'],
             'contact_id' => $this->attributes->has('store_workspace') ? ['prohibited'] : ['nullable', 'integer'], 'customer_reference' => ['nullable', 'string', 'max:150'],
             'customer.name' => ['required_without:contact_id', 'nullable', 'string', 'max:150'],
@@ -50,6 +50,13 @@ class CreateUnifiedOrderRequest extends FormRequest
             'adjustments.*.currency' => ['required', 'string', 'size:3'],
             'adjustments.*.reference' => ['required', 'string', 'max:100'],
         ];
+        if ($this->is('api/commerce/store/orders/preview')) {
+            foreach (['customer.name', 'customer.phone', 'shipping_address.name', 'shipping_address.phone', 'shipping_address.line1', 'shipping_address.city'] as $field) {
+                $rules[$field] = array_values(array_unique(array_merge(['nullable'], array_filter($rules[$field], fn ($rule) => ! str_starts_with($rule, 'required')))));
+            }
+        }
+
+        return $rules;
     }
 
     public function messages(): array

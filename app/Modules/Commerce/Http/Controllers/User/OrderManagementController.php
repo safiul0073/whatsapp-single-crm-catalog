@@ -7,6 +7,7 @@ use App\Modules\Commerce\Http\Requests\CreateUnifiedOrderRequest;
 use App\Modules\Commerce\Http\Requests\PackOrderRequest;
 use App\Modules\Commerce\Http\Requests\StoreCustomerAuthSettingsRequest;
 use App\Modules\Commerce\Http\Requests\StoreOrderSettingsRequest;
+use App\Modules\Commerce\Http\Requests\StorePaymentServicesRequest;
 use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\CustomerAuthSetting;
 use App\Modules\Commerce\Models\Order;
@@ -21,6 +22,7 @@ use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,7 +83,7 @@ class OrderManagementController extends Controller
     {
         $workspaceId = $this->workspaces->current($request->user())->id;
 
-        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId)]);
+        return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId), 'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId), 'defaultPaymentMethods' => StoreOrderSetting::defaultPaymentMethods()]);
     }
 
     public function customerAuthSettings(Request $request): View
@@ -118,21 +120,90 @@ class OrderManagementController extends Controller
         return back()->with('success', 'WhatsApp customer login settings saved.');
     }
 
+    public function paymentServices(Request $request): View
+    {
+        $workspaceId = $this->workspaces->current($request->user())->id;
+
+        return view('commerce::user.payment-services', [
+            'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId),
+            'defaultPaymentMethods' => StoreOrderSetting::defaultPaymentMethods(),
+        ]);
+    }
+
+    public function updatePaymentServices(StorePaymentServicesRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $data = $request->validated();
+        $this->persistPaymentMethods($workspace, $data['payment_methods'], $request);
+
+        return back()->with('success', 'Payment services saved successfully.');
+    }
+
     public function updateSettings(StoreOrderSettingsRequest $request): RedirectResponse
     {
-        $settings = StoreOrderSetting::forWorkspace($this->workspaces->current($request->user())->id);
+        $workspace = $this->workspaces->current($request->user());
+        $settings = StoreOrderSetting::forWorkspace($workspace->id);
         $data = $request->validated();
         foreach (['whatsapp_channel_id' => ChannelAccount::class, 'whatsapp_template_id' => MessageTemplate::class] as $field => $model) {
             if (! empty($data[$field])) {
                 abort_unless($model::query()->where('workspace_id', $settings->workspace_id)->whereKey($data[$field])->exists(), 404);
             }
         }
+        $methods = $data['payment_methods'] ?? null;
+        unset($data['payment_methods'], $data['payment_icons']);
+
+        if ($methods !== null) {
+            $this->persistPaymentMethods($workspace, $methods, $request);
+            $workspace = $workspace->fresh();
+        }
+
         $settings->update($data);
         Catalog::query()->where('workspace_id', $settings->workspace_id)->update(['currency' => $settings->currency]);
-        $workspace = $this->workspaces->current($request->user());
-        $workspace->update(['settings' => array_replace_recursive($workspace->settings ?? [], ['commerce' => ['currency' => $settings->currency]])]);
+        $workspaceSettings = $workspace->settings ?? [];
+        $workspaceSettings['commerce']['currency'] = $settings->currency;
+        $workspace->update(['settings' => $workspaceSettings]);
 
         return back()->with('success', 'Store order settings saved. Currency changes apply to new orders. Review product and shipping prices when changing currency.');
+    }
+
+    private function persistPaymentMethods(Workspace $workspace, array $methods, Request $request): void
+    {
+        $oldMethods = collect(StoreOrderSetting::paymentMethods($workspace->id))->keyBy('id');
+        $obsoleteIcons = [];
+
+        foreach ($methods as &$method) {
+            $oldIcon = $oldMethods->get($method['id'])['icon_path'] ?? null;
+            if ($oldIcon && empty($method['remove_icon'])) {
+                $method['icon_path'] = $oldIcon;
+            }
+            if ($request->hasFile('payment_icons.'.$method['id'])) {
+                $method['icon_path'] = $request->file('payment_icons.'.$method['id'])->store('payment-icons/'.$workspace->id, 'public');
+                if (! $method['icon_path']) {
+                    throw ValidationException::withMessages(['payment_icons' => 'The icon could not be saved. Please retry.']);
+                }
+            }
+            if ($oldIcon && ($method['icon_path'] ?? null) !== $oldIcon) {
+                $obsoleteIcons[] = $oldIcon;
+            }
+            unset($method['remove_icon']);
+        }
+        unset($method);
+
+        foreach ($oldMethods as $oldMethod) {
+            if (! in_array($oldMethod['id'], array_column($methods, 'id')) && ! empty($oldMethod['icon_path'])) {
+                $obsoleteIcons[] = $oldMethod['icon_path'];
+            }
+        }
+
+        $workspaceSettings = $workspace->settings ?? [];
+        $workspaceSettings['commerce']['payment_methods'] = $methods;
+        $workspace->update(['settings' => $workspaceSettings]);
+
+        foreach ($obsoleteIcons as $path) {
+            if (str_starts_with($path, 'payment-icons/'.$workspace->id.'/')) {
+                Storage::disk('public')->delete($path);
+            }
+        }
     }
 
     public function rotateToken(Request $request): RedirectResponse
@@ -169,7 +240,8 @@ class OrderManagementController extends Controller
     public function receipt(Request $request, Order $order): BinaryFileResponse
     {
         $this->assertOrder($request, $order);
-        $path = $order->payment_evidence['receipt_path'] ?? null;
+        $index = $request->integer('index', 0);
+        $path = $index >= 0 ? ($order->payment_evidence['receipts'][$index]['path'] ?? ($index === 0 ? ($order->payment_evidence['receipt_path'] ?? null) : null)) : null;
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
         return response()->file(Storage::disk('local')->path($path), ['Content-Disposition' => 'attachment']);

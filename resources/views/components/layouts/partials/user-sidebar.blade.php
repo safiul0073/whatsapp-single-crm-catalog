@@ -145,9 +145,23 @@
                 [
                     'label' => __('Orders'),
                     'route' => 'user.commerce.orders.index',
-                    'active' => 'user.commerce.orders.*',
+                    'active' => ['user.commerce.orders.index', 'user.commerce.orders.show', 'user.commerce.orders.create', 'user.commerce.orders.packing-slip', 'user.commerce.orders.receipt'],
                     'icon' => 'ph-package',
                     'permission' => 'commerce.view',
+                ],
+                [
+                    'label' => __('Payment services'),
+                    'route' => 'user.commerce.payment-services.index',
+                    'active' => 'user.commerce.payment-services.*',
+                    'icon' => 'ph-credit-card',
+                    'permission' => 'commerce.manage',
+                ],
+                [
+                    'label' => __('Order settings'),
+                    'route' => 'user.commerce.orders.settings',
+                    'active' => 'user.commerce.orders.settings*',
+                    'icon' => 'ph-gear',
+                    'permission' => 'commerce.manage',
                 ],
                 [
                     'label' => __('Products'),

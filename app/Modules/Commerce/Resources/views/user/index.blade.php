@@ -109,6 +109,7 @@
                                             @if ($product->status === 'active')
                                                 <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
                                             @endif
+                                            @include('commerce::user.partials.product-catalog')
                                             <a href="{{ route('user.commerce.products.edit', $product) }}" class="row-action" aria-label="{{ __('Manage :product', ['product' => $product->name]) }}" title="{{ __('Manage product') }}"><i class="ph ph-pencil-simple"></i></a>
                                             <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">
                                                 @csrf
@@ -154,6 +155,7 @@
                                         <span class="block text-[11px] text-body">{{ __('MOQ: :count', ['count' => number_format((int) ($product->moq ?? 1))]) }}</span>
                                     </div>
                                 </div>
+                                @include('commerce::user.partials.product-catalog')
                                 <div class="grid gap-2 sm:grid-cols-2">
                                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', $product) }}" class="w-full">{{ __('Manage') }}</x-ui.button>
                                     <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">
