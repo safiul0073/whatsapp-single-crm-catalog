@@ -38,6 +38,7 @@ Alpine.data("liveInbox", (config) => ({
   crmSaving: false,
   crmPanelOpen: false,
   crmAction: '',
+  crmError: '',
   commerceDrawerOpen: false,
   commerceLoading: false,
   commerceProducts: [],
@@ -255,6 +256,11 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   async loadThread(conversationId, silent = false) {
+    if (!silent || String(this.activeConversation?.id) !== String(conversationId)) {
+      this.crmError = '';
+      this.crmAction = '';
+      this.crm = null;
+    }
     if (!silent) {
       this.threadLoading = true;
     }
@@ -621,6 +627,7 @@ Alpine.data("liveInbox", (config) => ({
   },
 
   async loadCrm() {
+    this.crmError = '';
     if (!this.activeConversation?.id || !this.routes.crm) {
       this.crm = null;
       return;
@@ -638,7 +645,7 @@ Alpine.data("liveInbox", (config) => ({
       this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
       this.crmForm.assigned_to = this.crm?.current_lead?.assigned_to || '';
     } catch (error) {
-      this.sendError = this.errorMessage(error, 'Unable to load CRM details.');
+      this.crmError = this.errorMessage(error, 'Unable to load CRM details.');
     } finally {
       this.crmLoading = false;
     }
@@ -660,11 +667,14 @@ Alpine.data("liveInbox", (config) => ({
 
   openCrmAction(action) {
     this.crmAction = action;
+    if (['assign', 'task'].includes(action)) {
+      this.crmForm.assigned_to = this.crm?.current_lead?.assigned_to || (action === 'task' ? this.crm?.owner_id : '') || '';
+    }
     if (['create', 'stage'].includes(action)) {
       this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
     }
     this.openCrmPanel();
-    this.sendError = '';
+    this.crmError = '';
   },
 
   async saveCrmAction() {
@@ -675,13 +685,18 @@ Alpine.data("liveInbox", (config) => ({
     if (this.crmAction === 'create') {
       this.syncCrmStageForPipeline(this.crmForm.pipeline_id);
       if (!this.crmForm.pipeline_id || !this.crmForm.stage_id) {
-        this.sendError = 'Choose a pipeline that has at least one stage before creating a lead.';
+        this.crmError = 'Choose a pipeline that has at least one stage before creating a lead.';
         return;
       }
     }
 
+    if (['assign', 'task'].includes(this.crmAction) && !this.crmForm.assigned_to) {
+      this.crmError = 'Choose an agent.';
+      return;
+    }
+
     this.crmSaving = true;
-    this.sendError = '';
+    this.crmError = '';
     const lead = this.crm.current_lead;
 
     try {
@@ -705,7 +720,7 @@ Alpine.data("liveInbox", (config) => ({
         await window.axios.post(this.routes.crmTask, {
           lead_id: lead?.id || null,
           contact_id: this.crm.contact.id,
-          assigned_to: this.crmForm.assigned_to || null,
+          assigned_to: this.crmForm.assigned_to,
           title: this.crmForm.title,
           description: this.crmForm.description || null,
           priority: this.crmForm.priority,
@@ -721,7 +736,7 @@ Alpine.data("liveInbox", (config) => ({
       this.crmForm.description = '';
       await this.loadCrm();
     } catch (error) {
-      this.sendError = this.errorMessage(error, 'Unable to save this CRM update.');
+      this.crmError = this.errorMessage(error, 'Unable to save this CRM update.');
     } finally {
       this.crmSaving = false;
     }
@@ -731,20 +746,22 @@ Alpine.data("liveInbox", (config) => ({
     if (!this.crm?.current_lead) {
       return;
     }
+    this.crmError = '';
     try {
       await window.axios.post(this.routes.crmWon.replace('__LEAD__', this.crm.current_lead.id), {}, this.crmRequestConfig());
       await this.loadCrm();
     } catch (error) {
-      this.sendError = this.errorMessage(error, 'Unable to mark this lead won.');
+      this.crmError = this.errorMessage(error, 'Unable to mark this lead won.');
     }
   },
 
   async completeCrmTask(taskId) {
+    this.crmError = '';
     try {
       await window.axios.post(this.routes.crmTaskComplete.replace('__TASK__', taskId), {}, this.crmRequestConfig());
       await this.loadCrm();
     } catch (error) {
-      this.sendError = this.errorMessage(error, 'Unable to complete this task.');
+      this.crmError = this.errorMessage(error, 'Unable to complete this task.');
     }
   },
 

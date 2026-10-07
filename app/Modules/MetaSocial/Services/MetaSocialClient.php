@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 
 class MetaSocialClient
 {
+    public const INSTAGRAM_MEDIA_FIELDS = 'id,caption,media_type,media_url,thumbnail_url,permalink,like_count,comments_count,timestamp';
+
     public function __construct(protected MetaSocialSettingsService $settings) {}
 
     public function exchangeEmbeddedSignupCode(string $code): Response
@@ -40,6 +42,33 @@ class MetaSocialClient
     public function sendInstagramMessage(string $igUserId, string $token, array $payload): Response
     {
         return Http::withToken($token)->post($this->graphUrl($igUserId.'/messages'), $payload);
+    }
+
+    public function instagramProfile(string $igUserId, string $token): Response
+    {
+        return Http::withToken($token)->get($this->graphUrl($igUserId), [
+            'fields' => 'username,name,biography,profile_picture_url,followers_count,follows_count,media_count',
+        ]);
+    }
+
+    public function instagramMedia(string $igUserId, string $token, int $limit = 12): Response
+    {
+        return Http::withToken($token)->get($this->graphUrl($igUserId.'/media'), [
+            'fields' => self::INSTAGRAM_MEDIA_FIELDS,
+            'limit' => $limit,
+        ]);
+    }
+
+    /**
+     * Business Discovery reads another public Business/Creator account through the connected one.
+     */
+    public function instagramBusinessDiscovery(string $igUserId, string $token, string $username, int $limit = 12): Response
+    {
+        $fields = 'username,name,biography,profile_picture_url,followers_count,follows_count,media_count,media.limit('.$limit.'){'.self::INSTAGRAM_MEDIA_FIELDS.'}';
+
+        return Http::withToken($token)->get($this->graphUrl($igUserId), [
+            'fields' => 'business_discovery.username('.$username.'){'.$fields.'}',
+        ]);
     }
 
     public function graphUrl(string $path): string

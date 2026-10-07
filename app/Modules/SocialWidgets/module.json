@@ -1,0 +1,1 @@
+{"name":"SocialWidgets","alias":"social-widgets","description":"Embeddable social feed widgets (Instagram feed) with layout picker, step editor and public embed","version":"1.0.0","priority":35,"providers":["App\\Modules\\SocialWidgets\\Providers\\SocialWidgetsServiceProvider"],"requires":["marketing-channels","meta-social"],"active":true}

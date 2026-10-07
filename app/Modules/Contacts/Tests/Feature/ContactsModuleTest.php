@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Modules\Campaigns\Services\AudienceResolver;
+use App\Modules\Contacts\Enums\ContactImportStatus;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Jobs\ProcessContactImportJob;
 use App\Modules\Contacts\Models\Contact;
@@ -283,8 +284,10 @@ it('uploads csv imports with inferred columns and processes the final mapping', 
             'file' => $file,
             'update_existing' => true,
             'mark_optin' => true,
+            'default_country' => 'US',
         ], ['Accept' => 'application/json'])
         ->assertOk()
+        ->assertJsonPath('auto_started', true)
         ->assertJsonPath('columns.0.name', 'Full Name')
         ->assertJsonPath('columns.0.map', 'name')
         ->assertJsonPath('columns.1.name', 'WhatsApp Number')
@@ -426,4 +429,132 @@ it('gracefully merges duplicate contacts on duplicate phone or email during upse
         ->and($upserted->id)->toBe($contact1->id)
         ->and($upserted->email)->toBe('info@facebook.com')
         ->and($upserted->tags->pluck('id')->all())->toContain($tag->id);
+});
+
+function googleContactsCsv(array $rows): UploadedFile
+{
+    $header = 'First Name,Middle Name,Last Name,Phonetic First Name,Phonetic Middle Name,Phonetic Last Name,Name Prefix,Name Suffix,Nickname,File As,Organization Name,Organization Title,Organization Department,Birthday,Notes,Photo,Labels,E-mail 1 - Label,E-mail 1 - Value,Phone 1 - Label,Phone 1 - Value,Phone 2 - Label,Phone 2 - Value';
+    $lines = array_map(fn (array $row): string => implode(',', [
+        $row['first'] ?? '', $row['middle'] ?? '', $row['last'] ?? '', '', '', '', '', '', '', '', $row['company'] ?? '', '', '', '', '', '',
+        $row['labels'] ?? '* myContacts', '', $row['email'] ?? '', 'Mobile', $row['phone'] ?? '', '', $row['phone2'] ?? '',
+    ]), $rows);
+
+    return UploadedFile::fake()->createWithContent('google-contacts.csv', implode("\n", array_merge([$header], $lines)));
+}
+
+function runContactImport(User $user, UploadedFile $file, string $country = 'BD'): ContactImport
+{
+    Queue::fake();
+
+    $importId = test()->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.imports.upload'), ['file' => $file, 'default_country' => $country], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('auto_started', true)
+        ->json('import.id');
+
+    (new ProcessContactImportJob($importId))->handle(app(ContactService::class));
+
+    return ContactImport::query()->findOrFail($importId);
+}
+
+it('imports a google contacts export immediately with the default country and without duplicates', function (): void {
+    $user = User::factory()->create();
+    $workspace = contactsWorkspaceFor($user);
+    $file = googleContactsCsv([
+        ['first' => 'Rahim', 'middle' => 'Uddin', 'last' => 'Khan', 'phone' => '016 1591 8281', 'labels' => 'Friends ::: * myContacts'],
+        ['first' => 'UK Buyer', 'phone' => '+447911123456 ::: +447911654321'],
+        ['first' => 'Trinidad Shop', 'phone' => '1-868-771-6355'],
+        ['first' => 'Repeat Row', 'phone' => '+8801615918281'],
+        ['first' => 'Mail Only', 'email' => 'Mail.Only@example.com'],
+        ['first' => 'Broken', 'phone' => '12'],
+    ]);
+
+    $import = runContactImport($user, $file);
+
+    $rahim = Contact::query()->where('workspace_id', $workspace->id)->where('phone', '+8801615918281')->sole();
+    expect($import->created_rows)->toBe(4)
+        ->and($import->updated_rows)->toBe(1)
+        ->and($import->skipped_rows)->toBe(1)
+        ->and($import->summary['duplicates_in_file'])->toBe(1)
+        ->and($rahim->name)->toBe('Repeat Row')
+        ->and(Contact::query()->where('workspace_id', $workspace->id)->where('phone', '+447911123456')->exists())->toBeTrue()
+        ->and(Contact::query()->where('workspace_id', $workspace->id)->where('phone', '+18687716355')->exists())->toBeTrue()
+        ->and(Contact::query()->where('workspace_id', $workspace->id)->where('email', 'mail.only@example.com')->exists())->toBeTrue()
+        ->and(ContactTag::query()->where('workspace_id', $workspace->id)->pluck('name')->all())->toBe(['Friends'])
+        ->and($import->errors)->toContain('Row 7: No valid phone number');
+});
+
+it('updates existing contacts instead of duplicating them when the same file is uploaded again', function (): void {
+    $user = User::factory()->create();
+    $workspace = contactsWorkspaceFor($user);
+    app(ContactService::class)->upsert($workspace->id, ['phone' => '+8801711223344', 'name' => null]);
+    $rows = [
+        ['first' => 'Karim', 'phone' => '01711 223344'],
+        ['first' => 'Nadia', 'phone' => '+8801811223344'],
+    ];
+
+    $first = runContactImport($user, googleContactsCsv($rows));
+    $second = runContactImport($user, googleContactsCsv($rows));
+
+    expect($first->created_rows)->toBe(1)
+        ->and($first->updated_rows)->toBe(1)
+        ->and($second->created_rows)->toBe(0)
+        ->and($second->updated_rows)->toBe(2)
+        ->and(Contact::query()->where('workspace_id', $workspace->id)->count())->toBe(2)
+        ->and(Contact::query()->where('workspace_id', $workspace->id)->where('phone', '+8801711223344')->value('name'))->toBe('Karim');
+});
+
+it('requires a valid default country for uploads', function (?string $country): void {
+    $user = User::factory()->create();
+    contactsWorkspaceFor($user);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.imports.upload'), array_filter(['file' => googleContactsCsv([['first' => 'A', 'phone' => '+8801711223344']]), 'default_country' => $country]), ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('default_country');
+})->with([null, 'ZZ', 'BGD']);
+
+it('waits for manual mapping when no phone or email column is recognised', function (): void {
+    Queue::fake();
+    $user = User::factory()->create();
+    contactsWorkspaceFor($user);
+    $file = UploadedFile::fake()->createWithContent('odd.csv', "Customer,Digits\nAda,+14155552671");
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.imports.upload'), ['file' => $file, 'default_country' => 'US'], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('auto_started', false)
+        ->assertJsonPath('columns.1.name', 'Digits');
+
+    Queue::assertNothingPushed();
+});
+
+it('normalises phones with a default region and international fallbacks', function (string $raw, ?string $region, string $expected): void {
+    expect(app(ContactService::class)->normalizePhone($raw, $region))->toBe($expected);
+})->with([
+    ['016 1591 8281', 'BD', '+8801615918281'],
+    ['1-868-771-6355', 'BD', '+18687716355'],
+    ['0044 7911 123456', null, '+447911123456'],
+    ['+1 (415) 555-2671', null, '+14155552671'],
+    ['+52 1 984 145 1234', null, '+529841451234'],
+]);
+
+it('hides other workspaces imports from the status endpoint', function (): void {
+    $owner = User::factory()->create();
+    $ownerWorkspace = contactsWorkspaceFor($owner);
+    $import = ContactImport::query()->create([
+        'workspace_id' => $ownerWorkspace->id,
+        'file_name' => 'x.csv',
+        'file_path' => 'imports/x.csv',
+        'source' => 'import',
+        'total_rows' => 1,
+        'status' => ContactImportStatus::Pending,
+    ]);
+    $stranger = User::factory()->create();
+    contactsWorkspaceFor($stranger);
+
+    $this->withoutMiddleware()->actingAs($stranger)->getJson(route('user.imports.show', $import->id))->assertNotFound();
 });

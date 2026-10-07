@@ -48,6 +48,7 @@
               <input
                 type="search"
                 name="q"
+                value="{{ request('q') }}"
                 placeholder="Search by name, phone, email…"
                 class="form-input input-search"
                 data-filter-search
@@ -756,11 +757,11 @@
             </li>
             <li class="wizard-step" :class="{ 'is-active': step === 2, 'is-done': step > 2 }">
               <span class="wizard-step__dot" x-text="step > 2 ? '✓' : '2'">2</span>
-              <span class="wizard-step__label">Map columns</span>
+              <span class="wizard-step__label" x-text="step === 4 ? 'Importing' : 'Map columns'">Map columns</span>
             </li>
-            <li class="wizard-step" :class="{ 'is-active': step === 3 }">
-              <span class="wizard-step__dot">3</span>
-              <span class="wizard-step__label">Review &amp; import</span>
+            <li class="wizard-step" :class="{ 'is-active': step === 3 || (step === 4 && importDone) }">
+              <span class="wizard-step__dot" x-text="step === 4 && importDone ? '✓' : '3'">3</span>
+              <span class="wizard-step__label" x-text="step === 4 ? 'Done' : 'Review & import'">Review &amp; import</span>
             </li>
           </ol>
 
@@ -793,7 +794,7 @@
               <div class="info-banner mt-4">
                 <i class="ph ph-info text-lg text-primary"></i>
                 <p class="text-sm text-body">
-                  Your file needs a header row with column labels in the first row. The phone column is required for every row.
+                  Your file needs a header row in the first row. Google Contacts and Outlook exports are recognised automatically — the import starts as soon as you upload.
                 </p>
               </div>
 
@@ -899,17 +900,27 @@
                     <div class="rounded-lg border border-warning/30 bg-warning/5 p-3">
                       <p class="text-xs font-semibold text-warning-dark mb-1"><i class="ph ph-warning mr-1 text-xs"></i> Phone format matters</p>
                       <p class="text-xs text-body">
-                        Numbers must include the country code with a <code class="rounded bg-neutral-200 px-1 text-xs">+</code> prefix.<br>
+                        Numbers without a <code class="rounded bg-neutral-200 px-1 text-xs">+</code> country code use the default country you pick below.<br>
                         <span class="text-success">+12125551234</span>
                         <span class="mx-2 text-neutral-300">|</span>
-                        <span class="text-error line-through">2125551234</span>
+                        <span class="text-success">01711 223344 → +8801711223344</span>
                         <span class="mx-2 text-neutral-300">|</span>
-                        <span class="text-error line-through">0012125551234</span>
+                        <span class="text-success">0012125551234</span>
                         <br>Rows with invalid or missing phone numbers will be skipped.
                       </p>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="form-label" for="import-default-country">Default country code</label>
+                <select id="import-default-country" x-model="defaultCountry" @change="rememberDefaultCountry()" class="form-input ts-basic" data-placeholder="Search country, code or USA / UK / 880" data-dropdown-parent="body" data-search-fields="text,keywords" required>
+                  @foreach ($importCountryOptions as $regionCode => $countryOption)
+                    <option value="{{ $regionCode }}" data-keywords="{{ $countryOption['keywords'] }}">{{ $countryOption['label'] }}</option>
+                  @endforeach
+                </select>
+                <p class="mt-1 text-xs text-neutral-400">Used for numbers without a + country code, e.g. 01711 223344. Existing contacts with the same phone or email are updated, never duplicated.</p>
               </div>
 
               <div x-show="sheets.length > 1" class="mt-4">
@@ -923,8 +934,8 @@
               </div>
 
               <div class="mt-5 flex flex-wrap items-center gap-3">
-                <button type="button" class="btn btn-primary" @click="uploadFile" :disabled="!file || uploading">
-                  <span x-show="!uploading">Continue</span>
+                <button type="button" class="btn btn-primary" @click="uploadFile" :disabled="!file || !defaultCountry || uploading">
+                  <span x-show="!uploading" class="flex items-center gap-1.5"><i class="ph ph-upload-simple text-base"></i> Upload &amp; import</span>
                   <span x-show="uploading" class="flex items-center gap-1.5">
                     <i class="ph ph-spinner animate-spin"></i> Reading file…
                   </span>
@@ -1044,6 +1055,50 @@
               </div>
               <p x-show="importError" class="mt-2 text-sm text-error" x-text="importError"></p>
             </section>
+
+            <section x-show="step === 4" x-cloak class="wizard-panel" :class="{ 'is-active': step === 4 }" data-import-progress>
+              <div x-show="!importDone" class="flex items-center gap-3 rounded-xl border border-neutral-200 p-5">
+                <i class="ph ph-spinner animate-spin text-2xl text-primary"></i>
+                <div>
+                  <p class="font-semibold text-title">Importing <span x-text="result.total_rows || 0"></span> rows…</p>
+                  <p class="text-xs text-body">Matching phone numbers and emails so nothing is duplicated.</p>
+                </div>
+              </div>
+
+              <div x-show="importDone" x-cloak>
+                <p class="form-hint" x-show="importStatus === 'completed'">Import finished.</p>
+                <p class="text-sm text-error" x-show="importStatus === 'failed'" x-text="importFailureMessage"></p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div class="rounded-xl border border-neutral-200 p-4">
+                    <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">New</p>
+                    <p class="mt-1.5 font-title text-2xl font-extrabold text-success" x-text="importSummary.created_rows || 0"></p>
+                  </div>
+                  <div class="rounded-xl border border-neutral-200 p-4">
+                    <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Updated</p>
+                    <p class="mt-1.5 font-title text-2xl font-extrabold text-primary" x-text="importSummary.updated_rows || 0"></p>
+                  </div>
+                  <div class="rounded-xl border border-neutral-200 p-4">
+                    <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Skipped</p>
+                    <p class="mt-1.5 font-title text-2xl font-extrabold text-error" x-text="(importSummary.skipped_rows || 0) + (importSummary.failed_rows || 0)"></p>
+                  </div>
+                </div>
+                <p class="mt-3 text-xs text-body" x-show="(importSummary.summary?.duplicates_in_file || 0) > 0">
+                  <span x-text="importSummary.summary?.duplicates_in_file"></span> repeated rows in the file were merged into existing contacts.
+                </p>
+                <details class="mt-4 rounded-xl border border-neutral-200 p-4" x-show="(importSummary.errors || []).length">
+                  <summary class="cursor-pointer text-sm font-semibold text-title">Why rows were skipped</summary>
+                  <ul class="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-body">
+                    <template x-for="(reason, index) in importSummary.errors || []" :key="index">
+                      <li x-text="reason"></li>
+                    </template>
+                  </ul>
+                </details>
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                  <button type="button" class="btn btn-primary" @click="location.reload()">Done</button>
+                  <button type="button" class="btn btn-outline" @click="reset()">Import another file</button>
+                </div>
+              </div>
+            </section>
           </form>
         </div>
 
@@ -1124,7 +1179,7 @@
 
         const updateExportUrl = () => {
           const url = new URL(baseUrl, window.location.origin);
-          const query = (searchInput?.value || '').trim();
+          const query = (searchInput?.value || '').trim().toLowerCase();
           const tag = selectedValue('tag');
           const optin = selectedValue('optin');
 
@@ -1135,10 +1190,84 @@
           exportLink.href = url.toString();
         };
 
-        searchInput?.addEventListener('input', updateExportUrl);
+        const listEl = root.querySelector('[data-filter-list]');
+        const emptyEl = root.querySelector('[data-filter-empty]');
+        const items = root.querySelectorAll('[data-filter-item]');
+
+        const applyFilter = () => {
+          const query = (searchInput?.value || '').trim();
+          const tag = selectedValue('tag');
+          const optin = selectedValue('optin');
+
+          const url = new URL(window.location.origin + window.location.pathname);
+          if (query) url.searchParams.set('q', query);
+          if (tag && tag !== 'all') url.searchParams.set('tag', tag);
+          if (optin && optin !== 'all') url.searchParams.set('optin', optin);
+
+          window.history.replaceState({}, '', url.toString());
+
+          const currentTable = root.querySelector('[data-table]');
+          if (currentTable) currentTable.style.opacity = '0.5';
+
+          fetch(url.toString(), {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+          .then(res => res.text())
+          .then(html => {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+              const newTable = doc.querySelector('[data-table]');
+              if (newTable && currentTable) {
+                  currentTable.innerHTML = newTable.innerHTML;
+                  currentTable.style.opacity = '1';
+              }
+          })
+          .catch(() => {
+              if (currentTable) currentTable.style.opacity = '1';
+          });
+        };
+
+        const debounce = (func, wait) => {
+          let timeout;
+          return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), wait);
+          };
+        };
+
+        const handleInput = debounce(() => {
+            applyFilter();
+            updateExportUrl();
+        }, 300);
+
+        searchInput?.addEventListener('input', handleInput);
+        
         root.querySelectorAll('[data-select-option]').forEach((option) => {
-          option.addEventListener('click', () => setTimeout(updateExportUrl, 0));
+          option.addEventListener('click', () => {
+              setTimeout(() => {
+                  applyFilter();
+                  updateExportUrl();
+              }, 0);
+          });
         });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialTag = urlParams.get('tag') || 'all';
+        const initialOptin = urlParams.get('optin') || 'all';
+
+        const setDropdownActive = (name, value) => {
+            const options = root.querySelectorAll(`[data-dropdown-select][data-select-name="${name}"] [data-select-option]`);
+            options.forEach(opt => opt.classList.remove('is-active'));
+            const activeOpt = Array.from(options).find(opt => opt.dataset.value === value);
+            if (activeOpt) {
+                activeOpt.classList.add('is-active');
+                const label = root.querySelector(`[data-dropdown-select][data-select-name="${name}"] [data-select-label]`);
+                if (label) label.textContent = activeOpt.textContent.trim();
+            }
+        };
+
+        setDropdownActive('tag', initialTag);
+        setDropdownActive('optin', initialOptin);
 
         updateExportUrl();
       });
@@ -1364,6 +1493,18 @@
           importError: '',
           imports: [],
           historyLoading: false,
+          defaultCountry: (() => {
+            try {
+              return localStorage.getItem('contacts.import.defaultCountry') || 'BD';
+            } catch (e) {
+              return 'BD';
+            }
+          })(),
+          importDone: false,
+          importStatus: '',
+          importSummary: {},
+          importFailureMessage: '',
+          pollTimer: null,
 
           reset() {
             this.step = 1;
@@ -1381,6 +1522,39 @@
             this.markOptin = false;
             this.importing = false;
             this.importError = '';
+            this.importDone = false;
+            this.importStatus = '';
+            this.importSummary = {};
+            this.importFailureMessage = '';
+            clearTimeout(this.pollTimer);
+          },
+
+          rememberDefaultCountry() {
+            try {
+              localStorage.setItem('contacts.import.defaultCountry', this.defaultCountry);
+            } catch (e) {
+            }
+          },
+
+          async pollImport() {
+            const showUrl = '{{ route("user.imports.show", ["import" => "__IMPORT_ID__"]) }}'.replace('__IMPORT_ID__', this.result.import.id);
+
+            try {
+              const response = await fetch(showUrl, { headers: { 'Accept': 'application/json' } });
+              const importRecord = await response.json();
+
+              if (['completed', 'failed'].includes(importRecord.status)) {
+                this.importSummary = importRecord;
+                this.importStatus = importRecord.status;
+                this.importFailureMessage = importRecord.summary?.error || 'The import failed.';
+                this.importDone = true;
+
+                return;
+              }
+            } catch (e) {
+            }
+
+            this.pollTimer = setTimeout(() => this.pollImport(), 1500);
           },
 
           fileSelected(event) {
@@ -1437,7 +1611,7 @@
             try {
               const response = await fetch('{{ route("user.imports.sheets") }}', {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                 body: formData,
               });
               if (response.ok) {
@@ -1459,6 +1633,7 @@
             formData.append('file', this.file);
             formData.append('update_existing', this.updateExisting ? '1' : '0');
             formData.append('mark_optin', this.markOptin ? '1' : '0');
+            formData.append('default_country', this.defaultCountry);
 
             if (this.selectedSheet && this.sheets.length > 1) {
               formData.append('sheet', this.selectedSheet);
@@ -1486,6 +1661,13 @@
               }
 
               this.columns = this.result.columns || [];
+
+              if (this.result.auto_started) {
+                this.step = 4;
+                this.pollImport();
+
+                return;
+              }
 
               this.step = 2;
             } catch (e) {

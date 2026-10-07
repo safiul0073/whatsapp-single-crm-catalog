@@ -3,6 +3,7 @@
 use App\Modules\Blogs\Database\Seeders\BlogsSeeder;
 use App\Modules\Frontend\Database\Seeders\FrontendPageSeeder;
 use App\Modules\Frontend\Database\Seeders\FrontendSectionSeeder;
+use Database\Seeders\CategorySeeder;
 use Database\Seeders\DatabaseSeeder;
 
 it('includes SaaS-safe frontend and blog seeders in the main database seeder', function (): void {
@@ -21,5 +22,5 @@ it('includes SaaS-safe frontend and blog seeders in the main database seeder', f
 
     $seeder->run();
 
-    expect($seeder->calledSeeders)->toContain(BlogsSeeder::class, FrontendSectionSeeder::class, FrontendPageSeeder::class);
+    expect($seeder->calledSeeders)->toContain(CategorySeeder::class, BlogsSeeder::class, FrontendSectionSeeder::class, FrontendPageSeeder::class);
 });

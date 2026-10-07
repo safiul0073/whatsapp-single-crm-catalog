@@ -1,6 +1,7 @@
 @props([
     'title' => 'Dashboard',
     'hideHelp' => false,
+    'fullHeight' => false,
 ])
 
 <!DOCTYPE html>
@@ -43,22 +44,29 @@
     @stack('styles')
 </head>
 
-<body class="min-h-screen overflow-x-hidden bg-section text-body antialiased">
+<body @class([
+    'bg-section text-body antialiased',
+    'min-h-screen overflow-x-hidden' => ! $fullHeight,
+    'flex h-dvh min-h-0 flex-col overflow-hidden' => $fullHeight,
+])>
 
     {{-- Impersonation Banner --}}
-    <x-ui.impersonation-banner />
+    <x-ui.impersonation-banner :in-flow="$fullHeight" />
 
     {{-- Sidebar --}}
     @include('components.layouts.partials.user-sidebar')
 
     {{-- Main Wrapper --}}
-    <div class="app-shell">
+    <div @class(['app-shell', 'app-shell--full-height' => $fullHeight])>
 
         {{-- Topbar --}}
         @include('components.layouts.partials.user-topbar', ['title' => $title])
 
         {{-- Main Content --}}
-        <main class="px-4 py-6 sm:px-6 lg:px-8">
+        <main @class([
+            'px-4 py-6 sm:px-6 lg:px-8' => ! $fullHeight,
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0' => $fullHeight,
+        ])>
             {{ $slot }}
         </main>
     </div>

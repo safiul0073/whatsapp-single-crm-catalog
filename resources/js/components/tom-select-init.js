@@ -17,6 +17,7 @@ function tomSelectOptions(el, extra = {}) {
         dropdownClass: 'ts-dropdown',
         placeholder: el.dataset.placeholder || el.getAttribute('placeholder') || undefined,
         ...(dropdownParent ? { dropdownParent } : {}),
+        ...(el.dataset.searchFields ? { searchField: el.dataset.searchFields.split(',').map((field) => field.trim()) } : {}),
         ...extra,
     };
 }

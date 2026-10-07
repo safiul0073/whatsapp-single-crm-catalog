@@ -18,6 +18,7 @@ use App\Modules\Newsletter\Database\Seeders\NewsletterModuleSeeder;
 use App\Modules\NotificationTemplates\Database\Seeders\NotificationTemplateSeeder;
 use App\Modules\SchedulerQueue\Database\Seeders\SchedulerQueueSeeder;
 use App\Modules\Settings\Database\Seeders\SettingSeeder;
+use App\Modules\Shipping\Database\Seeders\ShippingSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -49,8 +50,9 @@ class DatabaseSeeder extends Seeder
             BlogsSeeder::class,
             FrontendMenuSeeder::class,
             WaProLandingSeeder::class,
+            CategorySeeder::class,
             CommerceDemoSeeder::class,
-            \App\Modules\Shipping\Database\Seeders\ShippingSeeder::class,
+            ShippingSeeder::class,
         ]);
     }
 }

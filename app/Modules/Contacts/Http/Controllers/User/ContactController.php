@@ -18,9 +18,10 @@ class ContactController extends Controller
     public function index(Request $request, ContactService $service, ContactTagService $tags, ContactGroupService $groups): View
     {
         return view('contacts::user.index', [
-            'contacts' => $service->listForUser($request->user()),
+            'contacts' => $service->listForUser($request->user(), $request->all()),
             'tags' => $tags->allForUser($request->user()),
             'groups' => $groups->allForUser($request->user()),
+            'importCountryOptions' => $service->countryOptions(),
         ]);
     }
 

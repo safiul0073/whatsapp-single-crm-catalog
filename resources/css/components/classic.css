@@ -10,6 +10,14 @@
   @apply min-h-screen w-full max-w-full bg-section lg:pl-64;
 }
 
+.app-shell.app-shell--full-height {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
+.app-shell--full-height > .topbar {
+  @apply shrink-0;
+}
+
 .app-shell main > .grid > *,
 .app-shell main .grid > * {
   @apply min-w-0;
@@ -355,7 +363,7 @@
    Inbox (3-pane)
    ===================================================================== */
 .inbox {
-  @apply flex h-[calc(100vh-4rem)] overflow-hidden;
+  @apply flex min-h-0 min-w-0 flex-1 overflow-hidden;
 }
 
 .inbox__rail {
@@ -371,15 +379,15 @@
 }
 
 .inbox__list {
-  @apply flex w-full shrink-0 flex-col overflow-hidden border-r border-neutral-200 bg-neutral-0 lg:w-80;
+  @apply flex min-h-0 min-w-0 w-full shrink-0 flex-col overflow-hidden border-r border-neutral-200 bg-neutral-0 lg:w-80;
 }
 
 .inbox__thread {
-  @apply hidden min-w-0 flex-1 flex-col bg-section lg:flex;
+  @apply hidden min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-section lg:flex;
 }
 
 .inbox__crm {
-  @apply fixed inset-y-0 right-0 z-50 hidden w-[min(22rem,calc(100vw-2rem))] flex-col border-l border-neutral-200 bg-neutral-0 shadow-2xl 2xl:relative 2xl:z-auto 2xl:w-80 2xl:shrink-0 2xl:shadow-none;
+  @apply fixed inset-y-0 right-0 z-50 hidden min-h-0 overflow-hidden w-[min(22rem,calc(100vw-2rem))] flex-col border-l border-neutral-200 bg-neutral-0 shadow-2xl 2xl:relative 2xl:z-auto 2xl:w-80 2xl:shrink-0 2xl:shadow-none;
 }
 
 .inbox__crm.is-open {
@@ -503,7 +511,7 @@
 }
 
 .inbox-composer {
-  @apply flex items-end gap-2 border-t border-neutral-200 bg-neutral-0/95 px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.035)] backdrop-blur sm:px-4;
+  @apply flex shrink-0 items-end gap-2 border-t border-neutral-200 bg-neutral-0/95 px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.035)] backdrop-blur sm:px-4;
 }
 
 .inbox-composer__actions {

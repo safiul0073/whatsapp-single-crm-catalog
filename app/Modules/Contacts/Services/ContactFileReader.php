@@ -47,6 +47,7 @@ class ContactFileReader
         $mapped = [
             'name' => null,
             'phone' => null,
+            'phones' => [],
             'email' => null,
             'city' => null,
             'country' => null,
@@ -56,6 +57,7 @@ class ContactFileReader
             'tags' => [],
             'custom_fields' => [],
         ];
+        $nameParts = ['first_name' => null, 'middle_name' => null, 'last_name' => null];
 
         foreach ($headers as $index => $header) {
             $field = $mapping[$header] ?? null;
@@ -67,24 +69,40 @@ class ContactFileReader
 
             $value = trim((string) $value);
 
-            if (in_array($field, ['name', 'phone', 'email', 'city', 'country', 'source', 'opt_in_status'])) {
+            if ($field === 'phone') {
+                $mapped['phones'][] = $value;
+                $mapped['phone'] ??= trim((string) (preg_split('/\s*:::\s*/', $value)[0] ?? $value));
+            } elseif (array_key_exists($field, $nameParts)) {
+                $nameParts[$field] = $value;
+            } elseif ($field === 'email') {
+                $mapped['email'] ??= trim((string) (preg_split('/\s*:::\s*/', $value)[0] ?? $value));
+            } elseif (in_array($field, ['name', 'city', 'country', 'source', 'opt_in_status'])) {
                 $mapped[$field] = $value;
             } elseif (in_array($field, ['group', 'groups'])) {
                 $mapped['groups'] = array_merge($mapped['groups'], $this->splitList($value));
             } elseif (in_array($field, ['tag', 'tags'])) {
-                $mapped['tags'] = array_merge($mapped['tags'], $this->splitList($value));
+                $mapped['tags'] = array_merge($mapped['tags'], array_filter(
+                    $this->splitList($value),
+                    fn (string $tag): bool => ! str_starts_with($tag, '*'),
+                ));
             } elseif (str_starts_with((string) $field, 'custom_')) {
                 $key = substr((string) $field, 7);
                 $mapped['custom_fields'][$key] = $value;
             }
         }
 
+        $mapped['name'] ??= trim(implode(' ', array_filter($nameParts))) ?: null;
+        $mapped['tags'] = array_values($mapped['tags']);
+
         return $mapped;
     }
 
+    /**
+     * Google Contacts joins multiple values with " ::: ".
+     */
     public function splitList(string $value): array
     {
-        return array_values(array_filter(array_map('trim', preg_split('/[,;|]/', $value) ?: [])));
+        return array_values(array_filter(array_map('trim', preg_split('/\s*:::\s*|[,;|]/', $value) ?: [])));
     }
 
     protected function readCsv(string $path): array

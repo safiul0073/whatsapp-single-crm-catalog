@@ -198,7 +198,7 @@
             }
 
             function updateVisibleCount() {
-              const visible = contactOptions.filter((option) => !option.classList.contains('hidden'));
+              const visible = contactOptions.filter((option) => option.style.display !== 'none');
               if (visibleCount) visibleCount.textContent = visible.length ? visible.length + ' visible' : 'No matches';
               if (selectVisible) {
                 const visibleCheckboxes = visible.map((option) => option.querySelector('[data-contact-checkbox]')).filter(Boolean);
@@ -210,7 +210,8 @@
               const query = (contactSearch?.value || '').trim().toLowerCase();
               contactOptions.forEach((option) => {
                 const haystack = option.dataset.search || '';
-                option.classList.toggle('hidden', query !== '' && !haystack.includes(query));
+                const hide = query !== '' && !haystack.includes(query);
+                option.style.display = hide ? 'none' : '';
               });
               updateVisibleCount();
             }
@@ -326,16 +327,26 @@
               updateMode();
             }
 
+            function debounce(func, wait) {
+              let timeout;
+              return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+              };
+            }
+
+            const debouncedFilter = debounce(filterContacts, 300);
+
             typeInputs.forEach((input) => input.addEventListener('change', updateMode));
             contactCheckboxes.forEach((input) => input.addEventListener('change', () => {
               updateSelectedCount();
               updateVisibleCount();
             }));
-            if (contactSearch) contactSearch.addEventListener('input', filterContacts);
+            if (contactSearch) contactSearch.addEventListener('input', debouncedFilter);
             if (selectVisible) {
               selectVisible.addEventListener('change', () => {
                 contactOptions
-                  .filter((option) => !option.classList.contains('hidden'))
+                  .filter((option) => option.style.display !== 'none')
                   .forEach((option) => {
                     const checkbox = option.querySelector('[data-contact-checkbox]');
                     if (checkbox) checkbox.checked = selectVisible.checked;

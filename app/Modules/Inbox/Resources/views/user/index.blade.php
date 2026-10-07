@@ -1,4 +1,4 @@
-<x-layouts.user :title="__('Inbox')" :hide-help="true">
+<x-layouts.user :title="__('Inbox')" :hide-help="true" :full-height="true">
   <div
     class="inbox"
     :class="{ 'is-rail-collapsed': railCollapsed, 'is-list-collapsed': listCollapsed }"
@@ -56,7 +56,7 @@
     </aside>
 
     <section class="inbox__list" :class="{ 'hidden lg:flex': threadOpen }">
-      <div class="border-b border-neutral-200 p-3">
+      <div class="shrink-0 border-b border-neutral-200 p-3">
         <div class="mb-3 flex items-center justify-between gap-3">
           <p class="text-sm font-semibold text-title">{{ __('Conversations') }}</p>
           <button
@@ -137,7 +137,7 @@
     <section class="inbox__thread" :class="{ 'hidden lg:flex': !threadOpen && !activeConversation }">
       <template x-if="activeConversation">
         <div class="flex min-h-0 flex-1 flex-col">
-          <header class="flex items-center gap-3 border-b border-neutral-200 bg-neutral-0 px-4 py-3">
+          <header class="flex shrink-0 items-center gap-3 border-b border-neutral-200 bg-neutral-0 px-4 py-3">
             <button type="button" class="row-action lg:hidden" @click="threadOpen = false" aria-label="{{ __('Back to conversations') }}">
               <i class="ph ph-arrow-left text-base"></i>
             </button>
@@ -282,7 +282,7 @@
             <p class="text-sm font-medium text-error" x-text="sendError"></p>
           </div>
 
-          <div class="border-t border-neutral-200 bg-warning/10 px-3 py-3" x-show="activeConversation?.provider === 'telegram' && !recipientReady" x-cloak>
+          <div class="shrink-0 border-t border-neutral-200 bg-warning/10 px-3 py-3" x-show="activeConversation?.provider === 'telegram' && !recipientReady" x-cloak>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p class="text-sm font-semibold text-title">{{ __('Telegram opt-in required') }}</p>
@@ -400,7 +400,7 @@
     </section>
 
     <aside class="inbox__crm" :class="{ 'is-open': crmPanelOpen && activeConversation?.contact_id && routes.crm }" x-cloak>
-      <header class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+      <header class="flex shrink-0 items-center justify-between border-b border-neutral-200 px-4 py-3">
         <div><p class="font-semibold text-title">{{ __('Contact CRM') }}</p><p class="text-xs text-body">{{ __('Profile and follow-up') }}</p></div>
         <button type="button" class="row-action" @click="closeCrmPanel()" aria-label="{{ __('Close CRM profile') }}" title="{{ __('Close CRM profile') }}"><i class="ph ph-x"></i></button>
       </header>
@@ -408,6 +408,7 @@
       <div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         @include('commerce::user.partials.help', ['helpKey' => 'inbox', 'compact' => true, 'minimal' => true])
 
+        <p role="alert" class="mb-3 text-sm font-medium text-error" x-show="crmError" x-text="crmError" x-cloak></p>
         <p class="text-sm text-body" x-show="crmLoading">{{ __('Loading CRM details...') }}</p>
         <template x-if="crm?.contact">
           <div class="space-y-5">
@@ -441,7 +442,7 @@
             </div>
 
             <form class="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3" x-show="crmAction" @submit.prevent="saveCrmAction()">
-              <div class="flex items-center justify-between"><p class="text-sm font-semibold text-title" x-text="crmAction.replace('_', ' ')"></p><button type="button" class="row-action" @click="crmAction = ''"><i class="ph ph-x"></i></button></div>
+              <div class="flex items-center justify-between"><p class="text-sm font-semibold text-title" x-text="crmAction.replace('_', ' ')"></p><button type="button" class="row-action" @click="crmAction = ''; crmError = ''"><i class="ph ph-x"></i></button></div>
               <div x-show="crmAction === 'create'">
                 <label class="form-label" for="crmPipeline">{{ __('Pipeline') }}</label>
                 <select id="crmPipeline" class="form-input" x-model="crmForm.pipeline_id" @change="syncCrmStageForPipeline($event.target.value)"><template x-for="pipeline in crm.pipelines" :key="pipeline.id"><option :value="pipeline.id" x-text="pipeline.name"></option></template></select>
@@ -453,7 +454,7 @@
               <div x-show="['create', 'task'].includes(crmAction)"><label class="form-label" for="crmTitle">{{ __('Title') }}</label><input id="crmTitle" class="form-input" x-model="crmForm.title" :required="crmAction === 'task'"></div>
               <div x-show="crmAction === 'create'"><label class="form-label" for="crmValue">{{ __('Value') }}</label><input id="crmValue" type="number" min="0" step="0.01" class="form-input" x-model="crmForm.value"></div>
               <div x-show="['note', 'task'].includes(crmAction)"><label class="form-label" for="crmDescription">{{ __('Description') }}</label><textarea id="crmDescription" rows="3" class="form-input" x-model="crmForm.description" :required="crmAction === 'note'"></textarea></div>
-              <div x-show="['assign', 'task'].includes(crmAction)"><label class="form-label" for="crmAgent">{{ __('Agent') }}</label><select id="crmAgent" class="form-input" x-model="crmForm.assigned_to"><option value="">{{ __('Workspace owner') }}</option><template x-for="agent in crm.agents" :key="agent.id"><option :value="agent.id" x-text="agent.name"></option></template></select></div>
+              <div x-show="['assign', 'task'].includes(crmAction)"><label class="form-label" for="crmAgent">{{ __('Agent') }}</label><select id="crmAgent" class="form-input" x-model="crmForm.assigned_to"><option value="" disabled>{{ __('Choose an agent') }}</option><option :value="crm.owner_id" x-show="crm.owner_id">{{ __('Workspace owner') }}</option><template x-for="agent in crm.agents.filter(agent => String(agent.id) !== String(crm.owner_id))" :key="agent.id"><option :value="agent.id" x-text="agent.name"></option></template></select></div>
               <div x-show="crmAction === 'task'" class="grid grid-cols-2 gap-2"><div><label class="form-label" for="crmDue">{{ __('Due') }}</label><input id="crmDue" type="datetime-local" class="form-input" x-model="crmForm.due_at" :required="crmAction === 'task'"></div><div><label class="form-label" for="crmPriority">{{ __('Priority') }}</label><select id="crmPriority" class="form-input" x-model="crmForm.priority"><option value="low">{{ __('Low') }}</option><option value="normal">{{ __('Normal') }}</option><option value="high">{{ __('High') }}</option></select></div></div>
               <div x-show="crmAction === 'lost'"><label class="form-label" for="crmLostReason">{{ __('Lost reason') }}</label><textarea id="crmLostReason" rows="3" class="form-input" x-model="crmForm.lost_reason"></textarea></div>
               <button type="submit" class="btn-sm btn-primary w-full justify-center" :disabled="crmSaving" x-text="crmSaving ? '{{ __('Saving...') }}' : '{{ __('Save') }}'"></button>

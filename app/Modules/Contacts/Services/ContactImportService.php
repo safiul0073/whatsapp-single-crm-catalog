@@ -9,7 +9,6 @@ use App\Modules\Contacts\Models\ContactImport;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 class ContactImportService
 {
@@ -30,6 +29,7 @@ class ContactImportService
             'update_existing' => $data['update_existing'] ?? true,
             'mark_optin' => $data['mark_optin'] ?? false,
             'sheet' => $sheetName,
+            'default_country' => strtoupper((string) ($data['default_country'] ?? '')) ?: null,
         ];
 
         $path = $file->storeAs(
@@ -57,16 +57,9 @@ class ContactImportService
         foreach ($rows as $index => $row) {
             $mapped = $this->reader->mapRow($row, $headers, $mapping);
 
-            if (empty($mapped['phone'])) {
-                $invalidRows++;
-                $invalidPhoneRows[] = $index + 2;
+            $hasPhone = $this->contacts->firstValidPhone($mapped['phones'], $options['default_country']) !== null;
 
-                continue;
-            }
-
-            try {
-                $this->contacts->normalizePhone($mapped['phone']);
-            } catch (ValidationException) {
+            if (! $hasPhone && empty($mapped['email'])) {
                 $invalidRows++;
                 $invalidPhoneRows[] = $index + 2;
 
@@ -108,9 +101,11 @@ class ContactImportService
         ];
     }
 
-    public function process(int $importId, ?array $columnMapping = null): void
+    public function process(int $importId, ?array $columnMapping = null, ?User $user = null): void
     {
-        $import = ContactImport::query()->findOrFail($importId);
+        $import = ContactImport::query()
+            ->when($user, fn ($query) => $query->where('workspace_id', $this->workspaces->current($user)->id))
+            ->findOrFail($importId);
         $updates = ['status' => ContactImportStatus::Processing];
 
         if ($columnMapping !== null) {
@@ -122,31 +117,57 @@ class ContactImportService
         ProcessContactImportJob::dispatch($importId);
     }
 
-    public function show(int $importId): ContactImport
+    public function show(int $importId, ?User $user = null): ContactImport
     {
-        return ContactImport::query()->findOrFail($importId);
+        return ContactImport::query()
+            ->when($user, fn ($query) => $query->where('workspace_id', $this->workspaces->current($user)->id))
+            ->findOrFail($importId);
     }
 
-    protected function inferMapping(array $headers): array
+    /**
+     * Recognises plain headers plus Google, Outlook and Apple contact exports
+     * (e.g. "Phone 1 - Value", "E-mail Address", "Given Name").
+     *
+     * @param  array<int, string>  $headers
+     * @return array<string, string>
+     */
+    public function inferMapping(array $headers): array
     {
         $mapping = [];
 
         foreach ($headers as $header) {
-            $normalized = str($header)->lower()->replace([' ', '-'], '_')->toString();
+            $normalized = str($header)->lower()->replace(['-', ' '], '_')->replaceMatches('/_+/', '_')->trim('_')->toString();
 
-            $mapping[$header] = match ($normalized) {
-                'name', 'full_name', 'contact_name' => 'name',
-                'phone', 'phone_number', 'mobile', 'mobile_number', 'whatsapp', 'whatsapp_number' => 'phone',
-                'email', 'email_address' => 'email',
-                'city' => 'city',
-                'country' => 'country',
-                'tag', 'tags' => 'tags',
-                'group', 'groups', 'segment', 'segments' => 'groups',
+            $mapping[$header] = match (true) {
+                in_array($normalized, ['name', 'full_name', 'contact_name', 'display_name'], true) => 'name',
+                in_array($normalized, ['first_name', 'given_name'], true) => 'first_name',
+                in_array($normalized, ['middle_name', 'additional_name'], true) => 'middle_name',
+                in_array($normalized, ['last_name', 'family_name', 'surname'], true) => 'last_name',
+                in_array($normalized, ['phone', 'phone_number', 'mobile', 'mobile_number', 'mobile_phone', 'whatsapp', 'whatsapp_number', 'primary_phone', 'home_phone', 'business_phone', 'other_phone'], true),
+                (bool) preg_match('/^phone_\d+_value$/', $normalized) => 'phone',
+                in_array($normalized, ['email', 'email_address', 'e_mail', 'e_mail_address'], true),
+                (bool) preg_match('/^e_?mail_\d+_value$/', $normalized) => 'email',
+                in_array($normalized, ['city', 'home_city', 'business_city'], true),
+                (bool) preg_match('/^address_\d+_city$/', $normalized) => 'city',
+                in_array($normalized, ['country', 'home_country_region', 'business_country_region'], true),
+                (bool) preg_match('/^address_\d+_country$/', $normalized) => 'country',
+                in_array($normalized, ['tag', 'tags', 'labels', 'group_membership', 'categories'], true) => 'tags',
+                in_array($normalized, ['group', 'groups', 'segment', 'segments'], true) => 'groups',
+                in_array($normalized, ['organization_name', 'company'], true) => 'custom_company',
+                $normalized === 'notes' => 'custom_notes',
                 default => '',
             };
         }
 
         return $mapping;
+    }
+
+    /**
+     * @param  array<string, string>  $mapping
+     */
+    public function canAutoStart(array $mapping): bool
+    {
+        return array_intersect(['phone', 'email'], array_values($mapping)) !== [];
     }
 
     protected function columns(array $headers, array $rows, array $mapping): array

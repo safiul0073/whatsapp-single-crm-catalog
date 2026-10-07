@@ -18,6 +18,13 @@ class ContactImportController extends Controller
     public function upload(ImportCsvRequest $request, ContactImportService $service): JsonResponse
     {
         $result = $service->parse($request->user(), $request->validated());
+        $isWaitingForSheet = ! empty($result['sheets']) && count($result['sheets']) > 1 && $request->validated('sheet') === null;
+        $result['auto_started'] = false;
+
+        if (! $isWaitingForSheet && $service->canAutoStart($result['import']->column_mapping ?? [])) {
+            $service->process($result['import']->id);
+            $result['auto_started'] = true;
+        }
 
         return response()->json($result);
     }
@@ -29,7 +36,7 @@ class ContactImportController extends Controller
             'column_mapping.*' => ['nullable', 'string'],
         ]);
 
-        $service->process((int) $import, $validated['column_mapping'] ?? null);
+        $service->process((int) $import, $validated['column_mapping'] ?? null, $request->user());
 
         if ($request->wantsJson()) {
             return response()->json(['status' => 'processing']);
@@ -40,7 +47,7 @@ class ContactImportController extends Controller
 
     public function show(Request $request, ContactImportService $service, string $import): JsonResponse
     {
-        return response()->json($service->show((int) $import));
+        return response()->json($service->show((int) $import, $request->user()));
     }
 
     public function history(Request $request, WorkspaceResolver $workspaces): JsonResponse

@@ -409,3 +409,160 @@ function autoReplyWebhookPayload(ChannelAccount $account, string $messageId, str
         ]],
     ];
 }
+
+function autoReplyMenuRule(int $workspaceId): AutoReplyRule
+{
+    return AutoReplyRule::query()->create([
+        'workspace_id' => $workspaceId,
+        'name' => 'Menu',
+        'trigger_type' => 'keyword',
+        'trigger_value' => 'menu',
+        'match_type' => 'contains',
+        'reply_type' => 'text',
+        'reply_text' => 'Here is the menu.',
+        'reply_payload' => ['text' => 'Here is the menu.'],
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+}
+
+function autoReplyChannelAccount(int $workspaceId, string $provider, string $accountId): ChannelAccount
+{
+    return ChannelAccount::query()->create([
+        'workspace_id' => $workspaceId,
+        'provider' => $provider,
+        'name' => ucfirst($provider),
+        'status' => ChannelAccountStatus::Connected,
+        'credentials' => ['access_token' => 'test-token'],
+        'webhook_verify_token' => 'verify-token',
+        'provider_account_id' => $accountId,
+        'connected_at' => now(),
+    ]);
+}
+
+function processAutoReplyWebhook(ChannelAccount $account, string $eventId, array $payload): ChannelWebhookEvent
+{
+    $event = ChannelWebhookEvent::query()->create([
+        'channel_account_id' => $account->id,
+        'workspace_id' => $account->workspace_id,
+        'provider' => $account->provider,
+        'event_type' => 'message.received',
+        'provider_event_id' => $eventId,
+        'payload' => $payload,
+        'status' => 'pending',
+    ]);
+
+    (new ProcessChannelWebhookJob($event->id))->handle(
+        app(ChannelManager::class),
+        app(AutomationDispatcher::class),
+        app(AutoReplyService::class),
+    );
+
+    return $event->fresh();
+}
+
+it('auto replies on messenger and instagram to the sender id', function (string $provider, string $sendPath): void {
+    Http::fake(['https://graph.facebook.com/*' => Http::response(['recipient_id' => 'psid-42', 'message_id' => 'mid.reply'], 200)]);
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyChannelAccount($workspace->id, $provider, 'page-123');
+    autoReplyMenuRule($workspace->id);
+
+    $event = processAutoReplyWebhook($account, $provider.'-event', ['entry' => [[
+        'id' => 'page-123',
+        'messaging' => [[
+            'sender' => ['id' => 'psid-42'],
+            'recipient' => ['id' => 'page-123'],
+            'message' => ['mid' => 'mid.inbound-1', 'text' => 'show me the menu'],
+        ]],
+    ]]]);
+
+    expect($event->status->value ?? $event->status)->toBe('processed')
+        ->and(Message::query()->where('direction', 'outbound')->where('provider', $provider)->sole()->body)->toBe('Here is the menu.');
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), $sendPath) && data_get($request->data(), 'recipient.id') === 'psid-42');
+})->with([
+    ['messenger', 'page-123/messages'],
+    ['instagram', 'page-123/messages'],
+]);
+
+it('auto replies on telegram to the chat id', function (): void {
+    Http::fake(['https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 99]], 200)]);
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyChannelAccount($workspace->id, 'telegram', 'bot-1');
+    autoReplyMenuRule($workspace->id);
+
+    $event = processAutoReplyWebhook($account, 'telegram-event', [
+        'update_id' => 1001,
+        'message' => [
+            'message_id' => 55,
+            'from' => ['id' => 777001, 'is_bot' => false, 'first_name' => 'Rafi', 'username' => 'rafi'],
+            'chat' => ['id' => 777001, 'type' => 'private', 'first_name' => 'Rafi'],
+            'date' => 1760000000,
+            'text' => 'menu please',
+        ],
+    ]);
+
+    expect($event->status->value ?? $event->status)->toBe('processed')
+        ->and(Message::query()->where('direction', 'outbound')->where('provider', 'telegram')->sole()->status->value ?? null)->not->toBe('failed');
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/sendMessage') && (string) data_get($request->data(), 'chat_id') === '777001');
+});
+
+it('auto replies on threads as a reply to the comment instead of a public post', function (): void {
+    Http::fake([
+        'https://graph.threads.net/*/threads_publish' => Http::response(['id' => 'published-1'], 200),
+        'https://graph.threads.net/*/threads' => Http::response(['id' => 'creation-1'], 200),
+    ]);
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyChannelAccount($workspace->id, 'threads', 'threads-user-1');
+    autoReplyMenuRule($workspace->id);
+
+    processAutoReplyWebhook($account, 'threads-event', ['entry' => [[
+        'changes' => [[
+            'field' => 'replies',
+            'value' => [
+                'id' => 'reply-555',
+                'text' => 'menu?',
+                'from' => ['id' => 'fan-1', 'username' => 'fan'],
+            ],
+        ]],
+    ]]]);
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/threads') && data_get($request->data(), 'reply_to_id') === 'reply-555');
+    expect(Message::query()->where('direction', 'outbound')->where('provider', 'threads')->count())->toBe(1);
+});
+
+it('does not trigger auto replies on sms or email because they have no inbound messages', function (string $provider): void {
+    Http::fake();
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyChannelAccount($workspace->id, $provider, $provider.'-1');
+    autoReplyMenuRule($workspace->id);
+
+    processAutoReplyWebhook($account, $provider.'-event', ['from' => '+8801711223344', 'text' => 'menu']);
+
+    expect(Message::query()->count())->toBe(0);
+    Http::assertNothingSent();
+})->with(['sms', 'email']);
+
+it('skips media auto replies on threads so nothing is posted publicly', function (): void {
+    Http::fake();
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyChannelAccount($workspace->id, 'threads', 'threads-user-1');
+    AutoReplyRule::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Menu image',
+        'trigger_type' => 'keyword',
+        'trigger_value' => 'menu',
+        'match_type' => 'contains',
+        'reply_type' => 'media',
+        'reply_text' => 'Menu',
+        'reply_payload' => ['type' => 'image', 'url' => 'https://cdn.example/menu.jpg'],
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+
+    processAutoReplyWebhook($account, 'threads-media-event', ['entry' => [[
+        'changes' => [['field' => 'replies', 'value' => ['id' => 'reply-9', 'text' => 'menu', 'from' => ['id' => 'fan-1']]]],
+    ]]]);
+
+    Http::assertNothingSent();
+    expect(Message::query()->where('direction', 'outbound')->count())->toBe(0);
+});
