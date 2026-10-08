@@ -14,6 +14,9 @@ class OrderPackingService
     {
         return DB::transaction(function () use ($order, $quantities): OrderBox {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if ($locked->source === 'pos') {
+                app(PosService::class)->assertCanFulfill($locked);
+            }
             if (! in_array($locked->status, ['paid', 'processing'], true)) {
                 throw ValidationException::withMessages(['packing' => 'Confirm payment before packing.']);
             }
@@ -45,6 +48,9 @@ class OrderPackingService
     {
         DB::transaction(function () use ($order, $boxId): void {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if ($locked->source === 'pos') {
+                app(PosService::class)->assertCanFulfill($locked);
+            }
             if (! in_array($locked->status, ['paid', 'processing', 'packed'], true)) {
                 throw ValidationException::withMessages(['packing' => 'Confirm payment before packing.']);
             }

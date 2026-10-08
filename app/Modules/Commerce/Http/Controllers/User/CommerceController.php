@@ -37,6 +37,7 @@ use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
 use App\Modules\Commerce\Services\MetaCatalogClient;
 use App\Modules\Commerce\Services\OrderWorkflowService;
+use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Inbox\Models\Conversation;
@@ -561,14 +562,28 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
 
-        return view('commerce::user.orders', ['orders' => Order::query()->with('contact')->where('workspace_id', $workspace->id)->latest()->paginate(25)]);
+        return view('commerce::user.orders', [
+            'orders' => Order::query()->with(['contact', 'payments'])->where('workspace_id', $workspace->id)
+                ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')->toString()))
+                ->when($request->filled('payment_state'), fn ($query) => $query->where('payment_state', $request->string('payment_state')->toString()))
+                ->when($request->filled('contact_id'), fn ($query) => $query->where('contact_id', $request->integer('contact_id')))
+                ->latest()->paginate(25)->withQueryString(),
+            'sources' => Order::query()->where('workspace_id', $workspace->id)->whereNotNull('source')->distinct()->pluck('source'),
+        ]);
     }
 
     public function order(Request $request, Order $order): View
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        return view('commerce::user.order', ['order' => $order->load(['items', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'contact', 'conversation', 'events', 'shipment'])]);
+        $order->load(['items', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'contact', 'conversation', 'events', 'shipment', 'payments.staff']);
+        $pos = app(PosService::class);
+
+        return view('commerce::user.order', [
+            'order' => $order,
+            'paymentMethods' => $order->source === 'pos' ? $pos->paymentMethods($order->workspace_id) : [],
+            'customerBalances' => $order->source === 'pos' && $order->contact ? $pos->customerBalances($order->contact) : [],
+        ]);
     }
 
     public function quote(QuoteOrderRequest $request, Order $order): RedirectResponse

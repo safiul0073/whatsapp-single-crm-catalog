@@ -143,6 +143,13 @@
             'label' => __('Commerce'),
             'items' => [
                 [
+                    'label' => __('POS'),
+                    'route' => 'user.commerce.pos.index',
+                    'active' => 'user.commerce.pos.*',
+                    'icon' => 'ph-cash-register',
+                    'permission' => 'commerce.manage',
+                ],
+                [
                     'label' => __('Orders'),
                     'route' => 'user.commerce.orders.index',
                     'active' => ['user.commerce.orders.index', 'user.commerce.orders.show', 'user.commerce.orders.create', 'user.commerce.orders.packing-slip', 'user.commerce.orders.receipt'],

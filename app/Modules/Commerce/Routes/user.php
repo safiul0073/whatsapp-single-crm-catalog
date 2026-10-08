@@ -2,9 +2,23 @@
 
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
+use App\Modules\Commerce\Http\Controllers\User\PosController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
+    Route::prefix('pos')->name('pos.')->group(function (): void {
+        Route::middleware('permission:commerce.manage')->group(function (): void {
+            Route::get('/', [PosController::class, 'index'])->name('index');
+            Route::get('products', [PosController::class, 'products'])->name('products');
+            Route::post('preview', [PosController::class, 'preview'])->name('preview');
+            Route::post('checkout', [PosController::class, 'checkout'])->name('checkout');
+            Route::post('orders/{order}/payments', [PosController::class, 'payment'])->name('payment');
+            Route::post('orders/{order}/pickup', [PosController::class, 'pickup'])->name('pickup');
+        });
+        Route::get('orders/{order}/receipt', [PosController::class, 'receipt'])->middleware('permission:commerce.view')->name('receipt');
+        Route::get('customers/{contact}/balance', [PosController::class, 'customerBalance'])->middleware('permission:commerce.view')->name('customer-balance');
+    });
+
     Route::get('/', [CommerceController::class, 'index'])->name('products.index');
     Route::get('products/create', [CommerceController::class, 'create'])->name('products.create');
     Route::post('products', [CommerceController::class, 'store'])->name('products.store');

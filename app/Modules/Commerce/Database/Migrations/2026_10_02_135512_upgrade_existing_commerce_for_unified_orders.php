@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         $this->addMissing('commerce_orders', [
+            'fulfillment_type' => fn (Blueprint $table) => $table->string('fulfillment_type')->default('delivery'),
             'source' => fn (Blueprint $table) => $table->string('source')->default('native_whatsapp'),
             'submission_reference' => fn (Blueprint $table) => $table->string('submission_reference')->nullable(),
             'payload_hash' => fn (Blueprint $table) => $table->string('payload_hash', 64)->nullable(),
