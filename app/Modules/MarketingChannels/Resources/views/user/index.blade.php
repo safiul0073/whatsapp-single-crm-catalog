@@ -58,6 +58,12 @@
                                 <i class="ph {{ $card['account'] ? 'ph-gear-six' : 'ph-plus' }} text-base"></i>
                                 {{ $card['account'] ? __('Manage') : __('Set up') }}
                             </a>
+                            @if ($card['widget_url'])
+                                <a href="{{ $card['widget_url'] }}" class="btn-sm btn-outline" data-channel-widgets-link="{{ $card['key'] }}">
+                                    <i class="ph ph-squares-four text-base"></i>
+                                    {{ __('Widgets') }}
+                                </a>
+                            @endif
                         @else
                             <span class="text-xs font-medium text-body">{{ __('Ask a workspace admin for access') }}</span>
                         @endcan

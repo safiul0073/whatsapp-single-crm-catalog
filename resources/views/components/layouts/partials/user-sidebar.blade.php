@@ -278,6 +278,13 @@
                     'icon' => 'ph-chat-text',
                     'permission' => 'sms.manage',
                 ],
+                [
+                    'label' => __('Widgets'),
+                    'route' => 'user.social-widgets.library',
+                    'active' => 'user.social-widgets.*',
+                    'icon' => 'ph-squares-four',
+                    'permission' => 'meta-social.manage',
+                ],
             ],
         ],
         [

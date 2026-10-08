@@ -10,6 +10,13 @@
         </a>
     </div>
 
+    <div class="info-banner mt-5" data-auto-reply-channels>
+        <i class="ph ph-info text-lg text-primary"></i>
+        <p class="text-sm text-body">
+            {{ __('Auto replies run on WhatsApp, Messenger, Instagram, Telegram and Threads. SMS and email don\'t receive incoming messages yet, so they can\'t trigger auto replies. Template replies are WhatsApp only, and Threads only sends text replies.') }}
+        </p>
+    </div>
+
     @if (session('status'))
         <div class="app-card mt-5 border-success/30 bg-success/5 p-4 text-sm font-medium text-success">
             {{ session('status') }}

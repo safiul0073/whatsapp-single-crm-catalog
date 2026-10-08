@@ -33,9 +33,9 @@
         @endif
 
         <div class="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
-            <section class="section-card h-fit">
+            <section class="section-card h-fit rounded-xl!">
                 <div class="flex items-start gap-3">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                         <i class="ph ph-folder-plus text-xl"></i>
                     </span>
                     <div>
@@ -48,11 +48,11 @@
                     @csrf
                     <div>
                         <label class="form-label" for="category_name">{{ __('Category name') }}</label>
-                        <input id="category_name" class="form-input" name="name" required maxlength="120" value="{{ old('name') }}" placeholder="{{ __('e.g. Jackets') }}">
+                        <input id="category_name" class="form-input rounded-lg!" name="name" required maxlength="120" value="{{ old('name') }}" placeholder="{{ __('e.g. Jackets') }}">
                     </div>
                     <div>
                         <label class="form-label" for="category_parent">{{ __('Parent category') }}</label>
-                        <select id="category_parent" class="form-input" name="parent_id">
+                        <select id="category_parent" class="form-input rounded-lg!" name="parent_id">
                             <option value="">{{ __('No parent — main category') }}</option>
                             @foreach ($categories as $category)
                                 <option value="{{ $category->id }}" @selected(old('parent_id') == $category->id)>{{ $category->name }}</option>
@@ -60,12 +60,12 @@
                         </select>
                     </div>
                     <input type="hidden" name="is_active" value="1">
-                    <x-forms.submit :label="__('Create category')" class="w-full" />
+                    <x-forms.submit :label="__('Create category')" class="w-full rounded-lg! shadow-none!" />
                 </form>
             </section>
 
-            <section class="section-card">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <section class="section-card rounded-xl!">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="heading-5 text-title">{{ __('All categories') }}</h2>
                         <p class="text-sm text-body">{{ trans_choice(':count category|:count categories', $categories->count(), ['count' => $categories->count()]) }}</p>
@@ -77,30 +77,35 @@
                             <template x-for="id in selectedCategories" :key="id">
                                 <input type="hidden" name="ids[]" :value="id">
                             </template>
-                            <button type="submit" class="btn btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="{{ __('Delete selected categories?') }}" data-confirm-body="{{ __('Only empty categories can be deleted. Selected categories will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error">
+                            <button type="submit" class="btn btn-sm btn-outline rounded-lg! text-error hover:border-error hover:text-error" data-confirm data-confirm-title="{{ __('Delete selected categories?') }}" data-confirm-body="{{ __('Only empty categories can be deleted. Selected categories will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error">
                                 <i class="ph ph-trash"></i>
                                 <span x-text="'{{ __('Delete selected') }} (' + selectedCategories.length + ')'"></span>
                             </button>
                         </form>
-                        <label class="check-row min-h-10 px-3 py-2">
+                        <label class="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 px-3 transition hover:border-neutral-300">
                             <input type="checkbox" class="app-checkbox" :checked="allCategoriesSelected()" @change="toggleAllCategories($event)" :disabled="categoryIds.length === 0">
                             <span class="text-sm font-medium text-title">{{ __('Select empty') }}</span>
                         </label>
-                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
-                            <i class="ph ph-tree-structure text-xl"></i>
-                        </span>
                     </div>
                 </div>
 
-                <div class="mt-5 space-y-3">
+                <div class="mt-5">
                     @if($categories->isEmpty())
-                        <div class="rounded-2xl border border-dashed border-border p-10 text-center">
+                        <div class="rounded-lg border border-dashed border-border p-10 text-center">
                             <i class="ph ph-folders text-4xl text-neutral-300"></i>
                             <h3 class="mt-3 font-semibold text-title">{{ __('No categories yet') }}</h3>
                             <p class="mt-1 text-sm text-body">{{ __('Create categories such as Shirts, Dresses, Jackets, or Uniforms.') }}</p>
                         </div>
                     @else
-                        @include('commerce::user.partials.category-tree', ['categories' => $categories->whereNull('parent_id'), 'allCategories' => $categories])
+                        <div class="overflow-hidden rounded-lg border border-neutral-200">
+                            <div class="flex items-center justify-between border-b border-neutral-200 bg-section/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-body">
+                                <span>{{ __('Category') }}</span>
+                                <span class="hidden pr-[4.75rem] sm:block">{{ __('Products · Sub · Status') }}</span>
+                            </div>
+                            <ul class="-mb-px">
+                                @include('commerce::user.partials.category-tree', ['categories' => $categories->whereNull('parent_id'), 'allCategories' => $categories])
+                            </ul>
+                        </div>
                     @endif
                 </div>
             </section>

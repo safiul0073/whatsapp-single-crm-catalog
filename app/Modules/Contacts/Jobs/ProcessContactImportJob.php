@@ -49,27 +49,41 @@ class ProcessContactImportJob implements ShouldQueue
         $failed = 0;
         $errors = [];
 
+        $defaultCountry = $options['default_country'] ?? null;
+        $seenKeys = [];
+        $duplicatesInFile = 0;
+
         foreach ($rows as $index => $row) {
             $mapped = $reader->mapRow($row, $headers, $mapping);
+            $phone = $contacts->firstValidPhone($mapped['phones'] ?? [$mapped['phone']], $defaultCountry);
+            $email = filled($mapped['email']) ? strtolower(trim((string) $mapped['email'])) : null;
 
-            if (empty($mapped['phone'])) {
+            if ($phone === null && $email === null) {
                 $skipped++;
-                $errors[] = 'Row '.($index + 2).': Missing phone number';
+                $errors[] = 'Row '.($index + 2).': '.(empty($mapped['phones']) ? 'Missing phone number' : 'No valid phone number');
 
                 continue;
             }
 
+            $rowKey = $phone ?? 'email:'.$email;
+            if (isset($seenKeys[$rowKey])) {
+                $duplicatesInFile++;
+            }
+            $seenKeys[$rowKey] = true;
+
             try {
-                $normalized = $contacts->normalizePhone($mapped['phone']);
                 $exists = Contact::query()
                     ->where('workspace_id', $import->workspace_id)
-                    ->where('phone', $normalized)
+                    ->where(function ($query) use ($phone, $email): void {
+                        $query->when($phone, fn ($inner) => $inner->orWhere('phone', $phone))
+                            ->when($email, fn ($inner) => $inner->orWhere('email', $email));
+                    })
                     ->exists();
 
                 $contactData = [
-                    'phone' => $normalized,
+                    'phone' => $phone,
                     'name' => $mapped['name'],
-                    'email' => $mapped['email'],
+                    'email' => $email,
                     'city' => $mapped['city'],
                     'country' => $mapped['country'],
                     'source' => $this->sourceValue($mapped['source'] ?? null),
@@ -100,7 +114,7 @@ class ProcessContactImportJob implements ShouldQueue
             'failed_rows' => $failed,
             'status' => ContactImportStatus::Completed,
             'errors' => $errors,
-            'summary' => ['errors' => $errors],
+            'summary' => ['errors' => $errors, 'duplicates_in_file' => $duplicatesInFile],
             'completed_at' => now(),
         ]);
     }

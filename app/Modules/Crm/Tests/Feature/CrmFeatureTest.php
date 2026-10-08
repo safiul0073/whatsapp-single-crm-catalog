@@ -33,8 +33,8 @@ use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\SystemNotifications\Models\SystemNotification;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
-use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
+use App\Modules\Workspaces\Models\WorkspaceRole;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -134,7 +134,7 @@ it('creates a lead using the selected stage pipeline when the submitted pipeline
 it('assigns only active workspace members and supports won lost history', function (): void {
     [$owner, $workspace, $contact] = crmTestContext();
     $agent = User::factory()->create(['email_verified_at' => now()]);
-    $workspace->members()->attach($agent->id, ['role' => WorkspaceMemberRole::Staff->value, 'status' => WorkspaceMemberStatus::Active->value]);
+    $workspace->members()->attach($agent->id, ['workspace_role_id' => WorkspaceRole::query()->firstOrCreate(['workspace_id' => $workspace->id, 'name' => 'Staff'])->id, 'status' => WorkspaceMemberStatus::Active->value]);
     $outsider = User::factory()->create();
     $lead = app(CRMLeadService::class)->createOrUpdate($workspace->id, $contact->id, []);
 
@@ -378,7 +378,7 @@ it('creates CRM leads through automation without touching generated prospects', 
 it('executes workspace-scoped CRM automation actions', function (): void {
     [$owner, $workspace, $contact, $conversation] = crmTestContext();
     $agent = User::factory()->create(['email_verified_at' => now()]);
-    $workspace->members()->attach($agent->id, ['role' => WorkspaceMemberRole::Staff->value, 'status' => WorkspaceMemberStatus::Active->value]);
+    $workspace->members()->attach($agent->id, ['workspace_role_id' => WorkspaceRole::query()->firstOrCreate(['workspace_id' => $workspace->id, 'name' => 'Staff'])->id, 'status' => WorkspaceMemberStatus::Active->value]);
     $pipeline = app(PipelineService::class)->ensureDefaultForWorkspace($workspace->id);
     $tag = ContactTag::query()->create(['workspace_id' => $workspace->id, 'name' => 'Automation VIP', 'slug' => 'automation-vip']);
     $lead = app(CRMLeadService::class)->createOrUpdate($workspace->id, $contact->id, ['conversation_id' => $conversation->id]);

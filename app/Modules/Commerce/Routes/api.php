@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Commerce\Http\Controllers\Api\MenuApiController;
 use App\Modules\Commerce\Http\Controllers\Api\OrderApiController;
 use App\Modules\Commerce\Http\Controllers\Api\ProductApiController;
 use App\Modules\Commerce\Http\Controllers\Api\StoreOrderController;
@@ -7,6 +8,8 @@ use App\Modules\Commerce\Http\Controllers\Api\WhatsAppCustomerAuthController;
 use App\Modules\Commerce\Http\Middleware\ResolveStoreWorkspace;
 use Illuminate\Support\Facades\Route;
 
+Route::get('commerce/menu', [MenuApiController::class, 'index'])
+    ->middleware('throttle:60,1')->name('commerce.api.menu');
 Route::get('commerce/filters', [ProductApiController::class, 'filters'])->name('commerce.api.filters');
 Route::get('commerce/products', [ProductApiController::class, 'index'])->name('commerce.api.products.index');
 Route::get('commerce/products/deals', [ProductApiController::class, 'deals'])->name('commerce.api.products.deals');

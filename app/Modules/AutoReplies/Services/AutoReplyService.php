@@ -166,7 +166,11 @@ class AutoReplyService
 
     protected function ruleCanSendOnAccount(AutoReplyRule $rule, ChannelAccount $account): bool
     {
-        return $rule->reply_type !== 'template' || $account->provider === 'whatsapp';
+        return match ($account->provider) {
+            'whatsapp' => true,
+            'threads' => $rule->reply_type === 'text',
+            default => $rule->reply_type !== 'template',
+        };
     }
 
     protected function keywordMatches(AutoReplyRule $rule, string $body): bool
@@ -306,23 +310,39 @@ class AutoReplyService
             return null;
         }
 
+        if ($account->provider === 'threads') {
+            return filled($message->provider_message_id)
+                ? ['type' => 'text', 'body' => $rule->reply_text, 'reply_to_id' => $message->provider_message_id]
+                : null;
+        }
+
         return [
             'type' => 'text',
             'body' => $rule->reply_text,
         ];
     }
 
+    /**
+     * Telegram and Threads store raw payloads where "from" is an object, so only scalar ids are accepted;
+     * Telegram replies go to the chat (works for groups), everyone else to the sender.
+     */
     protected function recipientFor(ChannelAccount $account, Conversation $conversation, Message $message): ?string
     {
-        $providerContactId = data_get($message->payload, 'from')
-            ?: data_get($message->payload, 'sender.id')
-            ?: $conversation->provider_conversation_id;
+        $candidates = $account->provider === 'telegram'
+            ? [data_get($message->payload, 'chat.id'), $conversation->provider_conversation_id, data_get($message->payload, 'from.id')]
+            : [$conversation->provider_conversation_id, data_get($message->payload, 'from'), data_get($message->payload, 'from.id'), data_get($message->payload, 'sender.id')];
+
+        $providerContactId = collect($candidates)->first(fn (mixed $candidate): bool => is_scalar($candidate) && filled($candidate));
+
+        if ($providerContactId === null) {
+            return null;
+        }
 
         if ($account->provider === 'whatsapp') {
             return preg_replace('/\D+/', '', (string) $providerContactId);
         }
 
-        return filled($providerContactId) ? (string) $providerContactId : null;
+        return (string) $providerContactId;
     }
 
     protected function recordOutbound(ChannelAccount $account, Conversation $conversation, AutoReplyRule $rule, array $payload, array $result): Message

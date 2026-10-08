@@ -11,6 +11,7 @@ use App\Modules\Contacts\Models\ContactGroup;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\Contacts\Models\ContactTag;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use Giggsey\Locale\Locale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +28,9 @@ class ContactService
         protected WorkspaceResolver $workspaces,
     ) {}
 
-    public function listForUser(?User $user)
+    public function listForUser(?User $user, array $filters = [])
     {
-        return $this->queryForUser($user)->latest()->paginate(20);
+        return $this->queryForUser($user, $filters)->latest()->paginate(20)->withQueryString();
     }
 
     public function exportCsvForUser(?User $user, array $filters = []): StreamedResponse
@@ -418,32 +419,115 @@ class ContactService
         );
     }
 
-    public function normalizePhone(string $phone): string
+    /**
+     * Numbers without "+" are rejected unless a default region is given (imports pick one per file);
+     * a leading "00" is treated as the international prefix, and pre-2019 Mexican mobiles drop their extra "1".
+     */
+    public function normalizePhone(string $phone, ?string $defaultRegion = null): string
     {
         $phone = trim($phone);
+        $compactPhone = preg_replace('/[\s().\-\/]+/', '', $phone) ?? $phone;
 
-        if (! str_starts_with($phone, '+')) {
+        if (str_starts_with($compactPhone, '00')) {
+            $compactPhone = '+'.substr($compactPhone, 2);
+        }
+
+        if (preg_match('/^\+521(\d{10})$/', $compactPhone, $legacyMexicanMobile)) {
+            $compactPhone = '+52'.$legacyMexicanMobile[1];
+        }
+
+        $hasCountryCode = str_starts_with($compactPhone, '+');
+
+        if (! $hasCountryCode && $defaultRegion === null) {
             throw ValidationException::withMessages([
                 'phone' => 'Enter the phone number in international E.164 format, for example +14155552671.',
             ]);
         }
 
-        try {
-            $util = PhoneNumberUtil::getInstance();
-            $number = $util->parse($phone, null);
-        } catch (NumberParseException) {
-            throw ValidationException::withMessages([
-                'phone' => 'Enter a valid international phone number.',
-            ]);
+        $util = PhoneNumberUtil::getInstance();
+        $attempts = $hasCountryCode
+            ? [[$compactPhone, null]]
+            : [[$compactPhone, strtoupper($defaultRegion)], ['+'.$compactPhone, null]];
+
+        foreach ($attempts as [$candidate, $region]) {
+            try {
+                $number = $util->parse($candidate, $region);
+            } catch (NumberParseException) {
+                continue;
+            }
+
+            if ($util->isValidNumber($number)) {
+                return $util->format($number, PhoneNumberFormat::E164);
+            }
         }
 
-        if (! $util->isValidNumber($number)) {
-            throw ValidationException::withMessages([
-                'phone' => 'Enter a valid international phone number.',
-            ]);
+        throw ValidationException::withMessages([
+            'phone' => 'Enter a valid international phone number.',
+        ]);
+    }
+
+    /**
+     * @param  array<int, string|null>  $candidates  raw cells; one cell may hold several numbers (Google uses " ::: ")
+     */
+    public function firstValidPhone(array $candidates, ?string $defaultRegion = null): ?string
+    {
+        foreach ($candidates as $cell) {
+            foreach (preg_split('/\s*(?::::|,|;)\s*/', (string) $cell) ?: [] as $candidate) {
+                if (trim($candidate) === '') {
+                    continue;
+                }
+
+                try {
+                    return $this->normalizePhone($candidate, $defaultRegion);
+                } catch (ValidationException) {
+                    continue;
+                }
+            }
         }
 
-        return $util->format($number, PhoneNumberFormat::E164);
+        return null;
+    }
+
+    public const COUNTRY_SEARCH_ALIASES = [
+        'US' => 'USA America United States',
+        'GB' => 'UK Britain England Scotland Wales',
+        'AE' => 'UAE Emirates Dubai Abu Dhabi',
+        'SA' => 'KSA Saudi',
+        'KR' => 'South Korea',
+        'KP' => 'North Korea',
+        'RU' => 'Russia',
+        'CZ' => 'Czech Republic',
+        'NL' => 'Holland',
+        'CD' => 'DRC Congo Kinshasa',
+        'CG' => 'Congo Brazzaville',
+        'CI' => 'Ivory Coast',
+        'MM' => 'Burma',
+        'BD' => 'Bangla',
+    ];
+
+    /**
+     * Keywords let the searchable picker match ISO codes, dialing codes and common names
+     * ("USA", "UK", "880") that are not part of the visible label.
+     *
+     * @return array<string, array{label: string, keywords: string}> region code => option, sorted by label
+     */
+    public function countryOptions(): array
+    {
+        $util = PhoneNumberUtil::getInstance();
+        $names = Locale::getAllCountriesForLocale('en');
+        $options = [];
+
+        foreach ($util->getSupportedRegions() as $region) {
+            $dialingCode = $util->getCountryCodeForRegion($region);
+            $options[$region] = [
+                'label' => ($names[$region] ?? $region).' (+'.$dialingCode.')',
+                'keywords' => trim($region.' '.$dialingCode.' +'.$dialingCode.' '.(self::COUNTRY_SEARCH_ALIASES[$region] ?? '')),
+            ];
+        }
+
+        uasort($options, fn (array $first, array $second): int => strcmp($first['label'], $second['label']));
+
+        return $options;
     }
 
     public function validTagIds(int $workspaceId, array $tagIds): array

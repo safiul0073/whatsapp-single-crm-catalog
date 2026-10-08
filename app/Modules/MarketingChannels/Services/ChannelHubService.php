@@ -34,6 +34,10 @@ class ChannelHubService
         'threads' => 'threads.manage',
     ];
 
+    public const WIDGET_ROUTES = [
+        'instagram' => 'user.social-widgets.index',
+    ];
+
     public const SECTION_ANCHORS = [
         'messenger' => 'messenger',
         'instagram' => 'instagram',
@@ -88,6 +92,13 @@ class ChannelHubService
         return route($routeName).($anchor ? '#'.$anchor : '');
     }
 
+    public function widgetUrl(string $provider): ?string
+    {
+        $routeName = self::WIDGET_ROUTES[$provider] ?? null;
+
+        return $routeName && Route::has($routeName) ? route($routeName, $provider) : null;
+    }
+
     /**
      * @param  Collection<int, ChannelAccount>  $accounts
      * @return array<string, mixed>
@@ -111,6 +122,7 @@ class ChannelHubService
             'connected_count' => $accounts->filter(fn (ChannelAccount $account): bool => $account->status === ChannelAccountStatus::Connected)->count(),
             'setup_url' => $isInternal ? null : $this->setupUrl($key),
             'permission' => self::PERMISSIONS[$key] ?? null,
+            'widget_url' => $this->widgetUrl($key),
         ];
     }
 

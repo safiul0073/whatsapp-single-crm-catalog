@@ -1370,9 +1370,9 @@
         {{-- Color Images Management Modal --}}
         <template x-if="editingColorIndex !== null">
             <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingColorIndex = null" @click.self="editingColorIndex = null">
-                <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col">
+                <div class="relative flex max-h-[90dvh] w-full max-w-[1280px] flex-col rounded-2xl bg-white shadow-xl">
                     {{-- Modal Header --}}
-                    <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
+                    <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-neutral-100 px-4 py-4 sm:px-6">
                         <h3 class="text-lg font-bold text-neutral-900 flex items-center gap-2">
                             <span class="h-4 w-4 rounded-full border shadow-2xs" :style="`background-color: ${colors[editingColorIndex].hex_code || '#2563EB'}`"></span>
                             <span>{{ __('Manage Images for ') }}<span x-text="colors[editingColorIndex].name || 'Color'"></span></span>
@@ -1398,23 +1398,23 @@
                     </div>
 
                     {{-- Modal Body --}}
-                    <div class="px-6 py-6 overflow-y-auto max-h-[60vh]">
+                    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
                         <p class="text-xs text-neutral-500 mb-4">{{ __('Upload and select images specifically for this color variant. Click an image to set it as the primary swatch for this color.') }}</p>
                         
-                        <div class="flex flex-wrap gap-4">
+                        <div class="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {{-- Add New Image Button --}}
-                            <button type="button" class="h-24 w-24 rounded-xl border-2 border-dashed border-neutral-300 hover:border-primary bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 hover:text-primary transition shadow-2xs cursor-pointer" @click="openMediaPickerForColor(editingColorIndex)">
+                            <button type="button" class="min-h-48 w-full rounded-xl border-2 border-dashed border-neutral-300 hover:border-primary bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 hover:text-primary transition shadow-2xs cursor-pointer" @click="openMediaPickerForColor(editingColorIndex)">
                                 <i class="ph ph-plus text-2xl mb-1"></i>
                                 <span class="text-[10px] font-semibold uppercase tracking-wider">{{ __('Add') }}</span>
                             </button>
 
                             {{-- Gallery Grid --}}
                             <template x-for="(cMedia, cmIdx) in getColorMediaList(editingColorIndex)" :key="cMedia.id">
-                                <div class="relative group h-24 w-24">
+                                <div class="relative group min-w-0">
                                     <img 
                                         :src="cMedia.url" 
                                         crossorigin="anonymous"
-                                        class="h-full w-full rounded-xl object-cover border-2 shadow-2xs cursor-pointer transition select-none" 
+                                        class="block h-auto w-full rounded-xl border-2 shadow-2xs cursor-pointer transition select-none"
                                         :class="[
                                             colors[editingColorIndex].swatch_media_id == cMedia.id ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-neutral-200 hover:border-neutral-400',
                                             colorModalEyedropperEnabled ? 'cursor-crosshair inspecting-color-target' : ''
@@ -1463,7 +1463,7 @@
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="border-t border-neutral-100 px-6 py-4 flex justify-end">
+                    <div class="flex shrink-0 justify-end border-t border-neutral-100 px-4 py-4 sm:px-6">
                         <button type="button" class="btn btn-primary" @click="editingColorIndex = null">{{ __('Done') }}</button>
                     </div>
                 </div>

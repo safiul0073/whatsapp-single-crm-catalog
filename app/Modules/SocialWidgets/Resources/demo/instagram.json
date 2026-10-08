@@ -1,0 +1,124 @@
+{
+  "profile": {
+    "username": "yourbrand",
+    "name": "Your Brand",
+    "biography": "Your store's Instagram feed",
+    "avatar": "https://picsum.photos/seed/socialfeedavatar/160/160",
+    "followers": 12500,
+    "following": 340,
+    "posts": 128,
+    "verified": true
+  },
+  "posts": [
+    {
+      "id": "demo-1",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed1/600/760",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Capturing moments 📸 #photography",
+      "likes": 120,
+      "comments": 14,
+      "timestamp": "2026-09-28T10:00:00+00:00"
+    },
+    {
+      "id": "demo-2",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed2/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Friendship goals ❤️",
+      "likes": 342,
+      "comments": 42,
+      "timestamp": "2026-09-27T10:00:00+00:00"
+    },
+    {
+      "id": "demo-3",
+      "type": "video",
+      "image": "https://picsum.photos/seed/socialfeed3/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Mountain vibes 🏔️",
+      "likes": 890,
+      "comments": 120,
+      "timestamp": "2026-09-26T10:00:00+00:00"
+    },
+    {
+      "id": "demo-4",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed4/600/760",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Productivity setup 💻 #work",
+      "likes": 56,
+      "comments": 2,
+      "timestamp": "2026-09-25T10:00:00+00:00"
+    },
+    {
+      "id": "demo-5",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed5/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Portrait mode on ✨",
+      "likes": 210,
+      "comments": 18,
+      "timestamp": "2026-09-24T10:00:00+00:00"
+    },
+    {
+      "id": "demo-6",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed6/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Golden hour ☀️",
+      "likes": 450,
+      "comments": 33,
+      "timestamp": "2026-09-23T10:00:00+00:00"
+    },
+    {
+      "id": "demo-7",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed7/600/760",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Pink aesthetic 🌸",
+      "likes": 112,
+      "comments": 5,
+      "timestamp": "2026-09-22T10:00:00+00:00"
+    },
+    {
+      "id": "demo-8",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed8/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "City lights 🌃",
+      "likes": 678,
+      "comments": 90,
+      "timestamp": "2026-09-21T10:00:00+00:00"
+    },
+    {
+      "id": "demo-9",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed9/600/600",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "Weekend coffee ☕",
+      "likes": 233,
+      "comments": 21,
+      "timestamp": "2026-09-20T10:00:00+00:00"
+    },
+    {
+      "id": "demo-10",
+      "type": "image",
+      "image": "https://picsum.photos/seed/socialfeed10/600/760",
+      "video": null,
+      "permalink": "https://www.instagram.com/",
+      "caption": "New drop is live 🛍️",
+      "likes": 512,
+      "comments": 64,
+      "timestamp": "2026-09-19T10:00:00+00:00"
+    }
+  ]
+}

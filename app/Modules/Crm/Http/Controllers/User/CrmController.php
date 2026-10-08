@@ -59,6 +59,7 @@ class CrmController extends Controller
         $workspace = $this->workspaces->current($request->user());
         $canManage = $request->user()->can('crm.manage');
         $crm = $this->timeline->sidebar($workspace->id, $conversation);
+        $crm['owner_id'] = $workspace->owner_id;
         $crm['allowed_actions'] = $canManage
             ? ['create_lead', 'add_note', 'create_task', 'move_stage', 'assign_agent', 'mark_won', 'mark_lost']
             : [];

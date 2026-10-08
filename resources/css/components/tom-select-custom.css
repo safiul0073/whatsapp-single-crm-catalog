@@ -54,6 +54,11 @@
   @apply bg-neutral-0 z-50 mt-2 overflow-hidden rounded-xl border border-neutral-200 shadow-xl;
 }
 
+/* Dropdown rendered on <body> (data-dropdown-parent="body") so modals cannot clip it */
+body > .ts-dropdown {
+  @apply bg-neutral-0 z-[110] mt-2 overflow-hidden rounded-xl border border-neutral-200 shadow-xl;
+}
+
 /* Search Input */
 .ts-dropdown .ts-dropdown-content {
   @apply max-h-60 overflow-y-auto p-1;
