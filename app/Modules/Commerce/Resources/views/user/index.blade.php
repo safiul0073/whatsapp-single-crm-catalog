@@ -24,7 +24,6 @@
             </div>
         </header>
 
-        @include('commerce::user.partials.help', ['helpKey' => 'products'])
 
         <section class="app-card overflow-hidden">
             <div class="flex flex-col gap-3 border-b border-border-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -58,6 +57,12 @@
             </div>
 
             @if ($products->isNotEmpty())
+                @if (blank(config('commerce.showcase_frontend_url')))
+                    <p class="flex items-center gap-2 border-b border-border-soft bg-warning/5 px-5 py-2.5 text-xs text-body" data-showcase-config-notice>
+                        <i class="ph ph-info text-sm text-warning"></i>
+                        {{ __('Showcase links are off. Set ECOMMARCE_FRONTEND_URL to your store domain to share products.') }}
+                    </p>
+                @endif
                 <div class="overflow-x-auto" x-show="view === 'table'" x-cloak data-product-table>
                     <table class="w-full min-w-[980px] text-left text-sm">
                         <thead>
@@ -71,7 +76,7 @@
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('From') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Stock & MOQ') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Status') }}</th>
-                                <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Actions') }}</th>
+                                <th class="w-32 px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border-soft">
@@ -83,9 +88,9 @@
                                     <td class="px-5 py-3.5">
                                         <div class="flex min-w-0 items-center gap-3">
                                             @if ($product->primaryMedia)
-                                                <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}" class="h-12 w-12 shrink-0 rounded-xl object-cover" loading="lazy">
+                                                <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}" class="h-11 w-11 shrink-0 rounded-lg border border-neutral-100 object-cover" loading="lazy">
                                             @else
-                                                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-section text-xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
+                                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-section text-xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
                                             @endif
                                             <div class="min-w-0">
                                                 <a href="{{ route('user.commerce.products.edit', $product) }}" class="block max-w-64 truncate font-semibold text-title hover:text-primary">{{ $product->name }}</a>
@@ -93,32 +98,26 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3.5 text-title">{{ $product->category?->name ?? __('Uncategorized') }}</td>
+                                    <td class="px-4 py-3.5"><span class="inline-flex rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-title">{{ $product->category?->name ?? __('Uncategorized') }}</span></td>
                                     <td class="px-4 py-3.5">
-                                        <span class="block text-title">{{ $product->brandRecord?->name ?? $product->brand ?? '—' }}</span>
+                                        <span class="block whitespace-nowrap text-title">{{ $product->brandRecord?->name ?? $product->brand ?? '—' }}</span>
                                         <span class="block text-xs text-body">{{ $product->audienceRecord?->name ?? $product->audience ?? __('All audiences') }}</span>
                                     </td>
-                                    <td class="px-4 py-3.5 font-semibold text-title">{{ ($product->starting_price ?? $product->single_piece_price) !== null ? '$'.number_format((float) ($product->starting_price ?? $product->single_piece_price), 2) : '—' }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3.5 font-semibold text-title">{{ ($product->starting_price ?? $product->single_piece_price) !== null ? '$'.number_format((float) ($product->starting_price ?? $product->single_piece_price), 2) : '—' }}</td>
                                     <td class="px-4 py-3.5">
-                                        <span class="block font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ number_format((int) $product->stock_total) }} {{ __('in stock') }}</span>
+                                        <span class="block whitespace-nowrap font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ number_format((int) $product->stock_total) }} <span class="font-normal text-body">{{ __('in stock') }}</span></span>
                                         <span class="block text-xs text-body">{{ __('MOQ: :count', ['count' => number_format((int) ($product->moq ?? 1))]) }}</span>
                                     </td>
-                                    <td class="px-4 py-3.5"><span class="badge badge-soft">{{ str($product->status)->replace('_', ' ')->title() }}</span></td>
-                                    <td class="px-5 py-3.5">
-                                        <div class="flex justify-end gap-2">
-                                            @if ($product->status === 'active')
-                                                <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" class="row-action" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}"><i class="ph ph-arrow-square-out"></i></a>
-                                            @endif
-                                            @include('commerce::user.partials.product-catalog')
-                                            <a href="{{ route('user.commerce.products.edit', $product) }}" class="row-action" aria-label="{{ __('Manage :product', ['product' => $product->name]) }}" title="{{ __('Manage product') }}"><i class="ph ph-pencil-simple"></i></a>
-                                            <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="row-action text-error" aria-label="{{ __('Delete :product', ['product' => $product->name]) }}" title="{{ __('Delete product') }}" data-confirm data-confirm-title="{{ __('Delete product?') }}" data-confirm-body="{{ __('This product, variants, and product media links will be permanently deleted. This cannot be undone.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error">
-                                                    <i class="ph ph-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
+                                    <td class="px-4 py-3.5">
+                                        <span @class([
+                                            'inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium',
+                                            'bg-success/10 text-success' => $product->status === 'active',
+                                            'bg-warning/10 text-warning' => $product->status === 'draft',
+                                            'bg-neutral-100 text-body' => ! in_array($product->status, ['active', 'draft'], true),
+                                        ])><span class="h-1.5 w-1.5 rounded-full bg-current"></span>{{ str($product->status)->replace('_', ' ')->title() }}</span>
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        @include('commerce::user.partials.product-row-actions')
                                     </td>
                                 </tr>
                             @endforeach
@@ -156,6 +155,9 @@
                                     </div>
                                 </div>
                                 @include('commerce::user.partials.product-catalog')
+                                @if (filled(config('commerce.showcase_frontend_url')))
+                                    @include('commerce::user.partials.product-showcase')
+                                @endif
                                 <div class="grid gap-2 sm:grid-cols-2">
                                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', $product) }}" class="w-full">{{ __('Manage') }}</x-ui.button>
                                     <form method="POST" action="{{ route('user.commerce.products.destroy', $product) }}">

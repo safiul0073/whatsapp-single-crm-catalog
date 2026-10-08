@@ -33,6 +33,9 @@ class OrderWorkflowService
     {
         return DB::transaction(function () use ($order, $data): Order {
             $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if ($order->source === 'pos' && ($order->fulfillment_type === 'pickup' || $order->payments()->lockForUpdate()->get()->isNotEmpty())) {
+                throw ValidationException::withMessages(['order' => 'Pickup totals and orders with confirmed payments cannot be requoted.']);
+            }
             if (! in_array($order->status, ['requested', 'needs_details', 'quoted', 'awaiting_payment'], true)) {
                 throw ValidationException::withMessages(['order' => "Order cannot be quoted while {$order->status}."]);
             }
@@ -53,6 +56,9 @@ class OrderWorkflowService
                 'payment_url' => $data['payment_url'] ?? null,
                 'status' => ($order->source !== 'native_whatsapp' || $order->groups()->exists() || filled($data['payment_url'] ?? null)) ? 'awaiting_payment' : 'quoted',
             ])->save();
+            if ($order->source === 'pos') {
+                $order->update(['status' => 'processing']);
+            }
             app(UnifiedOrderService::class)->event($order, 'quoted', 'Shipping quote prepared');
             $this->audit->logCustom('commerce.order.quoted', ['order_id' => $order->id, 'number' => $order->number]);
 
@@ -62,6 +68,10 @@ class OrderWorkflowService
 
     public function transition(Order $order, string $to, array $data = []): Order
     {
+        if ($order->source === 'pos') {
+            return app(PosService::class)->transition($order, $to, $data);
+        }
+
         return DB::transaction(function () use ($order, $to, $data): Order {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === $to) {

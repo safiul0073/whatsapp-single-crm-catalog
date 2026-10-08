@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Models\CommerceMessageAttempt;
+use App\Modules\Commerce\Models\InventoryMovement;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
@@ -493,4 +494,30 @@ it('keeps the customer shipping address locked when staff save a quote', functio
 
     expect($order->fresh()->shipping_address['line1'])->toBe('1 Main Street')
         ->and($order->fresh()->shipping_address['country'])->toBe('US');
+});
+
+it('deducts storefront order stock only once payment is confirmed and restores it on cancellation', function () {
+    $c = unifiedContext();
+    $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
+    $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
+    $method = ShippingMethod::create(['workspace_id' => $c['workspace']->id, 'name' => 'Air', 'code' => 'AIR', 'type' => 'air', 'is_active' => true]);
+    $zone->rates()->create(['workspace_id' => $c['workspace']->id, 'shipping_method_id' => $method->id, 'min_weight_kg' => 0, 'price' => 5, 'price_per_kg' => 0, 'currency' => 'USD', 'is_active' => true]);
+    unset($c['data']['source']);
+    $retail = fn (): array => array_merge($c['data'], ['submission_reference' => (string) Str::uuid(), 'groups' => [['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2]]]);
+
+    $placed = Order::findOrFail($this->postJson('/api/commerce/store/orders', $retail())->assertCreated()->json('data.id'));
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(100)
+        ->and((int) $placed->reservations()->where('state', 'reserved')->sum('quantity'))->toBe(2);
+
+    $workflow = app(OrderWorkflowService::class);
+    $workflow->transition($placed->fresh(), 'paid');
+    $workflow->transition($placed->fresh(), 'paid');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(98)
+        ->and((int) InventoryMovement::query()->where('order_id', $placed->id)->where('reason', 'order_paid')->sum('quantity_delta'))->toBe(-2);
+
+    $cancelled = Order::findOrFail($this->postJson('/api/commerce/store/orders', $retail())->assertCreated()->json('data.id'));
+    $workflow->transition($cancelled->fresh(), 'paid');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(96);
+    $workflow->transition($cancelled->fresh(), 'cancelled');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(98);
 });

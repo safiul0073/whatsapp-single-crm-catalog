@@ -28,6 +28,7 @@ class Module extends BasePanelModule
     {
         $navigation->group('Sales')->item('Commerce', 'user.commerce.*', 'shopping-bag', 'commerce.view', 38, [
             ['label' => 'Products', 'route' => 'user.commerce.products.index'],
+            ['label' => 'POS', 'route' => 'user.commerce.pos.index'],
             ['label' => 'Orders', 'route' => 'user.commerce.orders.index'],
             ['label' => 'Meta Catalog', 'route' => 'user.commerce.catalog'],
             ['label' => 'Shipping', 'route' => 'user.shipping.*'],

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -14,11 +15,37 @@ class Order extends Model
 {
     protected $table = 'commerce_orders';
 
-    protected $fillable = ['shipping_method_id', 'customer_snapshot', 'source', 'submission_reference', 'payload_hash', 'customer_reference', 'tracking_code', 'payment_state', 'payment_instructions', 'payment_evidence', 'discount_amount', 'adjustments', 'shipping_quote_required', 'packed_at', 'delivered_at', 'workspace_id', 'contact_id', 'conversation_id', 'channel_account_id', 'catalog_id', 'number', 'provider_message_id', 'provider_catalog_id', 'status', 'currency', 'subtotal', 'shipping_amount', 'total', 'shipping_address', 'delivery_method', 'delivery_notes', 'duties_disclosure', 'payment_url', 'tracking_number', 'tracking_url', 'inventory_adjusted_at', 'inventory_restored_at', 'paid_at', 'shipped_at', 'issues', 'provider_payload'];
+    protected $fillable = ['fulfillment_type', 'shipping_method_id', 'customer_snapshot', 'source', 'submission_reference', 'payload_hash', 'customer_reference', 'tracking_code', 'payment_state', 'payment_instructions', 'payment_evidence', 'discount_amount', 'adjustments', 'shipping_quote_required', 'packed_at', 'delivered_at', 'workspace_id', 'contact_id', 'conversation_id', 'channel_account_id', 'catalog_id', 'number', 'provider_message_id', 'provider_catalog_id', 'status', 'currency', 'subtotal', 'shipping_amount', 'total', 'shipping_address', 'delivery_method', 'delivery_notes', 'duties_disclosure', 'payment_url', 'tracking_number', 'tracking_url', 'inventory_adjusted_at', 'inventory_restored_at', 'paid_at', 'shipped_at', 'issues', 'provider_payload'];
 
     protected function casts(): array
     {
         return ['customer_snapshot' => 'array', 'packed_at' => 'datetime', 'delivered_at' => 'datetime', 'payment_evidence' => 'array', 'adjustments' => 'array', 'shipping_quote_required' => 'boolean', 'discount_amount' => 'decimal:4', 'shipping_address' => 'array', 'issues' => 'array', 'provider_payload' => 'array', 'subtotal' => 'decimal:4', 'shipping_amount' => 'decimal:4', 'total' => 'decimal:4', 'inventory_adjusted_at' => 'datetime', 'inventory_restored_at' => 'datetime', 'paid_at' => 'datetime', 'shipped_at' => 'datetime'];
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class)->orderBy('recorded_at')->orderBy('id');
+    }
+
+    public function moneyPrecision(): int
+    {
+        return (new StoreOrderSetting(['currency' => $this->currency]))->precision();
+    }
+
+    public function paidAmount(): string
+    {
+        $minor = $this->payments->sum(fn (OrderPayment $payment): int => OrderMoney::minor($payment->amount, $this->moneyPrecision()));
+
+        return OrderMoney::decimal($minor, $this->moneyPrecision());
+    }
+
+    public function balanceDue(): ?string
+    {
+        if ($this->total === null) {
+            return null;
+        }
+
+        return OrderMoney::decimal(max(0, OrderMoney::minor($this->total, $this->moneyPrecision()) - OrderMoney::minor($this->paidAmount(), $this->moneyPrecision())), $this->moneyPrecision());
     }
 
     public function trackingTimeline(): array

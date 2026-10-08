@@ -3,6 +3,7 @@
 use App\Modules\Commerce\Http\Controllers\Api\MenuApiController;
 use App\Modules\Commerce\Http\Controllers\Api\OrderApiController;
 use App\Modules\Commerce\Http\Controllers\Api\ProductApiController;
+use App\Modules\Commerce\Http\Controllers\Api\ProductShowcaseController;
 use App\Modules\Commerce\Http\Controllers\Api\StoreOrderController;
 use App\Modules\Commerce\Http\Controllers\Api\WhatsAppCustomerAuthController;
 use App\Modules\Commerce\Http\Middleware\ResolveStoreWorkspace;
@@ -19,6 +20,9 @@ Route::get('commerce/track/{trackingNumber}', [OrderApiController::class, 'track
     ->middleware('throttle:60,1')->name('commerce.api.orders.track');
 
 Route::prefix('commerce/store')->middleware([ResolveStoreWorkspace::class, 'throttle:120,1'])->group(function (): void {
+    Route::get('showcase/{slug}', [ProductShowcaseController::class, 'show']);
+    Route::post('showcase/{slug}/estimate', [ProductShowcaseController::class, 'estimate']);
+    Route::get('showcase/{slug}/stock-quote', [ProductShowcaseController::class, 'stockQuote']);
     $controller = StoreOrderController::class;
     Route::get('settings', [$controller, 'settings']);
     Route::post('orders/preview', [$controller, 'preview']);

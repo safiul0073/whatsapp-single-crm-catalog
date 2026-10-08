@@ -264,6 +264,7 @@ return new class extends Migration
             $table->string('provider_message_id')->nullable();
             $table->string('provider_catalog_id')->nullable();
             $table->string('source')->default('native_whatsapp');
+            $table->string('fulfillment_type')->default('delivery');
             $table->string('submission_reference')->nullable();
             $table->string('payload_hash', 64)->nullable();
             $table->string('customer_reference')->nullable()->index();

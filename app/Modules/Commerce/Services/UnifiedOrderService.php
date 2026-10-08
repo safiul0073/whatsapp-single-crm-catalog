@@ -119,14 +119,6 @@ class UnifiedOrderService
         if (collect($groups)->sum('box_count') > 500) {
             $this->invalid('groups', 'An order can contain at most 500 boxes.');
         }
-        $country = $data['shipping_address']['country'];
-        $quote = $this->shipping->getQuote($workspace, $items, $country, $data['shipping_method_id'] ?? null);
-        $rates = $quote['available_rates']->filter(fn ($rate) => $rate->currency === $settings->currency);
-        $selected = isset($data['shipping_method_id']) ? $rates->firstWhere('shipping_method_id', $data['shipping_method_id']) : $rates->sortBy(fn ($rate) => $rate->price + $rate->price_per_kg * $rate->chargeable_weight_kg)->first();
-        if (isset($data['shipping_method_id']) && ! $selected) {
-            $this->invalid('shipping_method_id', 'This shipping method is unavailable for your destination and currency.');
-        }
-        $shipping = $selected ? $this->shippingAmount($selected, $precision) : 0;
         $discount = 0;
         foreach ($data['adjustments'] ?? [] as $adjustment) {
             if (($adjustment['currency'] ?? null) !== $settings->currency) {
@@ -138,6 +130,18 @@ class UnifiedOrderService
             $this->invalid('adjustments', 'Discounts cannot exceed the merchandise subtotal.');
         }
 
+        if (($data['source'] ?? null) === 'pos' && ($data['fulfillment_type'] ?? 'delivery') === 'pickup') {
+            return ['weight' => [], 'chargeable_weight_kg' => null, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => null, 'delivery_method' => 'Pickup', 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => OrderMoney::decimal(0, $precision), 'shipping_quote_required' => false, 'total' => OrderMoney::decimal($subtotal - $discount, $precision), 'shipping_options' => []];
+        }
+        $country = $data['shipping_address']['country'];
+        $quote = $this->shipping->getQuote($workspace, $items, $country, $data['shipping_method_id'] ?? null);
+        $rates = $quote['available_rates']->filter(fn ($rate) => $rate->currency === $settings->currency);
+        $selected = isset($data['shipping_method_id']) ? $rates->firstWhere('shipping_method_id', $data['shipping_method_id']) : $rates->sortBy(fn ($rate) => $rate->price + $rate->price_per_kg * $rate->chargeable_weight_kg)->first();
+        if (isset($data['shipping_method_id']) && ! $selected) {
+            $this->invalid('shipping_method_id', 'This shipping method is unavailable for your destination and currency.');
+        }
+        $shipping = $selected ? $this->shippingAmount($selected, $precision) : 0;
+
         return ['weight' => $quote['weight_data'] ?? [], 'chargeable_weight_kg' => $selected?->chargeable_weight_kg, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => $selected?->shipping_method_id, 'delivery_method' => $selected?->method?->name, 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => $selected ? OrderMoney::decimal($shipping, $precision) : null, 'shipping_quote_required' => ! $selected, 'total' => $selected ? OrderMoney::decimal($subtotal + $shipping - $discount, $precision) : null, 'shipping_options' => $rates->map(fn ($rate) => ['id' => $rate->shipping_method_id, 'code' => $rate->method?->code, 'name' => $rate->method?->name ?? 'Shipping', 'currency' => $rate->currency, 'price' => OrderMoney::decimal($this->shippingAmount($rate, $precision), $precision)])->values()->all()];
     }
 
@@ -146,7 +150,7 @@ class UnifiedOrderService
         return DB::transaction(function () use ($workspace, $data): Order {
             Workspace::query()->lockForUpdate()->findOrFail($workspace->id);
             $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
-            $existing = Order::query()->where('workspace_id', $workspace->id)->where('submission_reference', $data['submission_reference'])->first();
+            $existing = Order::query()->where('workspace_id', $workspace->id)->where('submission_reference', $data['submission_reference'])->lockForUpdate()->first();
             if ($existing) {
                 abort_unless(hash_equals($existing->payload_hash, $hash), 409, 'This submission reference has different contents.');
 
@@ -154,18 +158,20 @@ class UnifiedOrderService
             }
             $preview = $this->preview($workspace, $data);
             $settings = StoreOrderSetting::forWorkspace($workspace->id);
-            $contact = isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : Contact::query()->firstOrCreate(['workspace_id' => $workspace->id, 'phone' => $data['customer']['phone']], ['name' => $data['customer']['name'], 'email' => $data['customer']['email'] ?? null, 'country' => $data['shipping_address']['country']]);
+            $walkIn = ($data['source'] ?? null) === 'pos' && ($data['walk_in'] ?? false);
+            $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : Contact::query()->firstOrCreate(['workspace_id' => $workspace->id, 'phone' => $data['customer']['phone']], ['name' => $data['customer']['name'], 'email' => $data['customer']['email'] ?? null, 'country' => $data['shipping_address']['country'] ?? null]));
             $draft = $data['draft'] ?? false;
             $order = Order::query()->create([
-                'workspace_id' => $workspace->id, 'contact_id' => $contact->id,
+                'workspace_id' => $workspace->id, 'contact_id' => $contact?->id,
                 'source' => $data['source'] ?? 'manual', 'submission_reference' => $data['submission_reference'], 'payload_hash' => $hash,
-                'customer_reference' => $data['customer_reference'] ?? null, 'customer_snapshot' => $data['customer'] ?? $contact->only(['name', 'phone', 'email']), 'number' => 'ORD-'.Str::upper(Str::random(12)),
+                'customer_reference' => $data['customer_reference'] ?? null, 'customer_snapshot' => $walkIn ? ['name' => 'Walk-in customer'] : (isset($data['contact_id']) ? $contact->only(['name', 'phone', 'email']) : $data['customer']), 'number' => 'ORD-'.Str::upper(Str::random(12)),
                 'conversation_id' => $data['conversation_id'] ?? null, 'channel_account_id' => $data['channel_account_id'] ?? null, 'provider_message_id' => $data['provider_message_id'] ?? null, 'catalog_id' => $data['catalog_id'] ?? null, 'issues' => $data['issues'] ?? [], 'provider_payload' => array_replace($data['provider_payload'] ?? [], ['checkout_quote' => ['weight' => $preview['weight'], 'chargeable_weight_kg' => $preview['chargeable_weight_kg']]]),
                 'tracking_code' => 'TRK-'.Str::upper(Str::random(24)), 'status' => $draft ? 'draft' : (! empty($data['issues']) ? 'needs_details' : ($preview['shipping_quote_required'] ? 'requested' : 'awaiting_payment')),
                 'currency' => $preview['currency'], 'subtotal' => $preview['subtotal'], 'discount_amount' => $preview['discount_amount'], 'adjustments' => $data['adjustments'] ?? [],
                 'shipping_method_id' => $preview['shipping_method_id'] ?? null, 'delivery_method' => $preview['delivery_method'] ?? null,
                 'shipping_amount' => $preview['shipping_amount'], 'shipping_quote_required' => $preview['shipping_quote_required'], 'total' => $preview['total'],
-                'shipping_address' => $data['shipping_address'], 'payment_instructions' => $settings->payment_instructions,
+                'fulfillment_type' => ($data['source'] ?? null) === 'pos' ? ($data['fulfillment_type'] ?? 'delivery') : 'delivery',
+                'shipping_address' => $data['shipping_address'] ?? [], 'payment_instructions' => $settings->payment_instructions,
             ]);
             $this->saveGroups($order, $preview['groups'], $workspace->id);
             if (! $draft) {

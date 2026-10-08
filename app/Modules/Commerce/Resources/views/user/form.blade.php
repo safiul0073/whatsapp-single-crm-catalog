@@ -112,18 +112,13 @@
             @if($isEdit)
                 <div class="flex flex-wrap items-center gap-2">
                     @include('commerce::user.partials.product-catalog')
-                    <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" target="_blank" class="btn btn-sm btn-outline text-xs inline-flex items-center gap-1.5 shadow-2xs">
-                        <i class="ph ph-arrow-square-out text-sm"></i>
-                        <span>{{ __('View Storefront') }}</span>
-                    </a>
+                    @include('commerce::user.partials.product-showcase')
                 </div>
             @endif
         </header>
 
-        @include('commerce::user.partials.help', ['helpKey' => 'product_form'])
-
         {{-- Screenshot-Matched Tab Navigation --}}
-        <div class="w-full overflow-x-auto no-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 border-b border-neutral-200 bg-white mb-8">
+        <div class="overflow-x-auto no-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 border-b border-neutral-200 bg-white mb-8">
             <nav class="flex items-end justify-between min-w-[800px] w-full" aria-label="Progress">
                 @php
                     $steps = [
@@ -148,11 +143,11 @@
                         $url = $isEdit ? route('user.commerce.products.edit', ['product' => $product, 'step' => $stepNum]) : '#';
                     @endphp
                     
-                    <a href="{{ $isAccessible ? $url : '#' }}" class="relative flex flex-col items-center gap-2.5 px-6 pt-5 pb-4 transition-colors flex-1 {{ $isActive ? 'bg-primary/5 rounded-t-xl' : ($isAccessible ? 'hover:bg-neutral-50 rounded-t-xl' : 'opacity-60 cursor-not-allowed') }}">
+                    <a href="{{ $isAccessible ? $url : '#' }}" class="relative flex flex-col items-center gap-2.5 px-6 pt-5 pb-4 transition-colors flex-1 {{ $isActive ? 'bg-primary/5' : ($isAccessible ? 'hover:bg-neutral-50' : 'opacity-60 cursor-not-allowed') }}">
                         
                         {{-- Active Bottom Border --}}
                         @if($isActive)
-                            <div class="absolute bottom-0 left-0 w-full h-[3px] bg-primary rounded-t-sm z-20"></div>
+                            <div class="absolute bottom-0 left-0 w-full h-[3px] bg-primary z-20"></div>
                         @endif
 
                         {{-- Left Half Line --}}
@@ -204,7 +199,7 @@
                 @csrf @if($isEdit) @method('PUT') @endif
                 <input type="hidden" name="next_step" value="2">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <h2 class="text-lg font-bold text-neutral-900">{{ __('Basic Information') }}</h2>
                     <p class="text-xs text-neutral-500 mt-0.5">{{ __('Enter the core title, SKU, short excerpt description, and prices for this product.') }}</p>
 
@@ -341,8 +336,8 @@
                 <input type="hidden" name="next_step" value="3">
                 <input type="hidden" name="media" value="">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
-                    <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Images') }}</h2>
                             <p class="text-xs text-neutral-500 mt-0.5">{{ __('Upload product photography. Click star to make primary. Recommended size 800x1000px.') }}</p>
@@ -351,7 +346,7 @@
                             {{-- Enable Color Picker Toggle Button --}}
                             <button
                                 type="button"
-                                class="btn btn-sm text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border"
+                                class="btn btn-sm rounded-lg! text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border"
                                 :class="galleryColorPickerEnabled ? 'bg-primary text-white border-primary shadow-xs' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'"
                                 @click="toggleGalleryColorPicker()"
                                 title="{{ __('When enabled, hover over any chosen photo and click to copy color code.') }}"
@@ -361,51 +356,21 @@
                                 <span class="font-extrabold uppercase px-1 py-0.2 rounded text-[10px]" :class="galleryColorPickerEnabled ? 'bg-white/25 text-white' : 'bg-neutral-100 text-neutral-600'" x-text="galleryColorPickerEnabled ? '{{ __('Enabled') }}' : '{{ __('Disabled') }}'"></span>
                             </button>
 
-                            <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="openMediaPicker()">
+                            <button type="button" class="btn btn-sm btn-primary rounded-lg! text-xs shadow-2xs" @click="openMediaPicker()">
                                 <i class="ph ph-upload-simple"></i> {{ __('Upload Image') }}
                             </button>
                         </div>
                     </div>
 
-                    {{-- Image Grid Showcase matching Step 2 --}}
-                    <div class="mt-6 grid gap-6 lg:grid-cols-12">
-                        {{-- Left Column: Thumbnails List (Choose any image) --}}
-                        <div class="lg:col-span-3 space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                            <template x-for="(item, index) in gallery" :key="item.id">
-                                <div
-                                    class="flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer"
-                                    :class="(selectedGalleryPreviewId ? String(selectedGalleryPreviewId) === String(item.id) : item.is_primary) ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-neutral-200 bg-white hover:border-neutral-400'"
-                                    @click="selectedGalleryPreviewId = item.id"
-                                >
-                                    <img :src="item.url" :alt="item.alt_text" class="h-14 w-14 rounded-lg object-cover border border-neutral-200 shrink-0">
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-semibold text-neutral-900 truncate" x-text="item.name || `Photo #${index + 1}`"></p>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span x-show="item.is_primary" class="inline-block text-[10px] font-bold text-primary">{{ __('Primary') }}</span>
-                                            <button type="button" x-show="!item.is_primary" class="text-[10px] text-neutral-400 hover:text-primary hover:underline font-semibold" @click.stop="setPrimaryById(item.id)">
-                                                {{ __('Set Primary') }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click.stop="removeMedia(index)" title="{{ __('Remove Image') }}">
-                                        <i class="ph ph-trash text-sm"></i>
-                                    </button>
-                                </div>
-                            </template>
-                            <div x-show="gallery.length === 0" class="text-xs text-neutral-400 p-4 border border-dashed rounded-xl text-center">
-                                {{ __('No images added yet.') }}
-                            </div>
-                        </div>
-
-                        {{-- Center Column: Large Main Preview with Hover Color Picker --}}
-                        <div class="lg:col-span-6 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-center p-4 min-h-[380px] overflow-hidden relative">
+                    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                        <div class="relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 p-4 lg:min-h-[460px]">
                             <template x-if="getSelectedGalleryImage()">
-                                <div class="relative flex items-center justify-center max-h-[420px]">
+                                <div class="relative flex max-h-[440px] items-center justify-center">
                                     <img
                                         :src="getSelectedGalleryImage().url"
-                                        alt="Preview"
+                                        :alt="getSelectedGalleryImage().alt_text || '{{ __('Product image preview') }}'"
                                         crossorigin="anonymous"
-                                        class="max-h-[420px] w-auto rounded-xl object-contain shadow-sm select-none transition"
+                                        class="max-h-[440px] w-auto select-none rounded-md object-contain transition"
                                         :class="galleryColorPickerEnabled ? 'cursor-crosshair inspecting-color-target' : ''"
                                         x-init="
                                             $nextTick(() => {
@@ -422,31 +387,57 @@
                                             });
                                         "
                                     >
-                                    {{-- Hint Overlay Badge when enabled --}}
-                                    <div x-show="galleryColorPickerEnabled" class="absolute bottom-2 inset-x-auto bg-neutral-900/85 backdrop-blur-md text-white px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1.5 shadow-lg pointer-events-none">
+                                    <div x-show="galleryColorPickerEnabled" class="pointer-events-none absolute bottom-2 flex items-center gap-1.5 rounded-md bg-neutral-900/85 px-3 py-1 text-[11px] font-medium text-white shadow-lg backdrop-blur-md">
                                         <i class="ph ph-hand-pointing text-emerald-400"></i>
                                         <span>{{ __('Hover to inspect • Click to copy color code') }}</span>
                                     </div>
                                 </div>
                             </template>
-                            <div x-show="gallery.length === 0" class="text-center text-neutral-400">
-                                <i class="ph ph-image text-4xl text-neutral-300"></i>
-                                <p class="mt-2 text-xs font-semibold text-neutral-600">{{ __('No primary image selected') }}</p>
-                            </div>
+                            <span x-show="getSelectedGalleryImage()?.is_primary" class="absolute left-3 top-3 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[11px] font-semibold text-primary shadow-xs">
+                                <i class="ph-fill ph-star"></i> {{ __('Primary image') }}
+                            </span>
+                            <button type="button" x-show="gallery.length === 0" class="flex flex-col items-center text-center text-neutral-400 transition hover:text-primary" @click="openMediaPicker()">
+                                <i class="ph ph-image text-5xl text-neutral-300"></i>
+                                <span class="mt-3 text-sm font-semibold text-neutral-700">{{ __('No images yet') }}</span>
+                                <span class="mt-1 text-xs">{{ __('Click to upload the first product photo') }}</span>
+                            </button>
                         </div>
 
-                        {{-- Right Column: Upload Dropzone Card --}}
-                        <div class="lg:col-span-3">
-                            <div
-                                class="h-full min-h-[220px] rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 hover:bg-neutral-100 hover:border-primary p-6 flex flex-col items-center justify-center text-center cursor-pointer transition"
-                                @click="openMediaPicker()"
-                            >
-                                <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shadow-2xs mb-2">
-                                    <i class="ph ph-plus text-xl font-bold text-primary"></i>
-                                </div>
-                                <span class="text-xs font-bold text-neutral-900">{{ __('+ Upload Image') }}</span>
-                                <span class="text-[11px] text-neutral-400 mt-1">{{ __('Recommended size') }}<br>800x1000px</span>
+                        <div class="flex flex-col">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Photos') }} <span class="text-neutral-400" x-text="`(${gallery.length})`"></span></p>
+                                <p class="text-[11px] text-neutral-400">{{ __('Click a photo to preview') }}</p>
                             </div>
+                            <div class="mt-3 grid grid-cols-3 gap-3 max-h-[460px] overflow-y-auto overflow-x-hidden pr-2 -mr-2">
+                                <template x-for="(item, index) in gallery" :key="`thumb_${item.id}_${index}`">
+                                    <div
+                                        class="group relative aspect-[4/5] cursor-pointer overflow-hidden rounded-md border bg-neutral-50 transition"
+                                        :class="(selectedGalleryPreviewId ? String(selectedGalleryPreviewId) === String(item.id) : item.is_primary) ? 'border-primary ring-2 ring-primary/30' : 'border-neutral-200 hover:border-neutral-400'"
+                                        @click="selectedGalleryPreviewId = item.id"
+                                    >
+                                        <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" class="h-full w-full object-cover">
+                                        <span x-show="item.is_primary" class="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                            <i class="ph-fill ph-star text-[9px]"></i> {{ __('Primary') }}
+                                        </span>
+                                        <div class="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-linear-to-t from-black/55 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                                            <button type="button" x-show="!item.is_primary" class="grid h-7 w-7 place-items-center rounded bg-white/95 text-neutral-700 hover:text-primary" @click.stop="setPrimaryById(item.id)" title="{{ __('Set as primary') }}" aria-label="{{ __('Set as primary') }}">
+                                                <i class="ph ph-star text-sm"></i>
+                                            </button>
+                                            <button type="button" class="grid h-7 w-7 place-items-center rounded bg-white/95 text-neutral-700 hover:text-red-600" @click.stop="removeMedia(index)" title="{{ __('Remove image') }}" aria-label="{{ __('Remove image') }}">
+                                                <i class="ph ph-trash text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <button type="button" class="flex aspect-[4/5] flex-col items-center justify-center rounded-md border-2 border-dashed border-neutral-300 bg-neutral-50 text-center transition hover:border-primary hover:bg-primary/5" @click="openMediaPicker()">
+                                    <i class="ph ph-plus text-xl text-primary"></i>
+                                    <span class="mt-1 text-xs font-semibold text-neutral-800">{{ __('Add photo') }}</span>
+                                    <span class="mt-0.5 text-[10px] text-neutral-400">800×1000px</span>
+                                </button>
+                            </div>
+                            <p class="mt-4 rounded-md bg-neutral-50 px-3 py-2 text-[11px] leading-relaxed text-neutral-500">
+                                <i class="ph ph-info mr-1 text-neutral-400"></i>{{ __('The primary image is shown first in the store and catalog. Hover a photo to make it primary or remove it.') }}
+                            </p>
                         </div>
                     </div>
 
@@ -462,8 +453,8 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}">{{ __('Back') }}</x-ui.button>
-                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Sizes →') }}</button>
+                    <x-ui.button variant="outline" class="rounded-lg!" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}"><i class="ph ph-arrow-left"></i> {{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary rounded-lg! px-6 font-semibold shadow-none!">{{ __('Save & Next: Sizes') }} <i class="ph ph-arrow-right"></i></button>
                 </div>
             </form>
 
@@ -475,7 +466,7 @@
                 <input type="hidden" name="options[0][code]" value="size">
                 <input type="hidden" name="options[0][name]" value="Size">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Sizes') }}</h2>
@@ -618,7 +609,7 @@
                 <input type="hidden" name="media" value="">
                 <input type="hidden" name="colors" value="">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Colors') }}</h2>
@@ -729,7 +720,7 @@
                     }
                     $matrixColorHex = $product->colors->mapWithKeys(fn ($c) => [strtolower((string) ($c->name ?: $c->hex_code)) => $c->hex_code])->all();
                 @endphp
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs"
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200"
                     x-data="{
                         stockGrid: @js($matrixStock),
                         rowTotal(ci) { return Object.values(this.stockGrid[ci] || {}).reduce((s, v) => s + (parseInt(v) || 0), 0); },
@@ -870,7 +861,7 @@
                 <input type="hidden" name="next_step" value="7">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs"
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200"
                     x-data="{
                         wsEnabled: @js(old('ws_enabled', $product->ws_enabled ?? false)),
                         wsMinSizes: @js(old('ws_min_sizes', $product->ws_min_sizes ?? '')),
@@ -1193,7 +1184,7 @@
                 <input type="hidden" name="feature_highlights" value="">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Features / Highlights') }}</h2>
@@ -1260,7 +1251,7 @@
                 <input type="hidden" name="next_step" value="9">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Description') }}</h2>
                     <p class="text-xs text-neutral-500 mt-0.5">{{ __('Provide the full marketing description, fabric details, and bullet-point feature checklist.') }}</p>
 
@@ -1286,7 +1277,7 @@
                 <input type="hidden" name="name" value="{{ $product->name }}">
                 <input type="hidden" name="specifications" value="">
 
-                <section class="rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-xs">
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
                     <div class="flex items-center justify-between border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Specifications') }}</h2>
@@ -1298,7 +1289,7 @@
                     </div>
 
                     {{-- Specifications Table matching Step 9 --}}
-                    <div class="mt-5 rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
+                    <div class="mt-5 rounded-none border border-neutral-200 overflow-hidden shadow-2xs">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-neutral-50/80 uppercase font-bold text-neutral-600 border-b border-neutral-200">
                                 <tr>
@@ -1311,10 +1302,10 @@
                                 <template x-for="(spec, sIdx) in specifications" :key="sIdx">
                                     <tr class="hover:bg-neutral-50/50">
                                         <td class="px-4 py-2.5">
-                                            <input type="text" class="form-input text-xs font-bold h-9" x-model="spec.attribute" placeholder="{{ __('Material') }}" required>
+                                            <input type="text" class="form-input rounded-sm text-xs font-bold h-9" x-model="spec.attribute" placeholder="{{ __('Material') }}" required>
                                         </td>
                                         <td class="px-4 py-2.5">
-                                            <input type="text" class="form-input text-xs h-9" x-model="spec.value" placeholder="{{ __('Tech Fleece (Premium Quality)') }}" required>
+                                            <input type="text" class="form-input rounded-sm text-xs h-9" x-model="spec.value" placeholder="{{ __('Tech Fleece (Premium Quality)') }}" required>
                                         </td>
                                         <td class="px-4 py-2.5 text-right">
                                             <button type="button" class="text-neutral-400 hover:text-red-600 p-1" @click="removeSpecification(sIdx)">
