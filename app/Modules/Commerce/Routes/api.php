@@ -20,9 +20,9 @@ Route::get('commerce/track/{trackingNumber}', [OrderApiController::class, 'track
     ->middleware('throttle:60,1')->name('commerce.api.orders.track');
 
 Route::prefix('commerce/store')->middleware([ResolveStoreWorkspace::class, 'throttle:120,1'])->group(function (): void {
-    Route::get('showcase/{slug}', [ProductShowcaseController::class, 'show']);
-    Route::post('showcase/{slug}/estimate', [ProductShowcaseController::class, 'estimate']);
-    Route::get('showcase/{slug}/stock-quote', [ProductShowcaseController::class, 'stockQuote']);
+    Route::get('showcase/{slug}', [ProductShowcaseController::class, 'show'])->where('slug', '[A-Za-z0-9][A-Za-z0-9_-]*');
+    Route::post('showcase/{slug}/estimate', [ProductShowcaseController::class, 'estimate'])->where('slug', '[A-Za-z0-9][A-Za-z0-9_-]*');
+    Route::get('showcase/{slug}/stock-quote', [ProductShowcaseController::class, 'stockQuote'])->where('slug', '[A-Za-z0-9][A-Za-z0-9_-]*');
     $controller = StoreOrderController::class;
     Route::get('settings', [$controller, 'settings']);
     Route::post('orders/preview', [$controller, 'preview']);
