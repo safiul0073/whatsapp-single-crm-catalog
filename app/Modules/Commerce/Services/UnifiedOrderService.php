@@ -282,23 +282,28 @@ class UnifiedOrderService
     }
 
     /**
-     * Contacts are unique per workspace by phone and by email, so a returning buyer who checks out
-     * with a new phone must reuse the contact that already owns their email.
+     * Storefront checkout is unauthenticated, so an order never attaches to another person's contact via
+     * a typed email. When the email already belongs to a different contact (unique per workspace), the new
+     * contact is stored without it; the order's customer snapshot still records the email.
      */
     protected function orderContact(Workspace $workspace, array $data): Contact
     {
         $customer = $data['customer'];
-        $email = filled($customer['email'] ?? null) ? strtolower(trim((string) $customer['email'])) : null;
-        $contacts = Contact::query()->where('workspace_id', $workspace->id);
+        $existing = Contact::query()->where('workspace_id', $workspace->id)->where('phone', $customer['phone'])->first();
 
-        return (clone $contacts)->where('phone', $customer['phone'])->first()
-            ?? ($email ? (clone $contacts)->where('email', $email)->first() : null)
-            ?? Contact::query()->create([
-                'workspace_id' => $workspace->id,
-                'phone' => $customer['phone'],
-                'name' => $customer['name'],
-                'email' => $email,
-                'country' => $data['shipping_address']['country'] ?? null,
-            ]);
+        if ($existing) {
+            return $existing;
+        }
+
+        $email = filled($customer['email'] ?? null) ? strtolower(trim((string) $customer['email'])) : null;
+        $isEmailTaken = $email !== null && Contact::query()->where('workspace_id', $workspace->id)->where('email', $email)->exists();
+
+        return Contact::query()->create([
+            'workspace_id' => $workspace->id,
+            'phone' => $customer['phone'],
+            'name' => $customer['name'],
+            'email' => $isEmailTaken ? null : $email,
+            'country' => $data['shipping_address']['country'] ?? null,
+        ]);
     }
 }
