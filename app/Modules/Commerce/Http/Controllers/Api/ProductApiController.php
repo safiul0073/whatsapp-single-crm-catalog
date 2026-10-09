@@ -27,8 +27,10 @@ class ProductApiController extends Controller
             ], 'price')
             ->where('status', 'active')->where('visibility', 'published');
 
-        // Apply Filters
-        // Apply Filters
+        if ($request->query('selling_mode') === 'wholesale') {
+            $query->whereIn('selling_mode', ['wholesale', 'both']);
+        }
+
         if ($request->filled('search')) {
             $query->where('name', 'like', '%'.$request->search.'%');
         }
@@ -126,6 +128,7 @@ class ProductApiController extends Controller
             ], 'price')
             ->where('status', 'active')
             ->where('visibility', 'published')
+            ->when($request->query('selling_mode') === 'wholesale', fn ($query) => $query->whereIn('selling_mode', ['wholesale', 'both']))
             ->orderByDesc('published_at')
             ->latest('id')
             ->take($limit)
