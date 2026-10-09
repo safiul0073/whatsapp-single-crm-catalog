@@ -147,6 +147,34 @@
         </div>
     </div>
 
+    <form method="GET" action="{{ route('user.message-templates.index') }}" class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_12rem_12rem_auto]" data-template-filters>
+        <input type="hidden" name="provider" value="{{ $provider }}">
+        <label class="relative">
+            <i class="ph ph-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-body"></i>
+            <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" class="form-input w-full pl-9" placeholder="Search templates by name or text" aria-label="Search templates">
+        </label>
+        <select name="status" class="form-input" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            @foreach (['approved' => 'Approved', 'pending' => 'Pending', 'submitted' => 'Submitted', 'rejected' => 'Rejected', 'failed' => 'Failed', 'paused' => 'Paused', 'disabled' => 'Disabled', 'draft' => 'Draft'] as $value => $label)
+                <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+        @if ($isWhatsApp)
+            <select name="category" class="form-input" aria-label="Filter by category">
+                <option value="">All categories</option>
+                @foreach (['marketing' => 'Marketing', 'utility' => 'Utility', 'authentication' => 'Authentication'] as $value => $label)
+                    <option value="{{ $value }}" @selected(($filters['category'] ?? '') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+        @endif
+        <div class="flex gap-2">
+            <button type="submit" class="btn-sm btn-primary">Filter</button>
+            @if (array_filter($filters ?? []))
+                <a href="{{ route('user.message-templates.index', ['provider' => $provider]) }}" class="btn-sm btn-outline">Clear</a>
+            @endif
+        </div>
+    </form>
+
     <div class="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
         <div class="overflow-x-auto scrollbar-hide">
             <div data-range-group data-status-filter data-range-value="all" class="inline-flex rounded-full border border-neutral-200 bg-neutral-0 p-1">
@@ -178,7 +206,7 @@
                     @foreach ($categoryTemplates as $template)
                         @php
                             $components = collect($template->components ?? []);
-                            $body = (string) data_get($components->firstWhere('type', 'BODY'), 'text', 'No body content saved.');
+                            $body = app(\App\Modules\MessageTemplates\Services\MessageTemplateService::class)->bodyFromComponents($template->components) ?: 'No body content saved.';
                             $footer = data_get($components->firstWhere('type', 'FOOTER'), 'text');
                             $status = $template->status->value;
                             $submissions = $template->submissions ?? collect();
@@ -217,6 +245,13 @@
                                     @if ($rejectedCount)
                                         <span class="badge badge-error">{{ $rejectedCount }} needs attention</span>
                                     @endif
+                                </div>
+                            @endif
+
+                            @if (! $latestFailedSubmission?->metaErrorMessage() && filled($template->rejection_reason))
+                                <div class="mt-3 rounded-xl border border-error/20 bg-error/10 px-3 py-2 text-xs text-error">
+                                    <p class="font-semibold">Meta review feedback</p>
+                                    <p class="mt-1">{{ str($template->rejection_reason)->replace('_', ' ')->lower()->ucfirst() }}</p>
                                 </div>
                             @endif
 
@@ -263,7 +298,7 @@
                                 <form method="POST" action="{{ route('user.message-templates.destroy', $template) }}">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="Delete template?" data-confirm-body="This template will be permanently deleted and can no longer be used in campaigns. This cannot be undone." data-confirm-label="Delete" data-confirm-variant="error">
+                                    <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="Delete template?" data-confirm-body="This template will be permanently deleted, including from WhatsApp, and can no longer be used in campaigns. This cannot be undone." data-confirm-label="Delete" data-confirm-variant="error">
                                         <i class="ph ph-trash text-base"></i>Delete
                                     </button>
                                 </form>

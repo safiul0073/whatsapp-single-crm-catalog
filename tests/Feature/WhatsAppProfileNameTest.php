@@ -84,3 +84,10 @@ it('falls back to the phone number when WhatsApp sends no profile name', functio
     expect(Contact::query()->where('workspace_id', $account->workspace_id)->sole()->name)->toBe('+8801711223344')
         ->and(app(WhatsAppCloudDriver::class)->processWebhook($account, metaInboundPayload($account, '8801711223344', 'Rahim Uddin'))['events'][0]['name'])->toBe('Rahim Uddin');
 });
+
+it('cleans untrusted profile names to short plain text', function () {
+    expect(Contact::cleanProfileName("  <b>Rahim</b>\n<script>alert(1)</script>  Uddin\t"))->toBe('Rahim alert(1) Uddin')
+        ->and(mb_strlen(Contact::cleanProfileName(str_repeat('é', 500))))->toBe(100)
+        ->and(Contact::cleanProfileName(null))->toBe('');
+
+});

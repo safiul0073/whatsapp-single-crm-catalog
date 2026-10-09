@@ -194,7 +194,9 @@ class ProcessChannelWebhookJob implements ShouldQueue
         $identity ??= $this->createIdentityForMessage($account, $event, (string) $providerContactId);
 
         $identity->update(['last_interaction_at' => now()]);
-        $identity->contact?->improveName($event['name'] ?? null);
+        if ($account->provider === 'whatsapp') {
+            $identity->contact?->improveName($event['name'] ?? null);
+        }
 
         $conversation = Conversation::query()->firstOrCreate(
             [
@@ -328,7 +330,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
         $phone = $account->provider === 'whatsapp' ? $this->normalizePhone($providerContactId) : null;
         $name = filled($username)
             ? '@'.ltrim((string) $username, '@')
-            : (trim((string) ($event['name'] ?? '')) ?: $phone ?: $this->contactNameFor($account, $providerContactId));
+            : (($account->provider === 'whatsapp' ? Contact::cleanProfileName($event['name'] ?? null) : '') ?: $phone ?: $this->contactNameFor($account, $providerContactId));
 
         $contactData = [
             'workspace_id' => $account->workspace_id,

@@ -18,6 +18,10 @@ const uniqueVariables = (value = "") => {
 
 Alpine.data("messageTemplateEditor", (initialState = {}) => ({
   provider: initialState.provider || "whatsapp",
+  category: initialState.category || "marketing",
+  security: initialState.security ?? true,
+  expiry: initialState.expiry ?? 10,
+  otpText: initialState.otpText || "Copy code",
   selectedToken: "",
   tokenOptions: [
     { value: "full_name", label: "Full name" },
@@ -52,6 +56,14 @@ Alpine.data("messageTemplateEditor", (initialState = {}) => ({
     text: initialState.footer?.text || "",
   },
   buttons: [],
+
+  get authPreview() {
+    let text = "{{1}} is your verification code.";
+    if (this.security) text += " For your security, do not share this code.";
+    const minutes = parseInt(this.expiry, 10);
+    if (minutes >= 1 && minutes <= 90) text += ` This code expires in ${minutes} minutes.`;
+    return text;
+  },
 
   init() {
     const examples = initialState.bodyExamples || {};

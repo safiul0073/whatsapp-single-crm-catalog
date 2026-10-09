@@ -33,17 +33,22 @@ class MessageTemplateService
         protected MessageTemplateTokenService $tokens,
     ) {}
 
-    public function listForUser(?User $user, ?string $provider = null): LengthAwarePaginator
+    public function listForUser(?User $user, ?string $provider = null, array $filters = []): LengthAwarePaginator
     {
         $workspace = $this->workspaces->current($user);
         $provider = $this->normalizeProvider($provider);
+        $search = trim((string) ($filters['search'] ?? ''));
 
         return MessageTemplate::query()
             ->with('submissions')
             ->where('workspace_id', $workspace->id)
             ->where('provider', $provider)
+            ->when($search !== '', fn ($query) => $query->where(fn ($inner) => $inner->where('name', 'like', '%'.$search.'%')->orWhere('body', 'like', '%'.$search.'%')))
+            ->when(in_array($filters['category'] ?? null, ['marketing', 'utility', 'authentication'], true), fn ($query) => $query->where('category', $filters['category']))
+            ->when(filled($filters['status'] ?? null) && MessageTemplateStatus::tryFrom((string) $filters['status']), fn ($query) => $query->where('status', $filters['status']))
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
     }
 
     public function statsForUser(?User $user, ?string $provider = null): array
@@ -96,6 +101,7 @@ class MessageTemplateService
         $components = $provider === 'telegram'
             ? $this->telegramComponents($data)
             : $this->components($data);
+        $data = $this->withAuthenticationBody($data, $components);
         $compiled = $provider === 'telegram' ? null : $this->metaSubmissionPayload($data, $components);
         $payload = $compiled['payload'] ?? null;
         $variables = $this->variablesForComponents($components, $compiled['variables'] ?? []);
@@ -120,6 +126,39 @@ class MessageTemplateService
         }
 
         return $template->fresh('submissions');
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $components
+     */
+    protected function withAuthenticationBody(array $data, array $components): array
+    {
+        if (strtolower((string) ($data['category'] ?? '')) === 'authentication') {
+            $data['body'] = $this->authenticationPreview($components);
+            $data['buttons'] = [];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Meta does not allow changing the category, name or language of a template that already exists on WhatsApp.
+     */
+    protected function guardSubmittedTemplateIdentity(MessageTemplate $template, array $data): void
+    {
+        $isOnMeta = $template->submissions()->whereNotNull('whatsapp_template_id')->exists();
+
+        if (! $isOnMeta || $template->provider !== 'whatsapp') {
+            return;
+        }
+
+        if (strtolower((string) ($data['category'] ?? $template->category)) !== strtolower((string) $template->category)
+            || ($data['name'] ?? $template->name) !== $template->name
+            || ($data['language'] ?? $template->language) !== $template->language) {
+            throw ValidationException::withMessages([
+                'category' => 'This template already exists on WhatsApp, so its name, language and category cannot change. Create a new template instead.',
+            ]);
+        }
     }
 
     public function uniqueNameForUser(?User $user, string $provider, string $language, string $baseName): string
@@ -157,6 +196,8 @@ class MessageTemplateService
         $components = $provider === 'telegram'
             ? $this->telegramComponents($data)
             : $this->components($data);
+        $this->guardSubmittedTemplateIdentity($template, $data);
+        $data = $this->withAuthenticationBody($data, $components);
         $compiled = $provider === 'telegram' ? null : $this->metaSubmissionPayload($data, $components);
         $payload = $compiled['payload'] ?? null;
         $variables = $this->variablesForComponents($components, $compiled['variables'] ?? []);
@@ -185,6 +226,24 @@ class MessageTemplateService
     public function delete(?User $user, MessageTemplate $template): void
     {
         $template = $this->templateForUser($user, $template);
+
+        if ($template->provider === 'whatsapp') {
+            foreach ($template->submissions()->whereNotNull('whatsapp_template_id')->get() as $submission) {
+                $channel = ChannelAccount::query()->where('workspace_id', $template->workspace_id)->where('provider', 'whatsapp')
+                    ->where('provider_account_id', $submission->provider_account_id)->whereNotNull('credentials')->first();
+
+                if (! $channel) {
+                    continue;
+                }
+
+                $response = $this->client->deleteTemplate((string) $channel->provider_account_id, (string) $channel->credential('access_token'), $template->name);
+
+                if (! $response->successful() && (int) $response->json('error.code') !== 100 && (int) $response->json('error.error_subcode') !== 2593002) {
+                    throw ValidationException::withMessages(['template' => 'WhatsApp could not delete this template: '.($this->metaErrorMessage($response->json() ?? []) ?? 'unknown error')]);
+                }
+            }
+        }
+
         $template->delete();
     }
 
@@ -194,6 +253,11 @@ class MessageTemplateService
         abort_unless($template->provider === 'whatsapp', 404);
 
         $channel = $this->wabaTokenSource($template->workspace_id, $providerAccountId);
+
+        if (strtolower((string) $template->category) === 'authentication') {
+            $template->forceFill(['components' => $this->normalizedAuthenticationComponents($template->components ?? [])])->save();
+        }
+
         $compiled = $this->tokens->compilePayloadForMeta([
             'name' => $template->name,
             'language' => $template->language,
@@ -239,12 +303,20 @@ class MessageTemplateService
 
     public function templateForUser(?User $user, MessageTemplate $template): MessageTemplate
     {
+        abort_unless($template->workspace_id === $this->workspaces->current($user)->id, 404);
+
         return $template;
     }
 
     public function bodyFromComponents(?array $components): string
     {
-        return (string) data_get(collect($components ?? [])->firstWhere('type', 'BODY'), 'text', '');
+        $body = collect($components ?? [])->firstWhere('type', 'BODY');
+
+        if (($body['text'] ?? null) === null && array_key_exists('add_security_recommendation', (array) $body)) {
+            return $this->authenticationPreview($components ?? []);
+        }
+
+        return (string) data_get($body, 'text', '');
     }
 
     public function headerTextFromComponents(?array $components): ?string
@@ -259,8 +331,75 @@ class MessageTemplateService
         return data_get(collect($components ?? [])->firstWhere('type', 'FOOTER'), 'text');
     }
 
+    /**
+     * Meta builds the whole message for authentication templates: BODY carries no text, only the security
+     * recommendation flag, the expiry lives in FOOTER and one OTP copy-code button is mandatory.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function authenticationComponents(array $data): array
+    {
+        $expiry = (int) ($data['code_expiration_minutes'] ?? 0);
+        $components = [['type' => 'BODY', 'add_security_recommendation' => (bool) ($data['security_recommendation'] ?? true)]];
+
+        if ($expiry >= 1 && $expiry <= 90) {
+            $components[] = ['type' => 'FOOTER', 'code_expiration_minutes' => $expiry];
+        }
+
+        $components[] = ['type' => 'BUTTONS', 'buttons' => [[
+            'type' => 'OTP',
+            'otp_type' => 'COPY_CODE',
+            'text' => trim((string) ($data['otp_button_text'] ?? '')) ?: 'Copy code',
+        ]]];
+
+        return $components;
+    }
+
+    /**
+     * Readable local preview of what WhatsApp will send for an authentication template.
+     */
+    public function authenticationPreview(array $components): string
+    {
+        $body = collect($components)->firstWhere('type', 'BODY');
+        $footer = collect($components)->firstWhere('type', 'FOOTER');
+        $text = '{{1}} is your verification code.';
+
+        if ($body['add_security_recommendation'] ?? false) {
+            $text .= ' For your security, do not share this code.';
+        }
+
+        if (filled($footer['code_expiration_minutes'] ?? null)) {
+            $text .= ' This code expires in '.$footer['code_expiration_minutes'].' minutes.';
+        }
+
+        return $text;
+    }
+
+    /**
+     * Rebuilds an authentication template from whatever was stored (older saves held free text in BODY).
+     *
+     * @param  array<int, array<string, mixed>>  $components
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizedAuthenticationComponents(array $components): array
+    {
+        $footer = collect($components)->firstWhere('type', 'FOOTER');
+        $body = collect($components)->firstWhere('type', 'BODY');
+        $button = collect(data_get(collect($components)->firstWhere('type', 'BUTTONS'), 'buttons', []))->firstWhere('type', 'OTP');
+
+        return $this->authenticationComponents([
+            'security_recommendation' => $body['add_security_recommendation'] ?? str_contains(strtolower((string) ($body['text'] ?? '')), 'do not share'),
+            'code_expiration_minutes' => $footer['code_expiration_minutes'] ?? 0,
+            'otp_button_text' => $button['text'] ?? 'Copy code',
+        ]);
+    }
+
     protected function components(array $data): array
     {
+        if (strtolower((string) ($data['category'] ?? '')) === 'authentication') {
+            return $this->authenticationComponents($data);
+        }
+
         $components = [];
         $header = $data['header'] ?? [];
         $headerType = $header['type'] ?? 'none';
@@ -384,8 +523,8 @@ class MessageTemplateService
                         'type' => 'URL',
                         'text' => $button['text'],
                         'url' => $button['url'] ?? '',
-                        'example' => $this->tokens->hasTokens($button['url'] ?? '') 
-                            ? [(filled($button['example'] ?? null) ? $button['example'] : 'example')] 
+                        'example' => $this->tokens->hasTokens($button['url'] ?? '')
+                            ? [(filled($button['example'] ?? null) ? $button['example'] : 'example')]
                             : null,
                     ]),
                     'phone_number' => [
@@ -575,7 +714,7 @@ class MessageTemplateService
                 $payload
             );
         }
-        
+
         $json = $response->json() ?? [];
 
         MessageTemplateSubmission::query()->updateOrCreate(
@@ -613,18 +752,61 @@ class MessageTemplateService
 
     protected function validateMetaPayload(array $payload): void
     {
-        foreach ($payload['components'] ?? [] as $component) {
-            if (($component['type'] ?? null) !== 'BODY') {
-                continue;
+        $category = strtoupper((string) ($payload['category'] ?? ''));
+        $components = collect($payload['components'] ?? []);
+        $errors = [];
+
+        foreach ($components as $component) {
+            $type = $component['type'] ?? null;
+
+            if ($type === 'BODY' && $category !== 'AUTHENTICATION') {
+                $body = (string) ($component['text'] ?? '');
+
+                if ($this->tokens->hasLeadingOrTrailingToken($body)) {
+                    $errors['body'] = 'Variables cannot be at the start or end of the template body. Add text before the first variable and after the last variable.';
+                }
+
+                if (preg_match('/\{\{\s*[^}]+\s*\}\}\s*\{\{/', $body) === 1) {
+                    $errors['body'] = 'Variables cannot be placed directly next to each other. Add text between them.';
+                }
             }
 
-            $body = (string) ($component['text'] ?? '');
+            if ($type === 'HEADER' && ($component['format'] ?? null) === 'TEXT') {
+                $header = (string) ($component['text'] ?? '');
 
-            if ($this->tokens->hasLeadingOrTrailingToken($body)) {
-                throw ValidationException::withMessages([
-                    'body' => 'Variables cannot be at the start or end of the template body. Add text before the first variable and after the last variable.',
-                ]);
+                if (count($this->tokens->extract($header)) > 1) {
+                    $errors['header.text'] = 'A header can contain at most one variable.';
+                }
             }
+
+            if ($type === 'FOOTER' && $this->tokens->hasTokens((string) ($component['text'] ?? ''))) {
+                $errors['footer.text'] = 'The footer cannot contain variables.';
+            }
+
+            if ($type === 'BUTTONS') {
+                $kinds = collect($component['buttons'] ?? [])->pluck('type')->values();
+                $quickReplyPositions = $kinds->keys()->filter(fn (int $index): bool => $kinds[$index] === 'QUICK_REPLY')->values();
+
+                if ($quickReplyPositions->isNotEmpty() && $quickReplyPositions->last() - $quickReplyPositions->first() + 1 !== $quickReplyPositions->count()) {
+                    $errors['buttons'] = 'Quick reply buttons must be grouped together. Put them all before or all after the website and call buttons.';
+                }
+
+                if ($category !== 'AUTHENTICATION' && $kinds->contains('OTP')) {
+                    $errors['buttons'] = 'Copy-code buttons are only available on authentication templates.';
+                }
+            }
+        }
+
+        if ($category === 'AUTHENTICATION') {
+            $otpButtons = collect(data_get($components->firstWhere('type', 'BUTTONS'), 'buttons', []))->where('type', 'OTP');
+
+            if ($otpButtons->count() !== 1 || $components->contains(fn (array $component): bool => ($component['type'] ?? null) === 'HEADER')) {
+                $errors['category'] = 'Authentication templates need exactly one copy-code button and cannot have a header.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
     }
 
@@ -634,7 +816,7 @@ class MessageTemplateService
             ->map(function (array $component) use ($channel): array {
                 if (($component['type'] ?? null) === 'HEADER'
                     && in_array($component['format'] ?? null, ['IMAGE', 'VIDEO', 'DOCUMENT'], true)) {
-                    
+
                     if (blank(data_get($component, 'example.header_url.0'))) {
                         $handle = data_get($component, 'example.header_handle.0')
                             ?: $this->templateMediaHandle((int) ($component['media_id'] ?? 0), $channel);

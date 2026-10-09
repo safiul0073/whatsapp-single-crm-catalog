@@ -105,13 +105,24 @@ class Contact extends Model
      */
     public function improveName(?string $profileName): void
     {
-        $profileName = trim((string) $profileName);
+        $profileName = static::cleanProfileName($profileName);
 
         if ($profileName === '' || ! $this->hasPlaceholderName()) {
             return;
         }
 
         $this->forceFill(['name' => $profileName])->save();
+    }
+
+    /**
+     * Profile names come from webhooks, so they are reduced to plain single-line text of at most 100 characters.
+     */
+    public static function cleanProfileName(?string $name): string
+    {
+        $plain = strip_tags((string) $name);
+        $plain = preg_replace('/[\p{C}\s]+/u', ' ', $plain) ?? '';
+
+        return mb_substr(trim($plain), 0, 100);
     }
 
     protected function hasPlaceholderName(): bool
