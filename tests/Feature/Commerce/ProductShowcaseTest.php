@@ -190,3 +190,15 @@ it('reports unavailable shipping for stock quotes without a rate', function () {
 
     $this->getJson($this->endpoint.'/stock-quote?country=usa')->assertUnprocessable();
 });
+
+it('filters the public product list to wholesale-capable products when asked', function (): void {
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create());
+    foreach (['retail', 'wholesale', 'both'] as $mode) {
+        Product::create(['workspace_id' => $workspace->id, 'name' => "Item {$mode}", 'slug' => "item-{$mode}", 'sku' => strtoupper($mode), 'status' => 'active', 'visibility' => 'published', 'selling_mode' => $mode, 'single_piece_price' => 10]);
+    }
+
+    $listedSlugs = fn (string $query) => collect($this->getJson('/api/commerce/products'.$query)->json('data'))->pluck('slug')->all();
+
+    expect($listedSlugs(''))->toContain('item-retail', 'item-wholesale', 'item-both')
+        ->and($listedSlugs('?selling_mode=wholesale'))->toContain('item-wholesale', 'item-both')->not->toContain('item-retail');
+});
