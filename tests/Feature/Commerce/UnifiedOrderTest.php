@@ -12,6 +12,7 @@ use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
@@ -520,4 +521,17 @@ it('deducts storefront order stock only once payment is confirmed and restores i
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(96);
     $workflow->transition($cancelled->fresh(), 'cancelled');
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(98);
+});
+
+it('never links a checkout to another contact through a typed email', function () {
+    $c = unifiedContext();
+    $victim = Contact::query()->create(['workspace_id' => $c['workspace']->id, 'phone' => '+15555550999', 'name' => 'Owner', 'email' => 'buyer@example.test']);
+
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    expect($order->contact_id)->not->toBe($victim->id)
+        ->and($order->contact->phone)->toBe('+15555550100')
+        ->and($order->contact->email)->toBeNull()
+        ->and($order->customer_snapshot['email'])->toBe('buyer@example.test')
+        ->and(Contact::query()->where('workspace_id', $c['workspace']->id)->where('email', 'buyer@example.test')->count())->toBe(1);
 });

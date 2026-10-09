@@ -159,7 +159,7 @@ class UnifiedOrderService
             $preview = $this->preview($workspace, $data);
             $settings = StoreOrderSetting::forWorkspace($workspace->id);
             $walkIn = ($data['source'] ?? null) === 'pos' && ($data['walk_in'] ?? false);
-            $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : Contact::query()->firstOrCreate(['workspace_id' => $workspace->id, 'phone' => $data['customer']['phone']], ['name' => $data['customer']['name'], 'email' => $data['customer']['email'] ?? null, 'country' => $data['shipping_address']['country'] ?? null]));
+            $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : $this->orderContact($workspace, $data));
             $draft = $data['draft'] ?? false;
             $order = Order::query()->create([
                 'workspace_id' => $workspace->id, 'contact_id' => $contact?->id,
@@ -279,5 +279,31 @@ class UnifiedOrderService
     private function invalid(string $field, string $message): never
     {
         throw ValidationException::withMessages([$field => $message]);
+    }
+
+    /**
+     * Storefront checkout is unauthenticated, so an order never attaches to another person's contact via
+     * a typed email. When the email already belongs to a different contact (unique per workspace), the new
+     * contact is stored without it; the order's customer snapshot still records the email.
+     */
+    protected function orderContact(Workspace $workspace, array $data): Contact
+    {
+        $customer = $data['customer'];
+        $existing = Contact::query()->where('workspace_id', $workspace->id)->where('phone', $customer['phone'])->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $email = filled($customer['email'] ?? null) ? strtolower(trim((string) $customer['email'])) : null;
+        $isEmailTaken = $email !== null && Contact::query()->where('workspace_id', $workspace->id)->where('email', $email)->exists();
+
+        return Contact::query()->create([
+            'workspace_id' => $workspace->id,
+            'phone' => $customer['phone'],
+            'name' => $customer['name'],
+            'email' => $isEmailTaken ? null : $email,
+            'country' => $data['shipping_address']['country'] ?? null,
+        ]);
     }
 }
