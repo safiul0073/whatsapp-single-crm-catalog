@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
@@ -534,4 +535,121 @@ it('never links a checkout to another contact through a typed email', function (
         ->and($order->contact->email)->toBeNull()
         ->and($order->customer_snapshot['email'])->toBe('buyer@example.test')
         ->and(Contact::query()->where('workspace_id', $c['workspace']->id)->where('email', 'buyer@example.test')->count())->toBe(1);
+});
+
+it('simplifies order details and renders private payment galleries', function (array $evidence, int $count) {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $order->update(['status' => 'paid', 'payment_state' => 'paid', 'payment_evidence' => $evidence, 'delivery_notes' => 'Deliver at reception', 'duties_disclosure' => 'Buyer pays import duties']);
+    $response = $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order));
+    $response->assertOk()->assertDontSee('Add retail shipping box')->assertDontSee('Shipping quote and payment link')
+        ->assertSee('BOX-1')->assertSee('1 Main Street')->assertSee('USD 108.00')
+        ->assertSee('Deliver at reception')->assertSee('Buyer pays import duties');
+    if ($count === 0) {
+        $response->assertDontSee('commercePaymentGallery', false);
+    } else {
+        $response->assertSee('Payment screenshots ('.$count.')')->assertSee('payment-gallery-title');
+        foreach (range(0, $count - 1) as $index) {
+            $response->assertSee(route('user.commerce.orders.receipt', ['order' => $order, 'index' => $index, 'preview' => 1]));
+        }
+    }
+})->with([
+    'no evidence' => [[], 0],
+    'one image' => [['receipts' => [['path' => 'one.png']]], 1],
+    'multiple images' => [['receipts' => [['path' => 'one.png'], ['path' => 'two.png']]], 2],
+    'legacy image' => [['receipt_path' => 'old.png'], 1],
+]);
+
+it('serves inline private previews without changing receipt downloads', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('commerce-receipts/proof.png', UploadedFile::fake()->image('proof.png')->get());
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $order->update(['payment_evidence' => ['receipts' => [['path' => 'commerce-receipts/proof.png'], ['path' => 'missing.png']]]]);
+    $url = route('user.commerce.orders.receipt', $order);
+    $this->actingAs($c['user'])->get($url)->assertOk()->assertHeader('Content-Disposition', 'attachment');
+    $this->get($url.'?preview=1')->assertOk()->assertHeader('Content-Disposition', 'inline')->assertHeader('Content-Type', 'image/png');
+    $this->get($url.'?preview=1&index=1')->assertNotFound();
+    $this->get($url.'?preview=1&index=-1')->assertNotFound();
+    $this->actingAs(User::factory()->create())->get($url.'?preview=1')->assertNotFound();
+});
+
+function ownerAlertContext(): array
+{
+    $c = unifiedContext();
+    $channel = ChannelAccount::create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'Sales', 'status' => 'connected', 'provider_account_id' => 'waba-owner', 'provider_phone_id' => 'phone-owner']);
+    $c['settings']->update(['owner_whatsapp_number' => '+8801711223344', 'whatsapp_channel_id' => $channel->id]);
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    return $c + ['channel' => $channel, 'order' => $order, 'event' => $order->events()->where('key', 'placed')->firstOrFail()];
+}
+
+it('texts the owner once when an order is placed and the service window is open', function () {
+    $c = ownerAlertContext();
+    $owner = Contact::create(['workspace_id' => $c['workspace']->id, 'phone' => '+8801711223344', 'name' => 'Owner']);
+    Conversation::create(['workspace_id' => $c['workspace']->id, 'channel_account_id' => $c['channel']->id, 'provider' => 'whatsapp', 'contact_id' => $owner->id, 'session_expires_at' => now()->addHours(5)]);
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()->withArgs(fn ($account, $recipient, $payload) => $recipient['to'] === '+8801711223344' && $payload['type'] === 'text' && str_contains($payload['body'], $c['order']->number) && str_contains($payload['body'], 'Buyer'))->andReturn(['ok' => true]);
+
+    $job = new NotifyOrderEvent($c['event']->id);
+    $job->handle(app(SystemNotificationService::class));
+    $job->handle(app(SystemNotificationService::class));
+
+    expect($c['event']->fresh()->owner_whatsapp_notified_at)->not->toBeNull();
+});
+
+it('falls back to the approved template for the owner outside the service window and skips when none exists', function () {
+    $c = ownerAlertContext();
+    $service = app(OrderOwnerWhatsAppNotificationService::class);
+    $this->mock(ChannelManager::class)->shouldNotReceive('sendMessage');
+
+    expect($service->send($c['order'], $c['event']))->toBeTrue();
+});
+
+it('does nothing for the owner when no number is set or for events other than placed', function () {
+    $c = ownerAlertContext();
+    $this->mock(ChannelManager::class)->shouldNotReceive('sendMessage');
+    $service = app(OrderOwnerWhatsAppNotificationService::class);
+    $other = $c['order']->events()->create(['key' => 'paid', 'label' => 'Paid', 'occurred_at' => now()]);
+
+    expect($service->send($c['order'], $other))->toBeTrue();
+    $c['settings']->update(['owner_whatsapp_number' => null]);
+    expect($service->send($c['order'], $c['event']))->toBeTrue();
+});
+
+it('retries the owner alert when WhatsApp rejects it without failing the other notifications', function () {
+    $c = ownerAlertContext();
+    $owner = Contact::create(['workspace_id' => $c['workspace']->id, 'phone' => '+8801711223344', 'name' => 'Owner']);
+    Conversation::create(['workspace_id' => $c['workspace']->id, 'channel_account_id' => $c['channel']->id, 'provider' => 'whatsapp', 'contact_id' => $owner->id, 'session_expires_at' => now()->addHours(5)]);
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()->andReturn(['ok' => false, 'error' => 'rate limited']);
+
+    expect(fn () => (new NotifyOrderEvent($c['event']->id))->handle(app(SystemNotificationService::class)))->toThrow(RuntimeException::class);
+    expect($c['event']->fresh()->owner_whatsapp_notified_at)->toBeNull()->and($c['event']->fresh()->staff_notified_at)->not->toBeNull();
+});
+
+it('validates and normalizes the owner WhatsApp number in order settings', function () {
+    $c = unifiedContext();
+    Permission::findOrCreate('commerce.manage', 'web');
+    $c['user']->givePermissionTo('commerce.manage');
+    $payload = ['currency' => 'USD', 'reservation_hours' => 24, 'whatsapp_notifications' => 0];
+
+    $this->actingAs($c['user'])->put(route('user.commerce.orders.settings.update'), $payload + ['owner_whatsapp_number' => '01711'])->assertSessionHasErrors('owner_whatsapp_number');
+    $this->actingAs($c['user'])->put(route('user.commerce.orders.settings.update'), $payload + ['owner_whatsapp_number' => '+880 1711-223344'])->assertSessionHasNoErrors();
+
+    expect($c['settings']->fresh()->owner_whatsapp_number)->toBe('+8801711223344');
+});
+
+it('accepts wholesale packs with fewer sizes than the minimum sizes setting because customers never choose sizes', function () {
+    $c = unifiedContext();
+    $c['product']->update(['ws_min_sizes' => 5, 'ws_ratio_multiplier' => 1, 'ws_ratio_multiplier' => 1, 'ws_size_ratios' => [$c['color']->id => ['S' => 3, 'M' => 3]]]);
+
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    expect($order->items->sum('quantity'))->toBe(18);
+});
+
+it('rejects a wholesale pack that has no sizes configured at all', function () {
+    $c = unifiedContext();
+    $c['product']->update(['ws_size_ratios' => [$c['color']->id => []]]);
+
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ValidationException::class);
 });
