@@ -10,13 +10,22 @@ use App\Modules\PlansSubscriptions\Notifications\SubscriptionStatusNotification;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Schema;
 
 class SendSubscriptionExpiryReminderJob implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * The scheduler still runs this hourly when the Plans & Subscriptions module is disabled and its tables
+     * were never created; exit quietly instead of failing every run.
+     */
     public function handle(SubscriptionAccessService $access): void
     {
+        if (! Schema::hasTable('subscriptions')) {
+            return;
+        }
+
         Subscription::query()
             ->with(['workspace.owner', 'plan'])
             ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
