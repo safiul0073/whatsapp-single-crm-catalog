@@ -34,9 +34,18 @@ class WhatsAppCloudClient
         return Http::withToken($token)->post($this->graphUrl("{$templateId}"), $payload);
     }
 
-    public function syncTemplates(string $businessAccountId, string $token): Response
+    public function syncTemplates(string $businessAccountId, string $token, ?string $after = null): Response
     {
-        return Http::withToken($token)->get($this->graphUrl("{$businessAccountId}/message_templates"));
+        return Http::withToken($token)->get($this->graphUrl("{$businessAccountId}/message_templates"), array_filter([
+            'limit' => 100,
+            'fields' => 'id,name,language,category,status,components,rejected_reason,quality_score,sub_category',
+            'after' => $after,
+        ]));
+    }
+
+    public function deleteTemplate(string $businessAccountId, string $token, string $name): Response
+    {
+        return Http::withToken($token)->delete($this->graphUrl("{$businessAccountId}/message_templates"), ['name' => $name]);
     }
 
     public function uploadTemplateMedia(string $appId, string $token, string $path, string $fileName, string $mimeType, int $fileLength): Response

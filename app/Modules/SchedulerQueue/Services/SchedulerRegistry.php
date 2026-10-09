@@ -4,6 +4,7 @@ namespace App\Modules\SchedulerQueue\Services;
 
 use App\Modules\Commerce\Jobs\ReconcileMetaCatalogsJob;
 use App\Modules\Crm\Jobs\SendCrmTaskRemindersJob;
+use App\Modules\MessageTemplates\Jobs\SyncWhatsAppTemplatesJob;
 use App\Modules\PlansSubscriptions\Jobs\ExpireSubscriptionsJob;
 use App\Modules\PlansSubscriptions\Jobs\SendSubscriptionExpiryReminderJob;
 
@@ -41,6 +42,15 @@ class SchedulerRegistry
                 'label' => 'Subscription Expiry Processing',
                 'type' => self::TYPE_JOB,
                 'target' => ExpireSubscriptionsJob::class,
+                'frequency' => 'hourly',
+                'queue' => 'default',
+                'enabled' => true,
+                'options' => [],
+            ],
+            'whatsapp-template-sync' => [
+                'label' => 'WhatsApp Template Sync',
+                'type' => self::TYPE_JOB,
+                'target' => SyncWhatsAppTemplatesJob::class,
                 'frequency' => 'hourly',
                 'queue' => 'default',
                 'enabled' => true,

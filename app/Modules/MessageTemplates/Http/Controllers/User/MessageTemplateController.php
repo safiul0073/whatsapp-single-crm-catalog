@@ -25,7 +25,8 @@ class MessageTemplateController extends Controller
 
         return view('message-templates::user.index', [
             'provider' => $provider,
-            'templates' => $service->listForUser($request->user(), $provider),
+            'templates' => $service->listForUser($request->user(), $provider, $filters = $request->only(['search', 'status', 'category'])),
+            'filters' => $filters,
             'stats' => $service->statsForUser($request->user(), $provider),
             'wabas' => $service->wabasForUser($request->user()),
         ]);

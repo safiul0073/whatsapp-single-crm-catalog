@@ -25,8 +25,14 @@
         $bodyExampleState = $bodyVariableKeys->mapWithKeys(fn ($key, $index) => [$key => $savedBodyExamples->get($index, '')])->all();
     }
 
+    $authFooter = $components->firstWhere('type', 'FOOTER') ?? [];
+    $authButton = collect(data_get($buttonComponent, 'buttons', []))->firstWhere('type', 'OTP') ?? [];
     $editorState = [
         'provider' => $provider,
+        'category' => $selectedCategory,
+        'security' => (bool) old('security_recommendation', data_get($body, 'add_security_recommendation', true)),
+        'expiry' => old('code_expiration_minutes', data_get($authFooter, 'code_expiration_minutes', 10)),
+        'otpText' => old('otp_button_text', data_get($authButton, 'text', 'Copy code')),
         'header' => [
             'type' => old('header.type', $headerType),
             'text' => old('header.text', data_get($header, 'text', '')),
@@ -114,15 +120,15 @@
                     <span class="form-label">Category <span class="text-error">*</span></span>
                     <div class="mt-2 flex flex-wrap gap-2">
                         <label class="radio-card">
-                            <input type="radio" name="category" value="marketing" @checked($selectedCategory === 'marketing') />
+                            <input type="radio" name="category" value="marketing" x-model="category" @checked($selectedCategory === 'marketing') />
                             <span>Marketing</span>
                         </label>
                         <label class="radio-card">
-                            <input type="radio" name="category" value="utility" @checked($selectedCategory === 'utility') />
+                            <input type="radio" name="category" value="utility" x-model="category" @checked($selectedCategory === 'utility') />
                             <span>Utility</span>
                         </label>
                         <label class="radio-card">
-                            <input type="radio" name="category" value="authentication" @checked($selectedCategory === 'authentication') />
+                            <input type="radio" name="category" value="authentication" x-model="category" @checked($selectedCategory === 'authentication') />
                             <span>Authentication</span>
                         </label>
                     </div>
@@ -131,7 +137,34 @@
             </section>
 
             @if ($isWhatsApp)
-            <section class="app-card p-5 sm:p-6">
+            <section class="app-card p-5 sm:p-6" x-show="category === 'authentication'" x-cloak>
+                <h3 class="heading-4">Login code message</h3>
+                <p class="m-text mt-1">WhatsApp writes the message and fills in the code for you. You only choose these options.</p>
+                <div class="mt-4 space-y-4">
+                    <label class="flex items-center gap-2.5 cursor-pointer">
+                        <input type="hidden" name="security_recommendation" value="0">
+                        <input type="checkbox" name="security_recommendation" value="1" x-model="security" class="rounded border-neutral-300 text-primary focus:ring-primary">
+                        <span class="text-sm font-medium text-title">Add “For your security, do not share this code.”</span>
+                    </label>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="form-label" for="codeExpiry">Code expires after (minutes)</span>
+                            <input id="codeExpiry" name="code_expiration_minutes" type="number" min="1" max="90" x-model="expiry" class="form-input" placeholder="10">
+                            <span class="mt-1 block text-xs text-body">1–90. Leave empty to show no expiry note.</span>
+                        </label>
+                        <label class="block">
+                            <span class="form-label" for="otpButtonText">Button label</span>
+                            <input id="otpButtonText" name="otp_button_text" type="text" maxlength="25" x-model="otpText" class="form-input" placeholder="Copy code">
+                        </label>
+                    </div>
+                    <div class="rounded-xl border border-neutral-200 bg-section p-4 text-sm text-title">
+                        <p class="font-semibold" x-text="authPreview"></p>
+                        <p class="mt-3 inline-block rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold" x-text="otpText || 'Copy code'"></p>
+                    </div>
+                    @error('code_expiration_minutes')<p class="text-xs font-semibold text-error">{{ $message }}</p>@enderror
+                </div>
+            </section>
+            <section class="app-card p-5 sm:p-6" x-show="category !== 'authentication'">
                 <h3 class="heading-4">Header</h3>
                 <p class="form-hint">Choose one optional header format for the WhatsApp template.</p>
 
@@ -195,7 +228,7 @@
             </section>
             @endif
 
-            <section class="app-card p-5 sm:p-6">
+            <section class="app-card p-5 sm:p-6" x-show="category !== 'authentication'">
                 <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <div class="min-w-0">
                         <h3 class="heading-4">Body</h3>
@@ -220,7 +253,7 @@
                     </div>
                 </div>
 
-                <textarea x-ref="bodyInput" name="body" rows="8" required maxlength="1024" placeholder="Hello {{ '{' }}{{ '{' }}full_name{{ '}' }}{{ '}' }}, your order is ready." class="form-input mt-4" x-model="body"></textarea>
+                <textarea x-ref="bodyInput" name="body" rows="8" x-bind:required="category !== 'authentication'" maxlength="1024" placeholder="Hello {{ '{' }}{{ '{' }}full_name{{ '}' }}{{ '}' }}, your order is ready." class="form-input mt-4" x-model="body"></textarea>
                 <div class="mt-2 flex items-center justify-between gap-3 text-xs text-neutral-400">
                     <span>Use named shortcodes like {{ '{' }}{{ '{' }}full_name{{ '}' }}{{ '}' }}, {{ '{' }}{{ '{' }}phone{{ '}' }}{{ '}' }} or {{ '{' }}{{ '{' }}custom.order_id{{ '}' }}{{ '}' }}.</span>
                     <span><span x-text="body.length"></span>/1024</span>
@@ -239,14 +272,14 @@
             </section>
 
             @if ($isWhatsApp)
-            <section class="app-card p-5 sm:p-6">
+            <section class="app-card p-5 sm:p-6" x-show="category !== 'authentication'">
                 <h3 class="heading-4">Footer</h3>
                 <input name="footer[text]" type="text" maxlength="60" placeholder="Reply STOP to unsubscribe" class="form-input mt-4" x-model="footer.text" />
                 @error('footer.text')<p class="mt-1.5 text-xs font-semibold text-error">{{ $message }}</p>@enderror
             </section>
             @endif
 
-            <section class="app-card p-5 sm:p-6">
+            <section class="app-card p-5 sm:p-6" x-show="category !== 'authentication'">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h3 class="heading-4">Buttons</h3>

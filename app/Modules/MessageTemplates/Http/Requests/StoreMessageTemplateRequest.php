@@ -15,12 +15,15 @@ class StoreMessageTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'regex:/^[a-z0-9_]+$/', 'max:255'],
+            'name' => ['required', 'regex:/^[a-z0-9_]+$/', 'max:512'],
             'provider' => ['nullable', 'in:whatsapp,telegram'],
             'template_kind' => ['nullable', 'in:standard,catalog,multi_product'],
             'language' => ['required', 'string', 'max:16'],
             'category' => ['nullable', 'in:marketing,utility,authentication'],
-            'body' => ['required', 'string', 'max:1024'],
+            'body' => ['required_unless:category,authentication', 'nullable', 'string', 'max:1024'],
+            'security_recommendation' => ['nullable', 'boolean'],
+            'code_expiration_minutes' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'otp_button_text' => ['nullable', 'string', 'max:25'],
             'body_examples' => ['nullable', 'array'],
             'body_examples.*' => ['nullable', 'string', 'max:255'],
             'header' => ['nullable', 'array'],
@@ -53,6 +56,11 @@ class StoreMessageTemplateRequest extends FormRequest
 
             if ($provider === 'whatsapp' && blank($this->input('category'))) {
                 $validator->errors()->add('category', 'Choose a WhatsApp template category.');
+            }
+
+            if ($provider === 'whatsapp' && $this->input('category') === 'authentication') {
+                // WhatsApp writes authentication messages itself; header, footer and extra buttons are ignored.
+                return;
             }
 
             if ($provider === 'whatsapp' && $buttons->where('type', 'url')->count() > 2) {
@@ -126,7 +134,26 @@ class StoreMessageTemplateRequest extends FormRequest
                 }
             }
 
+            if ($headerType === 'text' && preg_match_all('/\{\{\s*[^}]+\s*\}\}/', (string) $this->input('header.text', '')) > 1) {
+                $validator->errors()->add('header.text', 'A header can contain at most one variable.');
+            }
+
+            if (preg_match('/\{\{\s*[^}]+\s*\}\}/', (string) data_get($this->input('footer'), 'text', '')) === 1) {
+                $validator->errors()->add('footer.text', 'The footer cannot contain variables.');
+            }
+
+            $kinds = $buttons->pluck('type')->values();
+            $quickReplies = $kinds->keys()->filter(fn (int $index): bool => $kinds[$index] === 'quick_reply')->values();
+
+            if ($provider === 'whatsapp' && $quickReplies->isNotEmpty() && $quickReplies->last() - $quickReplies->first() + 1 !== $quickReplies->count()) {
+                $validator->errors()->add('buttons', 'Quick reply buttons must be grouped together. Put them all before or all after the website and call buttons.');
+            }
+
             $body = (string) $this->input('body', '');
+
+            if (preg_match('/\{\{\s*[^}]+\s*\}\}\s*\{\{/', $body) === 1) {
+                $validator->errors()->add('body', 'Variables cannot be placed directly next to each other. Add text between them.');
+            }
 
             if ($this->hasLeadingOrTrailingVariable($body)) {
                 $validator->errors()->add('body', 'Variables cannot be at the start or end of the template body. Add text before the first variable and after the last variable.');

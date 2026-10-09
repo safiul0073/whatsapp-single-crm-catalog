@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\EnsureSubscriptionUsable;
 use App\Http\Middleware\EnsureTwoFactorAuthenticated;
 use App\Models\User;
 use App\Modules\AiSettings\Models\AiSetting;
@@ -13,6 +14,7 @@ use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use App\Modules\Workspaces\Enums\WorkspaceMemberRole;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -271,11 +273,10 @@ it('creates whatsapp catalog and multi-product message templates', function (): 
         ->and(data_get($mpmTemplate->components, '1.buttons.0.type'))->toBe('MPM');
 });
 
-it('opens an existing template by id without checking workspace ownership', function (): void {
+it('does not open, update, delete or submit another workspace template', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
     app(WorkspaceResolver::class)->current($user);
-    $otherUser = User::factory()->create(['email_verified_at' => now()]);
-    $otherWorkspace = app(WorkspaceResolver::class)->current($otherUser);
+    $otherWorkspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
 
     $template = MessageTemplate::query()->create([
         'workspace_id' => $otherWorkspace->id,
@@ -287,12 +288,12 @@ it('opens an existing template by id without checking workspace ownership', func
         'components' => [['type' => 'BODY', 'text' => 'Imported template body']],
     ]);
 
-    $this->actingAs($user)
-        ->get(route('user.message-templates.edit', $template))
-        ->assertOk()
-        ->assertSee('Edit Template')
-        ->assertSee('imported_template')
-        ->assertSee('Imported template body');
+    $this->withoutMiddleware([EnsureOnboardingComplete::class, EnsureTwoFactorAuthenticated::class, EnsureSubscriptionUsable::class, Authorize::class])->actingAs($user);
+    $this->get(route('user.message-templates.edit', $template))->assertNotFound();
+    $this->post(route('user.message-templates.submit', $template))->assertNotFound();
+    $this->delete(route('user.message-templates.destroy', $template))->assertNotFound();
+
+    expect(MessageTemplate::query()->whereKey($template->id)->exists())->toBeTrue();
 });
 
 it('renders a compact centered live preview for whatsapp and telegram templates', function (): void {
@@ -607,7 +608,7 @@ it('syncs templates from Meta Cloud API into the user workspace', function (): v
     app(WhatsAppSettingsService::class)->update(['whatsapp_graph_api_version' => 'v20.0']);
 
     Http::fake([
-        'https://graph.facebook.com/v20.0/102938475610293/message_templates' => Http::response([
+        'https://graph.facebook.com/v20.0/102938475610293/message_templates*' => Http::response([
             'data' => [[
                 'id' => 'meta-template-999',
                 'name' => 'pickup_ready',
@@ -680,7 +681,7 @@ it('deduplicates template sync by WABA when multiple phone numbers share the sam
     app(WhatsAppSettingsService::class)->update(['whatsapp_graph_api_version' => 'v20.0']);
 
     Http::fake([
-        'https://graph.facebook.com/v20.0/102938475610293/message_templates' => Http::response([
+        'https://graph.facebook.com/v20.0/102938475610293/message_templates*' => Http::response([
             'data' => [[
                 'id' => 'meta-template-999',
                 'name' => 'pickup_ready',

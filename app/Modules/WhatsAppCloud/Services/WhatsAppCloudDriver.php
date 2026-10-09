@@ -21,6 +21,7 @@ use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
+use App\Modules\MessageTemplates\Services\MessageTemplateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -130,6 +131,10 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 $this->persistSyncedContact($account, $contact);
             }
 
+            foreach ($this->templateUpdates($payload) as $update) {
+                $this->persistTemplateUpdate($account, $update['field'], $update['value']);
+            }
+
             $event->update(['status' => ChannelWebhookEventStatus::Processed->value, 'processed_at' => now()]);
 
             return ['ok' => true, 'event_id' => $event->id, 'type' => $eventType];
@@ -142,11 +147,31 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
     public function syncTemplates(ChannelAccount $account): array
     {
-        $response = $this->client->syncTemplates((string) $account->provider_account_id, (string) $account->credential('access_token'));
-        $templates = $response->json('data') ?? [];
+        $templates = [];
+        $after = null;
+        $response = null;
+
+        for ($page = 0; $page < 50; $page++) {
+            $response = $this->client->syncTemplates((string) $account->provider_account_id, (string) $account->credential('access_token'), $after);
+
+            if (! $response->successful()) {
+                break;
+            }
+
+            $templates = array_merge($templates, $response->json('data') ?? []);
+            $after = $response->json('paging.cursors.after');
+
+            if (blank($response->json('paging.next')) || blank($after)) {
+                break;
+            }
+        }
+
+        $isComplete = $response?->successful() ?? false;
+        $keptTemplateIds = [];
         $synced = 0;
 
         foreach ($templates as $template) {
+            $reason = strtoupper((string) ($template['rejected_reason'] ?? 'NONE'));
             $localTemplate = MessageTemplate::query()->updateOrCreate(
                 [
                     'workspace_id' => $account->workspace_id,
@@ -158,9 +183,12 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                     'template_kind' => $this->templateKind($template['components'] ?? []),
                     'category' => strtolower($template['category'] ?? 'marketing'),
                     'components' => $template['components'] ?? [],
+                    'body' => $this->syncedBody($template),
+                    'rejection_reason' => $reason !== 'NONE' && $reason !== '' ? $reason : null,
                     'submission_payload' => $template,
                 ]
             );
+            $keptTemplateIds[] = $localTemplate->id;
 
             MessageTemplateSubmission::query()->updateOrCreate(
                 [
@@ -183,9 +211,52 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             $synced++;
         }
 
-        $account->update(['last_synced_at' => now(), 'status' => $response->successful() ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value]);
+        if ($isComplete) {
+            $this->forgetTemplatesRemovedOnMeta($account, $keptTemplateIds);
+        }
 
-        return ['ok' => $response->successful(), 'synced' => $synced, 'response' => $response->json()];
+        $account->update(['last_synced_at' => now(), 'status' => $isComplete ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value]);
+
+        return ['ok' => $isComplete, 'synced' => $synced, 'response' => $response?->json()];
+    }
+
+    /**
+     * Templates deleted in WhatsApp Manager disappear from Meta's list; drop their submission here and
+     * let the summary status fall back (to draft when no other account still has them).
+     *
+     * @param  array<int, int>  $keptTemplateIds
+     */
+    protected function forgetTemplatesRemovedOnMeta(ChannelAccount $account, array $keptTemplateIds): void
+    {
+        MessageTemplateSubmission::query()
+            ->where('workspace_id', $account->workspace_id)
+            ->where('provider_account_id', (string) $account->provider_account_id)
+            ->whereNotNull('whatsapp_template_id')
+            ->whereNotIn('message_template_id', $keptTemplateIds)
+            ->with('template')
+            ->get()
+            ->each(function (MessageTemplateSubmission $submission): void {
+                $template = $submission->template;
+                $submission->delete();
+
+                if ($template) {
+                    $this->refreshTemplateSummaryStatus($template);
+                }
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $template
+     */
+    protected function syncedBody(array $template): string
+    {
+        $body = collect($template['components'] ?? [])->firstWhere('type', 'BODY');
+
+        if (filled($body['text'] ?? null)) {
+            return (string) $body['text'];
+        }
+
+        return app(MessageTemplateService::class)->bodyFromComponents($template['components'] ?? []);
     }
 
     public function getHealthStatus(ChannelAccount $account): array
@@ -230,7 +301,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
             $names = collect((array) ($value['contacts'] ?? []))
                 ->filter(fn ($contact): bool => is_array($contact) && filled(data_get($contact, 'profile.name')))
-                ->mapWithKeys(fn (array $contact): array => [(string) ($contact['wa_id'] ?? '') => trim((string) data_get($contact, 'profile.name'))]);
+                ->mapWithKeys(fn (array $contact): array => [(string) ($contact['wa_id'] ?? '') => Contact::cleanProfileName((string) data_get($contact, 'profile.name'))]);
 
             foreach ((array) ($value['messages'] ?? []) as $message) {
                 if (! is_array($message)) {
@@ -283,6 +354,72 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         return $this->flattenValues($payload, 'contacts');
     }
 
+    /**
+     * Meta pushes review results, category changes and quality changes for templates as separate webhook fields.
+     *
+     * @return array<int, array{field: string, value: array<string, mixed>}>
+     */
+    protected function templateUpdates(array $payload): array
+    {
+        $fields = ['message_template_status_update', 'template_category_update', 'message_template_quality_update'];
+        $updates = [];
+
+        foreach ((array) data_get($payload, 'entry', []) as $entry) {
+            foreach ((array) data_get($entry, 'changes', []) as $change) {
+                if (in_array($change['field'] ?? null, $fields, true) && is_array($change['value'] ?? null)) {
+                    $updates[] = ['field' => $change['field'], 'value' => $change['value']];
+                }
+            }
+        }
+
+        return $updates;
+    }
+
+    /**
+     * @param  array<string, mixed>  $value
+     */
+    protected function persistTemplateUpdate(ChannelAccount $account, string $field, array $value): void
+    {
+        $submission = MessageTemplateSubmission::query()
+            ->where('workspace_id', $account->workspace_id)
+            ->where('provider_account_id', (string) $account->provider_account_id)
+            ->where(function ($query) use ($value): void {
+                $query->where('whatsapp_template_id', (string) ($value['message_template_id'] ?? ''))
+                    ->orWhereHas('template', fn ($template) => $template
+                        ->where('name', (string) ($value['message_template_name'] ?? ''))
+                        ->where('language', (string) ($value['message_template_language'] ?? '')));
+            })
+            ->with('template')
+            ->first();
+
+        if (! $submission || ! $submission->template) {
+            return;
+        }
+
+        $template = $submission->template;
+        $meta = array_merge((array) $submission->meta_response, ['last_webhook' => $value]);
+
+        if ($field === 'message_template_status_update') {
+            $reason = strtoupper((string) ($value['reason'] ?? 'NONE'));
+            $submission->update([
+                'status' => $this->templateStatus($value['event'] ?? null),
+                'whatsapp_template_id' => $submission->whatsapp_template_id ?: (string) ($value['message_template_id'] ?? ''),
+                'meta_response' => $meta,
+                'synced_at' => now(),
+            ]);
+            $template->forceFill(['rejection_reason' => $reason !== 'NONE' && $reason !== '' ? $reason : null])->save();
+            $this->refreshTemplateSummaryStatus($template);
+
+            return;
+        }
+
+        if ($field === 'template_category_update' && filled($value['new_category'] ?? null)) {
+            $template->forceFill(['category' => strtolower((string) $value['new_category'])])->save();
+        }
+
+        $submission->update(['meta_response' => $meta]);
+    }
+
     protected function eventType(array $payload): string
     {
         if ($this->messages($payload) !== []) {
@@ -299,6 +436,10 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
         if ($this->messageEchoes($payload) !== []) {
             return 'message.echo';
+        }
+
+        if ($this->templateUpdates($payload) !== []) {
+            return 'template.update';
         }
 
         return data_get($payload, 'entry.0.changes.0.field', 'unknown');
@@ -318,7 +459,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         }
 
         $phone = $this->normalizeInboundPhone($providerContactId);
-        $profileName = (string) data_get($message, 'profile.name', $phone);
+        $profileName = Contact::cleanProfileName((string) data_get($message, 'profile.name')) ?: $phone;
 
         $contact = Contact::query()->firstOrCreate(
             ['workspace_id' => $account->workspace_id, 'phone' => $phone],
@@ -691,6 +832,10 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
     public function processWebhook(ChannelAccount $account, array $payload): array
     {
         $events = [];
+
+        foreach ($this->templateUpdates($payload) as $update) {
+            $this->persistTemplateUpdate($account, $update['field'], $update['value']);
+        }
 
         foreach ($this->messages($payload) as $message) {
             $normalizedPayload = $this->inboundMessagePayload($account, $message);
