@@ -213,9 +213,41 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         ));
     }
 
+    /**
+     * Meta sends the sender's WhatsApp name in the sibling `contacts` block (matched to the message by
+     * `wa_id`), not inside the message, so it is copied onto each message as `profile.name`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
     protected function messages(array $payload): array
     {
-        return $this->flattenValues($payload, 'messages');
+        $messages = [];
+
+        foreach ((array) data_get($payload, 'entry.*.changes.*.value', []) as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $names = collect((array) ($value['contacts'] ?? []))
+                ->filter(fn ($contact): bool => is_array($contact) && filled(data_get($contact, 'profile.name')))
+                ->mapWithKeys(fn (array $contact): array => [(string) ($contact['wa_id'] ?? '') => trim((string) data_get($contact, 'profile.name'))]);
+
+            foreach ((array) ($value['messages'] ?? []) as $message) {
+                if (! is_array($message)) {
+                    continue;
+                }
+
+                $name = $names->get((string) ($message['from'] ?? ''));
+
+                if ($name && blank(data_get($message, 'profile.name'))) {
+                    $message['profile']['name'] = $name;
+                }
+
+                $messages[] = $message;
+            }
+        }
+
+        return $messages;
     }
 
     protected function statuses(array $payload): array
@@ -298,8 +330,8 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             ]
         );
 
+        $contact->improveName($profileName);
         $contact->forceFill([
-            'name' => $contact->name ?: $profileName,
             'opt_in_status' => ContactOptInStatus::Subscribed->value,
             'opt_in_at' => $contact->opt_in_at ?: now(),
             'last_interaction_at' => now(),
@@ -667,6 +699,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 'type' => 'message',
                 'provider_message_id' => $message['id'] ?? null,
                 'provider_contact_id' => $message['from'] ?? null,
+                'name' => data_get($message, 'profile.name'),
                 'body' => $this->inboundMessageBody($message),
                 'payload' => $normalizedPayload,
             ];
