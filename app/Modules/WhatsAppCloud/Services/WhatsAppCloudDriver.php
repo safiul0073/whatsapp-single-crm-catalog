@@ -131,7 +131,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 $this->persistSyncedContact($account, $contact);
             }
 
-            foreach ($this->templateUpdates($payload) as $update) {
+            foreach ($this->templateUpdates($payload, $account) as $update) {
                 $this->persistTemplateUpdate($account, $update['field'], $update['value']);
             }
 
@@ -359,12 +359,16 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
      *
      * @return array<int, array{field: string, value: array<string, mixed>}>
      */
-    protected function templateUpdates(array $payload): array
+    protected function templateUpdates(array $payload, ?ChannelAccount $account = null): array
     {
         $fields = ['message_template_status_update', 'template_category_update', 'message_template_quality_update'];
         $updates = [];
 
         foreach ((array) data_get($payload, 'entry', []) as $entry) {
+            if ($account && (string) ($entry['id'] ?? '') !== (string) $account->provider_account_id) {
+                continue;
+            }
+
             foreach ((array) data_get($entry, 'changes', []) as $change) {
                 if (in_array($change['field'] ?? null, $fields, true) && is_array($change['value'] ?? null)) {
                     $updates[] = ['field' => $change['field'], 'value' => $change['value']];
@@ -833,7 +837,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
     {
         $events = [];
 
-        foreach ($this->templateUpdates($payload) as $update) {
+        foreach ($this->templateUpdates($payload, $account) as $update) {
             $this->persistTemplateUpdate($account, $update['field'], $update['value']);
         }
 

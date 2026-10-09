@@ -8,8 +8,10 @@ use App\Modules\MarketingChannels\Jobs\ProcessChannelWebhookJob;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\WebhookSignatureVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -40,6 +42,10 @@ class WebhookController extends Controller
             ]);
 
             return response('Channel account not found.', 404);
+        }
+
+        if ($rejection = $this->rejectUnsignedWebhook($request, $provider, $account)) {
+            return $rejection;
         }
 
         try {
@@ -77,6 +83,45 @@ class WebhookController extends Controller
         }
 
         return response('', 200);
+    }
+
+    /**
+     * Mode comes from META_WEBHOOK_SIGNATURE: "log" (default) only records failures, "enforce" answers 403, "off" skips the check.
+     */
+    protected function rejectUnsignedWebhook(Request $request, string $provider, ChannelAccount $account): ?Response
+    {
+        $mode = (string) config('services.meta.webhook_signature', 'log');
+
+        if ($mode === 'off') {
+            return null;
+        }
+
+        $result = app(WebhookSignatureVerifier::class)->verify($request, $provider);
+        $context = ['provider' => $provider, 'channel_account_id' => $account->id, 'result' => $result];
+
+        if ($result === WebhookSignatureVerifier::VALID) {
+            Cache::add('webhook-signature-ok:'.$account->id, true, now()->addHour()) && Log::info('Webhook signature valid.', $context);
+
+            return null;
+        }
+
+        if ($result === WebhookSignatureVerifier::UNCONFIGURED) {
+            Log::warning('Webhook signature not checked: no Meta app secret is saved.', $context);
+
+            return null;
+        }
+
+        if (in_array($result, [WebhookSignatureVerifier::INVALID, WebhookSignatureVerifier::MISSING], true)) {
+            if ($mode === 'enforce') {
+                Log::warning('Webhook rejected: bad Meta signature.', $context);
+
+                return response('Invalid signature.', 403);
+            }
+
+            Log::warning('Webhook signature check failed (not enforced).', $context);
+        }
+
+        return null;
     }
 
     protected function resolveAccountForVerify(Request $request, string $provider, ?string $webhookCode = null): ?ChannelAccount
