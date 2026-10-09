@@ -159,7 +159,7 @@ class UnifiedOrderService
             $preview = $this->preview($workspace, $data);
             $settings = StoreOrderSetting::forWorkspace($workspace->id);
             $walkIn = ($data['source'] ?? null) === 'pos' && ($data['walk_in'] ?? false);
-            $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : Contact::query()->firstOrCreate(['workspace_id' => $workspace->id, 'phone' => $data['customer']['phone']], ['name' => $data['customer']['name'], 'email' => $data['customer']['email'] ?? null, 'country' => $data['shipping_address']['country'] ?? null]));
+            $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : $this->orderContact($workspace, $data));
             $draft = $data['draft'] ?? false;
             $order = Order::query()->create([
                 'workspace_id' => $workspace->id, 'contact_id' => $contact?->id,
@@ -279,5 +279,26 @@ class UnifiedOrderService
     private function invalid(string $field, string $message): never
     {
         throw ValidationException::withMessages([$field => $message]);
+    }
+
+    /**
+     * Contacts are unique per workspace by phone and by email, so a returning buyer who checks out
+     * with a new phone must reuse the contact that already owns their email.
+     */
+    protected function orderContact(Workspace $workspace, array $data): Contact
+    {
+        $customer = $data['customer'];
+        $email = filled($customer['email'] ?? null) ? strtolower(trim((string) $customer['email'])) : null;
+        $contacts = Contact::query()->where('workspace_id', $workspace->id);
+
+        return (clone $contacts)->where('phone', $customer['phone'])->first()
+            ?? ($email ? (clone $contacts)->where('email', $email)->first() : null)
+            ?? Contact::query()->create([
+                'workspace_id' => $workspace->id,
+                'phone' => $customer['phone'],
+                'name' => $customer['name'],
+                'email' => $email,
+                'country' => $data['shipping_address']['country'] ?? null,
+            ]);
     }
 }

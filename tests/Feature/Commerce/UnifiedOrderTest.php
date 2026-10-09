@@ -12,6 +12,7 @@ use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
@@ -520,4 +521,14 @@ it('deducts storefront order stock only once payment is confirmed and restores i
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(96);
     $workflow->transition($cancelled->fresh(), 'cancelled');
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(98);
+});
+
+it('reuses an existing contact matched by email when the checkout phone differs', function () {
+    $c = unifiedContext();
+    $existing = Contact::query()->create(['workspace_id' => $c['workspace']->id, 'phone' => '+15555550999', 'name' => 'Old', 'email' => 'buyer@example.test']);
+
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    expect($order->contact_id)->toBe($existing->id)
+        ->and(Contact::query()->where('workspace_id', $c['workspace']->id)->where('email', 'buyer@example.test')->count())->toBe(1);
 });
