@@ -98,4 +98,29 @@ class Contact extends Model
     {
         return is_string($this->phone) && preg_match('/^\+[1-9]\d{7,14}$/', $this->phone) === 1;
     }
+
+    /**
+     * Replaces a placeholder name (empty, the phone number, or "Whatsapp 880…") with the sender's
+     * WhatsApp profile name. A name someone typed is never overwritten.
+     */
+    public function improveName(?string $profileName): void
+    {
+        $profileName = trim((string) $profileName);
+
+        if ($profileName === '' || ! $this->hasPlaceholderName()) {
+            return;
+        }
+
+        $this->forceFill(['name' => $profileName])->save();
+    }
+
+    protected function hasPlaceholderName(): bool
+    {
+        $name = trim((string) $this->name);
+
+        return $name === ''
+            || $name === (string) $this->phone
+            || preg_match('/^[+\d\s().-]+$/', $name) === 1
+            || preg_match('/^whatsapp\s+[+\d]+$/i', $name) === 1;
+    }
 }
