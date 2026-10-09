@@ -1004,7 +1004,7 @@
                                         </div>
                                         <div>
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Minimum Size Selection') }}</label>
-                                            <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('How many sizes buyer must select per color.') }}</p>
+                                            <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Store setup rule: how many sizes each pack must contain (shown for your own planning). Buyers never pick sizes — they order whole packs, so this does not limit their order.') }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" :max="productSizes.length || 20" class="form-input text-sm font-bold flex-1" name="ws_min_sizes" x-model="wsMinSizes" :placeholder="productSizes.length || '5'">
                                                 <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700" x-text="'of ' + productSizes.length + ' sizes'"></span>

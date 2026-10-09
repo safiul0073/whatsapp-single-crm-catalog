@@ -19,6 +19,7 @@ use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\Contacts\Services\ContactService;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
@@ -150,6 +151,15 @@ class OrderManagementController extends Controller
         }
         $methods = $data['payment_methods'] ?? null;
         unset($data['payment_methods'], $data['payment_icons']);
+        if (array_key_exists('owner_whatsapp_number', $data)) {
+            try {
+                $data['owner_whatsapp_number'] = filled($data['owner_whatsapp_number'])
+                    ? app(ContactService::class)->normalizePhone($data['owner_whatsapp_number'])
+                    : null;
+            } catch (ValidationException) {
+                throw ValidationException::withMessages(['owner_whatsapp_number' => 'Enter a valid international WhatsApp number, for example +8801711223344.']);
+            }
+        }
 
         if ($methods !== null) {
             $this->persistPaymentMethods($workspace, $methods, $request);
@@ -235,7 +245,7 @@ class OrderManagementController extends Controller
         $path = $index >= 0 ? ($order->payment_evidence['receipts'][$index]['path'] ?? ($index === 0 ? ($order->payment_evidence['receipt_path'] ?? null) : null)) : null;
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return response()->file(Storage::disk('local')->path($path), ['Content-Disposition' => 'attachment']);
+        return response()->file(Storage::disk('local')->path($path), ['Content-Disposition' => $request->boolean('preview') ? 'inline' : 'attachment', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     private function assertOrder(Request $request, Order $order): void

@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Jobs;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
+use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
 use App\Modules\Workspaces\Models\Workspace;
@@ -44,7 +45,7 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
     public function handle(SystemNotificationService $notifications): void
     {
         $event = OrderEvent::query()->findOrFail($this->eventId);
-        if ($event->notification_attempts >= 10 || ($event->staff_notified_at && $event->customer_notified_at && $event->whatsapp_notified_at)) {
+        if ($event->notification_attempts >= 10 || ($event->staff_notified_at && $event->customer_notified_at && $event->whatsapp_notified_at && $event->owner_whatsapp_notified_at)) {
             return;
         }
         $event->increment('notification_attempts');
@@ -67,6 +68,9 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         if (! $event->whatsapp_notified_at) {
             app(OrderWhatsAppNotificationService::class)->send($order, $event);
             $event->update(['whatsapp_notified_at' => now()]);
+        }
+        if (! $event->owner_whatsapp_notified_at && app(OrderOwnerWhatsAppNotificationService::class)->send($order, $event)) {
+            $event->update(['owner_whatsapp_notified_at' => now()]);
         }
     }
 }

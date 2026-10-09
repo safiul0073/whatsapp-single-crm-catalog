@@ -54,8 +54,8 @@ class UnifiedOrderService
                 $colorId = (int) $selection['color_id'];
                 $ratio = $product->getEffectiveSizeRatios()[$colorId] ?? [];
                 $ratio = array_filter($ratio, fn ($quantity) => (int) $quantity > 0);
-                if (count($ratio) < max(1, (int) $product->ws_min_sizes)) {
-                    $this->invalid('groups', 'The configured box does not meet the minimum sizes.');
+                if ($ratio === []) {
+                    $this->invalid('groups', 'This pack has no sizes configured.');
                 }
                 $multiplier = max(1, (int) $product->ws_ratio_multiplier);
                 $boxCount = (int) $selection['box_count'];

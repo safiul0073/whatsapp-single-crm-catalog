@@ -8,7 +8,7 @@ class OrderEvent extends Model
 {
     protected $table = 'commerce_order_events';
 
-    protected $fillable = ['notification_attempts', 'order_id', 'key', 'label', 'occurred_at', 'customer_notified_at', 'whatsapp_notified_at', 'staff_notified_at'];
+    protected $fillable = ['notification_attempts', 'order_id', 'key', 'label', 'occurred_at', 'customer_notified_at', 'whatsapp_notified_at', 'owner_whatsapp_notified_at', 'staff_notified_at'];
 
     protected function casts(): array
     {

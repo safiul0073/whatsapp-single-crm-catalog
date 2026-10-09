@@ -100,6 +100,13 @@
                     </div>
 
                     <div>
+                        <label class="form-label" for="owner_whatsapp_number">{{ __('Owner WhatsApp number') }}</label>
+                        <input id="owner_whatsapp_number" type="text" name="owner_whatsapp_number" value="{{ old('owner_whatsapp_number', $settings->owner_whatsapp_number) }}" placeholder="+8801711223344" class="form-input" inputmode="tel" autocomplete="off">
+                        @error('owner_whatsapp_number')<p class="text-xs text-error mt-1">{{ $message }}</p>@enderror
+                        <p class="text-xs text-body mt-1">{{ __('Get a WhatsApp message here every time a customer places an order. Use the international format with +. If this number has not messaged your business in the last 24 hours, the approved utility template below is used.') }}</p>
+                    </div>
+
+                    <div>
                         <label class="form-label">{{ __('Approved utility template for expired service windows') }}</label>
                         <select name="whatsapp_template_id" class="form-input">
                             <option value="">{{ __('Do not send outside the service window') }}</option>
