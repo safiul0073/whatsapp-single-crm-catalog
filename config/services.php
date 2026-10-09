@@ -4,6 +4,10 @@ return [
 
     'order_scheduler_scope' => env('ORDER_SCHEDULER_SCOPE', 'all'),
 
+    'meta' => [
+        'webhook_signature' => env('META_WEBHOOK_SIGNATURE', 'log'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
