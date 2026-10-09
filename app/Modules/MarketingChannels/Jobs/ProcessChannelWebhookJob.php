@@ -311,6 +311,16 @@ class ProcessChannelWebhookJob implements ShouldQueue
             ?: data_get($payload, 'interactive.list_reply');
     }
 
+    /**
+     * Two webhooks from a new number can arrive together; createOrFirst returns the contact the other
+     * worker just inserted instead of failing on the unique phone key.
+     */
+    protected function contactForPhone(int $workspaceId, string $phone, array $contactData): Contact
+    {
+        return Contact::query()->where('workspace_id', $workspaceId)->where('phone', $phone)->first()
+            ?? Contact::query()->createOrFirst(['workspace_id' => $workspaceId, 'phone' => $phone], $contactData);
+    }
+
     protected function createIdentityForMessage(ChannelAccount $account, array $event, string $providerContactId): ContactProviderIdentity
     {
         $username = $event['username'] ?? null;
@@ -335,7 +345,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
         }
 
         $contact = $phone
-            ? Contact::query()->firstOrCreate(['workspace_id' => $account->workspace_id, 'phone' => $phone], $contactData)
+            ? $this->contactForPhone($account->workspace_id, $phone, $contactData)
             : Contact::query()->create($contactData);
 
         return ContactProviderIdentity::query()->create([

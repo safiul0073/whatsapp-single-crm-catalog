@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Automations\Services\AutomationDispatcher;
 use App\Modules\AutoReplies\Models\AutoReplyRule;
 use App\Modules\AutoReplies\Services\AutoReplyService;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Jobs\ProcessChannelWebhookJob;
@@ -565,4 +566,16 @@ it('skips media auto replies on threads so nothing is posted publicly', function
 
     Http::assertNothingSent();
     expect(Message::query()->where('direction', 'outbound')->count())->toBe(0);
+});
+
+it('reuses a contact created concurrently for the same whatsapp number', function (): void {
+    Http::fake(['https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.reply']]], 200)]);
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    $account = autoReplyWhatsappAccount($workspace->id);
+    $existing = Contact::query()->create(['workspace_id' => $workspace->id, 'phone' => '+15558675309', 'name' => 'Already here']);
+
+    processAutoReplyPayload($account, 'race-message', 'hello');
+
+    expect(Contact::query()->where('workspace_id', $workspace->id)->where('phone', '+15558675309')->count())->toBe(1)
+        ->and(Message::query()->where('provider_message_id', 'race-message')->value('contact_id'))->toBe($existing->id);
 });
