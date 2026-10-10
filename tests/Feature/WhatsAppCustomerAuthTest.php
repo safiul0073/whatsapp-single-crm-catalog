@@ -210,3 +210,12 @@ it('blocks in-progress verification and registration when the owner disables log
     expect(fn () => $this->auth->register($this->workspace->id, $payload))->toThrow(HttpException::class);
     expect(fn () => $this->auth->verify($this->workspace->id, $payload['challenge_id'], ['session_binding' => $this->challengeData['session_binding'], 'code' => '123456']))->toThrow(HttpException::class);
 });
+
+it('sends no welcome and keeps login working when no welcome template is selected', function () {
+    $this->settings->update(['welcome_template_id' => null]);
+    $payload = customerAuthVerified($this);
+    $this->auth->register($this->workspace->id, $payload);
+    $registration = WhatsAppCustomerRegistration::where('workspace_id', $this->workspace->id)->first();
+    $this->auth->sendWelcome($registration->id);
+    expect($registration->fresh()->welcome_status)->toBe('skipped')->and($this->sent)->toHaveCount(1)->and($this->auth->available($this->workspace->id))->toBeTrue();
+});

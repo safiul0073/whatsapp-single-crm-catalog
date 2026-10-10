@@ -38,12 +38,16 @@ class WhatsAppCustomerAuthService
         abort_unless($settings->enabled, 503, 'WhatsApp login is temporarily unavailable. Please retry later or contact the store.');
         $channel = ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->find($settings->channel_id);
         $authentication = MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'authentication')->find($settings->authentication_template_id);
-        $welcome = MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->whereIn('category', ['utility', 'marketing'])->find($settings->welcome_template_id);
-        abort_unless($channel && filled($channel->provider_account_id) && filled($channel->provider_phone_id) && filled($channel->credential('access_token')) && $authentication && $welcome
-            && $authentication->approvedForWaba((string) $channel->provider_account_id) && $welcome->approvedForWaba((string) $channel->provider_account_id), 503, 'WhatsApp login is temporarily unavailable. Please retry later or contact the store.');
+        $welcome = filled($settings->welcome_template_id) ? MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->whereIn('category', ['utility', 'marketing'])->find($settings->welcome_template_id) : null;
+        $isWelcomeEnabled = filled($settings->welcome_template_id);
+        abort_unless($channel && filled($channel->provider_account_id) && filled($channel->provider_phone_id) && filled($channel->credential('access_token')) && $authentication && (! $isWelcomeEnabled || $welcome)
+            && $authentication->approvedForWaba((string) $channel->provider_account_id) && (! $isWelcomeEnabled || $welcome->approvedForWaba((string) $channel->provider_account_id)), 503, 'WhatsApp login is temporarily unavailable. Please retry later or contact the store.');
         $buttons = collect($authentication->components ?? [])->first(fn ($component) => strtoupper($component['type'] ?? '') === 'BUTTONS');
         $button = $buttons['buttons'][0] ?? [];
         abort_unless(count($buttons['buttons'] ?? []) === 1 && (($button['otp_type'] ?? '') === 'COPY_CODE' || (($button['type'] ?? '') === 'URL' && str_contains($button['url'] ?? '', 'otp_type=COPY_CODE'))), 503, 'WhatsApp login needs a copy-code authentication template.');
+        if (! $welcome) {
+            return [$channel, $authentication, null, false];
+        }
         $components = collect($welcome->components ?? []);
         $body = $components->first(fn ($component) => strtoupper($component['type'] ?? '') === 'BODY');
         preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $body['text'] ?? '', $variables);
@@ -132,7 +136,7 @@ class WhatsAppCustomerAuthService
             }
             $contact ??= Contact::query()->create(['workspace_id' => $workspaceId, 'phone' => $challenge->phone, 'name' => $data['name'], 'email' => $email, 'source' => 'website', 'opt_in_status' => 'unknown']);
             $isFirst = ! $registration;
-            $registration ??= new WhatsAppCustomerRegistration(['id' => $data['registration_reference'], 'workspace_id' => $workspaceId, 'customer_reference' => $data['customer_reference'], 'welcome_status' => $data['new_customer'] ? 'pending' : 'skipped']);
+            $registration ??= new WhatsAppCustomerRegistration(['id' => $data['registration_reference'], 'workspace_id' => $workspaceId, 'customer_reference' => $data['customer_reference'], 'welcome_status' => ($data['new_customer'] && filled($settings->welcome_template_id)) ? 'pending' : 'skipped']);
             $registration->fill(['challenge_id' => $challenge->id, 'phone' => $challenge->phone, 'contact_id' => $contact->id, 'payload_hash' => $hash, 'consented_at' => $challenge->consented_at])->save();
             $challenge->update(['consumed_at' => now()]);
             if ($isFirst && $registration->welcome_status === 'pending') {
@@ -170,6 +174,11 @@ class WhatsAppCustomerAuthService
         } catch (HttpException) {
             $registration->update(['welcome_status' => 'failed']);
             throw new \RuntimeException('WhatsApp welcome configuration is unavailable.');
+        }
+        if (! $template) {
+            $registration->update(['welcome_status' => 'skipped']);
+
+            return;
         }
         $payload = ['type' => 'template', 'template_name' => $template->name, 'language' => $template->language, 'components' => $hasName ? [['type' => 'body', 'parameters' => [['type' => 'text', 'text' => $contact->name]]]] : []];
         $payload['meta_payload'] = app(WhatsAppMessagePayloadBuilder::class)->build($registration->phone, $payload);

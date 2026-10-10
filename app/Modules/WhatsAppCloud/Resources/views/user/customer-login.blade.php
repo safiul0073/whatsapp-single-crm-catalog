@@ -5,7 +5,7 @@
     <div class="section-card max-w-3xl space-y-5">
         <section class="space-y-4">
             <h2 class="heading-4">{{ __('WhatsApp customer login') }}</h2>
-            <p class="text-body">{{ __('Customers receive a verification code on WhatsApp and one welcome message after their first registration. This does not subscribe them to promotions.') }}</p>
+            <p class="text-body">{{ __('Customers receive a verification code on WhatsApp and an optional welcome message after their first registration. This does not subscribe them to promotions.') }}</p>
             @if($errors->any())<div role="alert" class="text-danger">{{ $errors->first() }}</div>@endif
             <form method="POST" action="{{ route('user.commerce.orders.settings.customer-auth') }}" class="space-y-4">
                 @csrf @method('PUT')
@@ -16,8 +16,10 @@
                 <label class="form-label" for="auth_template">{{ __('Authentication template') }}</label>
                 <select id="auth_template" aria-describedby="auth_template_help" name="authentication_template_id" class="form-input"><option value="">{{ __('Select a copy-code authentication template') }}</option>@foreach($authTemplates as $template)<option value="{{ $template->id }}" @selected(old('authentication_template_id', $authSettings->authentication_template_id) == $template->id)>{{ $template->name }} · {{ $template->language }}</option>@endforeach</select>
                 <p id="auth_template_help" class="text-sm text-body">{{ __('Verification code — :variable is automatically replaced with the customer’s login code. Example: 482913.', ['variable' => '{'.'{1}'.'}']) }}</p>
+                <input type="hidden" name="welcome_enabled" value="0">
+                <label class="flex gap-2"><input type="checkbox" name="welcome_enabled" value="1" @checked(old('welcome_enabled', filled($authSettings->welcome_template_id)))>{{ __('Send a welcome message after first registration') }}</label>
                 <label class="form-label" for="welcome_template">{{ __('First-registration welcome template') }}</label>
-                <select id="welcome_template" aria-describedby="welcome_template_help" name="welcome_template_id" class="form-input"><option value="">{{ __('Select an approved welcome template') }}</option>@foreach($welcomeTemplates as $template)<option value="{{ $template->id }}" @selected(old('welcome_template_id', $authSettings->welcome_template_id) == $template->id)>{{ $template->name }} · {{ $template->language }}</option>@endforeach</select>
+                <select id="welcome_template" aria-describedby="welcome_template_help" name="welcome_template_id" class="form-input"><option value="">{{ __('Select an approved welcome template (used only when the welcome message is enabled)') }}</option>@foreach($welcomeTemplates as $template)<option value="{{ $template->id }}" @selected(old('welcome_template_id', $authSettings->welcome_template_id) == $template->id)>{{ $template->name }} · {{ $template->language }}</option>@endforeach</select>
                 <p id="welcome_template_help" class="text-sm text-body">{{ __('Customer name — :variable is automatically replaced with the customer’s name. Example: Hello Test User.', ['variable' => '{'.'{1}'.'}']) }}</p>
                 <p class="text-sm text-body">{{ __('Both templates must be approved for the selected WhatsApp business account. Welcome templates must contain no header or buttons, and either no variables or one customer-name variable in the body. Write a brief account greeting without promotions. Each template uses its configured language.') }}</p>
                 <x-forms.submit :label="__('Save customer login settings')" />
