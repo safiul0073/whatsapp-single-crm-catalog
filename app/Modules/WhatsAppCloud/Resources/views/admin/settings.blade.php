@@ -9,7 +9,7 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Configure Meta app defaults used by all WhatsApp Business connections.') }}</p>
         </div>
 
-        <form method="POST" action="{{ route('admin.whatsapp-cloud.settings.update') }}" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+        <form method="POST" action="{{ route('admin.whatsapp-cloud.settings.update') }}" class="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-950">
             @csrf
             @method('PUT')
 
@@ -59,7 +59,7 @@
             </div>
 
             <div class="mt-6 grid gap-3 md:grid-cols-2">
-                <div class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+                <div class="rounded-md border border-gray-100 p-4 dark:border-gray-800">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Meta Embedded Signup') }}</p>
@@ -69,7 +69,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+                <div class="rounded-md border border-gray-100 p-4 dark:border-gray-800">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Auto-sync templates') }}</p>
@@ -79,7 +79,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+                <div class="rounded-md border border-gray-100 p-4 dark:border-gray-800">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Auto-sync phone numbers') }}</p>

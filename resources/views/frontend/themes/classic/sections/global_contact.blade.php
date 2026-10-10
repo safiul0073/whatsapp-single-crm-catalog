@@ -29,9 +29,9 @@
 
                 <div class="mt-8 flex flex-col gap-3.5">
                     <a href="mailto:{{ $email }}"
-                        class="global-contact-card group flex items-center gap-4 rounded-xl border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-blue hover:bg-white hover:-translate-y-0.5">
+                        class="global-contact-card group flex items-center gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-blue hover:bg-white hover:-translate-y-0.5">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-blue text-brand-blue inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
+                            class="w-10 h-10 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
                                 data-lucide="mail" class="w-4 h-4"></i></span>
                         <div class="min-w-0">
                             <p class="font-display font-semibold text-text-strong text-body-sm tracking-body">
@@ -42,9 +42,9 @@
                             class="w-4 h-4 ml-auto flex-none text-text-light transition-colors duration-200 group-hover:text-brand-blue"></i>
                     </a>
                     <a href="{{ $whatsappLink }}" target="_blank" rel="noopener"
-                        class="global-contact-card group flex items-center gap-4 rounded-xl border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-green hover:bg-white hover:-translate-y-0.5">
+                        class="global-contact-card group flex items-center gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-green hover:bg-white hover:-translate-y-0.5">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-green text-brand-green inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
+                            class="w-10 h-10 rounded-md bg-tint-green text-brand-green inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
                                 data-lucide="message-circle" class="w-4 h-4"></i></span>
                         <div class="min-w-0">
                             <p class="font-display font-semibold text-text-strong text-body-sm tracking-body">
@@ -55,9 +55,9 @@
                             class="w-4 h-4 ml-auto flex-none text-text-light transition-colors duration-200 group-hover:text-brand-green"></i>
                     </a>
                     <a href="#{{ $calElementId }}"
-                        class="global-contact-card group flex items-center gap-4 rounded-xl border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-navy-ink hover:bg-white hover:-translate-y-0.5">
+                        class="global-contact-card group flex items-center gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4 no-underline transition-[border-color,background-color,transform] duration-200 [transition-timing-function:var(--ease-out-soft)] hover:border-brand-navy-ink hover:bg-white hover:-translate-y-0.5">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-navy text-brand-navy-ink inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
+                            class="w-10 h-10 rounded-md bg-tint-navy text-brand-navy-ink inline-grid place-items-center flex-none transition-transform duration-200 group-hover:scale-105"><i
                                 data-lucide="calendar" class="w-4 h-4"></i></span>
                         <div class="min-w-0">
                             <p class="font-display font-semibold text-text-strong text-body-sm tracking-body">{{ __('Book a Call') }}</p>
@@ -98,12 +98,12 @@
             </div>
 
             <!-- Contact form -->
-            <div class="global-cal-card overflow-hidden rounded-2xl border border-border-soft bg-white shadow-md">
+            <div class="global-cal-card overflow-hidden rounded-md border border-border-soft bg-white shadow-md">
                 <!-- Header bar -->
                 <div class="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-soft bg-bg-soft">
                     <div class="flex items-center gap-3">
                         <span
-                            class="w-10 h-10 rounded-xl bg-brand-blue text-white inline-grid place-items-center flex-none shadow-xs">
+                            class="w-10 h-10 rounded-md bg-brand-blue text-white inline-grid place-items-center flex-none shadow-xs">
                             <i data-lucide="calendar-clock" class="w-5 h-5"></i>
                         </span>
                         <div>

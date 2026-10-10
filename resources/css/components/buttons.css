@@ -1,6 +1,6 @@
 /* Button Components — Classic WhatsApp Theme */
 @utility btn {
-  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 sm:text-base;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm px-6 py-3 text-sm font-semibold transition-all duration-200 sm:text-base;
 
   &:active {
     @apply scale-95;
@@ -126,7 +126,7 @@
 
 /* Sizes */
 @utility btn-sm {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200;
+  @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold transition-all duration-200;
 }
 
 @utility btn-lg {

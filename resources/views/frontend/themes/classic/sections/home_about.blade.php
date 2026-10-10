@@ -62,7 +62,7 @@
         <!-- Eyebrow row -->
         <div class="flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-start">
             <span
-                class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/70 border border-border-soft rounded-full text-[11.5px] font-semibold tracking-eyebrow uppercase text-brand-blue backdrop-blur-sm">
+                class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/70 border border-border-soft rounded-sm text-[11.5px] font-semibold tracking-eyebrow uppercase text-brand-blue backdrop-blur-sm">
                 <span class="aboutv2-eyebrow-pulse w-1.5 h-1.5 rounded-full bg-brand-blue"></span>
                 {{ $eyebrowText }}
             </span>
@@ -85,7 +85,7 @@
 
             <button type="button" aria-label="{{ __('Play showreel video') }}" data-video-trigger @if ($videoLink)
             data-video-src="{{ $videoLink }}" @endif
-                class="group aboutv2-video-card relative block overflow-hidden rounded-[18px] border border-border-soft shadow-xl aspect-[4/3] bg-brand-navy-ink cursor-pointer w-full text-left p-0">
+                class="group aboutv2-video-card relative block overflow-hidden rounded-sm border border-border-soft shadow-xl aspect-[4/3] bg-brand-navy-ink cursor-pointer w-full text-left p-0">
                 @if ($videoCardImageUrl)
                     <img src="{{ $videoCardImageUrl }}" alt="Classic team at work" loading="lazy"
                         class="absolute inset-0 w-full h-full object-cover saturate-[0.95] brightness-[0.85] transition-transform duration-[600ms] [transition-timing-function:var(--ease-out-soft)] group-hover:scale-105" />
@@ -100,8 +100,8 @@
                 <!-- Play button -->
                 <span class="absolute inset-0 grid place-items-center">
                     <span
-                        class="relative inline-grid place-items-center w-[72px] h-[72px] rounded-full bg-white/95 text-brand-navy-ink shadow-[0_18px_48px_-8px_rgba(15,15,73,0.5)] transition-transform duration-[260ms] [transition-timing-function:var(--ease-out-soft)] group-hover:scale-110">
-                        <span class="absolute inset-0 rounded-full bg-white/40 animate-hero-pulse"></span>
+                        class="relative inline-grid place-items-center w-[72px] h-[72px] rounded-sm bg-white/95 text-brand-navy-ink shadow-[0_18px_48px_-8px_rgba(15,15,73,0.5)] transition-transform duration-[260ms] [transition-timing-function:var(--ease-out-soft)] group-hover:scale-110">
+                        <span class="absolute inset-0 rounded-sm bg-white/40 animate-hero-pulse"></span>
                         <i data-lucide="play" class="relative w-5 h-5 ml-1" fill="currentColor" stroke-width="0"
                             aria-hidden="true"></i>
                     </span>
@@ -119,7 +119,7 @@
                         <span class="font-display text-base font-bold tracking-body text-white">{{ $videoTitle }}</span>
                     </span>
                     <span
-                        class="font-mono text-[10.5px] font-semibold tracking-eyebrow uppercase text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 px-2 py-[3px] rounded-full">{{ $videoYear }}</span>
+                        class="font-mono text-[10.5px] font-semibold tracking-eyebrow uppercase text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 px-2 py-[3px] rounded-sm">{{ $videoYear }}</span>
                 </span>
             </button>
         </div>
@@ -151,7 +151,7 @@
                         class="relative z-1 text-white font-display font-extrabold tracking-tight leading-none text-[clamp(24px,3vw,34px)] max-sm:text-xl max-xs:text-lg">{{ $badgeNumber }}</span>
                 </span>
                 <div
-                    class="group aboutv2-architecture-card relative overflow-hidden rounded-[18px] border border-border-soft shadow-xl min-h-[260px] sm:min-h-[360px] h-full max-[1100px]:aspect-[16/10]">
+                    class="group aboutv2-architecture-card relative overflow-hidden rounded-md border border-border-soft shadow-xl min-h-[260px] sm:min-h-[360px] h-full max-[1100px]:aspect-[16/10]">
                     @if ($archImageUrl)
                         <img src="{{ $archImageUrl }}" alt="Classic team collaborating" loading="lazy"
                             class="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] [transition-timing-function:var(--ease-out-soft)] group-hover:scale-105" />

@@ -5,7 +5,7 @@
 
 /* Override Tom Select to match admin panel design */
 .ts-wrapper.single .ts-control {
-  @apply s-body bg-neutral-0 flex h-auto min-h-[48px] w-full cursor-pointer items-center rounded-xl border border-neutral-200 px-4 py-2 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  @apply s-body bg-neutral-0 flex h-auto min-h-[48px] w-full cursor-pointer items-center rounded-md border border-neutral-200 px-4 py-2 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
   background-image: none;
 }
 
@@ -33,11 +33,11 @@
 }
 
 .ts-wrapper.multi .ts-control {
-  @apply bg-neutral-0 flex min-h-[48px] w-full cursor-pointer flex-wrap items-center gap-1 rounded-xl border border-neutral-200 px-2 py-1.5 shadow-sm transition-all duration-300;
+  @apply bg-neutral-0 flex min-h-[48px] w-full cursor-pointer flex-wrap items-center gap-1 rounded-md border border-neutral-200 px-2 py-1.5 shadow-sm transition-all duration-300;
 }
 
 .ts-wrapper .ts-control {
-  @apply bg-neutral-0 rounded-xl border-neutral-200;
+  @apply bg-neutral-0 rounded-md border-neutral-200;
 }
 
 .ts-wrapper .ts-control:hover {
@@ -51,12 +51,12 @@
 
 /* Dropdown Panel */
 .ts-wrapper .ts-dropdown {
-  @apply bg-neutral-0 z-50 mt-2 overflow-hidden rounded-xl border border-neutral-200 shadow-xl;
+  @apply bg-neutral-0 z-50 mt-2 overflow-hidden rounded-md border border-neutral-200 shadow-xl;
 }
 
 /* Dropdown rendered on <body> (data-dropdown-parent="body") so modals cannot clip it */
 body > .ts-dropdown {
-  @apply bg-neutral-0 z-[110] mt-2 overflow-hidden rounded-xl border border-neutral-200 shadow-xl;
+  @apply bg-neutral-0 z-[110] mt-2 overflow-hidden rounded-md border border-neutral-200 shadow-xl;
 }
 
 /* Search Input */
@@ -66,7 +66,7 @@ body > .ts-dropdown {
 
 /* Options */
 .ts-dropdown .option {
-  @apply flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2 text-sm text-neutral-600 transition-colors;
+  @apply flex w-full cursor-pointer items-center gap-3 rounded-md px-4 py-2 text-sm text-neutral-600 transition-colors;
 }
 
 .ts-dropdown .option:hover,
@@ -85,7 +85,7 @@ body > .ts-dropdown {
 
 /* Multi Select Tags */
 .ts-wrapper.multi .ts-control > .item {
-  @apply bg-primary/10 border-primary/20 text-primary m-0 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium;
+  @apply bg-primary/10 border-primary/20 text-primary m-0 flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium;
 }
 
 /* Remove button on tags */

@@ -27,7 +27,7 @@
 
             @if ($showBillingTabs)
                 <div class="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
-                    <div class="inline-flex rounded-full border border-neutral-200 bg-section p-1">
+                    <div class="inline-flex rounded-sm border border-neutral-200 bg-section p-1">
                         @foreach ($billingCycles as $cycle)
                             <button type="button" data-billing-btn="{{ $cycle['key'] }}" class="billing-btn">{{ $cycle['label'] }}</button>
                         @endforeach
@@ -59,7 +59,7 @@
                     @php $isHighlighted = !empty($plan['highlighted']); @endphp
                     <div class="card relative {{ $isHighlighted ? 'border-primary/50 bg-section ring-1 ring-primary/30 md:-translate-y-3 hover:shadow-[0_28px_60px_-30px_rgba(31,170,83,0.5)]' : 'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_-30px_rgba(10,27,20,0.4)]' }}">
                         @if (!empty($plan['badge']))
-                            <span class="absolute -top-4 left-1/2 z-10 inline-flex -translate-x-1/2 items-center rounded-full border border-primary/20 bg-primary px-4 py-1.5 text-xs font-bold tracking-[0.12em] whitespace-nowrap text-neutral-0 uppercase shadow-[0_12px_26px_-12px_rgba(31,170,83,0.8)]">{{ $plan['badge'] }}</span>
+                            <span class="absolute -top-4 left-1/2 z-10 inline-flex -translate-x-1/2 items-center rounded-sm border border-primary/20 bg-primary px-4 py-1.5 text-xs font-bold tracking-[0.12em] whitespace-nowrap text-neutral-0 uppercase shadow-[0_12px_26px_-12px_rgba(31,170,83,0.8)]">{{ $plan['badge'] }}</span>
                         @endif
                         <p class="font-title text-sm font-bold tracking-wide {{ $isHighlighted ? 'text-primary' : 'text-neutral-500' }} uppercase">{{ $plan['name'] ?? '' }}</p>
                         <p class="mt-3">

@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const container = document.getElementById('toast-container'); if (!container) return;
       const el = document.createElement('div');
-      el.className = 'bg-bg-elevated shadow-lg rounded-lg px-4 py-3 flex items-center gap-3 max-w-sm animate-[nav-fadein_240ms_ease-out]';
+      el.className = 'bg-bg-elevated shadow-lg rounded-md px-4 py-3 flex items-center gap-3 max-w-sm animate-[nav-fadein_240ms_ease-out]';
       el.innerHTML = `<div class="w-6 h-6 rounded-pill bg-${cfg.bg} flex items-center justify-center flex-none"><i data-lucide="${cfg.icon}" class="w-3.5 h-3.5 text-${cfg.color}"></i></div><p class="font-body text-text-default text-body-sm flex-1">${cfg.msg}</p><button class="flex-none p-1 rounded-sm text-text-light hover:text-text-default transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>`;
       container.appendChild(el);
       if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [el] });

@@ -7,7 +7,7 @@
         <div class="space-y-2">
             @foreach($recentUsers as $user)
             <div class="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-0 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-user"></i>
                 </div>
                 <div class="flex-1 min-w-0">

@@ -18,13 +18,13 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+        <div class="mt-4 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
             {{ session('status') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="mt-4 rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+        <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
             {{ __('Please fix the highlighted chatbot settings.') }}
         </div>
     @endif
@@ -174,14 +174,14 @@
                 </div>
 
                 @if ($isEditing)
-                    <div class="mt-4 space-y-3 rounded-2xl bg-section p-4">
+                    <div class="mt-4 space-y-3 rounded-md bg-section p-4">
                         @if ($chatbot->greeting)
                             <div class="flex justify-start">
-                                <p class="max-w-[85%] rounded-2xl rounded-tl-sm bg-neutral-0 px-3 py-2 text-sm text-title shadow-sm">{{ $chatbot->greeting }}</p>
+                                <p class="max-w-[85%] rounded-md rounded-tl-sm bg-neutral-0 px-3 py-2 text-sm text-title shadow-sm">{{ $chatbot->greeting }}</p>
                             </div>
                         @endif
                         <div class="flex justify-end">
-                            <p class="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary px-3 py-2 text-sm text-neutral-0">{{ __('Can you help me with pricing?') }}</p>
+                            <p class="max-w-[85%] rounded-md rounded-tr-sm bg-primary px-3 py-2 text-sm text-neutral-0">{{ __('Can you help me with pricing?') }}</p>
                         </div>
                     </div>
 

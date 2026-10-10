@@ -50,7 +50,7 @@
 
         {{-- Toast / Feedback Alerts --}}
         <template x-if="successMsg">
-            <div class="rounded-xl border border-success/30 bg-success/10 p-3.5 text-sm font-medium text-success flex items-center justify-between transition-all" role="alert">
+            <div class="rounded-md border border-success/30 bg-success/10 p-3.5 text-sm font-medium text-success flex items-center justify-between transition-all" role="alert">
                 <div class="flex items-center gap-2">
                     <i class="ph ph-check-circle text-lg"></i>
                     <span x-text="successMsg"></span>
@@ -60,7 +60,7 @@
         </template>
 
         <template x-if="errorMsg">
-            <div class="rounded-xl border border-error/30 bg-error/10 p-3.5 text-sm font-medium text-error flex items-center justify-between transition-all" role="alert">
+            <div class="rounded-md border border-error/30 bg-error/10 p-3.5 text-sm font-medium text-error flex items-center justify-between transition-all" role="alert">
                 <div class="flex items-center gap-2">
                     <i class="ph ph-warning-circle text-lg"></i>
                     <span x-text="errorMsg"></span>
@@ -70,7 +70,7 @@
         </template>
 
         @if ($errors->any())
-            <div class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
+            <div class="rounded-md border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
                 <p class="font-semibold">{{ __('Please fix the following errors:') }}</p>
                 <ul class="mt-1 list-disc space-y-0.5 pl-5 text-xs">
                     @foreach ($errors->all() as $error)
@@ -88,7 +88,7 @@
                 <div class="flex items-center justify-between border-b border-border bg-white px-5 py-4">
                     <div class="flex items-center gap-3">
                         <h2 class="heading-5 text-title">{{ __('Reusable variant options') }}</h2>
-                        <span class="rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-xs font-bold text-neutral-700">
+                        <span class="rounded-sm bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-xs font-bold text-neutral-700">
                             {{ $presets->count() }}
                         </span>
                     </div>
@@ -243,7 +243,7 @@
                                             @method('DELETE')
                                             <button
                                                 type="submit"
-                                                class="inline-flex items-center gap-1 rounded-lg bg-red-50 hover:bg-red-100 text-error px-2.5 py-1.5 text-xs font-semibold transition shadow-2xs"
+                                                class="inline-flex items-center gap-1 rounded-sm bg-red-50 hover:bg-red-100 text-error px-2.5 py-1.5 text-xs font-semibold transition shadow-2xs"
                                                 data-confirm
                                                 data-confirm-title="{{ __('Delete :name?', ['name' => $preset->name]) }}"
                                                 data-confirm-body="{{ __('This variant option will be deleted.') }}"

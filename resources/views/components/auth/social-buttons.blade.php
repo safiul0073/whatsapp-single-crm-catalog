@@ -14,7 +14,7 @@
     <div class="mt-6 grid gap-3">
         @foreach($providers as $provider)
             <a href="{{ route('social.redirect', $provider['key']) }}"
-               class="group flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm font-bold text-title shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-lg hover:shadow-primary/10">
+               class="group flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm font-bold text-title shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-lg hover:shadow-primary/10">
                 <span class="grid h-8 w-8 place-items-center rounded-full bg-neutral-100 text-title transition-colors duration-200 group-hover:bg-neutral-0">
                     @switch($provider['key'])
                         @case('google')

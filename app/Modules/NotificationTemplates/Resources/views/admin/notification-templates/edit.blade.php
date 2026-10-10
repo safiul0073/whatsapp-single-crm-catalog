@@ -102,7 +102,7 @@
                                 $templateChannels = old('channels', $notificationTemplate->channels ?? []);
                             @endphp
                             @foreach($availableChannels as $channelKey => $channelInfo)
-                                <label class="flex items-center gap-3 rounded-lg border border-neutral-200 dark:border-neutral-700 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
+                                <label class="flex items-center gap-3 rounded-md border border-neutral-200 dark:border-neutral-700 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
                                     <input type="checkbox" name="channels[]" value="{{ $channelKey }}"
                                            class="custom-checkbox"
                                            @checked(in_array($channelKey, $templateChannels))>

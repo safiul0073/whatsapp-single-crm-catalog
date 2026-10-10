@@ -56,8 +56,8 @@
             </p>
 
             <!-- Support hours card -->
-            <div class="mt-8 inline-flex items-start gap-5 rounded-2xl border border-border-soft bg-white/90 backdrop-blur-sm px-6 py-5 shadow-sm">
-                <div class="w-11 h-11 rounded-xl bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
+            <div class="mt-8 inline-flex items-start gap-5 rounded-md border border-border-soft bg-white/90 backdrop-blur-sm px-6 py-5 shadow-sm">
+                <div class="w-11 h-11 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
                     <i data-lucide="clock" class="w-5 h-5" aria-hidden="true"></i>
                 </div>
                 <div>
@@ -120,8 +120,8 @@
                         </div>
 
                         <!-- Laptop -->
-                        <div class="relative -mt-4 z-20 w-56 h-32 bg-gradient-to-b from-slate-200 to-slate-300 rounded-xl border border-slate-400/40 shadow-lg flex items-center justify-center">
-                            <div class="w-44 h-24 bg-brand-navy-ink rounded-lg flex items-center justify-center">
+                        <div class="relative -mt-4 z-20 w-56 h-32 bg-gradient-to-b from-slate-200 to-slate-300 rounded-md border border-slate-400/40 shadow-lg flex items-center justify-center">
+                            <div class="w-44 h-24 bg-brand-navy-ink rounded-md flex items-center justify-center">
                                 <div class="space-y-1.5 w-32">
                                     <div class="h-1.5 bg-brand-blue rounded-full w-full"></div>
                                     <div class="h-1.5 bg-brand-blue/60 rounded-full w-4/5"></div>
@@ -130,22 +130,22 @@
                                     <div class="h-1.5 bg-brand-blue/40 rounded-full w-2/3"></div>
                                 </div>
                             </div>
-                            <div class="absolute -bottom-3 left-0 right-0 h-3 bg-slate-300 rounded-b-xl border-t border-slate-400/30"></div>
-                            <div class="absolute -bottom-4 left-8 right-8 h-1.5 bg-slate-400/40 rounded-full"></div>
+                            <div class="absolute -bottom-3 left-0 right-0 h-3 bg-slate-300 rounded-b-md border-t border-slate-400/30"></div>
+                            <div class="absolute -bottom-4 left-8 right-8 h-1.5 bg-slate-400/40 rounded-sm"></div>
                         </div>
                     </div>
 
                     <!-- Floating chat bubbles -->
-                    <div class="absolute top-6 left-0 w-14 h-14 rounded-2xl bg-brand-green shadow-md flex items-center justify-center animate-[hero-float-slow_6s_ease-in-out_infinite]">
+                    <div class="absolute top-6 left-0 w-14 h-14 rounded-md bg-brand-green shadow-md flex items-center justify-center animate-[hero-float-slow_6s_ease-in-out_infinite]">
                         <i data-lucide="check" class="w-7 h-7 text-white" style="stroke-width:3" aria-hidden="true"></i>
                     </div>
-                    <div class="absolute top-2 right-4 w-14 h-14 rounded-2xl bg-[#ef4444] shadow-md flex items-center justify-center animate-[hero-float-mid_5.4s_ease-in-out_infinite]">
+                    <div class="absolute top-2 right-4 w-14 h-14 rounded-md bg-[#ef4444] shadow-md flex items-center justify-center animate-[hero-float-mid_5.4s_ease-in-out_infinite]">
                         <i data-lucide="alert-circle" class="w-7 h-7 text-white" aria-hidden="true"></i>
                     </div>
-                    <div class="absolute top-1/2 -translate-y-1/2 -left-6 w-14 h-14 rounded-2xl bg-[#f59e0b] shadow-md flex items-center justify-center animate-[hero-float-slow_7s_ease-in-out_infinite_1s]">
+                    <div class="absolute top-1/2 -translate-y-1/2 -left-6 w-14 h-14 rounded-md bg-[#f59e0b] shadow-md flex items-center justify-center animate-[hero-float-slow_7s_ease-in-out_infinite_1s]">
                         <i data-lucide="help-circle" class="w-7 h-7 text-white" aria-hidden="true"></i>
                     </div>
-                    <div class="absolute top-1/2 -translate-y-8 right-0 w-36 rounded-2xl bg-brand-blue shadow-md p-3 animate-[hero-float-mid_5.4s_ease-in-out_infinite_0.5s]">
+                    <div class="absolute top-1/2 -translate-y-8 right-0 w-36 rounded-md bg-brand-blue shadow-md p-3 animate-[hero-float-mid_5.4s_ease-in-out_infinite_0.5s]">
                         <div class="flex items-center gap-2 mb-2">
                             <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-none">
                                 <i data-lucide="check" class="w-3 h-3 text-white" style="stroke-width:3" aria-hidden="true"></i>

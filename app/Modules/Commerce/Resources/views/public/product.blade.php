@@ -246,7 +246,7 @@
                             <template x-for="(item, idx) in gallery" :key="item.id || idx">
                                 <button
                                     type="button"
-                                    class="relative h-18 w-18 sm:h-20 sm:w-20 rounded-xl overflow-hidden border-2 bg-neutral-50 transition-all shrink-0 focus:outline-none"
+                                    class="relative h-18 w-18 sm:h-20 sm:w-20 rounded-sm overflow-hidden border-2 bg-neutral-50 transition-all shrink-0 focus:outline-none"
                                     :class="activeMediaIndex === idx ? 'border-neutral-900 ring-2 ring-neutral-900/10' : 'border-neutral-200 hover:border-neutral-400 opacity-75 hover:opacity-100'"
                                     @click="activeMediaIndex = idx"
                                 >
@@ -256,7 +256,7 @@
                         </div>
 
                         {{-- Main Large Image Container --}}
-                        <div class="relative flex-1 rounded-2xl border border-neutral-200/80 bg-neutral-50 overflow-hidden group min-h-[400px] sm:min-h-[580px] flex items-center justify-center">
+                        <div class="relative flex-1 rounded-md border border-neutral-200/80 bg-neutral-50 overflow-hidden group min-h-[400px] sm:min-h-[580px] flex items-center justify-center">
                             {{-- NEW Badge --}}
                             <span class="absolute top-4 right-4 z-10 rounded-md bg-[#EF4444] px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-xs">
                                 {{ __('NEW') }}
@@ -292,7 +292,7 @@
                                 $icon = is_array($highlight) ? ($highlight['icon'] ?? 'ph-check-circle') : 'ph-check-circle';
                                 if (!str_starts_with($icon, 'ph-')) { $icon = 'ph-'.$icon; }
                             @endphp
-                            <div class="flex flex-col items-center justify-center text-center p-3 rounded-2xl border border-neutral-200/80 bg-[#FAFAFA] hover:bg-white transition-all shadow-2xs">
+                            <div class="flex flex-col items-center justify-center text-center p-3 rounded-md border border-neutral-200/80 bg-[#FAFAFA] hover:bg-white transition-all shadow-2xs">
                                 <div class="h-9 w-9 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 mb-1.5">
                                     <i class="ph {{ $icon }} text-lg"></i>
                                 </div>
@@ -353,7 +353,7 @@
                                 <template x-for="sz in sizes" :key="sz">
                                     <button
                                         type="button"
-                                        class="h-10 min-w-16 px-3 rounded-xl border text-xs font-bold transition-all shadow-2xs focus:outline-none"
+                                        class="h-10 min-w-16 px-3 rounded-sm border text-xs font-bold transition-all shadow-2xs focus:outline-none"
                                         :class="selectedSize === sz ? 'border-neutral-900 bg-neutral-900 text-white ring-2 ring-neutral-900/20' : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50'"
                                         @click="selectSize(sz)"
                                         x-text="sz"
@@ -388,7 +388,7 @@
                         {{-- Quantity Stepper (Bounded to MOQ) --}}
                         <div class="mt-5">
                             <label class="block text-xs font-bold text-neutral-900 mb-2">{{ __('Quantity (Set)') }}</label>
-                            <div class="inline-flex items-center rounded-xl border border-neutral-200 bg-white shadow-2xs">
+                            <div class="inline-flex items-center rounded-md border border-neutral-200 bg-white shadow-2xs">
                                 <button
                                     type="button"
                                     class="h-10 w-10 flex items-center justify-center text-neutral-600 hover:text-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed transition"
@@ -420,7 +420,7 @@
                             {{-- Add to Quote Button --}}
                             <button
                                 type="button"
-                                class="w-full h-12 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
+                                class="w-full h-12 rounded-sm bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
                                 @click="quoteModalOpen = true"
                             >
                                 <i class="ph ph-notepad text-lg"></i>
@@ -432,7 +432,7 @@
                                 :href="whatsappOrderUrl"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="w-full h-12 rounded-xl border-2 border-emerald-600/30 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
+                                class="w-full h-12 rounded-md border-2 border-emerald-600/30 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm"
                             >
                                 <i class="ph-fill ph-whatsapp-logo text-xl text-[#25D366]"></i>
                                 <span>{{ __('WhatsApp Order') }}</span>
@@ -491,7 +491,7 @@
                     </div>
 
                     {{-- Specifications Table (Matching Screenshot) --}}
-                    <div class="rounded-2xl border border-neutral-200 bg-[#FAFAFA] p-5 shadow-2xs">
+                    <div class="rounded-md border border-neutral-200 bg-[#FAFAFA] p-5 shadow-2xs">
                         <table class="w-full text-xs">
                             <tbody class="divide-y divide-neutral-200/80 font-medium">
                                 <tr>
@@ -552,11 +552,11 @@
                         @foreach($colors as $idx => $color)
                             <button
                                 type="button"
-                                class="flex flex-col items-center rounded-xl border p-1.5 transition-all text-center group focus:outline-none"
+                                class="flex flex-col items-center rounded-sm border p-1.5 transition-all text-center group focus:outline-none"
                                 :class="selectedColorIndex === {{ $idx }} ? 'border-neutral-900 bg-neutral-50 shadow-sm ring-2 ring-neutral-900/10' : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-2xs'"
                                 @click="selectColor({{ $idx }})"
                             >
-                                <div class="h-20 w-full rounded-lg overflow-hidden bg-neutral-100 flex items-center justify-center">
+                                <div class="h-20 w-full rounded-md overflow-hidden bg-neutral-100 flex items-center justify-center">
                                     @if(!empty($color['photo_url']))
                                         <img src="{{ $color['photo_url'] }}" alt="{{ $color['display_name'] }}" class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200">
                                     @else
@@ -578,7 +578,7 @@
             <div class="mt-14 space-y-4">
                 
                 {{-- Top 3-Column Trust Strip --}}
-                <div class="rounded-2xl border border-neutral-200 bg-[#FAFAFA] p-6 grid gap-6 sm:grid-cols-3 text-center">
+                <div class="rounded-md border border-neutral-200 bg-[#FAFAFA] p-6 grid gap-6 sm:grid-cols-3 text-center">
                     <div class="flex items-center justify-center gap-3">
                         <div class="h-12 w-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs shrink-0">
                             <i class="ph ph-users-four text-2xl"></i>
@@ -611,7 +611,7 @@
                 </div>
 
                 {{-- Bottom Dark Navy Wholesale Feature Strip --}}
-                <div class="rounded-2xl bg-[#0F172A] text-white p-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-md bg-[#0F172A] text-white p-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="flex items-center gap-3">
                         <i class="ph ph-package text-2xl text-neutral-400"></i>
                         <div>
@@ -654,7 +654,7 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
             @keydown.escape.window="zoomOpen = false"
         >
-            <div class="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-white p-2" @click.away="zoomOpen = false">
+            <div class="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-md bg-white p-2" @click.away="zoomOpen = false">
                 <button
                     type="button"
                     class="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black"
@@ -662,7 +662,7 @@
                 >
                     <i class="ph ph-x text-lg"></i>
                 </button>
-                <img :src="currentActiveMedia.url" :alt="currentActiveMedia.alt" class="max-h-[85vh] w-auto mx-auto object-contain rounded-xl">
+                <img :src="currentActiveMedia.url" :alt="currentActiveMedia.alt" class="max-h-[85vh] w-auto mx-auto object-contain rounded-md">
             </div>
         </div>
 
@@ -673,7 +673,7 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
             @keydown.escape.window="quoteModalOpen = false"
         >
-            <div class="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" @click.away="quoteModalOpen = false">
+            <div class="relative w-full max-w-lg rounded-md bg-white p-6 shadow-2xl" @click.away="quoteModalOpen = false">
                 <div class="flex items-center justify-between border-b border-neutral-100 pb-4">
                     <div>
                         <h3 class="text-lg font-black text-neutral-900">{{ __('Request Wholesale Quote') }}</h3>
@@ -693,7 +693,7 @@
 
                 {{-- Form State --}}
                 <form x-show="!quoteSuccess" @submit.prevent="submitQuote()" class="mt-4 space-y-4">
-                    <div class="rounded-xl bg-neutral-50 p-3 text-xs text-neutral-700 space-y-1">
+                    <div class="rounded-md bg-neutral-50 p-3 text-xs text-neutral-700 space-y-1">
                         <p><strong>{{ __('Selected:') }}</strong> <span x-text="`${selectedSize}, ${selectedColor.name || selectedColor.display_name}`"></span></p>
                         <p><strong>{{ __('Quantity:') }}</strong> <span x-text="`${quantity} Sets`"></span></p>
                         <p><strong>{{ __('Estimated Total:') }}</strong> <span class="font-bold text-[#DC2626]" x-text="`${currencySymbol}${currentTotalWholesalePrice}`"></span></p>
@@ -727,7 +727,7 @@
 
                     <button
                         type="submit"
-                        class="w-full h-11 rounded-xl bg-[#0F172A] hover:bg-neutral-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
+                        class="w-full h-11 rounded-sm bg-[#0F172A] hover:bg-neutral-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
                         :disabled="quoteSubmitting"
                     >
                         <span x-show="!quoteSubmitting">{{ __('Submit Wholesale Quote Request') }}</span>

@@ -23,7 +23,7 @@
         @endif
     </div>
 
-    <dl class="mt-4 grid gap-3 rounded-xl bg-section p-4 sm:grid-cols-2">
+    <dl class="mt-4 grid gap-3 rounded-md bg-section p-4 sm:grid-cols-2">
         @foreach ($fields as $label => $value)
             <div class="min-w-0">
                 <dt class="text-xs font-semibold uppercase tracking-wide text-neutral-400">{{ $label }}</dt>

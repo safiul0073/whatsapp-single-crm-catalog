@@ -6,19 +6,19 @@
             @if (!empty($visualCards))
                 @foreach ($visualCards as $index => $visualCard)
                     @php $vDelay = $index * 0.12; @endphp
-                    <div data-reveal style="transition-delay: {{ $vDelay }}s" class="rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
+                    <div data-reveal style="transition-delay: {{ $vDelay }}s" class="rounded-md border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
                         @if (($visualCard['type'] ?? 'rule') === 'rule')
                             @if (!empty($visualCard['heading']))
                                 <p class="s-text text-neutral-500">{{ $visualCard['heading'] }}</p>
                             @endif
                             @if (!empty($visualCard['rule_body']) || !empty($visualCard['reply_preview']))
-                                <div class="mt-4 rounded-xl bg-section p-4">
+                                <div class="mt-4 rounded-md bg-section p-4">
                                     @if (!empty($visualCard['rule_body']))
                                         <p class="s-text text-neutral-500">{{ __('When message contains') }}</p>
                                         <p class="m-text mt-1 font-semibold text-title">{{ $visualCard['rule_body'] }}</p>
                                     @endif
                                     @if (!empty($visualCard['reply_preview']))
-                                        <div class="mt-4 max-w-[85%] rounded-lg rounded-bl-sm bg-[#dcf8c6] px-3 py-2 text-sm text-title">
+                                        <div class="mt-4 max-w-[85%] rounded-md rounded-bl-sm bg-[#dcf8c6] px-3 py-2 text-sm text-title">
                                             {{ $visualCard['reply_preview'] }}
                                         </div>
                                     @endif

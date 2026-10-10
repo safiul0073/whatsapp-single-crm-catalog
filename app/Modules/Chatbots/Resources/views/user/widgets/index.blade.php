@@ -16,7 +16,7 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+        <div class="mt-4 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
             {{ session('status') }}
         </div>
     @endif
@@ -60,7 +60,7 @@
                         </div>
                     </dl>
 
-                    <div class="mt-4 rounded-lg border border-neutral-100 bg-section p-3">
+                    <div class="mt-4 rounded-md border border-neutral-100 bg-section p-3">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Embed code') }}</p>
                             <button type="button" class="btn-sm btn-outline shrink-0" data-copy="{{ $embedCode }}" aria-label="{{ __('Copy embed code for :name', ['name' => $widget->name]) }}">

@@ -6,7 +6,7 @@
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div class="section-card flex items-center gap-3 !p-4">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-paper-plane-tilt text-xl"></i>
                 </div>
                 <div>
@@ -15,7 +15,7 @@
                 </div>
             </div>
             <div class="section-card flex items-center gap-3 !p-4">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
                     <i class="ph ph-check-circle text-xl"></i>
                 </div>
                 <div>
@@ -24,7 +24,7 @@
                 </div>
             </div>
             <div class="section-card flex items-center gap-3 !p-4">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10 text-danger">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-danger/10 text-danger">
                     <i class="ph ph-x-circle text-xl"></i>
                 </div>
                 <div>
@@ -33,7 +33,7 @@
                 </div>
             </div>
             <div class="section-card flex items-center gap-3 !p-4">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
                     <i class="ph ph-clock text-xl"></i>
                 </div>
                 <div>

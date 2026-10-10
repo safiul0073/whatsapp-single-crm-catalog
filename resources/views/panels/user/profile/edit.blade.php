@@ -233,7 +233,7 @@
             <ul class="mt-5 divide-y divide-neutral-100">
                 @forelse ($sessions as $session)
                     <li class="flex items-center gap-4 py-3">
-                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-section text-primary">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-section text-primary">
                             @if ($session->device === 'Mobile')
                                 <i class="ph ph-device-mobile text-xl"></i>
                             @elseif ($session->device === 'Tablet')
@@ -267,9 +267,9 @@
             </ul>
 
             @if (Route::has('user.developer-api.reports'))
-                <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-section p-4">
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-neutral-200 bg-section p-4">
                     <div class="flex min-w-0 items-center gap-3">
-                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-0 text-primary">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-neutral-0 text-primary">
                             <i class="ph ph-list-magnifying-glass text-xl"></i>
                         </span>
                         <div class="min-w-0">
@@ -366,7 +366,7 @@
                     </div>
 
                     @if ($avatarUrl)
-                        <label class="flex items-center gap-2 rounded-lg border border-neutral-200 p-3 text-sm font-semibold text-title">
+                        <label class="flex items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm font-semibold text-title">
                             <input type="checkbox" name="remove_avatar" value="1" class="app-checkbox">
                             {{ __('Remove current photo') }}
                         </label>

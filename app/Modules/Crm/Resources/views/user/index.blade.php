@@ -1,7 +1,13 @@
 <x-layouts.user :title="__('CRM')">
+    @php
+        $pipelineLeadCount = $pipeline->leads()->count();
+        $boardLeadCount = collect($leads)->sum(fn ($stageLeads) => $stageLeads->count());
+        $canManageLeads = auth()->user()->can('crm.manage');
+        $hasMovableLeads = $canManageLeads && collect($leads)->flatten()->contains(fn ($lead) => $lead->status->value === 'open');
+    @endphp
     <div
         class="space-y-5"
-        x-data="crmBoard(@js(['moveUrl' => route('user.crm.leads.stage', ['lead' => '__LEAD__']), 'emptyLabel' => __('Drop leads here')]))"
+        x-data="crmBoard(@js(['moveUrl' => route('user.crm.leads.stage', ['lead' => '__LEAD__']), 'emptyLabel' => $hasMovableLeads ? __('Drop leads here') : null, 'movedLabel' => __('Lead moved to :stage.'), 'savingLabel' => __('Saving stage change...'), 'hasLeads' => $hasMovableLeads, 'canManage' => $canManageLeads]))"
     >
         <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -47,14 +53,32 @@
             <button type="submit" class="btn-sm btn-outline justify-center">{{ __('Filter') }}</button>
         </form>
 
-        <p class="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" x-show="error" x-cloak x-text="error"></p>
+        <p class="rounded-md border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert" x-show="error" x-cloak x-text="error"></p>
+        <p class="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-body" role="status" aria-live="polite" x-show="isSaving || message" x-cloak x-text="isSaving ? savingLabel : message"></p>
+
+        @if ($pipelineLeadCount === 0)
+            <section class="flex flex-col gap-3 border border-neutral-200 bg-neutral-0 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="emptyPipelineTitle">
+                <div>
+                    <h2 id="emptyPipelineTitle" class="text-sm font-semibold text-title">{{ __('This pipeline is ready for leads') }}</h2>
+                    <p class="mt-1 text-sm text-body">{{ __('Create a lead from a conversation in Inbox, or configure an automation to add leads here.') }}</p>
+                </div>
+                @canany(['inbox.view', 'inbox.assigned_only'])
+                    <a href="{{ route('user.inbox.index') }}" class="btn-sm btn-outline justify-center">
+                        <i class="ph ph-chat-circle-text"></i>{{ __('Open Inbox') }}
+                    </a>
+                @endcanany
+            </section>
+        @elseif ($boardLeadCount === 0)
+            <p class="border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm text-body" role="status">{{ __('No leads match the current filters.') }}</p>
+        @endif
 
         <div class="crm-board" aria-label="{{ __('CRM lead board') }}">
             @foreach ($pipeline->stages as $stage)
                 <section
                     class="pipeline-col min-h-72"
                     data-stage-id="{{ $stage->id }}"
-                    @dragover.prevent
+                    @dragover.prevent="dragOverStage($event.currentTarget)"
+                    @dragleave="leaveStage($event.currentTarget, $event)"
                     @drop.prevent="dropLead({{ $stage->id }}, $event)"
                 >
                     <header class="pipeline-col__head">
@@ -67,10 +91,13 @@
                     <div class="pipeline-col__body min-h-52" data-stage-cards>
                         @forelse ($leads[$stage->id] ?? [] as $lead)
                             <article
-                                class="lead-card cursor-grab active:cursor-grabbing"
-                                draggable="true"
+                                @class(['lead-card', 'cursor-grab active:cursor-grabbing' => $canManageLeads && $lead->status->value === 'open'])
+                                draggable="{{ $canManageLeads && $lead->status->value === 'open' ? 'true' : 'false' }}"
                                 data-lead-id="{{ $lead->id }}"
-                                @dragstart="startDrag({{ $lead->id }}, {{ $stage->id }}, $event)"
+                                @if ($canManageLeads && $lead->status->value === 'open')
+                                    @dragstart="startDrag({{ $lead->id }}, {{ $stage->id }}, $event)"
+                                    @dragend="finishDrag()"
+                                @endif
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
@@ -92,7 +119,11 @@
                                 </div>
                             </article>
                         @empty
-                            <p class="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-xs text-body" data-empty-stage>{{ __('Drop leads here') }}</p>
+                            @if ($hasMovableLeads)
+                                <p class="rounded-md border border-dashed border-neutral-300 p-4 text-center text-xs text-body" data-empty-stage>{{ __('Drop leads here') }}</p>
+                            @elseif ($boardLeadCount > 0)
+                                <p class="px-2 py-3 text-center text-xs text-body">{{ __('No leads in this stage.') }}</p>
+                            @endif
                         @endforelse
                     </div>
                 </section>
@@ -129,7 +160,7 @@
 
                     <div class="space-y-3">
                         @foreach ($pipeline->stages as $stage)
-                            <div class="rounded-xl border border-neutral-200 p-3">
+                            <div class="rounded-md border border-neutral-200 p-3">
                                 <form method="POST" action="{{ route('user.crm.stages.update', $stage) }}" class="grid gap-3 sm:grid-cols-[1fr_7rem_5rem_auto] sm:items-end">
                                     @csrf
                                     @method('PUT')

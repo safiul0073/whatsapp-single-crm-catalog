@@ -2,7 +2,7 @@
 
 /* Helper for the container */
 .editor-wrapper {
-  @apply bg-neutral-0 overflow-hidden rounded-xl border border-neutral-100;
+  @apply bg-neutral-0 overflow-hidden rounded-md border border-neutral-100;
   min-height: 200px;
 }
 

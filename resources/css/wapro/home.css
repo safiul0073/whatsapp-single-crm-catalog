@@ -162,11 +162,11 @@ p {
    Buttons
    ===================================================================== */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 sm:text-base;
+  @apply inline-flex items-center justify-center gap-2 rounded-sm px-6 py-3 text-sm font-semibold transition-all duration-200 sm:text-base;
 }
 
 .btn-sm {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200;
+  @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold transition-all duration-200;
 }
 
 .btn-primary {
@@ -190,7 +190,7 @@ p {
    Badges & cards
    ===================================================================== */
 .badge {
-  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-sm px-2.5 py-0.5 text-xs font-medium;
 }
 
 .badge-soft {
@@ -198,16 +198,16 @@ p {
 }
 
 .card {
-  @apply rounded-2xl border border-neutral-200 bg-neutral-0 p-6;
+  @apply rounded-md border border-neutral-200 bg-neutral-0 p-6;
 }
 
 .card-soft {
-  @apply rounded-2xl bg-section p-6;
+  @apply rounded-md bg-section p-6;
 }
 
 /* Form control — text inputs, selects, textareas (contact form etc.) */
 .form-input {
-  @apply w-full rounded-xl border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm text-title transition-colors placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+  @apply w-full rounded-sm border border-neutral-200 bg-neutral-0 px-4 py-3 text-sm text-title transition-colors placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
 }
 
 /* Native <select>.form-input — used for real FORM fields (binds by name, §14.4);
@@ -222,7 +222,7 @@ select.form-input {
 
 /* compact input for inline-edit table cells (admin currencies etc.) */
 .form-input-sm {
-  @apply rounded-lg px-2.5 py-1.5 text-sm;
+  @apply rounded-sm px-2.5 py-1.5 text-sm;
 }
 
 /* search field with a leading icon — extra left room so the icon never
@@ -277,7 +277,7 @@ select.form-input {
 }
 
 .mobile-nav-toggle {
-  @apply grid size-11 min-w-11 place-items-center rounded-lg;
+  @apply grid size-11 min-w-11 place-items-center rounded-md;
 }
 
 @media (min-width: 1024px) {
@@ -296,7 +296,7 @@ select.form-input {
 
 /* Header nav links — JS adds .is-active to the current page's link */
 .nav-link {
-  @apply rounded-full px-4 py-2 text-sm font-medium text-body transition-colors hover:text-title;
+  @apply rounded-sm px-4 py-2 text-sm font-medium text-body transition-colors hover:text-title;
 }
 
 .nav-link.is-active {
@@ -304,7 +304,7 @@ select.form-input {
 }
 
 .mobile-nav-link {
-  @apply rounded-lg px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100;
+  @apply rounded-md px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100;
 }
 
 .mobile-nav-link.is-active {
@@ -487,7 +487,7 @@ select.form-input {
 
 /* photo collage frames */
 .hero-ed__frame {
-  @apply overflow-hidden rounded-2xl;
+  @apply overflow-hidden rounded-md;
 }
 
 .hero-ed__frame img {
@@ -500,7 +500,7 @@ select.form-input {
 
 /* secondary "watch" button (matches the primary btn's pill rhythm) */
 .hero-ed__disc {
-  @apply inline-flex h-12 items-center gap-2.5 rounded-full bg-neutral-0 pr-6 pl-3 text-sm font-semibold text-title transition-all duration-300 sm:text-base;
+  @apply inline-flex h-12 items-center gap-2.5 rounded-sm bg-neutral-0 pr-6 pl-3 text-sm font-semibold text-title transition-all duration-300 sm:text-base;
 }
 
 .hero-ed__disc:hover {
@@ -595,7 +595,7 @@ select.form-input {
 }
 
 .acc-panel {
-  @apply relative flex flex-col justify-end overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0 p-6 transition-colors;
+  @apply relative flex flex-col justify-end overflow-hidden rounded-md border border-neutral-200 bg-neutral-0 p-6 transition-colors;
   outline: none;
 }
 
@@ -610,7 +610,7 @@ select.form-input {
 }
 
 .acc-panel__icon {
-  @apply grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary transition-all duration-500;
+  @apply grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary transition-all duration-500;
 }
 
 .acc-panel__label {
@@ -764,7 +764,7 @@ select.form-input {
    Below lg: each step shows with its own visual, no crossfade.
    ===================================================================== */
 .spot-panel {
-  @apply relative w-full overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-0 p-5 shadow-[0_30px_70px_-34px_rgba(10,27,20,0.35)] sm:p-6;
+  @apply relative w-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-0 p-5 shadow-[0_30px_70px_-34px_rgba(10,27,20,0.35)] sm:p-6;
 }
 
 .spot-vis {
@@ -850,7 +850,7 @@ select.form-input {
    re-implemented with @theme tokens. Used on features.html.
    ===================================================================== */
 .choose-card {
-  @apply relative rounded-2xl border border-neutral-200 bg-neutral-0 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_24px_50px_-28px_rgba(31,170,83,0.5)];
+  @apply relative rounded-md border border-neutral-200 bg-neutral-0 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_24px_50px_-28px_rgba(31,170,83,0.5)];
 }
 
 .choose-card__num {
@@ -926,7 +926,7 @@ select.form-input {
 }
 
 .app-nav__link {
-  @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+  @apply relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
 }
 
 .app-nav__link.is-active {
@@ -943,7 +943,7 @@ select.form-input {
 }
 
 .app-topbar__search {
-  @apply hidden w-full max-w-xs items-center gap-2 rounded-full border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
+  @apply hidden w-full max-w-xs items-center gap-2 rounded-sm border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
 }
 
 .app-topbar__search input {
@@ -957,11 +957,11 @@ select.form-input {
 /* KPI stat card */
 /* KPI/stat card — display only, no whole-card action → no hover (§1.11). */
 .stat-card {
-  @apply rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 .stat-card__icon {
-  @apply grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary;
+  @apply grid h-9 w-9 place-items-center rounded-md bg-primary/10 text-primary;
 }
 
 /* ── Leads pipeline board ───────────────────────────────────────────────
@@ -969,7 +969,11 @@ select.form-input {
    lead is its inner ⋯ menu, so cards carry NO whole-card hover (§1.11). The
    top accent + count chip color is set per stage via a modifier class. */
 .pipeline-col {
-  @apply flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-section;
+  @apply flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-neutral-200 bg-section;
+}
+
+.pipeline-col.is-drop-target {
+  @apply border-primary/50 bg-primary/5;
 }
 
 .pipeline-col__head {
@@ -981,7 +985,7 @@ select.form-input {
 }
 
 .pipeline-col__count {
-  @apply grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs font-bold;
+  @apply grid h-5 min-w-5 place-items-center rounded-sm px-1.5 text-xs font-bold;
 }
 
 .pipeline-col__body {
@@ -1008,7 +1012,11 @@ select.form-input {
 
 /* Lead card — left accent strip keyed to source; display-only (no hover). */
 .lead-card {
-  @apply relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0 p-3 pl-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)];
+  @apply relative overflow-hidden rounded-md border border-neutral-200 bg-neutral-0 p-3 pl-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)];
+}
+
+.lead-card.is-moving {
+  @apply opacity-60 transition-opacity duration-150;
 }
 
 .lead-card--campaign::before {
@@ -1045,7 +1053,7 @@ select.form-input {
 /* Vertical section nav (landing-page editor) — a real tab list; JS toggles
    .is-active via data-tab-group/data-tab-target (§4/§14.2). */
 .section-nav {
-  @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-body transition-colors hover:bg-section hover:text-title;
+  @apply flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold text-body transition-colors hover:bg-section hover:text-title;
 }
 
 .section-nav.is-active {
@@ -1066,7 +1074,7 @@ select.form-input {
 /* Attachment chip (support reply box) — filename + remove. The ✕ is the real
    action, so the hover affordance lives on the button only (§1.11). */
 .attach-chip {
-  @apply inline-flex max-w-full items-center gap-1.5 rounded-lg border border-neutral-200 bg-section py-1 pr-1 pl-2.5 text-xs text-title;
+  @apply inline-flex max-w-full items-center gap-1.5 rounded-md border border-neutral-200 bg-section py-1 pr-1 pl-2.5 text-xs text-title;
 }
 
 .attach-chip__name {
@@ -1093,7 +1101,7 @@ select.form-input {
    One reusable look; rows are static-but-loopable (CLAUDE.md §14.3).
    ===================================================================== */
 .app-card {
-  @apply rounded-2xl border border-neutral-200 bg-neutral-0;
+  @apply rounded-md border border-neutral-200 bg-neutral-0;
 }
 
 /* =====================================================================
@@ -1178,19 +1186,19 @@ select.form-input {
 }
 
 .row-action {
-  @apply grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-title;
+  @apply grid h-8 w-8 place-items-center rounded-sm text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-title;
 }
 
 /* Copyable coupon code — clickable (copies via copy.js), so hover is allowed
    (§1.11). Monospaced pill; the .is-copied state swaps it to "Copied!". */
 .coupon-code {
-  @apply inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-section px-2.5 py-1 font-mono text-sm font-semibold text-title transition-colors hover:border-primary/40 hover:text-primary;
+  @apply inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-section px-2.5 py-1 font-mono text-sm font-semibold text-title transition-colors hover:border-primary/40 hover:text-primary;
 }
 
 /* Command/code block with an overlaid copy button (admin setup guides). The
    <code> scrolls horizontally; the copy button copies via copy.js (§14.5). */
 .code-block {
-  @apply relative max-w-3xl rounded-xl border border-neutral-200 bg-deep py-3 pr-12 pl-4;
+  @apply relative max-w-3xl rounded-md border border-neutral-200 bg-deep py-3 pr-12 pl-4;
 
   code {
     @apply block overflow-x-auto font-mono text-xs whitespace-nowrap text-neutral-0;
@@ -1203,7 +1211,7 @@ select.form-input {
 }
 
 .code-block__copy {
-  @apply absolute top-2 right-2 grid h-8 w-8 place-items-center rounded-lg text-neutral-300 transition-colors hover:bg-neutral-0/10 hover:text-neutral-0;
+  @apply absolute top-2 right-2 grid h-8 w-8 place-items-center rounded-md text-neutral-300 transition-colors hover:bg-neutral-0/10 hover:text-neutral-0;
 }
 
 /* multi-line variant (JSON/code samples). Uses <pre><code> so source line
@@ -1218,7 +1226,7 @@ select.form-input {
 /* API-docs in-page anchor nav link — sticky sidebar list. :target on the
    linked section drives the active highlight (anchor scroll, no JS). */
 .doc-nav__link {
-  @apply block shrink-0 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-body transition-colors hover:bg-section hover:text-title;
+  @apply block shrink-0 rounded-sm px-3 py-2 text-sm font-medium whitespace-nowrap text-body transition-colors hover:bg-section hover:text-title;
 }
 
 /* avatar monogram */
@@ -1232,7 +1240,7 @@ select.form-input {
 /* viewport: scrolls so nodes placed beyond the visible area stay reachable
    on small screens (§6) instead of being clipped off-canvas. */
 .builder-canvas {
-  @apply relative max-h-[34rem] min-h-[28rem] overflow-auto rounded-2xl border border-dashed border-neutral-300 bg-section;
+  @apply relative max-h-[34rem] min-h-[28rem] overflow-auto rounded-md border border-dashed border-neutral-300 bg-section;
 }
 .builder-canvas.is-dropping {
   @apply border-primary bg-primary/5;
@@ -1251,15 +1259,15 @@ select.form-input {
 
 /* palette draggable item — a node template */
 .palette-item {
-  @apply flex cursor-grab items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-0 p-3 transition-colors select-none hover:border-primary/40 hover:bg-section active:cursor-grabbing;
+  @apply flex cursor-grab items-center gap-3 rounded-md border border-neutral-200 bg-neutral-0 p-3 transition-colors select-none hover:border-primary/40 hover:bg-section active:cursor-grabbing;
 }
 .palette-item__icon {
-  @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary;
+  @apply grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary;
 }
 
 /* placed node on the canvas */
 .flow-node {
-  @apply absolute flex w-44 cursor-grab items-center gap-2.5 rounded-xl border border-neutral-200 bg-neutral-0 p-3 shadow-[0_4px_14px_-6px_rgba(10,27,20,0.2)] transition-shadow select-none;
+  @apply absolute flex w-44 cursor-grab items-center gap-2.5 rounded-md border border-neutral-200 bg-neutral-0 p-3 shadow-[0_4px_14px_-6px_rgba(10,27,20,0.2)] transition-shadow select-none;
 }
 .flow-node:hover {
   @apply border-primary/40;
@@ -1271,7 +1279,7 @@ select.form-input {
   @apply cursor-grabbing shadow-[0_12px_28px_-8px_rgba(10,27,20,0.35)];
 }
 .flow-node__icon {
-  @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-0;
+  @apply grid h-8 w-8 shrink-0 place-items-center rounded-md text-neutral-0;
 }
 .flow-node--trigger .flow-node__icon {
   @apply bg-accent;
@@ -1314,7 +1322,7 @@ select.form-input {
 }
 
 .flow-node-card {
-  @apply absolute w-[268px] rounded-2xl border border-neutral-200 bg-neutral-0 shadow-[0_12px_30px_-20px_rgba(10,27,20,0.35)] transition select-none;
+  @apply absolute w-[268px] rounded-md border border-neutral-200 bg-neutral-0 shadow-[0_12px_30px_-20px_rgba(10,27,20,0.35)] transition select-none;
   transition-property: border-color, box-shadow, transform;
 }
 
@@ -1333,7 +1341,7 @@ select.form-input {
 }
 
 .flow-node-card__icon {
-  @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base;
+  @apply grid h-8 w-8 shrink-0 place-items-center rounded-md text-base;
 }
 
 .flow-node-card__title {
@@ -1345,7 +1353,7 @@ select.form-input {
 }
 
 .flow-node-card__badge {
-  @apply ml-auto rounded-md border border-neutral-200 px-1.5 py-1 text-[9px] font-bold tracking-wider text-neutral-400;
+  @apply ml-auto rounded-sm border border-neutral-200 px-1.5 py-1 text-[9px] font-bold tracking-wider text-neutral-400;
 }
 
 .flow-node-card__body {
@@ -1353,11 +1361,11 @@ select.form-input {
 }
 
 .flow-node-card__prompt {
-  @apply rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-title;
+  @apply rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-title;
 }
 
 .flow-node-card__row {
-  @apply relative flex min-h-8 items-center gap-2 rounded-lg px-2 text-xs text-neutral-600;
+  @apply relative flex min-h-8 items-center gap-2 rounded-md px-2 text-xs text-neutral-600;
 }
 
 .flow-row-icon {
@@ -1411,11 +1419,11 @@ select.form-input {
 }
 
 .flow-node-toolbar {
-  @apply absolute z-20 flex items-center gap-1 rounded-xl border border-neutral-200 bg-neutral-0 p-2 shadow-[0_16px_32px_-18px_rgba(10,27,20,0.45)];
+  @apply absolute z-20 flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-0 p-2 shadow-[0_16px_32px_-18px_rgba(10,27,20,0.45)];
 }
 
 .flow-node-toolbar__btn {
-  @apply grid h-8 w-8 place-items-center rounded-lg text-neutral-500 hover:bg-section hover:text-primary;
+  @apply grid h-8 w-8 place-items-center rounded-sm text-neutral-500 hover:bg-section hover:text-primary;
 }
 
 .flow-node-toolbar__btn.is-active {
@@ -1427,7 +1435,7 @@ select.form-input {
 }
 
 .flow-whatsapp-preview {
-  @apply rounded-xl bg-[#062b24] p-3 text-neutral-0;
+  @apply rounded-md bg-[#062b24] p-3 text-neutral-0;
   background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 8px 8px;
 }
@@ -1437,7 +1445,7 @@ select.form-input {
 }
 
 .flow-whatsapp-preview__bubble {
-  @apply mb-2 rounded-lg bg-primary/20 px-3 py-2 text-sm text-neutral-0;
+  @apply mb-2 rounded-md bg-primary/20 px-3 py-2 text-sm text-neutral-0;
 }
 
 .flow-whatsapp-preview__bubble small {
@@ -1445,7 +1453,7 @@ select.form-input {
 }
 
 .flow-whatsapp-preview__button {
-  @apply mb-1 flex items-center justify-center gap-2 rounded-lg bg-neutral-0 px-3 py-2 text-sm font-semibold text-primary;
+  @apply mb-1 flex items-center justify-center gap-2 rounded-sm bg-neutral-0 px-3 py-2 text-sm font-semibold text-primary;
 }
 
 .tone-success {
@@ -1475,7 +1483,7 @@ select.form-input {
 /* Media library card — display-only (actions live in the inner ⋯ menu), so
    no whole-card hover (§1.11). Square preview tile + a name/size footer. */
 .media-card {
-  @apply overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0;
+  @apply overflow-hidden rounded-md border border-neutral-200 bg-neutral-0;
 }
 .media-card__thumb {
   @apply grid aspect-square w-full place-items-center;
@@ -1521,7 +1529,7 @@ select.form-input {
 }
 
 .chat-date-separator span {
-  @apply rounded-full border border-neutral-200 bg-neutral-0 px-3 py-1 shadow-sm;
+  @apply rounded-sm border border-neutral-200 bg-neutral-0 px-3 py-1 shadow-sm;
 }
 
 .chat-message {
@@ -1545,7 +1553,7 @@ select.form-input {
 }
 
 .chat-bubble {
-  @apply max-w-[84%] rounded-[1.15rem] px-3.5 py-2.5 text-sm leading-relaxed shadow-sm sm:max-w-[68%] xl:max-w-[58%];
+  @apply max-w-[84%] rounded-md px-3.5 py-2.5 text-sm leading-relaxed shadow-sm sm:max-w-[68%] xl:max-w-[58%];
 }
 
 .chat-bubble--in {
@@ -1577,7 +1585,7 @@ select.form-input {
 }
 
 .chat-attachment--image {
-  @apply block overflow-hidden rounded-xl bg-black/5;
+  @apply block overflow-hidden rounded-md bg-black/5;
 }
 
 .chat-attachment--image img {
@@ -1585,11 +1593,11 @@ select.form-input {
 }
 
 .chat-attachment--file {
-  @apply flex items-center gap-3 rounded-xl bg-neutral-0/20 p-3 text-current;
+  @apply flex items-center gap-3 rounded-md bg-neutral-0/20 p-3 text-current;
 }
 
 .chat-attachment__icon {
-  @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-neutral-0/25;
+  @apply grid h-9 w-9 shrink-0 place-items-center rounded-md bg-neutral-0/25;
 }
 
 .inbox-composer {
@@ -1601,11 +1609,11 @@ select.form-input {
 }
 
 .inbox-composer__attachment {
-  @apply mb-2 flex items-center gap-3 rounded-xl border border-neutral-200 bg-section p-2 shadow-sm;
+  @apply mb-2 flex items-center gap-3 rounded-md border border-neutral-200 bg-section p-2 shadow-sm;
 }
 
 .inbox-composer__input {
-  @apply min-h-10 max-h-32 w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-0 px-4 py-2.5 text-sm text-title outline-none transition focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:bg-neutral-50 disabled:text-neutral-400;
+  @apply min-h-10 max-h-32 w-full resize-none rounded-sm border border-neutral-200 bg-neutral-0 px-4 py-2.5 text-sm text-title outline-none transition focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:bg-neutral-50 disabled:text-neutral-400;
 }
 
 .inbox-composer__send {
@@ -1623,7 +1631,7 @@ select.form-input {
 
 /* view/label link in the rail */
 .inbox-view {
-  @apply flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+  @apply flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
 }
 
 .inbox-view.is-active {
@@ -1660,17 +1668,17 @@ select.form-input {
    look for the templates grid (§14.3). */
 /* actions are inner buttons (Edit/Delete) — no whole-card hover (§1.11). */
 .template-card {
-  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply flex flex-col rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 /* the chat surface the bubble sits on */
 .template-card__chat {
-  @apply mt-4 flex-1 rounded-xl bg-section p-3;
+  @apply mt-4 flex-1 rounded-md bg-section p-3;
 }
 
 /* the message bubble (incoming style: white, asymmetric top-left corner) */
 .template-card__bubble {
-  @apply overflow-hidden rounded-xl rounded-tl-sm bg-neutral-0 shadow-[0_1px_2px_rgba(10,27,20,0.08)];
+  @apply overflow-hidden rounded-md rounded-tl-sm bg-neutral-0 shadow-[0_1px_2px_rgba(10,27,20,0.08)];
 }
 
 .template-card__media {
@@ -1697,7 +1705,7 @@ select.form-input {
 /* Segment card — name + type badge, contact count, footer (view link +
    actions). Static segments also show an add-contacts action (§14.3). */
 .segment-card {
-  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply flex flex-col rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 .segment-card__footer {
@@ -1707,7 +1715,7 @@ select.form-input {
 /* Plan card (admin price plans) — pricing card with a feature list and a
    footer (active toggle + edit/delete). --popular gets a primary ring + flag. */
 .plan-card {
-  @apply relative flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply relative flex flex-col rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 .plan-card--popular {
@@ -1715,7 +1723,7 @@ select.form-input {
 }
 
 .plan-card__flag {
-  @apply absolute -top-3 left-5 rounded-full bg-primary px-3 py-1 text-xs font-bold text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)];
+  @apply absolute -top-3 left-5 rounded-sm bg-primary px-3 py-1 text-xs font-bold text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)];
 }
 
 .plan-card__features {
@@ -1733,11 +1741,11 @@ select.form-input {
 /* Gateway card (admin payment-gateways) — logo + status, detail list, footer
    (enable toggle + Configure). Actions are inner buttons → no card hover (§1.11). */
 .gateway-card {
-  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply flex flex-col rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 .gateway-card__logo {
-  @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl;
+  @apply grid h-11 w-11 shrink-0 place-items-center rounded-md;
 }
 
 .gateway-card__footer {
@@ -1748,7 +1756,7 @@ select.form-input {
    line, footer (enable toggle + Configure). Inner-button actions → no card
    hover (§1.11). */
 .integration-card {
-  @apply flex flex-col rounded-2xl border border-neutral-200 bg-neutral-0 p-5;
+  @apply flex flex-col rounded-md border border-neutral-200 bg-neutral-0 p-5;
 }
 
 .integration-card__head {
@@ -1756,7 +1764,7 @@ select.form-input {
 }
 
 .integration-card__logo {
-  @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl;
+  @apply grid h-10 w-10 shrink-0 place-items-center rounded-md;
 }
 
 .integration-card__meta {
@@ -1770,7 +1778,7 @@ select.form-input {
 /* Auto-reply rule row — trigger meta + reply preview on the left, actions on
    the right. Stacks on small screens (§14.3). */
 .rule-row {
-  @apply flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-neutral-0 p-4 sm:flex-row sm:items-center sm:gap-4;
+  @apply flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-0 p-4 sm:flex-row sm:items-center sm:gap-4;
 }
 
 .rule-row__msg {
@@ -1788,7 +1796,7 @@ select.form-input {
 
 /* Chat-widget card — green top accent, identity, meta pills, embed snippet. */
 .widget-card {
-  @apply relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0 p-5 pt-6;
+  @apply relative overflow-hidden rounded-md border border-neutral-200 bg-neutral-0 p-5 pt-6;
 }
 
 .widget-card__accent {
@@ -1797,7 +1805,7 @@ select.form-input {
 
 /* inline embed code snippet — dark, monospace, truncated to one line */
 .code-box {
-  @apply truncate rounded-lg bg-deep px-3 py-2 font-mono text-xs text-neutral-0/90;
+  @apply truncate rounded-md bg-deep px-3 py-2 font-mono text-xs text-neutral-0/90;
 }
 
 /* copy button feedback: while .is-copied, hide the normal label and show
@@ -1848,7 +1856,7 @@ select.form-input {
 
 /* segmented tab (header format Text/Image/Video/Document) — JS toggles .is-active */
 .seg-tab {
-  @apply rounded-lg border border-neutral-200 px-3 py-1.5 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-title;
+  @apply rounded-md border border-neutral-200 px-3 py-1.5 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-title;
 }
 
 .seg-tab.is-active {
@@ -1857,7 +1865,7 @@ select.form-input {
 
 /* a bordered block grouping one template component */
 .component-block {
-  @apply rounded-xl border border-neutral-200 p-4;
+  @apply rounded-md border border-neutral-200 p-4;
 }
 
 .component-block__label {
@@ -1866,7 +1874,7 @@ select.form-input {
 
 /* upload placeholder for media header formats */
 .upload-drop {
-  @apply grid place-items-center rounded-xl border border-dashed border-neutral-300 bg-section/60 px-4 py-8 text-center text-neutral-400;
+  @apply grid place-items-center rounded-md border border-dashed border-neutral-300 bg-section/60 px-4 py-8 text-center text-neutral-400;
 }
 
 /* numbered step marker for stepped builder sections */
@@ -1876,7 +1884,7 @@ select.form-input {
 
 /* selectable row (a whole row is one clickable checkbox label) — interactive, so hover is allowed */
 .check-row {
-  @apply flex cursor-pointer items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 transition-colors hover:border-primary/40;
+  @apply flex cursor-pointer items-center gap-3 rounded-md border border-neutral-200 px-4 py-3 transition-colors hover:border-primary/40;
 }
 
 .check-row:has(input:checked) {
@@ -1885,7 +1893,7 @@ select.form-input {
 
 /* selectable plan card (radio) — interactive, so hover is allowed (§1.11) */
 .plan-pick {
-  @apply block cursor-pointer rounded-xl border border-neutral-200 p-4 transition-colors hover:border-primary/40;
+  @apply block cursor-pointer rounded-md border border-neutral-200 p-4 transition-colors hover:border-primary/40;
 }
 
 .plan-pick:has(input:checked) {
@@ -1894,7 +1902,7 @@ select.form-input {
 
 /* static informational panel — display only, no hover */
 .info-banner {
-  @apply flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3;
+  @apply flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3;
 }
 
 /* labeled proportion bar (delivery funnel) — display only, value set inline */
@@ -1903,7 +1911,7 @@ select.form-input {
 }
 
 .funnel-bar {
-  @apply block h-full rounded-full;
+  @apply block h-full rounded-sm;
 }
 
 /* small round status indicator — color set via a bg-* utility alongside it */
@@ -1998,7 +2006,7 @@ select.form-input {
 
 /* bulk-actions bar — JS adds .is-shown when rows are selected (§4/§14.2) */
 .bulk-bar {
-  @apply hidden flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3;
+  @apply hidden flex-wrap items-center gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3;
 }
 
 .bulk-bar.is-shown {
@@ -2013,7 +2021,7 @@ select.form-input {
    widths. The menu is only ever shown after dropdown.js portals it to <body>
    and adds .dropdown-menu--floating, so it never needs an in-flow entrance. */
 .dropdown-menu {
-  @apply absolute z-50 hidden w-48 origin-top scale-95 rounded-xl border border-neutral-200 bg-neutral-0 p-1.5 opacity-0 shadow-[0_20px_50px_-20px_rgba(10,27,20,0.35)] transition-[opacity,transform] duration-150;
+  @apply absolute z-50 hidden w-48 origin-top scale-95 rounded-md border border-neutral-200 bg-neutral-0 p-1.5 opacity-0 shadow-[0_20px_50px_-20px_rgba(10,27,20,0.35)] transition-[opacity,transform] duration-150;
 }
 
 /* while portaled + open: positioned by JS via inline top/left */
@@ -2027,7 +2035,7 @@ select.form-input {
 }
 
 .dropdown-item {
-  @apply flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
+  @apply flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium text-body transition-colors hover:bg-section hover:text-title;
 }
 
 /* selected option in a [data-dropdown-select] — tinted + trailing check (§14.2) */
@@ -2048,7 +2056,7 @@ select.form-input {
 
 /* pagination */
 .page-btn {
-  @apply grid h-9 min-w-9 place-items-center rounded-lg border border-neutral-200 px-3 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-primary;
+  @apply grid h-9 min-w-9 place-items-center rounded-sm border border-neutral-200 px-3 text-sm font-medium text-body transition-colors hover:border-primary/40 hover:text-primary;
 }
 
 .page-btn.is-active {
@@ -2100,7 +2108,7 @@ select.form-input {
 }
 
 .modal__panel {
-  @apply absolute top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 scale-95 overflow-y-auto rounded-2xl border border-neutral-200 bg-neutral-0 p-5 shadow-[0_30px_70px_-20px_rgba(10,27,20,0.4)] transition-transform duration-200 sm:p-6;
+  @apply absolute top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 scale-95 overflow-y-auto rounded-md border border-neutral-200 bg-neutral-0 p-5 shadow-[0_30px_70px_-20px_rgba(10,27,20,0.4)] transition-transform duration-200 sm:p-6;
 }
 
 /* wider panel for multi-column content (e.g. the CSV import wizard) */

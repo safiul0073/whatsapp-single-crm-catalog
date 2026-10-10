@@ -192,7 +192,7 @@
             </div>
 
             <div data-filter-empty class="hidden flex-col items-center justify-center px-6 py-16 text-center">
-                <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-magnifying-glass text-2xl"></i>
                 </span>
                 <h3 class="heading-4 mt-4">{{ __('No members match') }}</h3>
@@ -252,7 +252,7 @@
                     </form>
                 @else
                     <div class="mt-4 flex flex-col items-center text-center p-4">
-                        <img src="{{ asset('assets/images/limit_reached.png') }}" alt="{{ __('Limit Reached') }}" class="max-w-[240px] h-auto rounded-lg mb-4" />
+                        <img src="{{ asset('assets/images/limit_reached.png') }}" alt="{{ __('Limit Reached') }}" class="max-w-[240px] h-auto rounded-md mb-4" />
                         <h4 class="text-lg font-semibold text-title mb-2">{{ __('Seat Limit Reached') }}</h4>
                         <p class="text-sm text-neutral-500 max-w-sm mb-6">
                             {{ __('Your workspace has reached the limit of allowed team members. Please upgrade your plan to add or invite more members.') }}
@@ -301,7 +301,7 @@
                     </form>
                 @else
                     <div class="mt-4 flex flex-col items-center text-center p-4">
-                        <img src="{{ asset('assets/images/limit_reached.png') }}" alt="{{ __('Limit Reached') }}" class="max-w-[240px] h-auto rounded-lg mb-4" />
+                        <img src="{{ asset('assets/images/limit_reached.png') }}" alt="{{ __('Limit Reached') }}" class="max-w-[240px] h-auto rounded-md mb-4" />
                         <h4 class="text-lg font-semibold text-title mb-2">{{ __('Seat Limit Reached') }}</h4>
                         <p class="text-sm text-neutral-500 max-w-sm mb-6">
                             {{ __('Your workspace has reached the limit of allowed team members. Please upgrade your plan to add or invite more members.') }}

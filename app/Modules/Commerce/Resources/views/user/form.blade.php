@@ -180,7 +180,7 @@
 
         {{-- Validation Error Alert --}}
         @if ($errors->any())
-            <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-xs">
+            <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800 shadow-xs">
                 <div class="flex items-center gap-2 font-bold text-sm mb-1.5">
                     <i class="ph ph-warning-circle text-lg text-red-600"></i>
                     <span>{{ __('Please correct the following errors before proceeding:') }}</span>
@@ -232,11 +232,11 @@
                         </div>
 
                         {{-- Wholesale Price --}}
-                        <div class="rounded-xl border border-emerald-500/30 bg-emerald-50/30 p-4">
+                        <div class="rounded-md border border-emerald-500/30 bg-emerald-50/30 p-4">
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-emerald-800" for="wholesale_price">{{ __('Wholesale Price *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
                                 <input id="wholesale_price" type="number" step="0.01" min="0.01" class="form-input font-bold text-emerald-700 flex-1 @error('wholesale_price') border-red-500 ring-1 ring-red-500 @enderror" name="wholesale_price" required value="{{ old('wholesale_price', $product?->wholesale_price ?? "") }}" placeholder="800">
-                                <span class="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">USD</span>
+                                <span class="rounded-md bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">USD</span>
                             </div>
                             @error('wholesale_price')
                                 <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
@@ -244,11 +244,11 @@
                         </div>
 
                         {{-- Retail Price --}}
-                        <div class="rounded-xl border border-border/80 bg-neutral-50/50 p-4">
+                        <div class="rounded-md border border-border/80 bg-neutral-50/50 p-4">
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="single_piece_price">{{ __('Retail Price') }}</label>
                             <div class="flex items-center gap-2 mt-1">
                                 <input id="single_piece_price" type="number" step="0.01" min="0.01" class="form-input font-bold flex-1 @error('single_piece_price') border-red-500 ring-1 ring-red-500 @enderror" name="single_piece_price" value="{{ old('single_piece_price', $product?->single_piece_price ?? "") }}" placeholder="1200">
-                                <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">USD</span>
+                                <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">USD</span>
                             </div>
                             @error('single_piece_price')
                                 <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
@@ -346,7 +346,7 @@
                             {{-- Enable Color Picker Toggle Button --}}
                             <button
                                 type="button"
-                                class="btn btn-sm rounded-lg! text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border"
+                                class="btn btn-sm rounded-sm! text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border"
                                 :class="galleryColorPickerEnabled ? 'bg-primary text-white border-primary shadow-xs' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'"
                                 @click="toggleGalleryColorPicker()"
                                 title="{{ __('When enabled, hover over any chosen photo and click to copy color code.') }}"
@@ -356,14 +356,14 @@
                                 <span class="font-extrabold uppercase px-1 py-0.2 rounded text-[10px]" :class="galleryColorPickerEnabled ? 'bg-white/25 text-white' : 'bg-neutral-100 text-neutral-600'" x-text="galleryColorPickerEnabled ? '{{ __('Enabled') }}' : '{{ __('Disabled') }}'"></span>
                             </button>
 
-                            <button type="button" class="btn btn-sm btn-primary rounded-lg! text-xs shadow-2xs" @click="openMediaPicker()">
+                            <button type="button" class="btn btn-sm btn-primary rounded-sm! text-xs shadow-2xs" @click="openMediaPicker()">
                                 <i class="ph ph-upload-simple"></i> {{ __('Upload Image') }}
                             </button>
                         </div>
                     </div>
 
                     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <div class="relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 p-4 lg:min-h-[460px]">
+                        <div class="relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-neutral-50 p-4 lg:min-h-[460px]">
                             <template x-if="getSelectedGalleryImage()">
                                 <div class="relative flex max-h-[440px] items-center justify-center">
                                     <img
@@ -429,7 +429,7 @@
                                         </div>
                                     </div>
                                 </template>
-                                <button type="button" class="flex aspect-[4/5] flex-col items-center justify-center rounded-md border-2 border-dashed border-neutral-300 bg-neutral-50 text-center transition hover:border-primary hover:bg-primary/5" @click="openMediaPicker()">
+                                <button type="button" class="flex aspect-[4/5] flex-col items-center justify-center rounded-sm border-2 border-dashed border-neutral-300 bg-neutral-50 text-center transition hover:border-primary hover:bg-primary/5" @click="openMediaPicker()">
                                     <i class="ph ph-plus text-xl text-primary"></i>
                                     <span class="mt-1 text-xs font-semibold text-neutral-800">{{ __('Add photo') }}</span>
                                     <span class="mt-0.5 text-[10px] text-neutral-400">800×1000px</span>
@@ -453,8 +453,8 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" class="rounded-lg!" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}"><i class="ph ph-arrow-left"></i> {{ __('Back') }}</x-ui.button>
-                    <button type="submit" class="btn btn-primary rounded-lg! px-6 font-semibold shadow-none!">{{ __('Save & Next: Sizes') }} <i class="ph ph-arrow-right"></i></button>
+                    <x-ui.button variant="outline" class="rounded-sm!" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}"><i class="ph ph-arrow-left"></i> {{ __('Back') }}</x-ui.button>
+                    <button type="submit" class="btn btn-primary rounded-sm! px-6 font-semibold shadow-none!">{{ __('Save & Next: Sizes') }} <i class="ph ph-arrow-right"></i></button>
                 </div>
             </form>
 
@@ -478,7 +478,7 @@
                     </div>
 
                     {{-- Sizes Interactive Table --}}
-                    <div class="mt-5 rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
+                    <div class="mt-5 rounded-md border border-neutral-200 overflow-hidden shadow-2xs">
                         <div class="divide-y divide-neutral-200">
                             <template x-for="(sz, sIdx) in sizes" :key="sIdx">
                                 <div class="flex items-center gap-4 p-3 bg-white hover:bg-neutral-50/50 transition">
@@ -532,7 +532,7 @@
                         <div x-show="showSizeModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-neutral-900/50 transition-opacity" aria-hidden="true" @click="showSizeModal = false"></div>
                         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                         
-                        <div x-show="showSizeModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="relative z-10 inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                        <div x-show="showSizeModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="relative z-10 inline-block align-bottom bg-white rounded-md text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-neutral-100">
                                 <div class="flex items-center justify-between">
                                     <h3 class="text-lg leading-6 font-bold text-neutral-900" id="modal-title">{{ __('Select or Create Size') }}</h3>
@@ -544,7 +544,7 @@
 
                             <div class="px-4 py-4 sm:p-6 space-y-5 bg-neutral-50/50">
                                 {{-- Quick Add Form --}}
-                                <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-xs">
+                                <div class="bg-white border border-neutral-200 rounded-md p-4 shadow-xs">
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3">{{ __('Quick Create New Size Preset') }}</h4>
                                     <div class="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center">
                                         <input type="text" class="form-input text-xs h-9 !py-1.5 !px-3" x-model="modalNewSize.name" placeholder="Size Name (e.g. XL)" @keydown.enter.prevent="createPresetFromModal()">
@@ -566,7 +566,7 @@
                                 {{-- Preset List --}}
                                 <div>
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3">{{ __('Select Reusable Presets') }}</h4>
-                                    <div class="max-h-60 overflow-y-auto border border-neutral-200 rounded-xl bg-white shadow-xs divide-y divide-neutral-100">
+                                    <div class="max-h-60 overflow-y-auto border border-neutral-200 rounded-md bg-white shadow-xs divide-y divide-neutral-100">
                                         <template x-for="(vp, idx) in variantPresets" :key="vp.id || idx">
                                             <label class="flex items-center gap-3 p-3 hover:bg-neutral-50 cursor-pointer transition">
                                                 <input type="checkbox" class="form-checkbox text-primary rounded shadow-xs" :checked="isPresetSelected(vp)" @change="togglePresetSelection(vp)">
@@ -584,10 +584,10 @@
                             </div>
                             
                             <div class="bg-white px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-neutral-100">
-                                <button type="button" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-xs px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-600 sm:ml-3 sm:w-auto sm:text-sm" @click="applyModalSelection()">
+                                <button type="button" class="w-full inline-flex justify-center rounded-sm border border-transparent shadow-xs px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-600 sm:ml-3 sm:w-auto sm:text-sm" @click="applyModalSelection()">
                                     {{ __('Add Selected') }}
                                 </button>
-                                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-lg border border-neutral-300 shadow-xs px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" @click="showSizeModal = false">
+                                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-sm border border-neutral-300 shadow-xs px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" @click="showSizeModal = false">
                                     {{ __('Cancel') }}
                                 </button>
                             </div>
@@ -621,7 +621,7 @@
                     </div>
 
                     {{-- Colors Table matching Step 4 --}}
-                    <div class="mt-5 overflow-x-auto rounded-xl border border-neutral-200 shadow-2xs">
+                    <div class="mt-5 overflow-x-auto rounded-md border border-neutral-200 shadow-2xs">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-neutral-50/80 uppercase font-bold text-neutral-600 border-b border-neutral-200">
                                 <tr>
@@ -736,7 +736,7 @@
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="moq">{{ __('Minimum Order Quantity (MOQ) *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
                                 <input id="moq" type="number" min="1" class="form-input text-sm font-bold flex-1" name="moq" required value="{{ old('moq', $product->moq ?? 40) }}" placeholder="40">
-                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
+                                <span class="rounded-md bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">Sets</span>
                             </div>
                         </div>
 
@@ -749,7 +749,7 @@
                                 @else
                                     <input id="default_stock" type="number" min="0" class="form-input text-sm font-bold flex-1" name="default_stock" value="{{ old('default_stock', $product->variants->isNotEmpty() ? $product->variants->first()->stock_quantity : "") }}" placeholder="500">
                                 @endif
-                                <span class="rounded-lg bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">{{ $matrixHasGrid ? __('Pcs') : 'Sets' }}</span>
+                                <span class="rounded-md bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700">{{ $matrixHasGrid ? __('Pcs') : 'Sets' }}</span>
                             </div>
                             @if($matrixHasGrid)
                                 <p class="text-[11px] text-neutral-500 mt-1">{{ __('Auto-calculated from the color × size inventory below.') }}</p>
@@ -763,7 +763,7 @@
                             <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-800">{{ __('Inventory by Color & Size') }}</h3>
                             <p class="text-[11px] text-neutral-500 mb-3">{{ __('Enter the piece count for each color and size. Totals update automatically.') }}</p>
 
-                            <div class="overflow-x-auto rounded-xl border border-neutral-200">
+                            <div class="overflow-x-auto rounded-md border border-neutral-200">
                                 <table class="w-full text-sm">
                                     <thead class="bg-neutral-50 text-[11px] font-bold uppercase tracking-wider text-neutral-600">
                                         <tr>
@@ -822,7 +822,7 @@
 
                         <div class="space-y-3">
                             <template x-for="(tier, tIdx) in tierPrices" :key="tIdx">
-                                <div class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] items-center p-3 rounded-xl border border-neutral-200 bg-neutral-50/50">
+                                <div class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] items-center p-3 rounded-md border border-neutral-200 bg-neutral-50/50">
                                     <div>
                                         <label class="text-[10px] font-bold text-neutral-600 uppercase">{{ __('Min Qty') }}</label>
                                         <input type="number" min="1" class="form-input text-xs h-9" :name="`tier_prices[${tIdx}][min_quantity]`" x-model="tier.min_quantity" placeholder="40">
@@ -934,7 +934,7 @@
                     </div>
 
                     {{-- Enable Toggle --}}
-                    <div class="flex items-center justify-between rounded-xl border border-emerald-200/80 bg-emerald-50/30 p-4">
+                    <div class="flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/30 p-4">
                         <div>
                             <label class="text-sm font-bold text-emerald-900">{{ __('Enable Wholesale Rules') }}</label>
                             <p class="text-[11px] text-emerald-700/80 mt-0.5">{{ __('Enforce size ratios, minimum sizes, and MOQ for wholesale buyers.') }}</p>
@@ -949,7 +949,7 @@
                         {{-- ══════ Settings Summary Cards ══════ --}}
                         <div class="grid grid-cols-3 gap-3">
                             {{-- Main MOQ Card --}}
-                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
                                 <div>
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{{ __('Main MOQ') }}</p>
                                     <p class="text-xl font-black text-neutral-900 mt-0.5"><span x-text="wsMainMoq || 0"></span> <span class="text-xs font-semibold text-neutral-400">{{ __('pcs') }}</span></p>
@@ -958,7 +958,7 @@
                             </div>
 
                             {{-- Min Sizes Card --}}
-                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
                                 <div>
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{{ __('Min Sizes') }}</p>
                                     <p class="text-xl font-black text-neutral-900 mt-0.5">
@@ -971,7 +971,7 @@
                             </div>
 
                             {{-- Per-Color MOQ Card --}}
-                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
                                 <div>
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{{ __('Per-Color MOQ') }}</p>
                                     <p class="text-xl font-black text-neutral-900 mt-0.5"><span x-text="wsColorMoq || 1"></span> <span class="text-xs font-semibold text-neutral-400">{{ __('pcs/size') }}</span></p>
@@ -983,7 +983,7 @@
                         {{-- ══════ Settings Edit Modal ══════ --}}
                         <template x-if="editingSettings">
                             <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingSettings = false" @click.self="editingSettings = false">
-                                <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
+                                <div class="relative w-full max-w-lg rounded-md bg-white shadow-xl">
                                     <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
                                         <h3 class="text-base font-bold text-neutral-900 flex items-center gap-2">
                                             <i class="ph ph-gear text-lg text-neutral-500"></i>
@@ -999,7 +999,7 @@
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Total pieces buyer must reach before ordering.') }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_main_moq" x-model="wsMainMoq" placeholder="40">
-                                                <span class="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">{{ __('pcs total') }}</span>
+                                                <span class="rounded-md bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">{{ __('pcs total') }}</span>
                                             </div>
                                         </div>
                                         <div>
@@ -1007,7 +1007,7 @@
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Store setup rule: how many sizes each pack must contain (shown for your own planning). Buyers never pick sizes — they order whole packs, so this does not limit their order.') }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" :max="productSizes.length || 20" class="form-input text-sm font-bold flex-1" name="ws_min_sizes" x-model="wsMinSizes" :placeholder="productSizes.length || '5'">
-                                                <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700" x-text="'of ' + productSizes.length + ' sizes'"></span>
+                                                <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700" x-text="'of ' + productSizes.length + ' sizes'"></span>
                                             </div>
                                         </div>
                                         <div>
@@ -1015,7 +1015,7 @@
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Default pieces per size when a color is selected.') }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_color_moq" x-model="wsColorMoq" placeholder="1">
-                                                <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('pcs/size') }}</span>
+                                                <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('pcs/size') }}</span>
                                             </div>
                                         </div>
                                         <div>
@@ -1023,7 +1023,7 @@
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Scale factor applied to all ratios (e.g. ×2 doubles everything).') }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_ratio_multiplier" x-model="wsRatioMultiplier" placeholder="1">
-                                                <span class="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">× {{ __('multiplier') }}</span>
+                                                <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">× {{ __('multiplier') }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1040,21 +1040,21 @@
                             <p class="text-[11px] text-neutral-500 mb-3">{{ __('Click "Edit" to set how many pieces of each size per color. Auto-populated from your sizes.') }}</p>
 
                             <template x-if="productSizes.length === 0">
-                                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                                <div class="rounded-md border border-amber-200 bg-amber-50 p-4 text-center">
                                     <i class="ph ph-warning text-xl text-amber-600"></i>
                                     <p class="text-xs text-amber-800 font-semibold mt-1">{{ __('No sizes defined yet. Add sizes in Step 3 first.') }}</p>
                                 </div>
                             </template>
 
                             <template x-if="!colors.length">
-                                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                                <div class="rounded-md border border-amber-200 bg-amber-50 p-4 text-center">
                                     <i class="ph ph-warning text-xl text-amber-600"></i>
                                     <p class="text-xs text-amber-800 font-semibold mt-1">{{ __('No colors defined yet. Add colors in Step 4 first.') }}</p>
                                 </div>
                             </template>
 
                             <template x-if="productSizes.length > 0 && colors.length > 0">
-                                <div class="rounded-xl border border-neutral-200 overflow-hidden divide-y divide-neutral-200">
+                                <div class="rounded-md border border-neutral-200 overflow-hidden divide-y divide-neutral-200">
                                     <template x-for="(color, cIdx) in colors" :key="color.id || cIdx">
                                         <div class="flex items-center gap-3 px-4 py-3 bg-white hover:bg-neutral-50/50 transition-colors">
                                             {{-- Color Swatch --}}
@@ -1067,7 +1067,7 @@
                                             <span class="text-[11px] text-neutral-500 font-mono flex-1 truncate" x-text="colorRatioSummary(color.id || cIdx)"></span>
 
                                             {{-- Total Badge --}}
-                                            <span class="rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 shrink-0" x-text="'= ' + colorTotalPcs(color.id || cIdx) + ' pcs'"></span>
+                                            <span class="rounded-sm bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 shrink-0" x-text="'= ' + colorTotalPcs(color.id || cIdx) + ' pcs'"></span>
 
                                             {{-- Edit Button --}}
                                             <button type="button" class="btn btn-sm btn-outline text-[10px] px-3 py-1 shrink-0" @click="editingColorKey = color.id || cIdx">
@@ -1082,7 +1082,7 @@
                         {{-- ══════ Edit Color Ratios Modal ══════ --}}
                         <template x-if="editingColorKey !== null">
                             <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingColorKey = null" @click.self="editingColorKey = null">
-                                <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+                                <div class="relative w-full max-w-2xl rounded-md bg-white shadow-xl">
                                     {{-- Modal Header --}}
                                     <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
                                         <h3 class="text-base font-bold text-neutral-900 flex items-center gap-2">
@@ -1103,7 +1103,7 @@
                                     {{-- Modal Body — Size Ratio Grid --}}
                                     <div class="px-6 py-5">
                                         <p class="text-[11px] text-neutral-500 mb-4">{{ __('Set the number of pieces for each size. These values define how many units per size the buyer gets when selecting this color.') }}</p>
-                                        <div class="grid gap-px bg-neutral-200 rounded-xl overflow-hidden" :style="`grid-template-columns: repeat(${Math.min(productSizes.length, 8)}, 1fr)`">
+                                        <div class="grid gap-px bg-neutral-200 rounded-md overflow-hidden" :style="`grid-template-columns: repeat(${Math.min(productSizes.length, 8)}, 1fr)`">
                                             <template x-for="sz in productSizes" :key="sz">
                                                 <div class="bg-white p-3 flex flex-col items-center gap-2">
                                                     <span class="text-[10px] font-black uppercase tracking-wider text-neutral-600" x-text="sz"></span>
@@ -1121,7 +1121,7 @@
                                         </div>
 
                                         {{-- Per-Color Total --}}
-                                        <div class="mt-4 rounded-lg bg-neutral-50 border border-neutral-200 p-3 flex items-center justify-between">
+                                        <div class="mt-4 rounded-md bg-neutral-50 border border-neutral-200 p-3 flex items-center justify-between">
                                             <span class="text-xs text-neutral-600">{{ __('Total for this color:') }}</span>
                                             <span class="text-sm font-black text-neutral-900" x-text="colorTotalPcs(editingColorKey) + ' pcs'"></span>
                                         </div>
@@ -1147,19 +1147,19 @@
                         </template>
 
                         {{-- ══════ Order Preview ══════ --}}
-                        <div class="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+                        <div class="rounded-md border border-blue-200 bg-blue-50/50 p-4">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-blue-800 mb-2"><i class="ph ph-calculator"></i> {{ __('Order Preview') }}</h4>
                             <div class="grid gap-3 sm:grid-cols-3 text-center">
-                                <div class="rounded-lg bg-white border border-blue-100 p-3 shadow-2xs">
+                                <div class="rounded-md bg-white border border-blue-100 p-3 shadow-2xs">
                                     <p class="text-2xl font-black text-blue-700" x-text="totalPerColor"></p>
                                     <p class="text-[10px] font-bold text-blue-600 uppercase">{{ __('pcs / color') }}</p>
                                 </div>
-                                <div class="rounded-lg bg-white border border-blue-100 p-3 shadow-2xs">
+                                <div class="rounded-md bg-white border border-blue-100 p-3 shadow-2xs">
                                     <p class="text-2xl font-black text-blue-700" x-text="colorsNeeded"></p>
                                     <p class="text-[10px] font-bold text-blue-600 uppercase">{{ __('colors needed') }}</p>
                                     <p class="text-[9px] text-blue-500">{{ __('to reach main MOQ') }}</p>
                                 </div>
-                                <div class="rounded-lg bg-white border border-emerald-100 p-3 shadow-2xs">
+                                <div class="rounded-md bg-white border border-emerald-100 p-3 shadow-2xs">
                                     <p class="text-2xl font-black text-emerald-700" x-text="wsMainMoq"></p>
                                     <p class="text-[10px] font-bold text-emerald-600 uppercase">{{ __('main MOQ') }}</p>
                                     <p class="text-[9px] text-emerald-500">{{ __('minimum total order') }}</p>
@@ -1198,7 +1198,7 @@
                     {{-- Feature Highlights List --}}
                     <div class="mt-5 space-y-3">
                         <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
-                            <div class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 bg-white shadow-2xs">
+                            <div class="flex items-center gap-3 p-3 rounded-md border border-neutral-200 bg-white shadow-2xs">
                                 <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
                                     <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
                                 </div>
@@ -1361,7 +1361,7 @@
         {{-- Color Images Management Modal --}}
         <template x-if="editingColorIndex !== null">
             <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingColorIndex = null" @click.self="editingColorIndex = null">
-                <div class="relative flex max-h-[90dvh] w-full max-w-[1280px] flex-col rounded-2xl bg-white shadow-xl">
+                <div class="relative flex max-h-[90dvh] w-full max-w-[1280px] flex-col rounded-md bg-white shadow-xl">
                     {{-- Modal Header --}}
                     <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-neutral-100 px-4 py-4 sm:px-6">
                         <h3 class="text-lg font-bold text-neutral-900 flex items-center gap-2">
@@ -1372,7 +1372,7 @@
                             {{-- Color Picker Enable/Disable Button --}}
                             <button
                                 type="button"
-                                class="btn btn-xs rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border"
+                                class="btn btn-xs rounded-sm px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border"
                                 :class="colorModalEyedropperEnabled ? 'bg-primary text-white border-primary shadow-xs' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'"
                                 @click="colorModalEyedropperEnabled = !colorModalEyedropperEnabled; if (!colorModalEyedropperEnabled && window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();"
                                 title="{{ __('When enabled, hover over any image to see color code, and click to copy color code.') }}"
@@ -1394,7 +1394,7 @@
                         
                         <div class="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {{-- Add New Image Button --}}
-                            <button type="button" class="min-h-48 w-full rounded-xl border-2 border-dashed border-neutral-300 hover:border-primary bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 hover:text-primary transition shadow-2xs cursor-pointer" @click="openMediaPickerForColor(editingColorIndex)">
+                            <button type="button" class="min-h-48 w-full rounded-sm border-2 border-dashed border-neutral-300 hover:border-primary bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 hover:text-primary transition shadow-2xs cursor-pointer" @click="openMediaPickerForColor(editingColorIndex)">
                                 <i class="ph ph-plus text-2xl mb-1"></i>
                                 <span class="text-[10px] font-semibold uppercase tracking-wider">{{ __('Add') }}</span>
                             </button>
@@ -1405,7 +1405,7 @@
                                     <img 
                                         :src="cMedia.url" 
                                         crossorigin="anonymous"
-                                        class="block h-auto w-full rounded-xl border-2 shadow-2xs cursor-pointer transition select-none"
+                                        class="block h-auto w-full rounded-md border-2 shadow-2xs cursor-pointer transition select-none"
                                         :class="[
                                             colors[editingColorIndex].swatch_media_id == cMedia.id ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-neutral-200 hover:border-neutral-400',
                                             colorModalEyedropperEnabled ? 'cursor-crosshair inspecting-color-target' : ''
@@ -1445,7 +1445,7 @@
                                     </template>
 
                                     {{-- Remove Action --}}
-                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaFromColor(cMedia.id, editingColorIndex)" title="{{ __('Remove Image') }}">
+                                    <button type="button" class="absolute -top-2 -right-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-sm p-1 opacity-0 group-hover:opacity-100 transition shadow-md z-10 border border-neutral-200" @click.stop="removeMediaFromColor(cMedia.id, editingColorIndex)" title="{{ __('Remove Image') }}">
                                         <i class="ph ph-trash text-xs"></i>
                                     </button>
                                 </div>

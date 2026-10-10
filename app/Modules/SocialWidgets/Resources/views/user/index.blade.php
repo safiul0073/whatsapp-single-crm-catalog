@@ -26,7 +26,7 @@
                 {{ __('Create your first') }} <span class="italic text-primary">{{ __('widget') }}</span>.
             </h3>
             <p class="m-text mx-auto mt-4 max-w-lg">{{ __('Show your :label on your website with a layout picked for your brand. Every detail is editable.', ['label' => $providerLabel]) }}</p>
-            <a href="{{ route('user.social-widgets.layouts', $provider) }}" class="btn btn-primary mt-8 rounded-full px-7">
+            <a href="{{ route('user.social-widgets.layouts', $provider) }}" class="btn btn-primary mt-8 rounded-sm px-7">
                 <i class="ph ph-sparkle text-base"></i>
                 {{ __('Create new widget') }}
                 <i class="ph ph-arrow-right text-base"></i>
@@ -38,7 +38,7 @@
             @foreach ($widgets as $widget)
                 <article class="app-card flex flex-col p-5" data-social-widget="{{ $widget->id }}">
                     <div class="flex items-start justify-between gap-3">
-                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                             <i class="ph {{ $widget->layout->icon() }} text-2xl"></i>
                         </span>
                         <span class="badge {{ $widget->isPublished() ? 'badge-success' : 'badge-light' }}">{{ $widget->isPublished() ? __('Published') : __('Draft') }}</span>

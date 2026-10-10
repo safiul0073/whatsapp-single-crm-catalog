@@ -10,7 +10,7 @@
     radial-gradient(120% 80% at 80% 0%, rgba(33, 72, 255, 0.22), transparent 60%),
     radial-gradient(80% 60% at 0% 100%, rgba(22, 199, 132, 0.1), transparent 60%),
     linear-gradient(180deg, #15164f 0%, #0b0b33 100%);
-  border-radius: clamp(20px, 3vw, 36px);
+  border-radius: var(--radius-md);
   padding: clamp(48px, 6vw, 88px) clamp(24px, 4vw, 64px);
   overflow: hidden;
   isolation: isolate;
@@ -107,7 +107,7 @@
     radial-gradient(140% 100% at 50% 0%, color-mix(in srgb, var(--card-tint, #2148ff) 18%, transparent) 0%, color-mix(in srgb, var(--card-tint, #2148ff) 6%, transparent) 60%, transparent 100%),
     rgba(0, 0, 0, 0.3);
   border: 1px solid color-mix(in srgb, var(--card-tint, #fff) 18%, rgba(255, 255, 255, 0.08));
-  border-radius: clamp(16px, 1.6vw, 22px);
+  border-radius: var(--radius-md);
   opacity: 0;
   transform: translateY(12px);
   animation: stk2-card-in 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -142,7 +142,7 @@
   position: relative;
   width: 64px;
   height: 64px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: inline-grid;

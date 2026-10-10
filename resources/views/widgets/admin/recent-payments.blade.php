@@ -9,7 +9,7 @@
         <div class="space-y-2">
             @foreach($recentPayments as $payment)
                 <div class="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-0 p-3">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-md bg-success/10 text-success">
                         <i class="ph ph-credit-card"></i>
                     </div>
                     <div class="min-w-0 flex-1">

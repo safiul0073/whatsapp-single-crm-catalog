@@ -53,11 +53,11 @@
                         <x-forms.input :label="__('Generated Leads / Month')" name="max_ai_lead_results_per_month" type="number" min="0" :value="$limits['max_ai_lead_results_per_month'] ?? null" />
                         <x-forms.input :label="__('Platform AI Credits')" name="max_ai_credits" type="number" min="0" :value="$limits['max_ai_credits'] ?? null" />
                     </div>
-                    <div class="mt-4 rounded-lg border border-neutral-100 bg-section p-4">
+                    <div class="mt-4 rounded-md border border-neutral-100 bg-section p-4">
                         <x-forms.toggle :label="__('Premium: AI automation builder')" name="automation_ai_builder" :checked="(bool) ($limits['automation_ai_builder'] ?? false)" />
                         <p class="mt-2 text-xs text-neutral-500">{{ __('Allows users on this plan to generate automation flows with AI.') }}</p>
                     </div>
-                    <div class="mt-4 rounded-lg border border-neutral-100 bg-section p-4">
+                    <div class="mt-4 rounded-md border border-neutral-100 bg-section p-4">
                         <x-forms.toggle :label="__('Premium: AI Campaign Doctor')" name="campaign_ai_doctor" :checked="(bool) ($limits['campaign_ai_doctor'] ?? false)" />
                         <p class="mt-2 text-xs text-neutral-500">{{ __('Allows users on this plan to review campaign risk before sending.') }}</p>
                     </div>

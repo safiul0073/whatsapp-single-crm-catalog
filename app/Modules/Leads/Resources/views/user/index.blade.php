@@ -363,7 +363,7 @@
                     </div>
                     <form method="POST" action="{{ route('user.leads.generate') }}" class="mt-4 space-y-4">
                         @csrf
-                        <div class="space-y-2 rounded-lg border border-neutral-100 bg-section p-3 text-sm text-body">
+                        <div class="space-y-2 rounded-md border border-neutral-100 bg-section p-3 text-sm text-body">
                             <p>
                                 <span class="font-semibold text-title">{{ __('Place source') }}:</span>
                                 {{ $placeApiLabel }}
@@ -464,7 +464,7 @@
                             </div>
                             <form method="POST" action="{{ route('user.leads.send-message', $lead) }}" class="mt-4 space-y-4">
                                 @csrf
-                                <div class="rounded-lg border border-neutral-100 bg-section p-3">
+                                <div class="rounded-md border border-neutral-100 bg-section p-3">
                                     <p class="font-semibold text-title">{{ $lead->name ?: $lead->company ?: __('Unnamed lead') }}</p>
                                     <p class="mt-1 text-sm text-body">{{ collect([$lead->phone, $lead->email])->filter()->implode(' | ') }}</p>
                                 </div>

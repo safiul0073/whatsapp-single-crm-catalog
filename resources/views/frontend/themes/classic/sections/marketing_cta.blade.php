@@ -2,7 +2,7 @@
 <section class="spy-section">
     <div class="container">
         <div
-            class="cta-parallax flex min-h-72 items-center rounded-3xl px-6 py-12 text-neutral-0 sm:px-10 lg:px-14"
+            class="cta-parallax flex min-h-72 items-center rounded-md px-6 py-12 text-neutral-0 sm:px-10 lg:px-14"
             data-parallax
             data-parallax-speed="0.3"
         >

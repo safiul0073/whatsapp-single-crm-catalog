@@ -24,7 +24,7 @@
     margin-left: auto;
     overflow: hidden;
     border: 1px solid rgba(16, 24, 40, 0.12);
-    border-radius: 1.35rem;
+    border-radius: 12px;
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.98), var(--cookie-surface)),
       linear-gradient(135deg, color-mix(in srgb, var(--cookie-primary) 10%, #fff), #fff);
@@ -50,7 +50,7 @@
   .cookie-consent__icon {
     width: 2.75rem;
     height: 2.75rem;
-    border-radius: 1rem;
+    border-radius: 12px;
     display: grid;
     place-items: center;
     color: #fff;
@@ -88,7 +88,7 @@
   .cookie-consent__badge {
     flex: 0 0 auto;
     border: 1px solid color-mix(in srgb, var(--cookie-primary) 24%, transparent);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--cookie-primary) 10%, #fff);
     color: color-mix(in srgb, var(--cookie-primary) 70%, #0f172a);
     font-size: 0.68rem;
@@ -121,7 +121,7 @@
     justify-content: center;
     min-height: 2.75rem;
     border: 1px solid rgba(16, 24, 40, 0.12);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     color: var(--cookie-ink);
     font-weight: 700;
     font-size: 0.9rem;
@@ -139,7 +139,7 @@
 
   .cookie-consent__button {
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--cookie-primary);
     color: #fff;
     cursor: pointer;
@@ -198,7 +198,7 @@
 
 @media (max-width: 420px) {
   .cookie-consent__panel {
-    border-radius: 1.15rem;
+    border-radius: 12px;
   }
 
   .cookie-consent__actions {

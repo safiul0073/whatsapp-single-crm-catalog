@@ -291,7 +291,7 @@
                   </div>
                   @empty
                   <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-                    <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                       <i class="ph ph-users text-2xl"></i>
                     </span>
                     <h3 class="heading-4 mt-4">No contacts yet</h3>
@@ -315,7 +315,7 @@
                 data-empty-state
                 data-filter-empty
               >
-                <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                   <i class="ph ph-magnifying-glass text-2xl"></i>
                 </span>
                 <h3 class="heading-4 mt-4">No contacts match</h3>
@@ -355,7 +355,7 @@
         <div class="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-0 px-4 py-3 sm:px-5">
           <div class="flex items-center justify-between gap-4">
             <div class="flex min-w-0 items-start gap-3">
-              <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                 <i class="ph text-lg" :class="editing ? 'ph-user-circle-gear' : 'ph-user-plus'"></i>
               </span>
               <div class="min-w-0">
@@ -376,9 +376,9 @@
           <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
             <div class="grid gap-4 lg:grid-cols-[minmax(26rem,1fr)_20rem]">
               <div class="space-y-4">
-                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                <section class="rounded-md border border-neutral-200 bg-neutral-0 p-3.5">
                   <div class="mb-3 flex items-center gap-2">
-                    <span class="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <span class="grid h-7 w-7 place-items-center rounded-md bg-primary/10 text-primary">
                       <i class="ph ph-identification-card text-base"></i>
                     </span>
                     <div>
@@ -390,35 +390,35 @@
                   <div class="grid gap-3 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                       <label for="contactName" class="form-label">Name <span class="text-error">*</span></label>
-                      <input id="contactName" name="name" type="text" required x-model="form.name" class="form-input !h-11 !rounded-xl text-sm" placeholder="e.g. Nusrat Ahmed" />
+                      <input id="contactName" name="name" type="text" required x-model="form.name" class="form-input !h-11 !rounded-sm text-sm" placeholder="e.g. Nusrat Ahmed" />
                     </div>
 
                     <div class="sm:col-span-2">
                       <label for="contactPhone" class="form-label">WhatsApp number <span class="text-error">*</span></label>
                       <div class="grid gap-2 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-                        <select x-model="form.phone_code" class="form-input min-w-0 !h-11 !rounded-xl text-sm" aria-label="Phone country code" @change="applyPhoneCode()">
+                        <select x-model="form.phone_code" class="form-input min-w-0 !h-11 !rounded-sm text-sm" aria-label="Phone country code" @change="applyPhoneCode()">
                           <template x-for="country in phoneCountries" :key="country.code">
                             <option :value="country.dial" x-text="country.label"></option>
                           </template>
                         </select>
-                        <input id="contactPhone" name="phone" type="tel" required x-model="form.phone" placeholder="1712345678" class="form-input min-w-0 !h-11 !rounded-xl text-sm" @blur="applyPhoneCode()" />
+                        <input id="contactPhone" name="phone" type="tel" required x-model="form.phone" placeholder="1712345678" class="form-input min-w-0 !h-11 !rounded-sm text-sm" @blur="applyPhoneCode()" />
                       </div>
                       <p class="form-hint">Choose a country code, then enter the number. The prefix is added automatically.</p>
                     </div>
 
                     <div class="sm:col-span-2">
                       <label for="contactEmail" class="form-label">Email</label>
-                      <input id="contactEmail" name="email" type="email" x-model="form.email" class="form-input !h-11 !rounded-xl text-sm" placeholder="name@example.com" />
+                      <input id="contactEmail" name="email" type="email" x-model="form.email" class="form-input !h-11 !rounded-sm text-sm" placeholder="name@example.com" />
                     </div>
 
                     <div>
                       <label for="contactCity" class="form-label">City</label>
-                      <input id="contactCity" name="city" type="text" x-model="form.city" class="form-input !h-11 !rounded-xl text-sm" placeholder="Dhaka" />
+                      <input id="contactCity" name="city" type="text" x-model="form.city" class="form-input !h-11 !rounded-sm text-sm" placeholder="Dhaka" />
                     </div>
 
                     <div>
                       <label for="contactCountry" class="form-label">Country</label>
-                      <select id="contactCountry" name="country" x-model="form.country" class="form-input !h-11 !rounded-xl text-sm">
+                      <select id="contactCountry" name="country" x-model="form.country" class="form-input !h-11 !rounded-sm text-sm">
                         <option value="">Select country...</option>
                         <option value="BD">Bangladesh (+880)</option>
                         <option value="US">United States (+1)</option>
@@ -467,10 +467,10 @@
                   </div>
                 </section>
 
-                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                <section class="rounded-md border border-neutral-200 bg-neutral-0 p-3.5">
                   <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
                     <div class="flex items-center gap-2">
-                      <span class="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <span class="grid h-7 w-7 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-brackets-curly text-base"></i>
                       </span>
                       <div>
@@ -486,14 +486,14 @@
 
                   <div>
                     <label for="contactWebsite" class="form-label">Website</label>
-                    <input id="contactWebsite" name="custom_fields[website]" type="text" x-model="form.custom_fields.website" placeholder="example.com" class="form-input !h-11 !rounded-xl text-sm" />
+                    <input id="contactWebsite" name="custom_fields[website]" type="text" x-model="form.custom_fields.website" placeholder="example.com" class="form-input !h-11 !rounded-sm text-sm" />
                   </div>
 
                   <div class="mt-2 space-y-2">
                     <template x-for="(field, index) in form.custom_field_rows" :key="field.id">
                       <div class="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_2.5rem]">
-                        <input type="text" class="form-input !h-10 !rounded-xl text-sm" x-model="field.key" placeholder="order_id" aria-label="Custom field name" />
-                        <input type="text" class="form-input !h-10 !rounded-xl text-sm" :name="field.key ? `custom_fields[${field.key}]` : ''" x-model="field.value" placeholder="A-100" aria-label="Custom field value" />
+                        <input type="text" class="form-input !h-10 !rounded-sm text-sm" x-model="field.key" placeholder="order_id" aria-label="Custom field name" />
+                        <input type="text" class="form-input !h-10 !rounded-sm text-sm" :name="field.key ? `custom_fields[${field.key}]` : ''" x-model="field.value" placeholder="A-100" aria-label="Custom field value" />
                         <button type="button" class="row-action" aria-label="Remove custom field" @click="removeCustomField(index)">
                           <i class="ph ph-trash text-base"></i>
                         </button>
@@ -504,7 +504,7 @@
               </div>
 
               <aside class="space-y-4">
-                <section class="rounded-lg border border-neutral-200 bg-section p-3.5">
+                <section class="rounded-md border border-neutral-200 bg-section p-3.5">
                   <div class="flex items-center gap-3">
                     <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary" x-text="(form.name || 'NA').slice(0, 2).toUpperCase()"></span>
                     <div class="min-w-0">
@@ -512,7 +512,7 @@
                       <p class="truncate text-xs text-body" x-text="form.phone || 'WhatsApp number required'"></p>
                     </div>
                   </div>
-                  <label class="mt-3 flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-3">
+                  <label class="mt-3 flex items-start gap-3 rounded-md border border-neutral-200 bg-neutral-0 p-3">
                     <input type="checkbox" name="opt_in_status" value="subscribed" class="app-checkbox mt-0.5" x-bind:checked="form.opt_in_status === 'subscribed'"
                       @change="form.opt_in_status = $event.target.checked ? 'subscribed' : 'unknown'" />
                     <span>
@@ -522,7 +522,7 @@
                   </label>
                 </section>
 
-                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                <section class="rounded-md border border-neutral-200 bg-neutral-0 p-3.5">
                   <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h4 class="text-sm font-semibold text-title">Tags</h4>
@@ -535,7 +535,7 @@
                       <button
                         type="button"
                         @click="toggleTag(tag.id)"
-                        class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
+                        class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-medium transition-all duration-150"
                         :class="form.tag_ids.includes(tag.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
                       >
                         <span x-show="form.tag_ids.includes(tag.id)">
@@ -555,7 +555,7 @@
                   </template>
                 </section>
 
-                <section class="rounded-lg border border-neutral-200 bg-neutral-0 p-3.5">
+                <section class="rounded-md border border-neutral-200 bg-neutral-0 p-3.5">
                   <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h4 class="text-sm font-semibold text-title">Groups</h4>
@@ -568,7 +568,7 @@
                       <button
                         type="button"
                         @click="toggleGroup(group.id)"
-                        class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
+                        class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-medium transition-all duration-150"
                         :class="form.group_ids.includes(group.id) ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-neutral-0 border-neutral-200 text-body hover:border-neutral-300 hover:text-title'"
                       >
                         <span x-show="form.group_ids.includes(group.id)">
@@ -589,8 +589,8 @@
           </div>
 
           <div class="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-neutral-200 bg-neutral-0 px-4 py-3 shadow-[0_-8px_20px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-end sm:px-5">
-            <button type="button" class="btn btn-outline justify-center !h-11 !rounded-xl" data-modal-close>Cancel</button>
-            <button type="submit" class="btn btn-primary justify-center !h-11 !rounded-xl sm:min-w-44" x-text="editing ? 'Save changes' : 'Save contact'">Save Contact</button>
+            <button type="button" class="btn btn-outline justify-center !h-11 !rounded-sm" data-modal-close>Cancel</button>
+            <button type="submit" class="btn btn-primary justify-center !h-11 !rounded-sm sm:min-w-44" x-text="editing ? 'Save changes' : 'Save contact'">Save Contact</button>
           </div>
         </form>
       </div>
@@ -610,7 +610,7 @@
         </div>
 
         <div class="mt-4 space-y-4">
-          <div class="rounded-xl border border-neutral-200 bg-section p-3">
+          <div class="rounded-md border border-neutral-200 bg-section p-3">
             <p class="text-sm font-semibold text-title" x-text="contact.name || '{{ __('Selected contact') }}'"></p>
             <p class="text-xs text-body">
               <span x-text="contact.phone || '{{ __('No phone') }}'"></span>
@@ -767,7 +767,7 @@
 
           <form class="mt-5" @submit.prevent="submitImport">
             <section x-show="step === 1" x-cloak class="wizard-panel" :class="{ 'is-active': step === 1 }">
-              <div class="upload-drop cursor-pointer rounded-2xl border-2 border-dashed border-neutral-300 p-8 text-center transition-colors hover:border-primary/60 hover:bg-primary/5"
+              <div class="upload-drop cursor-pointer rounded-md border-2 border-dashed border-neutral-300 p-8 text-center transition-colors hover:border-primary/60 hover:bg-primary/5"
                 :class="{ 'border-primary bg-primary/5': dragging }"
                 @click="$refs.fileInput.click()"
                 @dragover.prevent="dragging = true"
@@ -805,7 +805,7 @@
                 <span class="text-xs text-neutral-400">Fill in your contacts and upload below</span>
               </div>
 
-              <div class="mt-4 rounded-xl border border-neutral-200" x-data="{ guideOpen: false }">
+              <div class="mt-4 rounded-md border border-neutral-200" x-data="{ guideOpen: false }">
                 <button type="button" class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-title hover:bg-neutral-50" @click="guideOpen = !guideOpen">
                   <span><i class="ph ph-book-open-text mr-1.5 text-base text-neutral-400"></i> How to prepare your file</span>
                   <i class="ph text-base text-neutral-400 transition-transform duration-200" :class="guideOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
@@ -815,7 +815,7 @@
                   <div class="border-t border-neutral-200 px-4 py-4 space-y-4">
                     <div>
                       <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">Column Reference</p>
-                      <div class="overflow-x-auto rounded-lg border border-neutral-200">
+                      <div class="overflow-x-auto rounded-md border border-neutral-200">
                         <table class="w-full text-left text-xs">
                           <thead>
                             <tr class="border-b border-neutral-200 bg-neutral-50">
@@ -897,7 +897,7 @@
                       </ol>
                     </div>
 
-                    <div class="rounded-lg border border-warning/30 bg-warning/5 p-3">
+                    <div class="rounded-md border border-warning/30 bg-warning/5 p-3">
                       <p class="text-xs font-semibold text-warning-dark mb-1"><i class="ph ph-warning mr-1 text-xs"></i> Phone format matters</p>
                       <p class="text-xs text-body">
                         Numbers without a <code class="rounded bg-neutral-200 px-1 text-xs">+</code> country code use the default country you pick below.<br>
@@ -997,15 +997,15 @@
               <p class="form-hint">Confirm the summary, then start the import.</p>
 
               <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-xl border border-neutral-200 p-4">
+                <div class="rounded-md border border-neutral-200 p-4">
                   <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">New</p>
                   <p class="mt-1.5 font-title text-2xl font-extrabold text-success" x-text="result.valid_rows || 0"></p>
                 </div>
-                <div class="rounded-xl border border-neutral-200 p-4">
+                <div class="rounded-md border border-neutral-200 p-4">
                   <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Skipped</p>
                   <p class="mt-1.5 font-title text-2xl font-extrabold text-error" x-text="result.invalid_rows || 0"></p>
                 </div>
-                <div class="rounded-xl border border-neutral-200 p-4">
+                <div class="rounded-md border border-neutral-200 p-4">
                   <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Total</p>
                   <p class="mt-1.5 font-title text-2xl font-extrabold text-title" x-text="result.total_rows || 0"></p>
                 </div>
@@ -1057,7 +1057,7 @@
             </section>
 
             <section x-show="step === 4" x-cloak class="wizard-panel" :class="{ 'is-active': step === 4 }" data-import-progress>
-              <div x-show="!importDone" class="flex items-center gap-3 rounded-xl border border-neutral-200 p-5">
+              <div x-show="!importDone" class="flex items-center gap-3 rounded-md border border-neutral-200 p-5">
                 <i class="ph ph-spinner animate-spin text-2xl text-primary"></i>
                 <div>
                   <p class="font-semibold text-title">Importing <span x-text="result.total_rows || 0"></span> rows…</p>
@@ -1069,15 +1069,15 @@
                 <p class="form-hint" x-show="importStatus === 'completed'">Import finished.</p>
                 <p class="text-sm text-error" x-show="importStatus === 'failed'" x-text="importFailureMessage"></p>
                 <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div class="rounded-xl border border-neutral-200 p-4">
+                  <div class="rounded-md border border-neutral-200 p-4">
                     <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">New</p>
                     <p class="mt-1.5 font-title text-2xl font-extrabold text-success" x-text="importSummary.created_rows || 0"></p>
                   </div>
-                  <div class="rounded-xl border border-neutral-200 p-4">
+                  <div class="rounded-md border border-neutral-200 p-4">
                     <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Updated</p>
                     <p class="mt-1.5 font-title text-2xl font-extrabold text-primary" x-text="importSummary.updated_rows || 0"></p>
                   </div>
-                  <div class="rounded-xl border border-neutral-200 p-4">
+                  <div class="rounded-md border border-neutral-200 p-4">
                     <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Skipped</p>
                     <p class="mt-1.5 font-title text-2xl font-extrabold text-error" x-text="(importSummary.skipped_rows || 0) + (importSummary.failed_rows || 0)"></p>
                   </div>
@@ -1085,7 +1085,7 @@
                 <p class="mt-3 text-xs text-body" x-show="(importSummary.summary?.duplicates_in_file || 0) > 0">
                   <span x-text="importSummary.summary?.duplicates_in_file"></span> repeated rows in the file were merged into existing contacts.
                 </p>
-                <details class="mt-4 rounded-xl border border-neutral-200 p-4" x-show="(importSummary.errors || []).length">
+                <details class="mt-4 rounded-md border border-neutral-200 p-4" x-show="(importSummary.errors || []).length">
                   <summary class="cursor-pointer text-sm font-semibold text-title">Why rows were skipped</summary>
                   <ul class="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-body">
                     <template x-for="(reason, index) in importSummary.errors || []" :key="index">
@@ -1118,7 +1118,7 @@
               <p class="py-4 text-center text-sm text-neutral-400">No past imports yet.</p>
             </template>
             <template x-if="imports.length > 0">
-              <div class="overflow-x-auto rounded-lg border border-neutral-200">
+              <div class="overflow-x-auto rounded-md border border-neutral-200">
                 <table class="w-full text-left text-sm">
                   <thead>
                     <tr class="border-b border-neutral-200 bg-neutral-50">

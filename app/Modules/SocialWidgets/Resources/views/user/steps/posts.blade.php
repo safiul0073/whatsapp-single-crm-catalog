@@ -24,7 +24,7 @@
                     <x-social-widgets::segmented model="settings.click.action" :options="['popup' => __('Open Popup'), 'link' => __('Open Instagram')]" />
                 </div>
             </div>
-            <div class="space-y-4 rounded-lg border border-neutral-200 bg-white p-3" x-show="settings.click.action === 'popup'">
+            <div class="space-y-4 rounded-md border border-neutral-200 bg-white p-3" x-show="settings.click.action === 'popup'">
                 <p class="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-body">{{ __('Popup content') }}</p>
                 <div class="space-y-2.5">
                     <x-social-widgets::checkbox model="settings.click.popup.header" :label="__('Header')" />

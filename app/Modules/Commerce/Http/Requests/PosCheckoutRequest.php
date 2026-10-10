@@ -14,11 +14,23 @@ class PosCheckoutRequest extends CreateUnifiedOrderRequest
         if ($this->input('fulfillment_type') === 'delivery') {
             parent::prepareForValidation();
         }
+
+        $groups = is_array($this->input('groups')) ? $this->input('groups') : [];
+        foreach ($groups as $index => $group) {
+            if (($group['mode'] ?? null) === 'wholesale') {
+                $groups[$index]['box_count'] = 1;
+            }
+        }
+        $this->merge(['groups' => $groups]);
     }
 
     public function rules(): array
     {
         $rules = parent::rules();
+        unset($rules['groups.*.size_quantities']);
+        $rules['groups.*.size_quantities'] = ['required_if:groups.*.mode,wholesale', 'prohibited_if:groups.*.mode,retail', 'array', 'min:1', 'max:30'];
+        $rules['groups.*.size_quantities.*'] = ['required', 'integer', 'min:1', 'max:10000'];
+        $rules['groups.*.box_count'] = ['required_if:groups.*.mode,wholesale', 'in:1'];
         $rules['fulfillment_type'] = ['required', 'in:pickup,delivery'];
         $rules['walk_in'] = ['required', 'boolean'];
         $rules['handover'] = ['sometimes', 'boolean'];

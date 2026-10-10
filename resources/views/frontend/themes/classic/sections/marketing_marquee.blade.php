@@ -6,7 +6,7 @@
             <div class="marquee__track">
                 @foreach ($items as $item)
                     <span class="marquee__item display-1 {{ !empty($item['accent']) ? 'text-primary' : '' }}">{{ $item['text'] ?? '' }}</span>
-                    <span class="size-2.5 shrink-0 rounded-full bg-primary/40"></span>
+                    <span class="size-2.5 shrink-0 rounded-sm bg-primary/40"></span>
                 @endforeach
             </div>
         </div>

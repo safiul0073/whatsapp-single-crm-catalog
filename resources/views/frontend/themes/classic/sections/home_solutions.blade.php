@@ -81,7 +81,7 @@
                         $imageSlot = $category->media?->url ?? 'assets/images/sections/solutions/' . ($index + 1) . '.webp';
                     @endphp
                     <article
-                        class="sol3-banner {{ $colorClass }}{{ $isInverted ? ' is-inverted' : '' }} relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-16 items-center p-5 lg:p-8 rounded-[28px] border overflow-hidden opacity-0 translate-y-6"
+                        class="sol3-banner {{ $colorClass }}{{ $isInverted ? ' is-inverted' : '' }} relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-16 items-center p-5 lg:p-8 rounded-md border overflow-hidden opacity-0 translate-y-6"
                         data-sol-reveal>
                         <span
                             class="sol3-banner-block sol3-banner-block--a absolute rounded-[4px] pointer-events-none top-[14%] right-[6%] w-[8%] aspect-square bg-[rgba(33,72,255,0.06)] border border-[rgba(33,72,255,0.14)]"></span>
@@ -130,7 +130,7 @@
                         </div>
                         <div
                             class="sol3-banner-visual relative z-1 flex items-stretch justify-center min-h-[200px] lg:min-h-[320px]">
-                            <div class="absolute inset-0 rounded-[22px] overflow-hidden z-0 shadow-sol-photo">
+                            <div class="absolute inset-0 rounded-md overflow-hidden z-0 shadow-sol-photo">
                                 <img src="{{ $imageSlot }}" alt="" loading="lazy"
                                     class="w-full h-full object-cover object-center block saturate-[0.95] brightness-[0.98]" /><span
                                     class="sol3-banner-photo-tint absolute inset-0"></span>

@@ -70,7 +70,7 @@
     </div>
 
     @if ($errors->any())
-        <div class="mt-4 rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
+        <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
             <ul class="list-inside list-disc">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -115,7 +115,7 @@
                         @foreach ($campaignSteps as $step => $stepMeta)
                         <button
                             type="button"
-                            class="group relative flex items-center gap-3 rounded-xl px-3 py-2 text-left transition sm:flex-col sm:justify-start sm:gap-2 sm:px-2"
+                            class="group relative flex items-center gap-3 rounded-sm px-3 py-2 text-left transition sm:flex-col sm:justify-start sm:gap-2 sm:px-2"
                             :class="step === {{ $step }} ? 'text-primary' : (step > {{ $step }} ? 'text-title hover:bg-section' : 'text-neutral-400 hover:bg-section hover:text-title')"
                             :aria-current="step === {{ $step }} ? 'step' : null"
                             aria-label="{{ __('Go to :label', ['label' => $stepMeta['label']]) }}"
@@ -145,7 +145,7 @@
             <section class="app-card p-5 sm:p-6" x-show="step === 1" x-cloak>
                 <div class="flex items-start justify-between gap-3">
                     <div class="f-start gap-2.5">
-                        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                             <i class="ph ph-gear-six text-lg"></i>
                         </span>
                         <h3 class="heading-4">{{ __('Setup') }}</h3>
@@ -173,7 +173,7 @@
                                         x-model="channelId"
                                         @checked((string) $initialChannel === (string) $channel['id'])
                                     >
-                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-section text-primary">
+                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-section text-primary">
                                         <i class="ph {{ match ($channel['provider']) {
                                             'email' => 'ph-envelope-simple',
                                             'sms' => 'ph-chat-text',
@@ -190,7 +190,7 @@
                                     </span>
                                 </label>
                             @empty
-                                <div class="rounded-xl border border-dashed border-border p-4 text-sm text-neutral-500">
+                                <div class="rounded-md border border-dashed border-border p-4 text-sm text-neutral-500">
                                     {{ __('No connected campaign sender is available yet.') }}
                                     <a href="{{ route('user.channels.index') }}" class="font-semibold text-primary">{{ __('Connect a channel') }}</a>
                                 </div>
@@ -202,7 +202,7 @@
 
             <section class="app-card p-5 sm:p-6" x-show="step === 2" x-cloak>
                 <div class="f-start gap-2.5">
-                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-chat-circle-text text-lg"></i>
                     </span>
                     <h3 class="heading-4">{{ __('Compose') }}</h3>
@@ -270,7 +270,7 @@
                     </select>
                 </div>
 
-                <div class="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4" x-show="messageType === 'template' && provider === 'whatsapp' && selectedTemplate && selectedTemplate.kind !== 'standard'" x-cloak>
+                <div class="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4" x-show="messageType === 'template' && provider === 'whatsapp' && selectedTemplate && selectedTemplate.kind !== 'standard'" x-cloak>
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h4 class="font-semibold text-title">{{ __('WhatsApp commerce content') }}</h4>
@@ -317,7 +317,7 @@
                     <p class="form-hint">{{ __('The flow is stored with the campaign. Per-recipient automation execution is not triggered by this builder yet.') }}</p>
                 </div>
 
-                <div class="mt-5 rounded-xl border border-neutral-200 bg-section p-4" x-show="provider === 'whatsapp'">
+                <div class="mt-5 rounded-md border border-neutral-200 bg-section p-4" x-show="provider === 'whatsapp'">
                     <div class="flex items-start gap-3">
                         <input id="crm_create_lead_on_reply" name="settings[crm_create_lead_on_reply]" type="checkbox" value="1" class="app-checkbox mt-0.5" @checked(old('settings.crm_create_lead_on_reply', $campaign?->settings['crm_create_lead_on_reply'] ?? false))>
                         <div>
@@ -330,7 +330,7 @@
 
             <section class="app-card p-5 sm:p-6" x-show="step === 3" x-cloak>
                 <div class="f-start gap-2.5">
-                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-users-three text-lg"></i>
                     </span>
                     <h3 class="heading-4">{{ __('Recipients') }}</h3>
@@ -400,7 +400,7 @@
 
             <section class="app-card p-5 sm:p-6" x-show="step === 4" x-cloak>
                 <div class="f-start gap-2.5">
-                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-calendar-check text-lg"></i>
                     </span>
                     <h3 class="heading-4">{{ __('Schedule') }}</h3>
@@ -456,32 +456,32 @@
 
             <section class="app-card p-5 sm:p-6" x-show="step === 5" x-cloak>
                 <div class="f-start gap-2.5">
-                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-clipboard-text text-lg"></i>
                     </span>
                     <h3 class="heading-4">{{ __('Review') }}</h3>
                 </div>
 
                 <div class="mt-5 grid gap-4 sm:grid-cols-3">
-                    <div class="rounded-xl border border-border-soft p-4">
+                    <div class="rounded-md border border-border-soft p-4">
                         <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Sender') }}</p>
                         <p class="mt-2 font-semibold text-title" x-text="selectedChannel?.name || '{{ __('Not selected') }}'"></p>
                     </div>
-                    <div class="rounded-xl border border-border-soft p-4">
+                    <div class="rounded-md border border-border-soft p-4">
                         <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Mode') }}</p>
                         <p class="mt-2 font-semibold text-title" x-text="modeLabel"></p>
                     </div>
-                    <div class="rounded-xl border border-border-soft p-4">
+                    <div class="rounded-md border border-border-soft p-4">
                         <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Schedule') }}</p>
                         <p class="mt-2 font-semibold text-title" x-text="scheduleLabel"></p>
                     </div>
                 </div>
 
-                <div class="mt-5 rounded-xl border border-border-soft p-4">
+                <div class="mt-5 rounded-md border border-border-soft p-4">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                                     <i class="ph ph-stethoscope text-lg"></i>
                                 </span>
                                 <div>
@@ -496,23 +496,23 @@
                         </button>
                     </div>
 
-                    <div class="mt-4 rounded-lg border border-warning/20 bg-warning/10 p-4" x-show="!canUseCampaignDoctor" x-cloak>`
+                    <div class="mt-4 rounded-md border border-warning/20 bg-warning/10 p-4" x-show="!canUseCampaignDoctor" x-cloak>`
                         <p class="text-sm font-semibold text-warning">{{ __('AI Campaign Audit is premium') }}</p>
                         <p class="mt-1 text-xs text-neutral-500">{{ __('Upgrade your subscription plan to unlock opt-in, cost, fatigue, and block-risk checks.') }}</p>
                     </div>
 
-                    <div class="mt-4 rounded-lg border border-dashed border-border bg-section p-4" x-show="canUseCampaignDoctor && !doctor.report && !doctor.error" x-cloak>
+                    <div class="mt-4 rounded-md border border-dashed border-border bg-section p-4" x-show="canUseCampaignDoctor && !doctor.report && !doctor.error" x-cloak>
                         <p class="text-sm font-semibold text-title">{{ __('No diagnosis yet') }}</p>
                         <p class="m-text mt-1">{{ __('Run the audit from this review step. Findings are warnings only and will not block saving.') }}</p>
                     </div>
 
-                    <div class="mt-4 rounded-lg border border-warning/20 bg-warning/10 p-4" x-show="doctor.error" x-cloak>
+                    <div class="mt-4 rounded-md border border-warning/20 bg-warning/10 p-4" x-show="doctor.error" x-cloak>
                         <p class="text-sm font-semibold text-warning" x-text="doctor.error"></p>
                         <p class="mt-1 text-xs text-neutral-500" x-show="doctor.upgrade">{{ __('Upgrade your subscription plan to unlock campaign risk checks.') }}</p>
                     </div>
 
                     <div class="mt-4 space-y-4" x-show="doctor.report" x-cloak>
-                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-section p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-section p-4">
                             <div>
                                 <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Audit score') }}</p>
                                 <p class="mt-1 font-title text-2xl font-extrabold text-title">
@@ -524,7 +524,7 @@
 
                         <div class="grid gap-3 md:grid-cols-2">
                             <template x-for="item in doctor.report?.items || []" :key="item.key">
-                                <div class="rounded-lg border p-3" :class="doctorSeverityClasses(item.severity)">
+                                <div class="rounded-md border p-3" :class="doctorSeverityClasses(item.severity)">
                                     <div class="flex items-start justify-between gap-3">
                                         <p class="text-sm font-semibold text-title" x-text="item.label"></p>
                                         <span class="badge" :class="doctorBadgeClasses(item.severity)" x-text="item.severity"></span>
@@ -562,7 +562,7 @@
                     <p class="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">{{ __('Live summary') }}</p>
                 </div>
                 <div class="space-y-4 p-5">
-                    <div class="rounded-2xl bg-section p-4">
+                    <div class="rounded-md bg-section p-4">
                         <div class="mb-3 flex items-center gap-2">
                             <span class="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
                                 <i class="ph ph-broadcast text-lg"></i>
@@ -578,20 +578,20 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="min-h-[5rem] rounded-xl border border-border-soft p-3">
+                        <div class="min-h-[5rem] rounded-md border border-border-soft p-3">
                             <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Recipients') }}</p>
                             <p class="mt-1 font-title font-semibold text-title">{{ __('Counted') }}</p>
                             <p class="text-xs text-neutral-400">{{ __('on launch') }}</p>
                         </div>
-                        <div class="min-h-[5rem] rounded-xl border border-border-soft p-3">
+                        <div class="min-h-[5rem] rounded-md border border-border-soft p-3">
                             <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Mode') }}</p>
                             <p class="mt-1 font-semibold text-title" x-text="modeLabel"></p>
                         </div>
-                        <div class="min-h-[5rem] rounded-xl border border-border-soft p-3">
+                        <div class="min-h-[5rem] rounded-md border border-border-soft p-3">
                             <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Audience') }}</p>
                             <p class="mt-1 font-semibold text-title capitalize" x-text="audienceType"></p>
                         </div>
-                        <div class="min-h-[5rem] rounded-xl border border-border-soft p-3">
+                        <div class="min-h-[5rem] rounded-md border border-border-soft p-3">
                             <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">{{ __('Schedule') }}</p>
                             <p class="mt-1 font-semibold text-title" x-text="scheduleLabel"></p>
                         </div>

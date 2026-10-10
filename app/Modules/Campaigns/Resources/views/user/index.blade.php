@@ -13,7 +13,7 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+        <div class="mt-4 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
             {{ session('status') }}
         </div>
     @endif

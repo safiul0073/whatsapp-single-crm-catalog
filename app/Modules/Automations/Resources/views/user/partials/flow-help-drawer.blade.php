@@ -14,19 +14,19 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-5 sm:p-6">
-      <div class="flex items-center justify-between gap-2 rounded-lg border border-neutral-100 bg-section p-4">
+      <div class="flex items-center justify-between gap-2 rounded-md border border-neutral-100 bg-section p-4">
         <div class="min-w-0 text-center">
-          <span class="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-success/10 text-success"><i class="ph ph-play"></i></span>
+          <span class="mx-auto grid h-9 w-9 place-items-center rounded-md bg-success/10 text-success"><i class="ph ph-play"></i></span>
           <p class="mt-2 text-xs font-bold text-title">Start</p>
         </div>
         <i class="ph ph-arrow-right text-neutral-300"></i>
         <div class="min-w-0 text-center">
-          <span class="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-purple/10 text-purple"><i class="ph ph-git-branch"></i></span>
+          <span class="mx-auto grid h-9 w-9 place-items-center rounded-md bg-purple/10 text-purple"><i class="ph ph-git-branch"></i></span>
           <p class="mt-2 text-xs font-bold text-title">Decide</p>
         </div>
         <i class="ph ph-arrow-right text-neutral-300"></i>
         <div class="min-w-0 text-center">
-          <span class="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-info/10 text-info"><i class="ph ph-paper-plane-tilt"></i></span>
+          <span class="mx-auto grid h-9 w-9 place-items-center rounded-md bg-info/10 text-info"><i class="ph ph-paper-plane-tilt"></i></span>
           <p class="mt-2 text-xs font-bold text-title">Act</p>
         </div>
       </div>
@@ -57,7 +57,7 @@
         </ol>
       </div>
 
-      <div class="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+      <div class="mt-6 rounded-md border border-primary/20 bg-primary/5 p-4">
         <div class="flex gap-3">
           <i class="ph ph-lightbulb text-lg text-primary"></i>
           <div>

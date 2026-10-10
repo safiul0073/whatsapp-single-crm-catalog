@@ -19,7 +19,7 @@
                 {{-- Enable or Disable Color Picker Button on Gallery Topbar --}}
                 <button
                     type="button"
-                    class="btn btn-xs rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50"
+                    class="btn btn-xs rounded-sm px-2.5 py-1.5 flex items-center gap-1.5 font-bold transition shadow-2xs border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50"
                     data-media-color-picker-toggle
                     title="{{ __('Toggle Color Picker: tap to enable, then hover on any image to see color code and click to copy') }}"
                 >

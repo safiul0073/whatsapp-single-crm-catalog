@@ -9,10 +9,10 @@
     </div>
 
     <div class="max-w-2xl">
-        <div class="bg-white rounded-2xl border border-border-soft shadow-xs p-6 space-y-5">
+        <div class="bg-white rounded-md border border-border-soft shadow-xs p-6 space-y-5">
 
             <div class="flex items-center gap-3 pb-4 border-b border-border-soft">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-tint-blue text-brand-blue">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-tint-blue text-brand-blue">
                     <i class="ph ph-lifebuoy w-5 h-5"></i>
                 </div>
                 <div>
@@ -71,7 +71,7 @@
                     </label>
                     <input type="file" name="attachments[]" multiple
                         accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
-                        class="block w-full text-[12px] text-text-muted file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-bg-soft file:text-text-strong file:font-medium hover:file:bg-border-soft transition-colors">
+                        class="block w-full text-[12px] text-text-muted file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:bg-bg-soft file:text-text-strong file:font-medium hover:file:bg-border-soft transition-colors">
                     <p class="text-[11px] text-text-muted mt-1.5">
                         {{ __('Max :size MB each. Images, PDF, DOC, XLS, CSV, TXT, ZIP.', ['size' => config('support-tickets.attachments.max_size') / 1024]) }}
                     </p>
@@ -82,7 +82,7 @@
 
                 <div class="pt-1 flex items-center gap-3">
                     <button type="submit"
-                        class="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-6 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-colors">
+                        class="inline-flex items-center gap-2 rounded-sm bg-brand-blue px-6 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-colors">
                         <i class="ph ph-send w-4 h-4"></i>
                         {{ __('Submit Ticket') }}
                     </button>

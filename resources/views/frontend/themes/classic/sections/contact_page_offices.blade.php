@@ -19,8 +19,8 @@
                     $tileClass = $isGreen ? 'bg-tint-green text-brand-green' : 'bg-tint-blue text-brand-blue';
                     $metaClass = $isGreen ? 'text-brand-green' : 'text-brand-blue';
                 @endphp
-                <div class="rounded-2xl border border-border-soft bg-white p-6 about-value-card">
-                    <div class="w-10 h-10 rounded-xl {{ $tileClass }} inline-grid place-items-center mb-4">
+                <div class="rounded-md border border-border-soft bg-white p-6 about-value-card">
+                    <div class="w-10 h-10 rounded-md {{ $tileClass }} inline-grid place-items-center mb-4">
                         <i data-lucide="{{ $office['icon'] ?? 'building-2' }}" class="w-5 h-5 about-value-icon"></i>
                     </div>
                     <p class="font-display font-extrabold text-text-strong text-[15px] tracking-heading">{{ $office['name'] }}</p>

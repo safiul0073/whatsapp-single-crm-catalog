@@ -32,7 +32,7 @@
             @if (!empty($visualCards))
                 @foreach ($visualCards as $index => $visualCard)
                     @php $vDelay = $index * 0.12; @endphp
-                    <div data-reveal style="transition-delay: {{ $vDelay }}s" class="rounded-3xl border border-neutral-200 {{ $index % 2 === 0 ? 'bg-neutral-0' : 'bg-section' }} p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
+                    <div data-reveal style="transition-delay: {{ $vDelay }}s" class="rounded-md border border-neutral-200 {{ $index % 2 === 0 ? 'bg-neutral-0' : 'bg-section' }} p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
                         @if (($visualCard['type'] ?? 'stats') === 'stats')
                             @if (!empty($visualCard['heading']) || !empty($visualCard['value']))
                                 <div class="f-between">
@@ -52,7 +52,7 @@
                             @if (!empty($visualCard['chart_bars']))
                                 <div class="mt-6 flex h-40 items-end gap-3">
                                     @foreach ($visualCard['chart_bars'] as $bar)
-                                        <div class="flex-1 rounded-t-lg {{ !empty($bar['accent']) ? 'bg-primary' : 'bg-neutral-100' }}" style="height:{{ $bar['height'] ?? '50%' }}"></div>
+                                        <div class="flex-1 rounded-t-md {{ !empty($bar['accent']) ? 'bg-primary' : 'bg-neutral-100' }}" style="height:{{ $bar['height'] ?? '50%' }}"></div>
                                     @endforeach
                                 </div>
                             @endif
@@ -70,15 +70,15 @@
                             @if (!empty($visualCard['rows']))
                                 <div class="space-y-2.5">
                                     @foreach ($visualCard['rows'] as $row)
-                                        <div class="f-between rounded-xl {{ $index % 2 === 0 ? 'bg-neutral-0' : 'bg-section' }} px-3 py-2.5">
+                                        <div class="f-between rounded-md {{ $index % 2 === 0 ? 'bg-neutral-0' : 'bg-section' }} px-3 py-2.5">
                                             <span class="text-sm font-medium text-title">{{ $row['label'] ?? '' }}</span>
                                             @php $statusType = $row['status_type'] ?? 'soft'; @endphp
                                             @if ($statusType === 'soft')
                                                 <span class="badge badge-soft">{{ $row['status'] ?? '' }}</span>
                                             @elseif ($statusType === 'warning')
-                                                <span class="rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">{{ $row['status'] ?? '' }}</span>
+                                                <span class="rounded-sm bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">{{ $row['status'] ?? '' }}</span>
                                             @elseif ($statusType === 'info')
-                                                <span class="rounded-full bg-info/15 px-2.5 py-0.5 text-xs font-semibold text-info">{{ $row['status'] ?? '' }}</span>
+                                                <span class="rounded-sm bg-info/15 px-2.5 py-0.5 text-xs font-semibold text-info">{{ $row['status'] ?? '' }}</span>
                                             @else
                                                 <span class="text-xs font-semibold text-body">{{ $row['status'] ?? '' }}</span>
                                             @endif

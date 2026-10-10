@@ -63,7 +63,7 @@
                 $ldFeatureThree = $ld['feature_three_text'] ?? 'Cloud API webhooks and developer tools';
             @endphp
             <div class="relative z-10 space-y-6 my-auto py-16">
-                <div class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 mb-4">
+                <div class="inline-flex items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-4 py-2 mb-4">
                     <span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span>
                     <span class="font-mono text-micro font-semibold tracking-eyebrow uppercase text-white/80">{{ $ldEyebrow }}</span>
                 </div>
@@ -81,19 +81,19 @@
                 <!-- Feature list -->
                 <ul class="space-y-4 pt-2">
                     <li class="flex items-center gap-3">
-                        <span class="w-8 h-8 rounded-xl bg-tint-blue/20 text-brand-blue inline-grid place-items-center flex-none">
+                        <span class="w-8 h-8 rounded-md bg-tint-blue/20 text-brand-blue inline-grid place-items-center flex-none">
                             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                         </span>
                         <span class="font-body text-body-sm text-white/80">{{ $ldFeatureOne }}</span>
                     </li>
                     <li class="flex items-center gap-3">
-                        <span class="w-8 h-8 rounded-xl bg-brand-green/20 text-brand-green inline-grid place-items-center flex-none">
+                        <span class="w-8 h-8 rounded-md bg-brand-green/20 text-brand-green inline-grid place-items-center flex-none">
                             <i data-lucide="headphones" class="w-4 h-4"></i>
                         </span>
                         <span class="font-body text-body-sm text-white/80">{{ $ldFeatureTwo }}</span>
                     </li>
                     <li class="flex items-center gap-3">
-                        <span class="w-8 h-8 rounded-xl bg-white/10 text-white/70 inline-grid place-items-center flex-none">
+                        <span class="w-8 h-8 rounded-md bg-white/10 text-white/70 inline-grid place-items-center flex-none">
                             <i data-lucide="file-text" class="w-4 h-4"></i>
                         </span>
                         <span class="font-body text-body-sm text-white/80">{{ $ldFeatureThree }}</span>
@@ -109,7 +109,7 @@
                     next() { this.current = (this.current + 1) % this.total; }
                 }" x-init="setInterval(() => next(), 5000)">
 
-                    <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
+                    <div class="rounded-md border border-white/10 bg-white/5 backdrop-blur-sm p-6">
 
                         <div class="relative overflow-hidden" style="height:10rem">
                             @foreach ($authTestimonials as $index => $t)

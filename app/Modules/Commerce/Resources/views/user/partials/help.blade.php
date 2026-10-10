@@ -150,10 +150,10 @@
 @endphp
 
 @if ($minimal ?? false)
-    <div class="mb-4 rounded-lg border border-neutral-200 bg-section p-3" data-commerce-help="{{ $helpKey }}">
+    <div class="mb-4 rounded-md border border-neutral-200 bg-section p-3" data-commerce-help="{{ $helpKey }}">
         <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-2.5">
-                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-base"></i></span>
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-base"></i></span>
                 <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-title">{{ $topic['title'] }}</p>
                     <p class="truncate text-xs text-body">{{ __('Send catalog or products from WhatsApp.') }}</p>
@@ -165,7 +165,7 @@
         </div>
     </div>
 @else
-    <div class="flex flex-col gap-3 rounded-xl bg-primary/5 px-4 py-3 {{ ($compact ?? false) ? '' : 'sm:flex-row sm:items-center sm:justify-between' }}" data-commerce-help="{{ $helpKey }}">
+    <div class="flex flex-col gap-3 rounded-md bg-primary/5 px-4 py-3 {{ ($compact ?? false) ? '' : 'sm:flex-row sm:items-center sm:justify-between' }}" data-commerce-help="{{ $helpKey }}">
         <div class="flex min-w-0 items-start gap-3">
             <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-lg"></i></span>
             <div class="min-w-0">
@@ -185,7 +185,7 @@
         <div class="modal__panel max-w-2xl" role="dialog" aria-modal="true" aria-labelledby="{{ $modalId }}Title">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex items-start gap-3">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-xl"></i></span>
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary"><i class="ph {{ $topic['icon'] }} text-xl"></i></span>
                     <div><p class="text-sm font-semibold text-primary">{{ __('Contextual help') }}</p><h2 id="{{ $modalId }}Title" class="heading-4 text-title">{{ $topic['title'] }}</h2></div>
                 </div>
                 <button type="button" class="row-action" data-modal-close aria-label="{{ __('Close help') }}"><i class="ph ph-x text-lg"></i></button>
@@ -201,7 +201,7 @@
                 @endforeach
             </ol>
 
-            <div class="mt-5 rounded-xl bg-warning/10 p-4">
+            <div class="mt-5 rounded-md bg-warning/10 p-4">
                 <div class="flex items-start gap-3"><i class="ph ph-lightbulb mt-0.5 text-warning"></i><div><p class="text-sm font-semibold text-title">{{ __('Important') }}</p><p class="mt-1 text-sm leading-6 text-body">{{ $topic['tip'] }}</p></div></div>
             </div>
 
@@ -209,7 +209,7 @@
                 <h3 class="text-sm font-semibold text-title">{{ __('Complete WhatsApp selling workflow') }}</h3>
                 <div class="mt-3 grid gap-2 sm:grid-cols-3">
                     @foreach ([['ph-plugs-connected', __('Connect channel')], ['ph-storefront', __('Sync catalog')], ['ph-check-circle', __('Publish product')], ['ph-clock-countdown', __('Open 24-hour session')], ['ph-paper-plane-tilt', __('Send samples')], ['ph-package', __('Quote and fulfill')]] as [$icon, $label])
-                        <div class="flex items-center gap-2 rounded-lg bg-section px-3 py-2 text-xs font-semibold text-title"><i class="ph {{ $icon }} text-primary"></i>{{ $label }}</div>
+                        <div class="flex items-center gap-2 rounded-md bg-section px-3 py-2 text-xs font-semibold text-title"><i class="ph {{ $icon }} text-primary"></i>{{ $label }}</div>
                     @endforeach
                 </div>
             </div>

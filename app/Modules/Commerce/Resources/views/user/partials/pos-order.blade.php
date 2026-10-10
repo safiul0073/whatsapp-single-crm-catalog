@@ -9,7 +9,7 @@
     @endif
     @can('commerce.manage')
         @if($order->total !== null && (float) $order->balanceDue() > 0 && $order->status !== 'cancelled')
-            <form method="POST" action="{{ route('user.commerce.pos.payment', $order) }}" class="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
+            <form method="POST" action="{{ route('user.commerce.pos.payment', $order) }}" class="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2">
                 @csrf
                 <input type="hidden" name="submission_reference" value="{{ old('submission_reference', (string) \Illuminate\Support\Str::uuid()) }}">
                 <input type="hidden" name="currency" value="{{ $order->currency }}">

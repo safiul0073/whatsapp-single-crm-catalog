@@ -52,21 +52,21 @@
             </p>
 
             {{-- Frosted Glass Feature List --}}
-            <div class="mt-10 bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 rounded-2xl space-y-4 text-left shadow-2xl shadow-black/20">
+            <div class="mt-10 bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 rounded-md space-y-4 text-left shadow-2xl shadow-black/20">
                 <div class="flex items-center gap-4 text-neutral-300 group hover:translate-x-1 transition-transform">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 shadow-sm text-primary">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/[0.05] border border-white/10 shadow-sm text-primary">
                         <i class="ph-bold ph-lock text-base"></i>
                     </div>
                     <span class="text-sm font-medium tracking-wide">{{ __('Multi-guard Authentication') }}</span>
                 </div>
                 <div class="flex items-center gap-4 text-neutral-300 group hover:translate-x-1 transition-transform">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 shadow-sm text-primary">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/[0.05] border border-white/10 shadow-sm text-primary">
                         <i class="ph-bold ph-shield-check text-base"></i>
                     </div>
                     <span class="text-sm font-medium tracking-wide">{{ __('Role-based Access Control') }}</span>
                 </div>
                 <div class="flex items-center gap-4 text-neutral-300 group hover:translate-x-1 transition-transform">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 shadow-sm text-primary">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/[0.05] border border-white/10 shadow-sm text-primary">
                         <i class="ph-bold ph-clipboard-text text-base"></i>
                     </div>
                     <span class="text-sm font-medium tracking-wide">{{ __('Audit Log Tracking') }}</span>
@@ -84,8 +84,8 @@
             {{-- Mobile Logo (hidden on desktop) --}}
             <div class="mb-10 flex flex-col items-center gap-3 lg:hidden">
                 <div class="relative w-14 h-14 flex items-center justify-center">
-                    <div class="absolute inset-0 bg-primary/20 rounded-2xl blur-lg"></div>
-                    <div class="relative flex h-12 w-12 items-center justify-center rounded-xl gradient-primary text-white shadow-md">
+                    <div class="absolute inset-0 bg-primary/20 rounded-md blur-lg"></div>
+                    <div class="relative flex h-12 w-12 items-center justify-center rounded-md gradient-primary text-white shadow-md">
                         <i class="ph-bold ph-shield-check text-2xl"></i>
                     </div>
                 </div>
@@ -96,27 +96,27 @@
 
             {{-- Alert System --}}
             @if (session('success'))
-                <div class="mb-6 rounded-2xl border border-success/20 bg-success/5 p-4 text-sm text-success flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <div class="mb-6 rounded-md border border-success/20 bg-success/5 p-4 text-sm text-success flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
                     <i class="ph-bold ph-check-circle text-lg shrink-0 mt-0.5"></i>
                     <p class="leading-relaxed">{{ session('success') }}</p>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="mb-6 rounded-2xl border border-error/20 bg-error/5 p-4 text-sm text-error flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <div class="mb-6 rounded-md border border-error/20 bg-error/5 p-4 text-sm text-error flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
                     <i class="ph-bold ph-warning-circle text-lg shrink-0 mt-0.5"></i>
                     <p class="leading-relaxed">{{ session('error') }}</p>
                 </div>
             @endif
 
             @if (session('status'))
-                <div class="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-primary flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <div class="mb-6 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-primary flex items-start gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
                     <i class="ph-bold ph-info text-lg shrink-0 mt-0.5"></i>
                     <p class="leading-relaxed">{{ session('status') }}</p>
                 </div>
             @endif
 
-            <div class="bg-white rounded-2xl lg:border lg:border-neutral-100 lg:p-8 lg:shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+            <div class="bg-white rounded-md lg:border lg:border-neutral-100 lg:p-8 lg:shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
                 @yield('content')
             </div>
         </div>

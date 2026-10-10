@@ -24,7 +24,7 @@
         <div class="flex flex-col items-center text-center p-8">
 
             {{-- Icon --}}
-            <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl @yield('icon-bg', 'bg-error/10')">
+            <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-md @yield('icon-bg', 'bg-error/10')">
                 <i class="ph-bold @yield('icon', 'ph-warning') text-4xl @yield('icon-color', 'text-error')"></i>
             </div>
 

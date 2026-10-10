@@ -8,7 +8,7 @@
     <div id="{{ $id }}" class="floating-dropdown-panel hidden" style="display: none;">
         @if($searchable)
         <div class="border-b border-neutral-100 p-2">
-            <input type="text" class="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-primary-500" placeholder="Search..." />
+            <input type="text" class="w-full rounded-sm border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-primary-500" placeholder="Search..." />
         </div>
         @endif
         <div class="floating-dropdown-items p-1">

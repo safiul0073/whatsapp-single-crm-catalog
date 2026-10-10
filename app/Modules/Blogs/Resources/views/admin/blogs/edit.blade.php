@@ -20,7 +20,7 @@
         </div>
 
         @if ($errors->any())
-            <div class="rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
+            <div class="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
                 {{ __('Please fix the highlighted blog fields.') }}
             </div>
         @endif

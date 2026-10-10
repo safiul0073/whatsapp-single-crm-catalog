@@ -32,7 +32,7 @@
     <x-social-widgets::accordion section="layout" icon="ph-squares-four" :title="__('Layout Type')">
         <div class="grid grid-cols-2 gap-2">
             @foreach ($layouts as $layoutOption)
-                <button type="button" class="flex h-20 flex-col justify-between rounded-lg border bg-white p-3 text-left transition" x-on:click="layout = '{{ $layoutOption->value }}'" x-bind:class="layout === '{{ $layoutOption->value }}' ? 'border-title shadow-sm' : 'border-neutral-200 hover:border-neutral-400'" data-layout-option="{{ $layoutOption->value }}">
+                <button type="button" class="flex h-20 flex-col justify-between rounded-sm border bg-white p-3 text-left transition" x-on:click="layout = '{{ $layoutOption->value }}'" x-bind:class="layout === '{{ $layoutOption->value }}' ? 'border-title shadow-sm' : 'border-neutral-200 hover:border-neutral-400'" data-layout-option="{{ $layoutOption->value }}">
                     <i class="ph {{ $layoutOption->icon() }} text-lg text-body"></i>
                     <span class="text-sm font-semibold text-title">{{ __($layoutOption->label()) }}</span>
                 </button>

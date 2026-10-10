@@ -46,7 +46,7 @@
                     />
                     <x-forms.select :label="__('Default Layout')" name="default_layout" :selected="old('default_layout', $page?->default_layout ?? 'default')" :options="$layoutOptions" />
                     <div class="flex h-full items-center pt-1 md:items-end md:pt-0">
-                        <div class="rounded-2xl border border-neutral-100 bg-neutral-0 px-4 py-3">
+                        <div class="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-3">
                             <x-forms.toggle :label="__('Use as Home Page')" name="is_home" :checked="(bool) old('is_home', $page?->is_home)" />
                         </div>
                     </div>
@@ -66,12 +66,12 @@
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                <div class="rounded-md border border-neutral-100 bg-neutral-50 p-4">
                     <ul id="pageComposerList" class="space-y-3" data-empty-message="{{ __('No sections added yet. Use the library below to start composing the page.') }}">
                         @forelse($selectedSections as $sectionId)
                             @php $section = $allSectionsById[$sectionId] ?? null; @endphp
                             @if($section)
-                                <li class="cursor-move rounded-[28px] border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition" draggable="true" data-composer-item data-section-id="{{ $section->id }}">
+                                <li class="cursor-move rounded-md border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition" draggable="true" data-composer-item data-section-id="{{ $section->id }}">
                                     <div class="flex items-center justify-between gap-3">
                                         <div class="flex min-w-0 items-center gap-3">
                                             <div class="pt-1 text-lg text-neutral-400">
@@ -80,7 +80,7 @@
                                             <div class="min-w-0">
                                                 <div class="flex flex-wrap items-center gap-2">
                                                     <p class="truncate font-medium text-neutral-950">{{ $section->name }}</p>
-                                                    <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                                                    <span class="rounded-sm bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                                                         {{ config('frontend-sections.' . $section->type . '.label', $section->type) }}
                                                     </span>
                                                 </div>
@@ -95,14 +95,14 @@
                                 </li>
                             @endif
                         @empty
-                            <li class="rounded-2xl border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400" data-empty-state>
+                            <li class="rounded-md border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400" data-empty-state>
                                 {{ __('No sections added yet. Use the library below to start composing the page.') }}
                             </li>
                         @endforelse
                     </ul>
                 </div>
 
-                <div class="rounded-2xl border border-neutral-100 bg-neutral-0 p-4">
+                <div class="rounded-md border border-neutral-100 bg-neutral-0 p-4">
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
                         <x-forms.select
                             :label="__('Add From Section Library')"
@@ -163,8 +163,8 @@
 
             const sectionMap = @json($composerSectionMap);
             const emptyMessage = list.dataset.emptyMessage || @json(__('No sections added yet. Use the library below to start composing the page.'));
-            const composerItemClasses = 'cursor-move rounded-[28px] border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition';
-            const composerEmptyClasses = 'rounded-2xl border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400';
+            const composerItemClasses = 'cursor-move rounded-md border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition';
+            const composerEmptyClasses = 'rounded-md border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400';
 
             let dragged = null;
 
@@ -204,7 +204,7 @@
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-950">${section.name}</p>
-                        <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${section.type}</span>
+                        <span class="rounded-sm bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${section.type}</span>
                       </div>
                       <p class="mt-1 text-sm text-neutral-500">${@json(__('Shared library section'))}</p>
                     </div>

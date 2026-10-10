@@ -1,7 +1,7 @@
 @php $d = $section->data ?? []; @endphp
 <section id="heroEd" class="hero-ed bg-neutral-0 py-4 sm:py-6">
     <div class="container grid gap-4 lg:min-h-[560px] lg:grid-cols-[2.5fr_3.2fr]">
-        <div class="grid min-h-[26rem] grid-rows-[auto_1fr_auto] rounded-2xl bg-deep p-7 text-neutral-0 sm:p-9 lg:p-12">
+        <div class="grid min-h-[26rem] grid-rows-[auto_1fr_auto] rounded-md bg-deep p-7 text-neutral-0 sm:p-9 lg:p-12">
             <h1 id="heroTitle" class="hero-ed__title font-title text-[2.75rem] leading-[0.92] font-extrabold tracking-[-0.03em] sm:text-6xl lg:text-[4.4rem] xl:text-[5.4rem]">
                 @if (!empty($d['heading_line_1']))
                     <span class="hero-ed__line"><span>{{ $d['heading_line_1'] }}</span></span>

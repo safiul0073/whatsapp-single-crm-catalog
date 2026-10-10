@@ -200,7 +200,7 @@ function bootFrontendMenuBuilder() {
 
     items.forEach((item) => {
       const rootCard = document.createElement('li');
-      rootCard.className = 'rounded-[28px] border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition';
+      rootCard.className = 'rounded-md border border-neutral-100 bg-neutral-0 p-5 shadow-sm transition';
       rootCard.draggable = true;
       rootCard.dataset.rootKey = item.temp_key;
 
@@ -213,20 +213,20 @@ function bootFrontendMenuBuilder() {
       const childCount = item.children.length;
       const childMarkup = childCount > 0
         ? `
-          <div class="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+          <div class="mt-4 rounded-md border border-neutral-200 bg-neutral-50 p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
               <p class="text-xs font-bold uppercase tracking-wider text-neutral-400">${escapeHtml(strings.submenuItems)}</p>
-              <span class="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">${childCount} ${escapeHtml(childCount === 1 ? strings.item : strings.items)}</span>
+              <span class="rounded-sm bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">${childCount} ${escapeHtml(childCount === 1 ? strings.item : strings.items)}</span>
             </div>
             <ul class="space-y-3">
               ${item.children.map((child) => `
-                <li class="rounded-2xl border border-neutral-100 bg-neutral-0 px-4 py-3 ${child.temp_key === selectedKey ? 'ring-2 ring-primary/10 border-primary' : ''}" data-child-key="${escapeHtml(child.temp_key)}">
+                <li class="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-3 ${child.temp_key === selectedKey ? 'ring-2 ring-primary/10 border-primary' : ''}" data-child-key="${escapeHtml(child.temp_key)}">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">${escapeHtml(child.label || strings.untitledItem)}</p>
-                        <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${escapeHtml(typeLabel(child.item_type))}</span>
-                        ${child.is_visible ? '' : `<span class="rounded-full bg-error/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-error">${escapeHtml(strings.hidden)}</span>`}
+                        <span class="rounded-sm bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${escapeHtml(typeLabel(child.item_type))}</span>
+                        ${child.is_visible ? '' : `<span class="rounded-sm bg-error/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-error">${escapeHtml(strings.hidden)}</span>`}
                       </div>
                       <p class="mt-1 truncate text-sm text-neutral-500">${escapeHtml(itemDescription(child))}</p>
                     </div>
@@ -238,7 +238,7 @@ function bootFrontendMenuBuilder() {
           </div>
         `
         : `
-          <div class="mt-4 rounded-2xl border border-dashed border-neutral-300 px-4 py-4 text-sm text-neutral-400">
+          <div class="mt-4 rounded-md border border-dashed border-neutral-300 px-4 py-4 text-sm text-neutral-400">
             ${escapeHtml(strings.noSubmenuItems)}
           </div>
         `;
@@ -250,15 +250,15 @@ function bootFrontendMenuBuilder() {
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <p class="truncate font-medium text-neutral-900">${escapeHtml(item.label || strings.untitledItem)}</p>
-                <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${escapeHtml(typeLabel(item.item_type))}</span>
-                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">${escapeHtml(strings.parent)}</span>
-                ${item.is_visible ? '' : `<span class="rounded-full bg-error/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-error">${escapeHtml(strings.hidden)}</span>`}
+                <span class="rounded-sm bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${escapeHtml(typeLabel(item.item_type))}</span>
+                <span class="rounded-sm bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">${escapeHtml(strings.parent)}</span>
+                ${item.is_visible ? '' : `<span class="rounded-sm bg-error/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-error">${escapeHtml(strings.hidden)}</span>`}
               </div>
               <p class="mt-1 truncate text-sm text-neutral-500">${escapeHtml(itemDescription(item))}</p>
             </div>
           </div>
           <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-add-child="${escapeHtml(item.temp_key)}">
+            <button type="button" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-add-child="${escapeHtml(item.temp_key)}">
               <i class="ph ph-plus"></i>
               ${escapeHtml(strings.addChild)}
             </button>

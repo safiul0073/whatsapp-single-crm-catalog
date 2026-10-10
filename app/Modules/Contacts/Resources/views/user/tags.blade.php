@@ -29,7 +29,7 @@
                 <div class="list-table__row" data-tag>
                   <div class="flex min-w-0 items-center gap-3">
                     <span
-                      class="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white text-sm font-bold"
+                      class="grid h-9 w-9 shrink-0 place-items-center rounded-md text-white text-sm font-bold"
                       style="background-color: {{ $tag->color ?? '#6366f1' }}"
                     >
                       <i class="ph ph-tag text-base"></i>
@@ -80,7 +80,7 @@
                 </div>
                 @empty
                 <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-                  <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-tag text-2xl"></i>
                   </span>
                   <h3 class="heading-4 mt-4">No tags yet</h3>

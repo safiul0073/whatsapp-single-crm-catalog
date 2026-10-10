@@ -261,8 +261,8 @@ it('accepts payment evidence for review without deducting stock', function () {
 it('renders summaries packing slips and currency settings', function () {
     $c = unifiedContext();
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
-    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('BOX-1')
-        ->assertSee('Pack 1 of 3')->assertSee('Color: Red')->assertDontSee('Ordered items')->assertSeeInOrder(['>S<', '>M<', '>L<'], false);
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertDontSee('BOX-1')
+        ->assertDontSee('Pack 1 of 3')->assertSee('Color: Red')->assertDontSee('Ordered items')->assertSeeInOrder(['>S<', '>M<', '>L<'], false);
     $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Cotton shirt');
     $this->get(route('user.commerce.orders.settings'))->assertOk()->assertSee('Store order settings');
 });
@@ -543,7 +543,7 @@ it('simplifies order details and renders private payment galleries', function (a
     $order->update(['status' => 'paid', 'payment_state' => 'paid', 'payment_evidence' => $evidence, 'delivery_notes' => 'Deliver at reception', 'duties_disclosure' => 'Buyer pays import duties']);
     $response = $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order));
     $response->assertOk()->assertDontSee('Add retail shipping box')->assertDontSee('Shipping quote and payment link')
-        ->assertSee('BOX-1')->assertSee('1 Main Street')->assertSee('USD 108.00')
+        ->assertDontSee('BOX-1')->assertSee('1 Main Street')->assertSee('USD 108.00')
         ->assertSee('Deliver at reception')->assertSee('Buyer pays import duties');
     if ($count === 0) {
         $response->assertDontSee('commercePaymentGallery', false);

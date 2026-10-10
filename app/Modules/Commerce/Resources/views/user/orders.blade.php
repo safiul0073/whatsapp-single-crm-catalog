@@ -2,7 +2,7 @@
     <div class="space-y-6">
         <header class="flex flex-wrap items-center justify-between gap-3">
             <div><h1 class="heading-3 text-title">{{ __('Orders') }}</h1><p class="text-sm text-body">{{ __('Review cart requests, prepare shipping quotes, and track fulfillment.') }}</p></div>
-            <div class="flex flex-wrap gap-3">@can('commerce.manage')<x-ui.button href="{{ route('user.commerce.pos.index') }}">{{ __('POS') }}</x-ui.button><x-ui.button href="{{ route('user.commerce.orders.create') }}">{{ __('Create Order') }}</x-ui.button><x-ui.button variant="outline" href="{{ route('user.commerce.payment-services.index') }}">{{ __('Payment Services') }}</x-ui.button><x-ui.button variant="outline" href="{{ route('user.commerce.orders.settings') }}">{{ __('Order settings') }}</x-ui.button>@endcan<x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Products') }}</x-ui.button></div>
+            <div class="flex flex-wrap gap-3">@can('commerce.manage')<x-ui.button href="{{ route('user.commerce.pos.index') }}">{{ __('POS') }}</x-ui.button><x-ui.button variant="outline" href="{{ route('user.commerce.payment-services.index') }}">{{ __('Payment Services') }}</x-ui.button><x-ui.button variant="outline" href="{{ route('user.commerce.orders.settings') }}">{{ __('Order settings') }}</x-ui.button>@endcan<x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Products') }}</x-ui.button></div>
         </header>
 
         @include('commerce::user.partials.help', ['helpKey' => 'orders'])

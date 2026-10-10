@@ -20,10 +20,10 @@
 
             {{-- Status Update Form --}}
             <form method="POST" action="{{ route('admin.support-tickets.update-status', $ticket) }}"
-                class="flex items-center gap-2 bg-neutral-50 p-2.5 rounded-xl border border-neutral-100 self-start md:self-auto">
+                class="flex items-center gap-2 bg-neutral-50 p-2.5 rounded-md border border-neutral-100 self-start md:self-auto">
                 @csrf
                 <select name="status"
-                    class="select-field bg-white border border-neutral-200 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    class="select-field bg-white border border-neutral-200 rounded-sm text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20">
                     @foreach (['open' => __('Open'), 'in_progress' => __('In Progress'), 'resolved' => __('Resolved'), 'closed' => __('Closed')] as $value => $label)
                         <option value="{{ $value }}" {{ $ticket->status === $value ? 'selected' : '' }}>
                             {{ $label }}
@@ -61,7 +61,7 @@
                             :placeholder="__('Type your reply to the user...')" />
                     @else
                         <div
-                            class="rounded-xl border border-neutral-100 bg-neutral-50 px-6 py-6 text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                            class="rounded-md border border-neutral-100 bg-neutral-50 px-6 py-6 text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
                             <div
                                 class="w-10 h-10 bg-neutral-200 rounded-full inline-flex items-center justify-center mb-2 mx-auto">
                                 <i class="ph ph-lock text-neutral-500 text-lg"></i>

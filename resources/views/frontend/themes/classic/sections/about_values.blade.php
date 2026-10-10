@@ -53,8 +53,8 @@
                         $iconClasses = 'bg-tint-blue border-tint-blue-strong text-brand-blue';
                     }
                 @endphp
-                <div class="group flex flex-col gap-5 rounded-3xl border border-border-soft p-7 shadow-xs about-value-card" style="{{ $bgStyle }}">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center border about-value-icon {{ $iconClasses }}">
+                <div class="group flex flex-col gap-5 rounded-md border border-border-soft p-7 shadow-xs about-value-card" style="{{ $bgStyle }}">
+                    <div class="w-11 h-11 rounded-md flex items-center justify-center border about-value-icon {{ $iconClasses }}">
                         <i class="ph {{ $icon }} text-xl"></i>
                     </div>
                     <div>

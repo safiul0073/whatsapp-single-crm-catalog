@@ -1,6 +1,6 @@
 <x-layouts.user :title="__('Notifications')">
 
-    <div class="bg-white rounded-2xl border border-border-soft shadow-xs overflow-hidden">
+    <div class="bg-white rounded-md border border-border-soft shadow-xs overflow-hidden">
 
         {{-- Header --}}
         <div class="flex items-center justify-between px-6 py-4 border-b border-border-soft">

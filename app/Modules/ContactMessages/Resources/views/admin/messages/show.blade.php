@@ -36,7 +36,7 @@
             </div>
 
             <form method="POST" action="{{ route('admin.contact-messages.update-status', $contactMessage) }}"
-                class="flex items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50 p-2.5">
+                class="flex items-center gap-2 rounded-md border border-neutral-100 bg-neutral-50 p-2.5">
                 @csrf
                 <select name="status" class="select-field bg-white">
                     @foreach (['new' => __('New'), 'read' => __('Read'), 'archived' => __('Archived')] as $value => $label)
@@ -80,11 +80,11 @@
                         <div>
                             <label class="form-label">{{ __('Reply Type') }}</label>
                             <div class="flex flex-wrap gap-3">
-                                <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700">
+                                <label class="inline-flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700">
                                     <input type="radio" name="reply_type" value="custom" x-model="replyType" class="custom-radio">
                                     {{ __('Custom message') }}
                                 </label>
-                                <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700">
+                                <label class="inline-flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700">
                                     <input type="radio" name="reply_type" value="template" x-model="replyType" class="custom-radio">
                                     {{ __('Use template') }}
                                 </label>
@@ -103,7 +103,7 @@
                             @error('template_id')<p class="mt-1.5 text-xs font-medium text-error">{{ $message }}</p>@enderror
                         </div>
 
-                        <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4" x-show="replyType === 'template' && currentTemplate" x-cloak>
+                        <div class="rounded-md border border-neutral-200 bg-neutral-50 p-4" x-show="replyType === 'template' && currentTemplate" x-cloak>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{{ __('Template Preview') }}</p>
                             <p class="mt-2 text-sm font-semibold text-neutral-900" x-text="currentTemplate?.email_subject"></p>
                             <div class="prose prose-sm mt-3 max-w-none text-neutral-600" x-html="currentTemplate?.email_body"></div>
@@ -137,14 +137,14 @@
                             <x-forms.editor :label="__('Message')" name="body" :value="old('body')" :placeholder="__('Write your email reply...')" />
                         </div>
 
-                        <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                        <div class="rounded-md border border-neutral-200 bg-neutral-50 p-4">
                             <p class="text-sm font-semibold text-neutral-900">{{ __('Built-in Contact Variables') }}</p>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 @foreach ($contactVariableLabels as $code => $label)
                                     @php($shortcode = '{' . '{' . $code . '}' . '}')
                                     <button
                                         type="button"
-                                        class="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-left font-mono text-xs font-semibold text-primary transition hover:border-primary/40 hover:bg-primary/5"
+                                        class="rounded-sm border border-neutral-200 bg-white px-2.5 py-1.5 text-left font-mono text-xs font-semibold text-primary transition hover:border-primary/40 hover:bg-primary/5"
                                         title="{{ $label }}"
                                         @click="copyVariable({{ Js::from($shortcode) }})"
                                     >

@@ -82,7 +82,7 @@
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     @foreach ($readiness as $item)
-                        <div class="rounded-xl border border-neutral-100 bg-section p-3">
+                        <div class="rounded-md border border-neutral-100 bg-section p-3">
                             <div class="flex items-start gap-2">
                                 <i class="ph {{ $item['ok'] ? 'ph-check-circle text-success' : 'ph-warning-circle text-warning' }} mt-0.5 text-lg"></i>
                                 <div class="min-w-0">
@@ -99,7 +99,7 @@
         <section class="section-card" data-whatsapp-connect>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3">
-                    <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#1877F2]/10 text-[#1877F2]">
+                    <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-[#1877F2]/10 text-[#1877F2]">
                         <i class="ph-fill ph-facebook-logo text-2xl"></i>
                     </span>
                     <div class="min-w-0">
@@ -159,7 +159,7 @@
             </div>
 
             @if (! $embeddedSignup['enabled'])
-                <div class="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm font-medium text-warning">
+                <div class="mt-4 rounded-md border border-warning/20 bg-warning/10 p-3 text-sm font-medium text-warning">
                     {{ __('Ask an administrator to enable Embedded Signup and add the Meta App ID, App Secret, and Configuration ID.') }}
                 </div>
             @endif

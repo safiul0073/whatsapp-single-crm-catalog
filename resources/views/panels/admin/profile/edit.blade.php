@@ -10,7 +10,7 @@
                 {{-- Profile Details --}}
                 <div class="section-card">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                             <i class="ph ph-user text-xl"></i>
                         </div>
                         <div>
@@ -47,7 +47,7 @@
                 {{-- Change Password --}}
                 <div class="section-card">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
                             <i class="ph ph-lock-key text-xl"></i>
                         </div>
                         <div>

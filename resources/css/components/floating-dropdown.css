@@ -1,6 +1,6 @@
 /* Floating Dropdown */
 .floating-dropdown-panel {
-  @apply bg-neutral-0 fixed z-50 hidden max-h-[320px] max-w-[90vw] min-w-48 -translate-y-2 overflow-y-auto rounded-xl border border-neutral-100 p-2 opacity-0 shadow-xl transition-all duration-200;
+  @apply bg-neutral-0 fixed z-50 hidden max-h-[320px] max-w-[90vw] min-w-48 -translate-y-2 overflow-y-auto rounded-md border border-neutral-100 p-2 opacity-0 shadow-xl transition-all duration-200;
 
   /* Custom Scrollbar for Dropdown Content */
   &::-webkit-scrollbar {
@@ -23,7 +23,7 @@
 
 /* Select Trigger Style */
 .floating-select-trigger {
-  @apply s-body bg-neutral-0 flex w-full cursor-pointer items-center justify-between rounded-xl border border-neutral-100 px-4 py-3 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  @apply s-body bg-neutral-0 flex w-full cursor-pointer items-center justify-between rounded-md border border-neutral-100 px-4 py-3 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
   @apply focus:border-primary focus:bg-neutral-0 appearance-none pe-10 hover:border-neutral-200 hover:bg-neutral-50;
 
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
@@ -42,7 +42,7 @@
 
 /* Dropdown Item Styles */
 .floating-dropdown-item {
-  @apply flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50;
+  @apply flex w-full cursor-pointer items-center gap-3 rounded-md px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50;
 
   &.active {
     @apply bg-primary/10 text-primary font-semibold;
@@ -51,7 +51,7 @@
 
 /* Rich Item Content */
 .floating-dropdown-item .item-icon {
-  @apply flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-50 text-xl transition-colors;
+  @apply flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50 text-xl transition-colors;
 }
 
 .floating-dropdown-item:hover .item-icon {
@@ -80,7 +80,7 @@
 }
 
 .dropdown-search-input {
-  @apply s-body bg-neutral-0 w-full rounded-lg border border-neutral-100 px-3 py-2 transition-all duration-300 outline-none;
+  @apply s-body bg-neutral-0 w-full rounded-sm border border-neutral-100 px-3 py-2 transition-all duration-300 outline-none;
   @apply focus:border-primary focus:ring-primary/10 focus:ring-4;
 }
 /* Multi-select styling */
@@ -90,7 +90,7 @@
 
 /* User Trigger Styling */
 .user-dropdown-trigger {
-  @apply bg-neutral-0 flex cursor-pointer items-center gap-3 rounded-full border border-neutral-100 px-2 py-1 transition-all duration-300 hover:bg-neutral-50;
+  @apply bg-neutral-0 flex cursor-pointer items-center gap-3 rounded-sm border border-neutral-100 px-2 py-1 transition-all duration-300 hover:bg-neutral-50;
 }
 
 .user-avatar {

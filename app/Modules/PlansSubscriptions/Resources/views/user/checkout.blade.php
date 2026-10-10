@@ -10,7 +10,7 @@
         </div>
 
         @if (session('error'))
-            <div class="mt-5 rounded-2xl border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
+            <div class="mt-5 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
                 {{ session('error') }}
             </div>
         @endif
@@ -20,7 +20,7 @@
             <div class="md:col-span-2 space-y-6">
                 <div class="app-card p-5 sm:p-6">
                     <h3 class="heading-4">{{ __('Subscription Plan') }}</h3>
-                    <div class="mt-4 rounded-2xl border border-neutral-200 p-5 bg-section">
+                    <div class="mt-4 rounded-md border border-neutral-200 p-5 bg-section">
                         <div class="f-between gap-4">
                             <div>
                                 <p class="text-sm font-bold text-title">{{ $plan?->name ?? __('Selected plan') }}</p>
@@ -49,7 +49,7 @@
                         <h3 class="heading-4">{{ __('Select Payment Method') }}</h3>
 
                         @if ($gateways === [])
-                            <div class="mt-4 rounded-2xl border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
+                            <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
                                 {{ __('No active payment gateways are available. Please contact support.') }}
                             </div>
                         @else
@@ -61,9 +61,9 @@
                                     <form method="POST" action="{{ route('user.subscription.checkout.pay', $payment) }}" class="w-full">
                                         @csrf
                                         <input type="hidden" name="gateway" value="{{ $gateway }}">
-                                        <button type="submit" class="group relative flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-0 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md cursor-pointer">
+                                        <button type="submit" class="group relative flex w-full items-center justify-between rounded-sm border border-neutral-200 bg-neutral-0 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md cursor-pointer">
                                             <div class="flex items-center gap-3">
-                                                <div class="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-all duration-200 group-hover:bg-primary group-hover:text-white">
+                                                <div class="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary transition-all duration-200 group-hover:bg-primary group-hover:text-white">
                                                     <i class="ph {{ match($gateway) {
                                                         'stripe' => 'ph-credit-card',
                                                         'paypal' => 'ph-paypal-logo',

@@ -25,4 +25,27 @@ class OrderItem extends Model
     {
         return $this->belongsTo(ProductVariant::class);
     }
+
+    /** @return array<int, array{url: string, label: string}> */
+    public function productImages(): array
+    {
+        $product = $this->variant?->product;
+        $color = $this->variant?->color;
+        $gallery = $product?->gallery ?? collect();
+        $images = $gallery->filter(fn ($image) => $image->media?->isImage() && $image->media_type !== 'video');
+        $selected = $color ? $images->where('color_id', $color->id) : collect();
+        $fallback = $images->whereNull('color_id');
+        $urls = collect([$color?->swatchMedia?->isImage() ? $color->swatchMedia->url : null]);
+        if ($selected->isNotEmpty()) {
+            $urls = $urls->merge($selected->map(fn ($image) => $image->media->url));
+        } else {
+            $urls = $urls->push($product?->primaryMedia?->isImage() ? $product->primaryMedia->url : null)
+                ->merge($fallback->map(fn ($image) => $image->media->url));
+        }
+
+        return $urls->filter()->unique()->values()->map(fn ($url) => [
+            'url' => $url,
+            'label' => $this->product_name.(! empty($this->getAttribute('attributes')['color']) ? ' · '.$this->getAttribute('attributes')['color'] : ''),
+        ])->all();
+    }
 }

@@ -80,7 +80,7 @@
                     $padding = $isHero ? 'p-6 md:p-8 xl:p-[44px]' : 'p-6 md:p-8 xl:p-[34px]';
                 @endphp
                 <article
-                    class="why2-pillar why2-pillar--{{ $color }} why2-pillar--{{ $size }} {{ $span }} relative {{ $padding }} border border-border-soft rounded-[22px] flex flex-col gap-3.5 overflow-hidden"
+                    class="why2-pillar why2-pillar--{{ $color }} why2-pillar--{{ $size }} {{ $span }} relative {{ $padding }} border border-border-soft rounded-md flex flex-col gap-3.5 overflow-hidden"
                     data-why-reveal style="--reveal-delay: {{ $delay }}ms">
                     <svg class="why2-pillar-corner absolute right-4 bottom-4 w-9 h-9 text-brand-navy-ink/10 pointer-events-none"
                         viewBox="0 0 60 60">
@@ -90,7 +90,7 @@
                     <div class="flex items-center justify-between">
                         <span
                             class="why2-pillar-num font-mono text-[11.5px] font-semibold tracking-[0.14em] {{ $numClass }}">{{ $pillar['number'] ?? '' }}</span><span
-                            class="why2-pillar-icon {{ $isHero ? 'w-12 h-12 rounded-md' : 'w-10 h-10 rounded-[10px]' }} border border-border-default bg-white text-text-muted inline-grid place-items-center"><i
+                            class="why2-pillar-icon {{ $isHero ? 'w-12 h-12 rounded-[10px]' : 'w-10 h-10 rounded-md' }} border border-border-default bg-white text-text-muted inline-grid place-items-center"><i
                                 class="ph {{ $pillar['icon'] ?? 'ph-star' }} text-[18px]"></i></span>
                     </div>
                     <h3
@@ -119,7 +119,7 @@
             @endforeach
         </div>
 
-        <div class="why2-foot relative flex items-stretch rounded-[18px] overflow-hidden min-h-[88px]">
+        <div class="why2-foot relative flex items-stretch rounded-md overflow-hidden min-h-[88px]">
             <!-- Blue left panel (~60%) -->
             <div class="why2-foot-left flex items-center px-8 md:px-12 py-6 flex-1 min-w-0">
                 <span

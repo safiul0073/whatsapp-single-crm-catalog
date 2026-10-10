@@ -61,7 +61,7 @@
                     $iconBg   = $isGreen ? 'bg-tint-green text-brand-green' : 'bg-tint-blue text-brand-blue';
                 @endphp
                 <div class="flex items-center gap-2">
-                    <span class="w-7 h-7 rounded-lg {{ $iconBg }} inline-grid place-items-center flex-none">
+                    <span class="w-7 h-7 rounded-md {{ $iconBg }} inline-grid place-items-center flex-none">
                         <i class="ph {{ $signal['icon'] ?? 'ph-check' }} text-base"></i>
                     </span>
                     <span class="font-body text-body-sm text-text-muted"><span class="font-semibold text-text-strong">{{ $signal['label'] ?? '' }}</span> {{ $signal['detail'] ?? '' }}</span>

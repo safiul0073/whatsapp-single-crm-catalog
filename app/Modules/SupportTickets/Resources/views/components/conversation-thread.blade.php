@@ -24,7 +24,7 @@
         </div>
     @empty
         <div class="text-center py-10" id="empty-conversation">
-            <div class="w-12 h-12 rounded-2xl bg-tint-blue text-brand-blue inline-grid place-items-center mb-3">
+            <div class="w-12 h-12 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center mb-3">
                 <i class="ph ph-chat-circle-dots w-5 h-5"></i>
             </div>
             <p class="font-display font-bold text-text-strong text-[14px]">{{ __('No messages yet') }}</p>

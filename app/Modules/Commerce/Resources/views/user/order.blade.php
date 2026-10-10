@@ -8,10 +8,15 @@
         $currentStepIndex = array_search($order->status, $progressSteps, true);
         $packedPieces = $order->boxes->flatMap->contents->sum('quantity');
         $orderedPieces = $order->items->sum('quantity');
+        $packedQuantities = $order->boxes->flatMap->contents->groupBy('order_item_id')->map(fn ($contents) => $contents->sum('quantity'));
+        $unpackedItems = $order->items->filter(fn ($item) => $item->quantity > ($packedQuantities[$item->id] ?? 0));
+        $productKey = fn ($item) => ($item->variant?->product_id ?? 'snapshot').'|'.$item->product_name;
+        $packProductGroups = $order->boxes->groupBy(fn ($box) => $box->contents->map(fn ($content) => $productKey($content->item))->unique()->sort()->implode('||'));
+        $individualProductGroups = $unpackedItems->groupBy($productKey);
         $sizeOrder = array_flip(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']);
     @endphp
 
-    <div class="space-y-6">
+    <div class="space-y-6" x-data="commerceProductGallery">
         <header class="section-card flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="space-y-1">
                 <p class="text-sm font-semibold text-primary">{{ $order->number }}</p>
@@ -21,14 +26,14 @@
             <div class="flex flex-wrap items-center gap-2">
                 <span class="badge badge-soft">{{ str($order->status)->replace('_', ' ')->title() }}</span>
                 <span class="badge badge-soft">{{ __('Payment') }}: {{ str($order->payment_state)->replace('_', ' ')->title() }}</span>
-                <x-ui.button href="{{ route('user.commerce.orders.packing-slip', $order) }}" variant="outline" class="rounded-md text-xs py-1.5">
+                <x-ui.button href="{{ route('user.commerce.orders.packing-slip', $order) }}" variant="outline" class="rounded-sm text-xs py-1.5">
                     <i class="ph ph-printer mr-1"></i>{{ __('Packing slip') }}
                 </x-ui.button>
             </div>
         </header>
 
         @if($order->status === 'cancelled')
-            <p role="status" class="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-title">{{ __('This order was cancelled.') }}</p>
+            <p role="status" class="rounded-md border border-danger/30 bg-danger/10 p-4 text-sm text-title">{{ __('This order was cancelled.') }}</p>
         @elseif($currentStepIndex !== false)
             <ol class="section-card grid grid-cols-2 gap-2 {{ $order->source === 'pos' && $order->fulfillment_type === 'pickup' ? '' : 'sm:grid-cols-4 lg:grid-cols-8' }}">
                 @foreach($progressSteps as $stepIndex => $step)
@@ -42,16 +47,16 @@
 
         @if($order->status === 'needs_details' && ! $order->groups()->exists())
             @can('commerce.manage')
-                <a href="{{ route('user.commerce.orders.complete.form', $order) }}" class="block rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm font-semibold text-title">{{ __('Confirm retail selections or wholesale box counts') }} →</a>
+                <a href="{{ route('user.commerce.orders.complete.form', $order) }}" class="block rounded-md border border-warning/30 bg-warning/10 p-4 text-sm font-semibold text-title">{{ __('Confirm retail selections or wholesale box counts') }} →</a>
             @endcan
         @endif
 
         @if($order->shipping_quote_required)
-            <p role="status" class="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-title">{{ __('Shipping quote required before the customer can pay.') }}</p>
+            <p role="status" class="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm text-title">{{ __('Shipping quote required before the customer can pay.') }}</p>
         @endif
 
         @if($order->issues)
-            <section class="rounded-xl border border-warning/30 bg-warning/10 p-4"><h2 class="font-semibold text-title">{{ __('Catalog issues') }}</h2><ul class="mt-2 list-disc pl-5 text-sm text-body">@foreach($order->issues as $issue)<li>{{ $issue }}</li>@endforeach</ul></section>
+            <section class="rounded-md border border-warning/30 bg-warning/10 p-4"><h2 class="font-semibold text-title">{{ __('Catalog issues') }}</h2><ul class="mt-2 list-disc pl-5 text-sm text-body">@foreach($order->issues as $issue)<li>{{ $issue }}</li>@endforeach</ul></section>
         @endif
 
         @if($order->source === 'pos')
@@ -61,57 +66,97 @@
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 @if($order->boxes->isNotEmpty())
-                    <section class="section-card space-y-4">
-                        <div class="flex items-center justify-between gap-2">
+                    <section class="section-card space-y-6">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
                             <h2 class="heading-5 text-title">{{ __('Packs') }}</h2>
                             <span class="text-sm text-body">{{ $order->boxes->count() }} {{ __('packs') }} · {{ $packedPieces }} {{ __('pieces') }}</span>
                         </div>
-                        <div class="grid gap-4 md:grid-cols-2">
-                            @foreach($order->boxes as $box)
-                                <div class="rounded-xl border border-border p-4 space-y-3">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div>
-                                            <h3 class="font-semibold text-title">{{ __('Pack') }} {{ $loop->iteration }} {{ __('of') }} {{ $order->boxes->count() }}</h3>
-                                            <p class="text-xs text-body">{{ $box->label }} · {{ str($box->kind)->title() }}</p>
-                                        </div>
-                                        <div class="text-end text-sm">
-                                            <p class="font-semibold text-title">{{ $money($box->contents->sum(fn ($content) => $content->quantity * (float) $content->item->unit_price)) }}</p>
-                                            <p class="text-xs text-body">{{ $box->contents->sum('quantity') }} {{ __('pieces') }}</p>
-                                        </div>
-                                    </div>
-                                    @foreach($box->contents->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))->map(fn ($contents) => $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)) as $productColorContents)
-                                        @php($packItem = $productColorContents->first()->item)
-                                        @php($packImage = $packItem->variant?->color?->swatchMedia ?? $packItem->variant?->product?->primaryMedia)
-                                        <div class="flex gap-3">
-                                            @if($packImage)<img src="{{ $packImage->url }}" alt="{{ $packItem->product_name }}" class="h-20 w-20 shrink-0 rounded-md border border-border object-cover" loading="lazy">@endif
-                                            <div class="min-w-0 space-y-1">
-                                                <p class="text-sm text-title">{{ $packItem->product_name }}</p>
-                                                <p class="text-sm"><strong>{{ __('Color') }}: {{ $packItem->attributes['color'] ?? '—' }}</strong></p>
-                                                <div class="overflow-x-auto"><table class="text-sm border border-border text-center">
-                                                    <tr><th class="px-3 py-1 text-start">{{ __('Size') }}</th>@foreach($productColorContents as $content)<th class="px-3 py-1">{{ $content->item->attributes['size'] ?? $content->item->sku }}</th>@endforeach</tr>
-                                                    <tr class="border-t border-border"><th class="px-3 py-1 text-start">{{ __('Pieces') }}</th>@foreach($productColorContents as $content)<td class="px-3 py-1">{{ $content->quantity }}</td>@endforeach</tr>
-                                                </table></div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                    @if($box->packed_at)
-                                        <p class="text-xs font-semibold text-primary"><i class="ph ph-check-circle"></i> {{ __('Packed') }} · {{ $box->packed_at->format('M j, Y') }}</p>
-                                    @elseif(in_array($order->status, ['paid', 'processing']) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery'))
-                                        @can('commerce.manage')<form method="POST" action="{{ route('user.commerce.orders.boxes.packed', [$order, $box]) }}">@csrf @method('PUT')<x-forms.submit :label="__('Mark box packed')" /></form>@endcan
+                        @foreach($packProductGroups as $productBoxes)
+                            @php($packProducts = $productBoxes->flatMap->contents->map->item->unique($productKey))
+                            <div class="space-y-3" data-pack-product-group>
+                                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-soft pb-3">
+                                    <h3 class="text-sm font-semibold leading-snug text-title">{{ $packProducts->count() === 1 ? $packProducts->first()->product_name : __('Mixed products') }}</h3>
+                                    @if($packProductGroups->count() > 1)
+                                        <span class="text-xs text-body">{{ $productBoxes->count() }} {{ __('packs') }} · {{ $productBoxes->flatMap->contents->sum('quantity') }} {{ __('pieces') }}</span>
                                     @endif
                                 </div>
-                            @endforeach
-                        </div>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    @foreach($productBoxes as $box)
+                                        <article class="min-w-0 space-y-3 rounded-md border border-border-soft bg-bg-elevated p-4" data-pack-card data-pack-id="{{ $box->id }}">
+                                            <div class="divide-y divide-border-soft">
+                                                @foreach($box->contents->groupBy(fn ($content) => $productKey($content->item).'|'.($content->item->attributes['color'] ?? ''))->map(fn ($contents) => $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)) as $productColorContents)
+                                                    @php($packItem = $productColorContents->first()->item)
+                                                    <div class="space-y-3 py-3 first:pt-0 last:pb-0">
+                                                        <div class="flex items-center gap-3">
+                                                            @include('commerce::user.partials.order-product-image', ['item' => $packItem])
+                                                            <div class="min-w-0 flex-1 space-y-1.5">
+                                                                @if($packProducts->count() > 1)
+                                                                    <p class="text-sm font-semibold leading-snug text-title">{{ $packItem->product_name }}</p>
+                                                                @endif
+                                                                <h4 class="text-sm font-semibold text-title">{{ __('Color') }}: {{ $packItem->attributes['color'] ?? '—' }}</h4>
+                                                                <p class="text-xs text-body">{{ $productColorContents->sum('quantity') }} {{ __('pieces') }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="overflow-x-auto rounded-sm border border-border-soft">
+                                                            <table class="w-full text-center text-xs" aria-label="{{ $packItem->product_name.' · '.($packItem->attributes['color'] ?? __('Sizes')) }}">
+                                                                <tbody>
+                                                                    <tr class="bg-section"><th scope="row" class="px-2 py-2 text-start text-body">{{ __('Size') }}</th>@foreach($productColorContents as $content)<td class="px-2 py-2 font-semibold text-title">{{ $content->item->attributes['size'] ?? '—' }}</td>@endforeach</tr>
+                                                                    <tr class="border-t border-border-soft"><th scope="row" class="px-2 py-2 text-start text-body">{{ __('Pieces') }}</th>@foreach($productColorContents as $content)<td class="px-2 py-2 tabular-nums text-title">{{ $content->quantity }}</td>@endforeach</tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            @if($box->packed_at)
+                                                <p class="border-t border-border-soft pt-3 text-xs font-semibold text-primary"><i class="ph ph-check-circle" aria-hidden="true"></i> {{ __('Packed') }} · {{ $box->packed_at->format('M j, Y') }}</p>
+                                            @elseif(in_array($order->status, ['paid', 'processing']) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery'))
+                                                @can('commerce.manage')
+                                                    <form method="POST" action="{{ route('user.commerce.orders.boxes.packed', [$order, $box]) }}" class="border-t border-border-soft pt-3">
+                                                        @csrf @method('PUT')
+                                                        <x-forms.submit :label="__('Mark box packed')" />
+                                                    </form>
+                                                @endcan
+                                            @endif
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
                     </section>
                 @endif
 
-                @if($orderedPieces > $packedPieces)
-                    <section class="section-card overflow-x-auto">
-                        <h2 class="heading-5 text-title">{{ __('Ordered items') }}</h2>
-                        <table class="mt-4 w-full min-w-[620px] text-left text-sm">
-                            <thead><tr class="border-b border-border text-body"><th class="p-3">{{ __('Product') }}</th><th class="p-3">{{ __('Variant') }}</th><th class="p-3">{{ __('Qty') }}</th><th class="p-3">{{ __('Price') }}</th><th class="p-3">{{ __('Total') }}</th></tr></thead>
-                            <tbody>@foreach($order->items as $item)<tr class="border-b border-border-soft"><td class="p-3 text-title">{{ $item->product_name }}<span class="block text-xs text-body">{{ $item->sku }}</span></td><td class="p-3 text-body">{{ collect($item->attributes)->only(['size', 'color'])->map(fn($value,$key) => str($key)->title().': '.$value)->implode(', ') }}</td><td class="p-3">{{ $item->quantity }}</td><td class="p-3">{{ $money($item->unit_price) }}</td><td class="p-3 font-semibold">{{ $money($item->line_total) }}</td></tr>@endforeach</tbody>
-                        </table>
+                @if($unpackedItems->isNotEmpty())
+                    <section class="section-card space-y-6">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h2 class="heading-5 text-title">{{ __('Ordered items') }}</h2>
+                            <span class="text-sm text-body">{{ $unpackedItems->sum(fn ($item) => $item->quantity - ($packedQuantities[$item->id] ?? 0)) }} {{ __('pieces') }}</span>
+                        </div>
+                        @foreach($individualProductGroups as $productItems)
+                            <div class="space-y-3" data-individual-product-group>
+                                <h3 class="border-b border-border-soft pb-3 text-sm font-semibold leading-snug text-title">{{ $productItems->first()->product_name }}</h3>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    @foreach($productItems as $item)
+                                        @php($remainingQuantity = $item->quantity - ($packedQuantities[$item->id] ?? 0))
+                                        <article class="min-w-0 space-y-4 rounded-md border border-border-soft bg-bg-elevated p-4" data-order-item="{{ $item->id }}">
+                                            <div class="flex items-center gap-3">
+                                                @include('commerce::user.partials.order-product-image', ['item' => $item])
+                                                <div class="min-w-0 flex-1 space-y-1.5">
+                                                    <h4 class="text-sm font-semibold text-title">{{ __('Color') }}: {{ $item->attributes['color'] ?? '—' }}</h4>
+                                                    <p class="text-sm text-body">{{ __('Size') }}: <span class="font-medium text-title">{{ $item->attributes['size'] ?? '—' }}</span></p>
+                                                    <p class="break-all text-xs text-body">{{ __('SKU') }}: {{ $item->sku ?: '—' }}</p>
+                                                </div>
+                                            </div>
+                                            <dl class="grid grid-cols-3 gap-3 border-t border-border-soft pt-3 text-xs">
+                                                <div><dt class="text-body">{{ __('Quantity') }}</dt><dd class="mt-1 text-sm font-semibold tabular-nums text-title" data-item-quantity>{{ $remainingQuantity }}</dd></div>
+                                                <div><dt class="text-body">{{ __('Unit price') }}</dt><dd class="mt-1 break-words font-medium tabular-nums text-title">{{ $money($item->unit_price) }}</dd></div>
+                                                <div><dt class="text-body">{{ __('Total') }}</dt><dd class="mt-1 break-words font-semibold tabular-nums text-title" data-item-total>{{ $money($remainingQuantity === $item->quantity ? $item->line_total : $remainingQuantity * (float) $item->unit_price) }}</dd></div>
+                                            </dl>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
                     </section>
                 @endif
 
@@ -204,5 +249,6 @@
                 </section>
             </aside>
         </div>
+        @include('commerce::user.partials.order-product-gallery')
     </div>
 </x-layouts.user>

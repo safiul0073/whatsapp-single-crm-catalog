@@ -7,7 +7,7 @@
 <div class="section-card">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div class="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                 <i class="ph ph-devices text-xl"></i>
             </div>
             <div>
@@ -29,7 +29,7 @@
             <div class="flex items-center justify-between py-3">
                 <div class="flex items-center gap-3">
                     {{-- Device icon --}}
-                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-100 text-neutral-500">
                         @if($session->device === 'Mobile')
                             <i class="ph ph-device-mobile text-xl"></i>
                         @elseif($session->device === 'Tablet')

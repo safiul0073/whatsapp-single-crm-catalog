@@ -12,7 +12,7 @@
     <p class="mt-2 text-xs text-warning" x-show="sourceMessage" x-text="sourceMessage" x-cloak></p>
 
     @if ($account)
-        <div class="mt-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success/10 px-3 py-2.5">
+        <div class="mt-4 flex items-center gap-3 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
             <i class="ph-fill ph-check-circle text-lg text-success"></i>
             <div class="min-w-0 text-sm">
                 <p class="truncate font-semibold text-title">{{ $account->name }}</p>
@@ -20,7 +20,7 @@
             </div>
         </div>
     @elseif ($connectUrl)
-        <a href="{{ $connectUrl }}" class="btn mt-4 w-full rounded-lg bg-title text-white hover:bg-title/90">{{ __('Connect Instagram') }}</a>
+        <a href="{{ $connectUrl }}" class="btn mt-4 w-full rounded-md bg-title text-white hover:bg-title/90">{{ __('Connect Instagram') }}</a>
         <p class="mt-3 text-xs text-body">{{ __('Connect your Instagram business account for real posts and username search. Until then the preview shows sample posts.') }}</p>
     @endif
 </x-social-widgets::accordion>

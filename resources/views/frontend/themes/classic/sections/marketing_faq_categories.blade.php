@@ -24,7 +24,7 @@
                     @if (!empty($items))
                         <div class="mt-6 space-y-3" data-faq-group>
                             @foreach ($items as $item)
-                                <div class="faq-item {{ $loop->first ? 'is-open' : '' }} rounded-2xl border border-neutral-200 bg-neutral-0">
+                                <div class="faq-item {{ $loop->first ? 'is-open' : '' }} rounded-md border border-neutral-200 bg-neutral-0">
                                     <button data-faq-toggle aria-expanded="{{ $loop->first ? 'true' : 'false' }}" class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
                                         <span class="font-title text-base font-bold text-title sm:text-lg">{{ $item['question'] ?? '' }}</span>
                                         <svg class="faq-icon h-5 w-5 shrink-0 text-primary transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
@@ -45,9 +45,9 @@
 @if (!empty($d['cta_title']) || !empty($d['cta_subtitle']))
     <section class="spb-section">
         <div class="container">
-            <div class="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-3xl border border-primary/20 bg-primary/5 px-6 py-10 text-center sm:px-10">
+            <div class="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-md border border-primary/20 bg-primary/5 px-6 py-10 text-center sm:px-10">
                 @if (!empty($d['icon_class']))
-                    <span class="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-neutral-0"><i class="{{ $d['icon_class'] }} text-2xl"></i></span>
+                    <span class="grid h-12 w-12 place-items-center rounded-md bg-primary text-neutral-0"><i class="{{ $d['icon_class'] }} text-2xl"></i></span>
                 @endif
                 @if (!empty($d['cta_title']))
                     <h2 class="heading-2">{{ $d['cta_title'] }}</h2>

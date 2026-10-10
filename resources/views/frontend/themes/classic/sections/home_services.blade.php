@@ -30,7 +30,7 @@
 
     @if ($categoryItems->isNotEmpty())
         @php $firstCategory = $categoryItems->first(); @endphp
-        <div class="srv3-preview absolute top-0 left-0 w-[clamp(220px,22vw,320px)] aspect-[4/5] rounded-lg overflow-hidden pointer-events-none z-5 opacity-0 will-change-transform"
+        <div class="srv3-preview absolute top-0 left-0 w-[clamp(220px,22vw,320px)] aspect-[4/5] rounded-md overflow-hidden pointer-events-none z-5 opacity-0 will-change-transform"
             data-srv-preview aria-hidden="true">
             @foreach ($categoryItems as $category)
                 @php $previewService = $category->services->first(); @endphp
@@ -66,7 +66,7 @@
         </div>
 
         @if ($categoryItems->isNotEmpty())
-            <ul class="relative z-1 list-none p-0 m-0 flex flex-col bg-white border border-border-default rounded-3xl overflow-hidden shadow-srv-stack"
+            <ul class="relative z-1 list-none p-0 m-0 flex flex-col bg-white border border-border-default rounded-md overflow-hidden shadow-srv-stack"
                 role="list" data-srv-stack>
                 @foreach ($categoryItems as $index => $category)
                     @php
@@ -152,7 +152,7 @@
                                         </div>
                                     </div>
                                     <div
-                                        class="relative bg-white border border-border-soft rounded-lg overflow-hidden min-h-[220px]">
+                                        class="relative bg-white border border-border-soft rounded-md overflow-hidden min-h-[220px]">
                                         <img src="{{ $featuredService?->media?->url ?? 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80' }}"
                                             alt="{{ $category->name }}" loading="lazy"
                                             class="absolute inset-0 w-full h-full object-cover" />

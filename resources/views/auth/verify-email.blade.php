@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="text-center">
-    <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+    <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-md bg-primary/10">
         <i class="ph-bold ph-envelope-simple text-3xl text-primary"></i>
     </div>
 

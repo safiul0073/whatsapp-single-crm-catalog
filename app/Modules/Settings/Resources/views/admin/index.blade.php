@@ -92,7 +92,7 @@
                                             @foreach($column as $card)
                                                 <div class="section-card">
                                                     <div class="flex items-center gap-3 mb-1">
-                                                        <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary">
+                                                        <div class="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 text-primary">
                                                             <i class="{{ $card['icon'] }} text-lg"></i>
                                                         </div>
                                                         <div>
@@ -111,7 +111,7 @@
                                                             @endphp
                                                             <div data-setting-key="{{ $key }}" @if($visibleIfJson) data-visible-if="{{ $visibleIfJson }}" @endif>
                                                                 @if(in_array($setting['type'], ['boolean', 'feature']))
-                                                                    <div class="flex items-center justify-between gap-4 rounded-xl border border-neutral-100 px-4 py-3">
+                                                                    <div class="flex items-center justify-between gap-4 rounded-md border border-neutral-100 px-4 py-3">
                                                                         <div>
                                                                             <p class="text-sm font-semibold text-neutral-900">{{ __($setting['label']) }}</p>
                                                                             @if(!empty($setting['hint']))
@@ -358,7 +358,7 @@
                                             $isOn = (bool) $setting['value'];
                                             $visibleIf = $setting['visible_if'] ?? null;
                                         @endphp
-                                        <div class="config-tile group bg-neutral-0 relative flex flex-col overflow-hidden rounded-2xl border border-neutral-100 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-neutral-200 hover:shadow-xl"
+                                        <div class="config-tile group bg-neutral-0 relative flex flex-col overflow-hidden rounded-md border border-neutral-100 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-neutral-200 hover:shadow-xl"
                                              data-setting-key="{{ $key }}"
                                              data-state="{{ $isOn ? 'on' : 'off' }}"
                                              @if($visibleIf) data-visible-if="{{ json_encode($visibleIf) }}" @endif>

@@ -67,8 +67,8 @@
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 content-start">
                 @foreach ($leftCards as $card)
                     @php $tile = $tileMap[$card['color'] ?? 'blue'] ?? $tileMap['blue']; @endphp
-                    <div class="bg-white rounded-2xl p-6 shadow-xs">
-                        <div class="w-14 h-14 rounded-2xl inline-grid place-items-center mb-5 {{ $tile }}">
+                    <div class="bg-white rounded-md p-6 shadow-xs">
+                        <div class="w-14 h-14 rounded-md inline-grid place-items-center mb-5 {{ $tile }}">
                             <i data-lucide="{{ $card['icon'] ?? 'circle' }}" class="w-6 h-6" aria-hidden="true"></i>
                         </div>
                         <h3 class="font-display font-bold text-brand-navy-ink text-body tracking-body">{{ $card['title'] ?? '' }}</h3>
@@ -78,7 +78,7 @@
             </div>
 
             <!-- Center: support stats panel -->
-            <div class="rounded-2xl overflow-hidden shadow-md min-h-85 lg:min-h-0 bg-brand-navy-ink relative flex flex-col justify-between p-8">
+            <div class="rounded-md overflow-hidden shadow-md min-h-85 lg:min-h-0 bg-brand-navy-ink relative flex flex-col justify-between p-8">
                 <svg class="pointer-events-none absolute right-0 top-0 w-48 h-48 opacity-10" viewBox="0 0 192 192" fill="none" aria-hidden="true">
                     <circle cx="192" cy="0" r="80" stroke="white" stroke-width="1.5" />
                     <circle cx="192" cy="0" r="120" stroke="white" stroke-width="1.5" />
@@ -103,11 +103,11 @@
                 </div>
 
                 <div class="relative z-10 mt-8 grid grid-cols-2 gap-4">
-                    <div class="rounded-xl bg-white/10 border border-white/10 p-4">
+                    <div class="rounded-md bg-white/10 border border-white/10 p-4">
                         <p class="font-display font-extrabold text-white text-h3 leading-none">{{ $ticketsResolved }}</p>
                         <p class="mt-1 font-body text-body-sm text-white/70">{{ __('Tickets Resolved') }}</p>
                     </div>
-                    <div class="rounded-xl bg-white/10 border border-white/10 p-4">
+                    <div class="rounded-md bg-white/10 border border-white/10 p-4">
                         <p class="font-display font-extrabold text-white text-h3 leading-none">{{ $happyClients }}</p>
                         <p class="mt-1 font-body text-body-sm text-white/70">{{ __('Happy Clients') }}</p>
                     </div>
@@ -118,8 +118,8 @@
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 content-start">
                 @foreach ($rightCards as $card)
                     @php $tile = $tileMap[$card['color'] ?? 'blue'] ?? $tileMap['blue']; @endphp
-                    <div class="bg-white rounded-2xl p-6 shadow-xs">
-                        <div class="w-14 h-14 rounded-2xl inline-grid place-items-center mb-5 {{ $tile }}">
+                    <div class="bg-white rounded-md p-6 shadow-xs">
+                        <div class="w-14 h-14 rounded-md inline-grid place-items-center mb-5 {{ $tile }}">
                             <i data-lucide="{{ $card['icon'] ?? 'circle' }}" class="w-6 h-6" aria-hidden="true"></i>
                         </div>
                         <h3 class="font-display font-bold text-brand-navy-ink text-body tracking-body">{{ $card['title'] ?? '' }}</h3>

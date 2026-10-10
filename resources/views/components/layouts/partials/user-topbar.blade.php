@@ -68,7 +68,7 @@
                 x-transition:leave="transition ease-in duration-100"
                 x-transition:leave-start="opacity-100 translate-y-0"
                 x-transition:leave-end="opacity-0 translate-y-1"
-                class="absolute end-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-0 shadow-xl md:w-96">
+                class="absolute end-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-md border border-neutral-100 bg-neutral-0 shadow-xl md:w-96">
                 <div class="flex items-center justify-between border-b border-neutral-100 p-4">
                     <h4 class="font-bold text-neutral-950">{{ __('Notifications') }}</h4>
                     <button @click="markAllRead()" x-show="unreadCount > 0" class="text-xs text-primary hover:underline">
@@ -85,7 +85,7 @@
                                 <a :href="n.url || 'javascript:void(0)'" @click="handleNotificationClick(n, $event)"
                                     class="flex cursor-pointer gap-3 border-b border-neutral-50 p-4 transition-colors hover:bg-neutral-50"
                                     :class="{ 'bg-primary/5': !n.read_at }">
-                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
                                         :class="n.icon_bg || 'bg-primary/10 text-primary'">
                                         <i class="ph" :class="n.icon || 'ph-bell'"></i>
                                     </div>
@@ -125,7 +125,7 @@
             </button>
 
             <div id="userDropdown"
-                class="dropdown-panel absolute end-0 top-full z-50 mt-2 w-56 rounded-xl border border-neutral-200 bg-neutral-0 p-1.5 shadow-[0_20px_50px_-20px_rgba(10,27,20,0.35)]"
+                class="dropdown-panel absolute end-0 top-full z-50 mt-2 w-56 rounded-md border border-neutral-200 bg-neutral-0 p-1.5 shadow-[0_20px_50px_-20px_rgba(10,27,20,0.35)]"
                 role="menu">
                 <div class="flex items-center gap-3 px-2.5 py-2">
                     @if ($authUser->avatar && avatar_url($authUser->avatar))

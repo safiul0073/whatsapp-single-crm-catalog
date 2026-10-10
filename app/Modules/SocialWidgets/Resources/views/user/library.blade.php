@@ -20,8 +20,8 @@
             <p class="text-sm font-semibold text-title"><span class="text-primary">★</span> {{ __('Recommended for you') }} <span class="font-normal text-body">· {{ __('what most sites pick first') }}</span></p>
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($recommended as $widget)
-                    <a href="{{ $widget['url'] }}" class="group rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-primary hover:shadow-sm" data-widget-card="{{ $widget['key'] }}" x-on:mouseenter="showPreview($event, '{{ $widget['key'] }}')" x-on:mousemove="movePreview($event)" x-on:mouseleave="hidePreview()">
-                        <span class="grid h-9 w-9 place-items-center rounded-lg bg-pink-50 text-pink-600"><i class="ph {{ $widget['icon'] }} text-xl"></i></span>
+                    <a href="{{ $widget['url'] }}" class="group rounded-md border border-neutral-200 bg-white p-4 transition hover:border-primary hover:shadow-sm" data-widget-card="{{ $widget['key'] }}" x-on:mouseenter="showPreview($event, '{{ $widget['key'] }}')" x-on:mousemove="movePreview($event)" x-on:mouseleave="hidePreview()">
+                        <span class="grid h-9 w-9 place-items-center rounded-md bg-pink-50 text-pink-600"><i class="ph {{ $widget['icon'] }} text-xl"></i></span>
                         <span class="mt-4 block font-semibold text-title">{{ __($widget['name']) }}</span>
                         <span class="mt-2 inline-flex items-center gap-1 text-sm text-title group-hover:text-primary">{{ __('Install') }} <i class="ph ph-arrow-right text-xs"></i></span>
                     </a>
@@ -45,7 +45,7 @@
                 </div>
                 <div class="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ($section['widgets'] as $widget)
-                        <a href="{{ $widget['url'] }}" class="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3.5 py-3 text-sm font-medium text-title transition hover:border-primary" data-widget-item data-search="{{ strtolower($widget['name'].' '.$widget['keywords']) }}" x-show="matches($el)" x-on:mouseenter="showPreview($event, '{{ $widget['key'] }}')" x-on:mousemove="movePreview($event)" x-on:mouseleave="hidePreview()">
+                        <a href="{{ $widget['url'] }}" class="flex items-center gap-3 rounded-md border border-neutral-200 bg-white px-3.5 py-3 text-sm font-medium text-title transition hover:border-primary" data-widget-item data-search="{{ strtolower($widget['name'].' '.$widget['keywords']) }}" x-show="matches($el)" x-on:mouseenter="showPreview($event, '{{ $widget['key'] }}')" x-on:mousemove="movePreview($event)" x-on:mouseleave="hidePreview()">
                             <i class="ph {{ $widget['icon'] }} text-lg text-body"></i>
                             {{ __($widget['name']) }}
                         </a>
@@ -57,7 +57,7 @@
         <p class="mt-10 text-center text-sm text-body" x-show="visibleCount === 0" x-cloak>{{ __('No widgets match your search.') }}</p>
 
         <div x-ref="preview" class="pointer-events-none fixed left-0 top-0 z-50 w-80 opacity-0 transition-opacity duration-150" x-bind:class="previewKey && 'opacity-100'" aria-hidden="true">
-            <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl">
+            <div class="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-2xl">
                 <div class="flex items-center justify-between border-b border-neutral-100 bg-white px-3 py-2">
                     <span class="h-1.5 w-14 rounded-full bg-neutral-200"></span>
                     <span class="flex gap-1.5"><span class="h-1 w-5 rounded-full bg-neutral-200"></span><span class="h-1 w-5 rounded-full bg-neutral-200"></span><span class="h-1 w-5 rounded-full bg-neutral-200"></span></span>
@@ -72,7 +72,7 @@
                         </div>
                         <span class="h-16 w-24 rounded-md bg-linear-to-br from-slate-200 to-slate-300"></span>
                     </div>
-                    <div class="mt-3 rounded-lg border border-neutral-200 bg-white p-2">
+                    <div class="mt-3 rounded-md border border-neutral-200 bg-white p-2">
                         @foreach ($sections as $section)
                             @foreach ($section['widgets'] as $widget)
                                 <div x-show="previewKey === '{{ $widget['key'] }}'">

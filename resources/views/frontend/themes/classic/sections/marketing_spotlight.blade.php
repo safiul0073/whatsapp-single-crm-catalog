@@ -20,12 +20,12 @@
                         <span class="badge badge-soft ml-3 shrink-0">{{ $statBadge }}</span>
                     </div>
                     <div class="mt-5 flex h-36 min-w-0 items-end gap-3 overflow-hidden">
-                        <div class="h-[40%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                        <div class="h-[30%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                        <div class="h-[95%] flex-1 rounded-t-lg bg-primary"></div>
-                        <div class="h-[55%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                        <div class="h-[48%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                        <div class="h-[70%] flex-1 rounded-t-lg bg-primary/60"></div>
+                        <div class="h-[40%] flex-1 rounded-t-md bg-neutral-100"></div>
+                        <div class="h-[30%] flex-1 rounded-t-md bg-neutral-100"></div>
+                        <div class="h-[95%] flex-1 rounded-t-md bg-primary"></div>
+                        <div class="h-[55%] flex-1 rounded-t-md bg-neutral-100"></div>
+                        <div class="h-[48%] flex-1 rounded-t-md bg-neutral-100"></div>
+                        <div class="h-[70%] flex-1 rounded-t-md bg-primary/60"></div>
                     </div>
                     <div class="mt-4 grid grid-cols-3 gap-3 border-t border-neutral-100 pt-4 text-center">
                         <div><p class="font-title text-lg font-bold text-title">{{ $statRead }}</p><p class="s-text">{{ __('Read') }}</p></div>
@@ -39,13 +39,13 @@
                     <div class="space-y-2.5">
                         @php $recipients = $d['recipients'] ?? []; @endphp
                         @foreach ($recipients as $recipient)
-                            <div class="f-between rounded-xl bg-section px-3 py-2.5">
+                            <div class="f-between rounded-md bg-section px-3 py-2.5">
                                 <span class="text-sm font-medium text-title">{{ $recipient['name'] ?? '' }}</span>
                                 @if (!empty($recipient['status']))
                                     @if ($recipient['status'] === 'Replied')
                                         <span class="badge badge-soft">{{ __('Replied') }}</span>
                                     @else
-                                        <span class="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{{ $recipient['status'] }}</span>
+                                        <span class="rounded-sm bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{{ $recipient['status'] }}</span>
                                     @endif
                                 @endif
                             </div>
@@ -56,22 +56,22 @@
                 <div class="spot-vis" data-vis="3">
                     <p class="s-text mb-4 font-semibold text-title">{{ __('A/B test · winner auto-picked') }}</p>
                     <div class="space-y-4">
-                        <div class="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                        <div class="rounded-md border border-primary/30 bg-primary/5 p-4">
                             <div class="f-between mb-2">
                                 <span class="text-sm font-bold text-title">{{ __('Variant A') }}</span>
                                 <span class="badge badge-soft">{{ __('Winner') }}</span>
                             </div>
                             <div class="h-2 w-full overflow-hidden rounded-full bg-neutral-100">
-                                <div class="h-full w-[72%] rounded-full bg-primary"></div>
+                                <div class="h-full w-[72%] rounded-sm bg-primary"></div>
                             </div>
                             <p class="s-text mt-1.5">{{ __('72% reply rate') }}</p>
                         </div>
-                        <div class="rounded-xl border border-neutral-200 p-4">
+                        <div class="rounded-md border border-neutral-200 p-4">
                             <div class="f-between mb-2">
                                 <span class="text-sm font-bold text-title">{{ __('Variant B') }}</span>
                             </div>
                             <div class="h-2 w-full overflow-hidden rounded-full bg-neutral-100">
-                                <div class="h-full w-[41%] rounded-full bg-neutral-300"></div>
+                                <div class="h-full w-[41%] rounded-sm bg-neutral-300"></div>
                             </div>
                             <p class="s-text mt-1.5">{{ __('41% reply rate') }}</p>
                         </div>

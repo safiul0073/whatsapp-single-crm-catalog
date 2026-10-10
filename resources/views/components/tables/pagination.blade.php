@@ -25,11 +25,11 @@
         {{-- Page Numbers --}}
         @foreach($paginator->getUrlRange(1, $paginator->lastPage()) as $page => $url)
             @if($page == $paginator->currentPage())
-                <span class="bg-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow-lg">
+                <span class="bg-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-md text-sm font-bold text-white shadow-lg">
                     {{ $page }}
                 </span>
             @elseif($page == 1 || $page == $paginator->lastPage() || abs($page - $paginator->currentPage()) <= 2)
-                <a href="{{ $url }}" class="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-50 pagination-btn">
+                <a href="{{ $url }}" class="flex h-9 w-9 items-center justify-center rounded-md text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-50 pagination-btn">
                     {{ $page }}
                 </a>
             @elseif(abs($page - $paginator->currentPage()) == 3)

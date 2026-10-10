@@ -66,7 +66,7 @@
                             @endif
                         </div>
 
-                        <div class="rounded-3xl border border-neutral-200 {{ $cardBackgroundClass }} p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
+                        <div class="rounded-md border border-neutral-200 {{ $cardBackgroundClass }} p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)]">
                             @if ($mockupType === 'chatbot')
                                 <div class="flex items-center gap-2">
                                     <span class="grid h-8 w-8 place-items-center rounded-full bg-primary text-neutral-0"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg></span>
@@ -78,7 +78,7 @@
                                 <div class="mt-3 space-y-1.5">
                                     @foreach ($messages as $message)
                                         <div @class([
-                                            'rounded-lg px-2.5 py-1.5 text-[11px] text-title',
+                                            'rounded-md px-2.5 py-1.5 text-[11px] text-title',
                                             'max-w-[80%] rounded-tl-sm bg-neutral-0 shadow-1' => $loop->first,
                                             'ml-auto max-w-[85%] rounded-tr-sm bg-[#dcf8c6]' => ! $loop->first && ! $loop->last,
                                             'ml-auto max-w-[55%] rounded-tr-sm bg-[#dcf8c6]' => $loop->last,
@@ -94,11 +94,11 @@
                                     <span class="badge badge-soft">{{ $case['change'] ?? $mockup['change'] ?? '+78%' }}</span>
                                 </div>
                                 <div class="mt-6 flex h-32 items-end gap-3">
-                                    <div class="h-[40%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                                    <div class="h-[30%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                                    <div class="h-[95%] flex-1 rounded-t-lg bg-primary"></div>
-                                    <div class="h-[55%] flex-1 rounded-t-lg bg-neutral-100"></div>
-                                    <div class="h-[70%] flex-1 rounded-t-lg bg-primary/60"></div>
+                                    <div class="h-[40%] flex-1 rounded-t-md bg-neutral-100"></div>
+                                    <div class="h-[30%] flex-1 rounded-t-md bg-neutral-100"></div>
+                                    <div class="h-[95%] flex-1 rounded-t-md bg-primary"></div>
+                                    <div class="h-[55%] flex-1 rounded-t-md bg-neutral-100"></div>
+                                    <div class="h-[70%] flex-1 rounded-t-md bg-primary/60"></div>
                                 </div>
                             @else
                                 <div class="f-between">
@@ -107,7 +107,7 @@
                                 </div>
                                 <div class="mt-5 grid grid-cols-3 gap-3 text-center">
                                     @foreach (($stats ?: [['value' => '42.1k', 'label' => __('Sent')], ['value' => '86%', 'label' => __('Read')], ['value' => '11.4%', 'label' => __('Replies')]]) as $stat)
-                                        <div class="rounded-xl {{ $loop->last ? 'bg-primary/10' : 'bg-section' }} p-3">
+                                        <div class="rounded-md {{ $loop->last ? 'bg-primary/10' : 'bg-section' }} p-3">
                                             <p class="font-title text-xl font-bold {{ $loop->last ? 'text-primary' : 'text-title' }}">{{ $stat['value'] ?? '' }}</p>
                                             <p class="s-text">{{ $stat['label'] ?? '' }}</p>
                                         </div>

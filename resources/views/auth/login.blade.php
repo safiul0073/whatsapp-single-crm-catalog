@@ -16,7 +16,7 @@
 
         <div class="f-between">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5">
-                <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" /></svg>
                 </span>
                 <span class="font-title text-xl font-extrabold tracking-tight text-title">WaPro</span>
@@ -28,7 +28,7 @@
         </div>
 
         <div class="flex flex-1 items-center justify-center py-10">
-            <div class="w-full max-w-md rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
+            <div class="w-full max-w-md rounded-md border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
                 <div class="text-center">
                     <span class="eyebrow">{{ __('Welcome back') }}</span>
                     <h1 class="heading-2 mt-3">{{ __('Sign in to WaPro') }}</h1>
@@ -41,7 +41,7 @@
                 </div>
 
                 @if (session('status'))
-                    <div class="mt-6 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+                    <div class="mt-6 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
                         {{ session('status') }}
                     </div>
                 @endif
@@ -74,7 +74,7 @@
                         </div>
                         <div class="relative">
                             <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Password" class="form-input pr-12 @error('password') border-error focus:border-error @enderror" />
-                            <button type="button" data-password-toggle aria-label="{{ __('Show password') }}" class="absolute top-1/2 right-2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-neutral-400 transition-colors hover:text-title">
+                            <button type="button" data-password-toggle aria-label="{{ __('Show password') }}" class="absolute top-1/2 right-2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-sm text-neutral-400 transition-colors hover:text-title">
                                 <svg data-eye class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
                                 <svg data-eye-off class="hidden h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A9.5 9.5 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.3 4M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 3-.5" /></svg>
                             </button>

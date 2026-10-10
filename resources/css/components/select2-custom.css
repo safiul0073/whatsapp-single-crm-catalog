@@ -1,6 +1,6 @@
 /* Select2 Custom Styling */
 .select2-container--default .select2-selection--single {
-  @apply s-body bg-neutral-0 flex h-auto min-h-[48px] w-full cursor-pointer items-center rounded-xl border border-neutral-200 px-4 py-2 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
+  @apply s-body bg-neutral-0 flex h-auto min-h-[48px] w-full cursor-pointer items-center rounded-md border border-neutral-200 px-4 py-2 text-start text-neutral-900 shadow-sm transition-all duration-300 outline-none;
 }
 
 .select2-container--default .select2-results__option--selected {
@@ -61,7 +61,7 @@
 
 /* Dropdown Panel */
 .select2-dropdown {
-  @apply bg-neutral-0 z-50 overflow-hidden rounded-xl border border-neutral-200 shadow-xl transition-all duration-200;
+  @apply bg-neutral-0 z-50 overflow-hidden rounded-md border border-neutral-200 shadow-xl transition-all duration-200;
 }
 
 .select2-container--open .select2-dropdown--below {
@@ -74,13 +74,13 @@
 
 /* Search Input */
 .select2-container--default .select2-search--dropdown .select2-search__field {
-  @apply s-body bg-neutral-0 w-full rounded-lg border border-neutral-200 px-3 py-2 transition-all duration-300 outline-none;
+  @apply s-body bg-neutral-0 w-full rounded-sm border border-neutral-200 px-3 py-2 transition-all duration-300 outline-none;
   @apply focus:border-primary focus:ring-primary/10 focus:ring-4;
 }
 
 /* Options */
 .select2-results__option {
-  @apply flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2 text-sm text-neutral-600 transition-colors;
+  @apply flex w-full cursor-pointer items-center gap-3 rounded-md px-4 py-2 text-sm text-neutral-600 transition-colors;
 }
 
 /* Hover/Highlighed State for unselected options */
@@ -103,7 +103,7 @@
 
 /* Multi Select Tags */
 .select2-container--default .select2-selection--multiple {
-  @apply bg-neutral-0 flex min-h-[48px] w-full cursor-pointer flex-wrap items-center gap-1 rounded-xl border border-neutral-200 px-2 py-1.5 shadow-sm transition-all duration-300;
+  @apply bg-neutral-0 flex min-h-[48px] w-full cursor-pointer flex-wrap items-center gap-1 rounded-md border border-neutral-200 px-2 py-1.5 shadow-sm transition-all duration-300;
 }
 
 .select2-container--default
@@ -116,7 +116,7 @@
 .select2-container--default
   .select2-selection--multiple
   .select2-selection__choice {
-  @apply bg-primary/10 border-primary/20 text-primary m-0 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium;
+  @apply bg-primary/10 border-primary/20 text-primary m-0 flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium;
 }
 
 .select2-container--default

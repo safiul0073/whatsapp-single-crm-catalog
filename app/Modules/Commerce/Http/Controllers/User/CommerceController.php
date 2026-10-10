@@ -270,8 +270,8 @@ class CommerceController extends Controller implements HasMiddleware
     public function destroyCategory(Request $request, Category $category): RedirectResponse
     {
         $this->assertWorkspace($request, $category->workspace_id);
-        if ($category->products()->exists() || $category->children()->exists()) {
-            throw ValidationException::withMessages(['category' => __('Move its products and child categories before deleting this category.')]);
+        if ($category->products()->exists()) {
+            throw ValidationException::withMessages(['category' => __('Move its products before deleting this category.')]);
         }
         $category->delete();
 
@@ -281,10 +281,10 @@ class CommerceController extends Controller implements HasMiddleware
     public function bulkDestroyCategories(BulkDeleteCommerceRequest $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        $categories = $this->bulkRecords(Category::class, $workspace->id, $request->validated('ids'))->loadCount(['products', 'children']);
+        $categories = $this->bulkRecords(Category::class, $workspace->id, $request->validated('ids'))->loadCount('products');
 
-        if ($categories->contains(fn (Category $category): bool => $category->products_count > 0 || $category->children_count > 0)) {
-            throw ValidationException::withMessages(['ids' => __('Move products and child categories before deleting the selected categories.')]);
+        if ($categories->contains(fn (Category $category): bool => $category->products_count > 0)) {
+            throw ValidationException::withMessages(['ids' => __('Move products before deleting the selected categories.')]);
         }
 
         Category::query()->whereKey($categories->modelKeys())->delete();
@@ -576,7 +576,7 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        $order->load(['items', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'contact', 'conversation', 'events', 'shipment', 'payments.staff']);
+        $order->load(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'items.variant.product.gallery', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery', 'contact', 'conversation', 'events', 'shipment', 'payments.staff']);
         $pos = app(PosService::class);
 
         return view('commerce::user.order', [

@@ -20,7 +20,7 @@
             <article class="app-card mt-3 p-5 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 font-title text-lg font-extrabold text-primary">
+                        <span class="grid h-14 w-14 shrink-0 place-items-center rounded-md bg-primary/10 font-title text-lg font-extrabold text-primary">
                             {{ strtoupper(substr($currentWorkspace->name, 0, 2)) }}
                         </span>
                         <div class="min-w-0">
@@ -81,7 +81,7 @@
                 @endphp
                 <article class="app-card flex flex-col p-5 {{ $isSuspended ? 'opacity-60' : '' }}">
                     <div class="flex items-start gap-3">
-                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-section font-title font-extrabold text-primary">
+                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-section font-title font-extrabold text-primary">
                             {{ $initials }}
                         </span>
                         <div class="min-w-0 flex-1">
@@ -155,8 +155,8 @@
                 </article>
             @empty
                 @if ($memberWorkspaces->isEmpty() && $invitations->isEmpty())
-                    <div class="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 p-10 text-center">
-                        <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <div class="col-span-full flex flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 p-10 text-center">
+                        <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                             <i class="ph ph-buildings text-2xl"></i>
                         </span>
                         <h3 class="heading-4 mt-4">{{ __('No workspaces yet') }}</h3>
@@ -183,7 +183,7 @@
                 @endphp
                 <article class="app-card flex flex-col p-5 {{ $isSuspended ? 'opacity-60' : '' }}">
                     <div class="flex items-start gap-3">
-                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-section font-title font-extrabold text-primary">
+                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-section font-title font-extrabold text-primary">
                             {{ $initials }}
                         </span>
                         <div class="min-w-0 flex-1">
@@ -239,8 +239,8 @@
             @endforeach
 
             <button type="button" data-modal-open="newWorkspace"
-                class="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 p-5 text-center text-neutral-400 transition-colors hover:border-primary/50 hover:text-primary">
-                <span class="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+                class="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-300 p-5 text-center text-neutral-400 transition-colors hover:border-primary/50 hover:text-primary">
+                <span class="grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-plus text-xl"></i>
                 </span>
                 <span class="mt-1 text-sm font-semibold text-title">{{ __('Create workspace') }}</span>
@@ -260,7 +260,7 @@
             @foreach ($invitations as $invitation)
                 <div class="flex flex-wrap items-center justify-between gap-3 p-5 {{ $loop->last ? '' : 'border-b border-neutral-100' }}">
                     <div class="flex items-center gap-3">
-                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-section font-title font-extrabold text-primary">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-section font-title font-extrabold text-primary">
                             {{ strtoupper(substr($invitation->workspace->name, 0, 2)) }}
                         </span>
                         <div class="min-w-0">

@@ -11,7 +11,7 @@
     <main class="relative isolate flex min-h-screen flex-col overflow-hidden bg-section px-5 py-8 sm:px-8">
         <div class="f-between">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5">
-                <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" /></svg>
                 </span>
                 <span class="font-title text-xl font-extrabold tracking-tight text-title">WaPro</span>
@@ -23,7 +23,7 @@
         </div>
 
         <div class="flex flex-1 items-center justify-center py-10">
-            <div class="w-full max-w-2xl rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
+            <div class="w-full max-w-2xl rounded-md border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
                 <div>
                     <span class="eyebrow">{{ __('Step 2 of 3') }}</span>
                     <h1 class="heading-2 mt-3">{{ __('Create your workspace') }}</h1>

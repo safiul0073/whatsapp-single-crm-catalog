@@ -50,7 +50,7 @@
 
                     <div class="flex flex-col gap-3 mt-[18px] faq2-support">
                         <a href="{{ $callCardCtaLink }}"
-                            class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-2xl no-underline faq2-support-card faq2-support-card--blue">
+                            class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-md no-underline faq2-support-card faq2-support-card--blue">
                             <span class="w-9 h-9 rounded-[10px] inline-grid place-items-center faq2-support-icon"><i
                                     data-lucide="phone" class="w-4 h-4"></i></span>
                             <span class="flex flex-col gap-1">
@@ -78,7 +78,7 @@
                         </a>
 
                         <a href="mailto:{{ $emailCardEmail }}"
-                            class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-2xl no-underline faq2-support-card faq2-support-card--green">
+                            class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-md no-underline faq2-support-card faq2-support-card--green">
                             <span class="w-9 h-9 rounded-[10px] inline-grid place-items-center faq2-support-icon"><i
                                     data-lucide="mail" class="w-4 h-4"></i></span>
                             <span class="flex flex-col gap-1">

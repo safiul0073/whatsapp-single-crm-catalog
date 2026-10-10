@@ -95,7 +95,7 @@
                             @endif
                         </div>
                     @empty
-                        <div class="rounded-lg border border-dashed border-neutral-200 bg-section p-5 text-center">
+                        <div class="rounded-md border border-dashed border-neutral-200 bg-section p-5 text-center">
                             <p class="font-semibold text-title">{{ __('No usage limits configured') }}</p>
                             <p class="m-text mt-1">{{ __('Add limits to this plan from the admin panel to show usage here.') }}</p>
                         </div>
@@ -112,7 +112,7 @@
                             <span>{{ $feature }}</span>
                         </li>
                     @empty
-                        <li class="rounded-lg border border-dashed border-neutral-200 bg-section p-4 text-sm text-neutral-500 sm:col-span-2">
+                        <li class="rounded-md border border-dashed border-neutral-200 bg-section p-4 text-sm text-neutral-500 sm:col-span-2">
                             {{ __('No feature list has been added to this plan yet.') }}
                         </li>
                     @endforelse
@@ -174,8 +174,8 @@
                 @if($enabledPaymentGateways->isNotEmpty())
                     <div class="mt-4 space-y-2.5">
                         @foreach($enabledPaymentGateways as $gateway)
-                            <div class="flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
-                                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <div class="flex items-center gap-3 rounded-md border border-neutral-200 p-3">
+                                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                                     <i class="ph {{ $gateway['icon'] }} text-lg"></i>
                                 </span>
                                 <div class="min-w-0 flex-1">
@@ -187,7 +187,7 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="mt-4 rounded-lg border border-dashed border-neutral-200 bg-section p-4">
+                    <div class="mt-4 rounded-md border border-dashed border-neutral-200 bg-section p-4">
                         <p class="text-sm font-semibold text-title">{{ __('No active payment gateways') }}</p>
                         <p class="m-text mt-1">{{ __('Enable a payment gateway from the admin panel before users can pay online.') }}</p>
                     </div>
@@ -197,8 +197,8 @@
             <div class="app-card p-5">
                 <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Saved payment method') }}</p>
                 @if($paymentMethod)
-                    <div class="mt-3 flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
-                        <span class="grid h-9 w-12 shrink-0 place-items-center rounded-lg bg-section text-primary">
+                    <div class="mt-3 flex items-center gap-3 rounded-md border border-neutral-200 p-3">
+                        <span class="grid h-9 w-12 shrink-0 place-items-center rounded-md bg-section text-primary">
                             <i class="ph ph-credit-card text-lg"></i>
                         </span>
                         <div class="min-w-0 flex-1">
@@ -207,7 +207,7 @@
                         </div>
                     </div>
                 @else
-                    <div class="mt-3 rounded-lg border border-dashed border-neutral-200 bg-section p-4">
+                    <div class="mt-3 rounded-md border border-dashed border-neutral-200 bg-section p-4">
                         <p class="text-sm font-semibold text-title">{{ __('No payment method on file') }}</p>
                         <p class="m-text mt-1">{{ __('Add a payment provider integration to collect and display card details.') }}</p>
                     </div>
@@ -215,7 +215,7 @@
             </div>
 
             <div class="app-card p-5">
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                <span class="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-rocket-launch text-xl"></i>
                 </span>
                 <p class="mt-3 font-title text-base font-bold text-title">{{ __('Need more headroom?') }}</p>
@@ -278,7 +278,7 @@
                                 </span>
                             </label>
                         @empty
-                            <div class="rounded-lg border border-dashed border-neutral-200 bg-section p-6 text-center sm:col-span-2 lg:col-span-3">
+                            <div class="rounded-md border border-dashed border-neutral-200 bg-section p-6 text-center sm:col-span-2 lg:col-span-3">
                                 <p class="font-semibold text-title">{{ __('No active plans found') }}</p>
                                 <p class="m-text mt-1">{{ __('Create active plans in the admin panel to show comparison options here.') }}</p>
                             </div>

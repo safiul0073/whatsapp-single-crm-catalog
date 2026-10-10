@@ -122,7 +122,7 @@
                         $deliverables = array_filter(array_map('trim', explode("\n", $phase['deliverables'] ?? '')));
                     @endphp
                     <article
-                        class="proc2-card absolute inset-0 mx-auto max-w-full h-full bg-white border border-tint-navy rounded-3xl p-7 md:p-9 lg:p-11 shadow-proc-card overflow-hidden"
+                        class="proc2-card absolute inset-0 mx-auto max-w-full h-full bg-white border border-tint-navy rounded-md p-7 md:p-9 lg:p-11 shadow-proc-card overflow-hidden"
                         data-proc-card="{{ $index }}">
                         <span
                             class="proc2-card-bignum absolute right-5 md:right-8 lg:right-11 -bottom-2 font-display text-[clamp(160px,22vw,280px)] font-extrabold tracking-[-0.06em] leading-[0.85] text-brand-blue/5 pointer-events-none select-none">{{ $phase['number'] ?? str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span>

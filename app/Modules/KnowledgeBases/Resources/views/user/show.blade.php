@@ -19,18 +19,18 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+        <div class="mt-4 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
             {{ session('status') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="mt-4 rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+        <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
             {{ __('Please fix the highlighted source fields.') }}
         </div>
     @endif
 
-    <div class="mt-4 rounded-xl border {{ $vectorSearchEnabled ? 'border-success/20 bg-success/5 text-success' : 'border-warning/20 bg-warning/5 text-warning' }} px-4 py-3 text-sm font-semibold">
+    <div class="mt-4 rounded-md border {{ $vectorSearchEnabled ? 'border-success/20 bg-success/5 text-success' : 'border-warning/20 bg-warning/5 text-warning' }} px-4 py-3 text-sm font-semibold">
         {{ $vectorSearchEnabled ? __('Qdrant vector search is active. Indexed chunks will sync to the vector database.') : __('Database fallback is active. Configure Qdrant in Admin AI Settings for semantic vector search.') }}
     </div>
 
@@ -58,7 +58,7 @@
                 <h3 class="heading-4">{{ __('Sources') }}</h3>
                 <div class="mt-4 space-y-3">
                     @forelse ($sources as $source)
-                        <div class="rounded-xl border border-neutral-100 p-4">
+                        <div class="rounded-md border border-neutral-100 p-4">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="truncate font-semibold text-title">{{ $source->title }}</p>
@@ -96,7 +96,7 @@
                 <h3 class="heading-4">{{ __('Recent Chunks') }}</h3>
                 <div class="mt-4 space-y-3">
                     @forelse ($chunks as $chunk)
-                        <div class="rounded-xl bg-section p-4">
+                        <div class="rounded-md bg-section p-4">
                             <p class="text-xs font-semibold text-neutral-400">{{ $chunk->source?->title }}</p>
                             <p class="m-text mt-1 line-clamp-3">{{ $chunk->content }}</p>
                         </div>
