@@ -25,6 +25,7 @@ import './components/auto-reply-editor.js';
 import './components/inbox.js';
 import './components/commerce-product-wizard.js';
 import './components/commerce-pos.js';
+import './components/commerce-payment-gallery.js';
 import './components/crm-board.js';
 import './components/social-widget-layout-picker.js';
 import './components/social-widget-editor.js';

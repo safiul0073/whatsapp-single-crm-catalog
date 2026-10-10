@@ -31,6 +31,16 @@ it('renders customer login configuration as a WhatsApp setup tab', function (): 
         ->assertSee('Generate storefront integration credential');
 });
 
+it('explains login template variables beside their selectors', function (): void {
+    $this->actingAs($this->user)->get(route('user.whatsapp-cloud.customer-login'))->assertOk()
+        ->assertSeeInOrder([
+            'id="auth_template" aria-describedby="auth_template_help"',
+            'Verification code — {{1}} is automatically replaced with the customer’s login code. Example: 482913.',
+            'id="welcome_template" aria-describedby="welcome_template_help"',
+            'Customer name — {{1}} is automatically replaced with the customer’s name. Example: Hello Test User.',
+        ], false);
+});
+
 it('links order settings to the new tab without embedding customer authentication controls', function (): void {
     $this->actingAs($this->user)->get(route('user.commerce.orders.settings'))->assertOk()
         ->assertSee(route('user.whatsapp-cloud.customer-login'))
