@@ -115,43 +115,6 @@
                     </section>
                 @endif
 
-                @if(in_array($order->status, ['paid', 'processing']) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery'))
-                    @can('commerce.manage')
-                        <section class="section-card">
-                            <form method="POST" action="{{ route('user.commerce.orders.boxes.store', $order) }}" class="space-y-3">@csrf
-                                <h2 class="heading-5 text-title">{{ __('Add retail shipping box') }}</h2>
-                                @foreach($order->items as $item) @if(!$order->groups->firstWhere('id',$item->group_id) || $order->groups->firstWhere('id',$item->group_id)->mode === 'retail')<div><label class="form-label" for="pack_{{ $item->id }}">{{ $item->product_name }} · {{ $item->sku }} ({{ $item->quantity }} {{ __('ordered') }})</label><input class="form-input" id="pack_{{ $item->id }}" type="number" min="0" max="{{ $item->quantity }}" value="0" name="quantities[{{ $item->id }}]"></div>@endif @endforeach
-                                <x-forms.submit :label="__('Create retail box')" />
-                            </form>
-                        </section>
-                    @endcan
-                @endif
-
-                @if($order->source !== 'pos' || ($order->fulfillment_type === 'delivery' && $order->shipping_quote_required))
-                <section class="section-card">
-                    <h2 class="heading-5 text-title">{{ __('Shipping quote and payment link') }}</h2>
-                    <form method="POST" action="{{ route('user.commerce.orders.quote', $order) }}" class="mt-4 grid gap-4 md:grid-cols-2">
-                        @csrf @method('PUT')
-                        @unless($isAddressLocked)
-                            <p class="md:col-span-2 text-sm text-body">{{ __('This order has no complete delivery address yet. Enter it once; it is locked after saving.') }}</p>
-                            <input class="form-input" name="shipping_name" required placeholder="{{ __('Recipient name') }}" value="{{ old('shipping_name', $address['name'] ?? '') }}">
-                            <input class="form-input" name="shipping_phone" required placeholder="{{ __('Delivery phone') }}" value="{{ old('shipping_phone', $address['phone'] ?? '') }}">
-                            <input class="form-input md:col-span-2" name="shipping_line1" required placeholder="{{ __('Address line 1') }}" value="{{ old('shipping_line1', $address['line1'] ?? '') }}">
-                            <input class="form-input md:col-span-2" name="shipping_line2" placeholder="{{ __('Address line 2') }}" value="{{ old('shipping_line2', $address['line2'] ?? '') }}">
-                            <input class="form-input" name="shipping_city" required placeholder="{{ __('City') }}" value="{{ old('shipping_city', $address['city'] ?? '') }}">
-                            <div class="grid grid-cols-2 gap-3"><input class="form-input" maxlength="120" name="shipping_state" placeholder="{{ __('State') }}" value="{{ old('shipping_state', $address['state'] ?? '') }}"><input class="form-input" name="shipping_postal_code" placeholder="{{ __('ZIP code') }}" value="{{ old('shipping_postal_code', $address['postal_code'] ?? '') }}"></div>
-                            <input class="form-input uppercase" name="shipping_country" required maxlength="2" value="{{ old('shipping_country', $address['country'] ?? '') }}" placeholder="{{ __('Country code') }}">
-                        @endunless
-                        <div><label class="form-label" for="shipping_amount">{{ __('Shipping cost') }} ({{ $order->currency }})</label><input class="form-input" id="shipping_amount" type="number" step="0.001" min="0" name="shipping_amount" required value="{{ old('shipping_amount', $order->shipping_amount) }}"></div>
-                        <div><label class="form-label" for="delivery_method">{{ __('Delivery method') }}</label><input class="form-input" id="delivery_method" name="delivery_method" value="{{ old('delivery_method', $order->delivery_method) }}"></div>
-                        <div class="md:col-span-2"><label class="form-label" for="payment_url">{{ __('Payment link (optional)') }}</label><input class="form-input" id="payment_url" type="url" name="payment_url" placeholder="https://secure-payment.example/..." value="{{ old('payment_url', $order->payment_url) }}"></div>
-                        <div class="md:col-span-2"><label class="form-label" for="delivery_notes">{{ __('Delivery notes') }}</label><textarea class="form-input" id="delivery_notes" name="delivery_notes">{{ old('delivery_notes', $order->delivery_notes) }}</textarea></div>
-                        <div class="md:col-span-2"><label class="form-label" for="duties_disclosure">{{ __('Duties disclosure') }}</label><textarea class="form-input" id="duties_disclosure" name="duties_disclosure">{{ old('duties_disclosure', $order->duties_disclosure ?: 'Import duties and taxes, if any, are the buyer’s responsibility unless stated otherwise.') }}</textarea></div>
-                        <div class="md:col-span-2"><x-forms.submit :label="__('Save quote')" /></div>
-                    </form>
-                </section>
-                @endif
-
                 @if($order->source !== 'pos' || ($order->fulfillment_type === 'delivery' && ! in_array($order->status, ['completed', 'cancelled'])))
                 <section class="section-card">
                     <h2 class="heading-5 text-title">{{ __('Update status and tracking') }}</h2>
@@ -205,6 +168,8 @@
                         <p class="text-body">{{ __('No address yet.') }}</p>
                     @endif
                     @if($order->delivery_method)<p class="pt-2 text-body">{{ __('Delivery') }}: {{ $order->delivery_method }}</p>@endif
+                    @if(filled($order->delivery_notes))<p class="whitespace-pre-line pt-2 text-body">{{ __('Delivery notes') }}: {{ $order->delivery_notes }}</p>@endif
+                    @if(filled($order->duties_disclosure))<p class="whitespace-pre-line pt-2 text-body">{{ __('Duties disclosure') }}: {{ $order->duties_disclosure }}</p>@endif
                 </section>
                 @endif
 
@@ -217,8 +182,7 @@
                         <p class="text-body">{{ __('Transaction ID') }}: {{ $order->payment_evidence['transaction_id'] ?? '—' }}</p>
                         @foreach($order->payment_evidence['fields'] ?? [] as $name => $value)<p class="text-body">{{ str($name)->replace('_', ' ')->title() }}: {{ $value }}</p>@endforeach
                         @if(filled($order->payment_evidence['note'] ?? null))<p class="text-body">{{ __('Note') }}: {{ $order->payment_evidence['note'] }}</p>@endif
-                        @foreach($order->payment_evidence['receipts'] ?? [] as $index => $receipt)<a href="{{ route('user.commerce.orders.receipt', ['order' => $order, 'index' => $index]) }}" class="text-primary block"><i class="ph ph-image"></i> {{ __('Payment screenshot') }} {{ $index + 1 }}</a>@endforeach
-                        @if(!empty($order->payment_evidence['receipt_path']))<a href="{{ route('user.commerce.orders.receipt', $order) }}" class="text-primary block">{{ __('Download payment receipt') }}</a>@endif
+                        @include('commerce::user.partials.payment-gallery')
                     @else
                         <p class="text-body">{{ __('No payment proof submitted yet.') }}</p>
                     @endif
