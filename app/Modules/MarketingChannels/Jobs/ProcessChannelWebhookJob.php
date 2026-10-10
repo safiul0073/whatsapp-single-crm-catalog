@@ -22,6 +22,7 @@ use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use App\Modules\Telegram\Services\TelegramOptInService;
+use App\Modules\WhatsAppCloud\Services\InboundMessageEventApplier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Str;
@@ -213,6 +214,15 @@ class ProcessChannelWebhookJob implements ShouldQueue
         );
 
         $payload = $event['payload'] ?? [];
+
+        if ($account->provider === 'whatsapp' && app(InboundMessageEventApplier::class)->apply($account, $payload)) {
+            return [];
+        }
+
+        if (($payload['type'] ?? null) === 'edit') {
+            $payload['type'] = 'text';
+        }
+
         $message = Message::query()->updateOrCreate(
             ['provider_message_id' => $event['provider_message_id'] ?? (string) Str::uuid()],
             [
@@ -236,6 +246,10 @@ class ProcessChannelWebhookJob implements ShouldQueue
 
         if ($account->provider === 'whatsapp' && ($payload['type'] ?? null) === 'order') {
             app(OrderIntakeService::class)->intake($account, $identity->contact, $conversation, $payload);
+        }
+
+        if ($this->isInformationalNotice($payload)) {
+            return [];
         }
 
         $autoReplies->replyToInbound($account, $conversation->fresh(['contact', 'channelAccount.workspace']), $message);
@@ -287,6 +301,14 @@ class ProcessChannelWebhookJob implements ShouldQueue
         }
 
         return $automationEvents;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isInformationalNotice(array $payload): bool
+    {
+        return in_array($payload['type'] ?? null, ['system', 'unsupported'], true);
     }
 
     protected function latestCampaignRecipientForReply(ChannelAccount $account, int $contactId): ?CampaignRecipient

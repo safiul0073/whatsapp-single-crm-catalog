@@ -490,6 +490,22 @@
   @apply text-neutral-0/80;
 }
 
+.chat-notice {
+  @apply mx-auto max-w-md rounded-full border border-neutral-200 bg-neutral-0 px-4 py-1.5 text-center text-xs font-medium text-body shadow-sm;
+}
+
+.chat-bubble__body--deleted {
+  @apply italic opacity-70;
+}
+
+.chat-reactions {
+  @apply mt-1 flex flex-wrap gap-1;
+}
+
+.chat-reactions span {
+  @apply rounded-full border border-neutral-200 bg-neutral-0 px-1.5 py-0.5 text-sm leading-none shadow-sm;
+}
+
 .chat-attachment {
   @apply transition hover:opacity-90;
 }

@@ -509,6 +509,15 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         );
 
         $normalizedPayload = $this->inboundMessagePayload($account, $message);
+
+        if (app(InboundMessageEventApplier::class)->apply($account, $normalizedPayload)) {
+            return;
+        }
+
+        if (($normalizedPayload['type'] ?? null) === 'edit') {
+            $normalizedPayload['type'] = 'text';
+        }
+
         $body = $this->inboundMessageBody($message);
 
         Message::query()->updateOrCreate(
@@ -940,8 +949,21 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             ?: data_get($message, 'video.caption')
             ?: data_get($message, 'button.text')
             ?: data_get($message, 'interactive.button_reply.title')
-            ?: data_get($message, 'interactive.list_reply.title');
+            ?: data_get($message, 'interactive.list_reply.title')
+            ?: data_get($message, 'edit.message.text.body')
+            ?: data_get($message, 'system.body')
+            ?: $this->unsupportedMessageLabel($message);
 
         return filled($body) ? (string) $body : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $message
+     */
+    protected function unsupportedMessageLabel(array $message): ?string
+    {
+        return ($message['type'] ?? null) === 'unsupported'
+            ? 'Unsupported message type. Ask the customer to resend it as text, an image or a voice note.'
+            : null;
     }
 }
