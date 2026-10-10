@@ -98,6 +98,10 @@ class OrderManagementController extends Controller
     {
         $workspaceId = $this->workspaces->current($request->user())->id;
         $data = $request->validated();
+        if (! ($data['welcome_enabled'] ?? false)) {
+            $data['welcome_template_id'] = null;
+        }
+        unset($data['welcome_enabled']);
         foreach (['channel_id' => ChannelAccount::class, 'authentication_template_id' => MessageTemplate::class, 'welcome_template_id' => MessageTemplate::class] as $field => $model) {
             if (! empty($data[$field])) {
                 abort_unless($model::query()->where('workspace_id', $workspaceId)->whereKey($data[$field])->exists(), 404);

@@ -13,7 +13,7 @@ class StoreCustomerAuthSettingsRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['enabled' => ['required', 'boolean'], 'channel_id' => ['nullable', 'required_if:enabled,1', 'integer'], 'authentication_template_id' => ['nullable', 'required_if:enabled,1', 'integer'], 'welcome_template_id' => ['nullable', 'required_if:enabled,1', 'integer']];
+        return ['enabled' => ['required', 'boolean'], 'channel_id' => ['nullable', 'required_if:enabled,1', 'integer'], 'authentication_template_id' => ['nullable', 'required_if:enabled,1', 'integer'], 'welcome_enabled' => ['nullable', 'boolean'], 'welcome_template_id' => ['nullable', 'required_if:welcome_enabled,1', 'integer']];
     }
 
     public function messages(): array
