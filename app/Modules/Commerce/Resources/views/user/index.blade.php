@@ -43,12 +43,12 @@
                             <span x-text="'{{ __('Delete selected') }} (' + selectedProducts.length + ')'"></span>
                         </button>
                     </form>
-                    <div class="flex items-center gap-1 rounded-xl bg-section p-1" role="group" aria-label="{{ __('Product view') }}">
-                        <button type="button" class="grid h-9 w-9 place-items-center rounded-lg transition" :class="view === 'table' ? 'bg-neutral-0 text-primary shadow-sm' : 'text-body hover:text-primary'" :aria-pressed="view === 'table'" @click="setView('table')" title="{{ __('Table view') }}">
+                    <div class="flex items-center gap-1 rounded-md bg-section p-1" role="group" aria-label="{{ __('Product view') }}">
+                        <button type="button" class="grid h-9 w-9 place-items-center rounded-sm transition" :class="view === 'table' ? 'bg-neutral-0 text-primary shadow-sm' : 'text-body hover:text-primary'" :aria-pressed="view === 'table'" @click="setView('table')" title="{{ __('Table view') }}">
                             <i class="ph ph-list-bullets text-lg"></i>
                             <span class="sr-only">{{ __('Table view') }}</span>
                         </button>
-                        <button type="button" class="grid h-9 w-9 place-items-center rounded-lg transition" :class="view === 'grid' ? 'bg-neutral-0 text-primary shadow-sm' : 'text-body hover:text-primary'" :aria-pressed="view === 'grid'" @click="setView('grid')" title="{{ __('Grid view') }}">
+                        <button type="button" class="grid h-9 w-9 place-items-center rounded-sm transition" :class="view === 'grid' ? 'bg-neutral-0 text-primary shadow-sm' : 'text-body hover:text-primary'" :aria-pressed="view === 'grid'" @click="setView('grid')" title="{{ __('Grid view') }}">
                             <i class="ph ph-squares-four text-lg"></i>
                             <span class="sr-only">{{ __('Grid view') }}</span>
                         </button>
@@ -88,9 +88,9 @@
                                     <td class="px-5 py-3.5">
                                         <div class="flex min-w-0 items-center gap-3">
                                             @if ($product->primaryMedia)
-                                                <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}" class="h-11 w-11 shrink-0 rounded-lg border border-neutral-100 object-cover" loading="lazy">
+                                                <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}" class="h-11 w-11 shrink-0 rounded-md border border-neutral-100 object-cover" loading="lazy">
                                             @else
-                                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-section text-xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
+                                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-section text-xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
                                             @endif
                                             <div class="min-w-0">
                                                 <a href="{{ route('user.commerce.products.edit', $product) }}" class="block max-w-64 truncate font-semibold text-title hover:text-primary">{{ $product->name }}</a>
@@ -127,7 +127,7 @@
 
                 <div class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3" x-show="view === 'grid'" x-cloak data-product-grid>
                     @foreach ($products as $product)
-                        <article class="overflow-hidden rounded-2xl border border-border bg-neutral-0">
+                        <article class="overflow-hidden rounded-md border border-border bg-neutral-0">
                             <div class="aspect-[4/3] bg-section">
                                 @if ($product->primaryMedia)
                                     <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}" class="h-full w-full object-cover" loading="lazy">
@@ -176,7 +176,7 @@
                 <x-tables.pagination :paginator="$products" />
             @else
                 <div class="px-6 py-16 text-center">
-                    <span class="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><i class="ph ph-shopping-bag text-2xl"></i></span>
+                    <span class="mx-auto grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary"><i class="ph ph-shopping-bag text-2xl"></i></span>
                     <h2 class="mt-4 font-semibold text-title">{{ __('No products yet') }}</h2>
                     <p class="mt-1 text-sm text-body">{{ __('Create your first garment and its size, color, or material variants.') }}</p>
                     <x-ui.button variant="primary" href="{{ route('user.commerce.products.create') }}" class="mt-5"><i class="ph ph-plus"></i> {{ __('Add product') }}</x-ui.button>

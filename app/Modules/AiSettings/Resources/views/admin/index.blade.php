@@ -100,7 +100,7 @@
                                             @foreach ($column as $card)
                                                 <div class="section-card">
                                                     <div class="flex items-center gap-3 mb-1">
-                                                        <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary">
+                                                        <div class="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 text-primary">
                                                             <i class="{{ $card['icon'] }} text-lg"></i>
                                                         </div>
                                                         <div>

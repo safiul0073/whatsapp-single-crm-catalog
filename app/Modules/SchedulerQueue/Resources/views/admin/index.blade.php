@@ -29,7 +29,7 @@
                             <p class="text-sm text-neutral-500">{{ $card['label'] }}</p>
                             <p class="mt-2 text-2xl font-bold text-neutral-950">{{ number_format($card['value']) }}</p>
                         </div>
-                        <div class="flex h-11 w-11 items-center justify-center rounded-lg {{ $card['tone'] }}">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-md {{ $card['tone'] }}">
                             <i class="ph {{ $card['icon'] }} text-xl"></i>
                         </div>
                     </div>
@@ -176,7 +176,7 @@
 
             <section id="pending" class="{{ $activeTab === 'pending' ? '' : 'hidden' }}">
                 <div class="border-b border-neutral-100 p-4">
-                    <div class="rounded-2xl border border-neutral-100 bg-neutral-50/70 p-4">
+                    <div class="rounded-md border border-neutral-100 bg-neutral-50/70 p-4">
                         <form method="GET" action="{{ route('admin.scheduler-queues.index') }}" class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-end">
                         <input type="hidden" name="tab" value="pending">
                         <div>
@@ -231,8 +231,8 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-12">
-                                    <div class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-neutral-200 bg-neutral-50/80 px-6 py-12 text-center">
-                                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-neutral-400 shadow-sm">
+                                    <div class="flex flex-col items-center justify-center rounded-md border border-dashed border-neutral-200 bg-neutral-50/80 px-6 py-12 text-center">
+                                        <div class="flex h-14 w-14 items-center justify-center rounded-md bg-white text-neutral-400 shadow-sm">
                                             <i class="ph ph-clock-countdown text-2xl"></i>
                                         </div>
                                         <p class="mt-4 text-base font-medium text-neutral-700">{{ __('No pending jobs found.') }}</p>
@@ -247,11 +247,11 @@
                 <div class="flex flex-col gap-4 border-t border-neutral-100 p-4 lg:flex-row lg:items-center lg:justify-between">
                     <x-tables.pagination :paginator="$pendingJobs" />
                     @can('scheduler-queues.manage')
-                        <form method="POST" action="{{ route('admin.scheduler-queues.pending.clear') }}" class="w-full rounded-2xl bg-gradient-to-r from-error/5 via-white to-white p-3 shadow-sm lg:w-auto lg:min-w-[34rem]">
+                        <form method="POST" action="{{ route('admin.scheduler-queues.pending.clear') }}" class="w-full rounded-md bg-gradient-to-r from-error/5 via-white to-white p-3 shadow-sm lg:w-auto lg:min-w-[34rem]">
                             @csrf
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-3">
-                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-error/10 text-error">
+                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-error/10 text-error">
                                         <i class="ph ph-warning-circle text-lg"></i>
                                     </span>
                                     <div class="min-w-0">
@@ -267,7 +267,7 @@
                                             <option value="{{ $queueName }}">{{ $queueName }}</option>
                                         @endforeach
                                     </select>
-                                    <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-error shadow-sm transition-colors hover:bg-error hover:text-white focus:outline-none focus:ring-4 focus:ring-error/10">
+                                    <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-sm bg-white px-4 text-sm font-bold text-error shadow-sm transition-colors hover:bg-error hover:text-white focus:outline-none focus:ring-4 focus:ring-error/10">
                                         <i class="ph ph-trash text-base"></i>
                                         {{ __('Clear Queue') }}
                                     </button>

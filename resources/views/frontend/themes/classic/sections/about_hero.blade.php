@@ -92,11 +92,11 @@
         <!-- RIGHT — Photo + Metric card -->
         <div class="xl:col-span-2 relative self-stretch h-fit max-lg:hidden">
             <div class="inset-x-0 top-0 bottom-0">
-                <img src="{{ $heroImage }}" alt="Classic team collaborating on a product" class="w-full h-[448px] object-cover object-center rounded-3xl" loading="eager" />
+                <img src="{{ $heroImage }}" alt="Classic team collaborating on a product" class="w-full h-[448px] object-cover object-center rounded-md" loading="eager" />
                 <!-- Dark fade at bottom for card legibility -->
-                <div class="absolute inset-x-0 bottom-0 h-2/3 rounded-b-3xl" style="background: linear-gradient(to top, rgba(15,15,73,0.85) 0%, rgba(15,15,73,0.4) 50%, transparent 100%)"></div>
+                <div class="absolute inset-x-0 bottom-0 h-2/3 rounded-b-md" style="background: linear-gradient(to top, rgba(15,15,73,0.85) 0%, rgba(15,15,73,0.4) 50%, transparent 100%)"></div>
                 <!-- Metric card — absolute over photo -->
-                <div class="absolute -left-[150px] -bottom-10 rounded-xl bg-gradient-to-b from-brand-blue/90 to-primary-hover/95 p-5 shadow-brand backdrop-blur-sm max-w-[400px]">
+                <div class="absolute -left-[150px] -bottom-10 rounded-md bg-gradient-to-b from-brand-blue/90 to-primary-hover/95 p-5 shadow-brand backdrop-blur-sm max-w-[400px]">
                     <div class="flex items-center gap-4">
                         <div class="flex-none">
                             <p class="font-display text-[clamp(36px,3.5vw,52px)] font-extrabold leading-none tracking-display text-white">{!! str_replace('x', '<span class="text-accent-lime text-[0.55em]">x</span>', e($metricValue)) !!}</p>

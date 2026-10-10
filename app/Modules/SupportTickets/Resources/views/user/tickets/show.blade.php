@@ -10,7 +10,7 @@
     </div>
 
     {{-- Header Panel --}}
-    <div class="bg-white rounded-2xl border border-border-soft p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+    <div class="bg-white rounded-md border border-border-soft p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <div class="flex items-center gap-2.5 mb-2 flex-wrap">
@@ -18,10 +18,10 @@
                         {{ $ticket->formatted_id }}
                     </span>
                     <span data-ticket-status="{{ $ticket->status }}"
-                        class="portal-badge-{{ $ticket->status_color }} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
+                        class="portal-badge-{{ $ticket->status_color }} px-3 py-1 rounded-sm text-[11px] font-bold uppercase tracking-wider">
                         {{ $ticket->status_label }}
                     </span>
-                    <span class="inline-flex items-center gap-1.5 font-body text-[12px] font-semibold portal-pri-label-{{ $ticket->priority_color }} px-2.5 py-0.5 rounded-full bg-bg-soft">
+                    <span class="inline-flex items-center gap-1.5 font-body text-[12px] font-semibold portal-pri-label-{{ $ticket->priority_color }} px-2.5 py-0.5 rounded-sm bg-bg-soft">
                         <span class="w-2 h-2 rounded-full portal-pri-{{ $ticket->priority_color }}"></span>
                         {{ $ticket->priority_label }} {{ __('priority') }}
                     </span>
@@ -30,7 +30,7 @@
                     {{ $ticket->subject }}
                 </h2>
             </div>
-            <div class="flex items-center gap-2 text-text-muted font-body text-[13px] bg-bg-soft px-4 py-2.5 rounded-xl border border-border-soft self-start md:self-auto">
+            <div class="flex items-center gap-2 text-text-muted font-body text-[13px] bg-bg-soft px-4 py-2.5 rounded-md border border-border-soft self-start md:self-auto">
                 <i class="ph ph-calendar w-4 h-4 text-brand-blue"></i>
                 <span>{{ __('Opened') }} {{ $ticket->created_at->diffForHumans() }}</span>
             </div>
@@ -40,7 +40,7 @@
     <div class="grid gap-6 xl:grid-cols-[1fr_320px]">
 
         {{-- Thread & Reply Card --}}
-        <div class="bg-white rounded-2xl border border-border-soft shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-6 space-y-6">
+        <div class="bg-white rounded-md border border-border-soft shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-6 space-y-6">
 
             <div class="flex items-center gap-2 pb-3 border-b border-border-soft">
                 <i class="ph ph-chat-square-text w-5 h-5 text-brand-blue"></i>
@@ -65,7 +65,7 @@
 
         {{-- Sidebar: Ticket Meta Info --}}
         <div class="space-y-6">
-            <div class="bg-white rounded-2xl border border-border-soft shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-6 space-y-5">
+            <div class="bg-white rounded-md border border-border-soft shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-6 space-y-5">
                 <h3 class="font-display font-bold text-text-strong text-[15px] pb-3 border-b border-border-soft flex items-center gap-2">
                     <i class="ph ph-info w-4.5 h-4.5 text-text-muted"></i>
                     {{ __('Ticket Details') }}
@@ -112,7 +112,7 @@
                             <i class="ph ph-chat-square-text w-3.5 h-3.5 text-text-muted"></i>
                             {{ __('Total Replies') }}
                         </p>
-                        <span class="font-mono text-xs font-bold px-2 py-0.5 bg-bg-soft rounded-lg border border-border-soft text-text-strong">
+                        <span class="font-mono text-xs font-bold px-2 py-0.5 bg-bg-soft rounded-md border border-border-soft text-text-strong">
                             {{ $replies->count() }}
                         </span>
                     </div>

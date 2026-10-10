@@ -12,7 +12,7 @@
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
                 @if (session('contact_success'))
-                    <div class="mb-5 flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+                    <div class="mb-5 flex items-center gap-2 rounded-md bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
                         <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                         {{ session('contact_success') }}
                     </div>

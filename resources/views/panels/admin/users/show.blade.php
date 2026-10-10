@@ -29,9 +29,9 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
             <div class="flex items-center gap-4">
                 @if($user->avatar && avatar_url($user->avatar))
-                    <img src="{{ avatar_url($user->avatar) }}" alt="{{ $user->name }}" class="h-16 w-16 rounded-2xl object-cover ring-4 ring-neutral-100" />
+                    <img src="{{ avatar_url($user->avatar) }}" alt="{{ $user->name }}" class="h-16 w-16 rounded-md object-cover ring-4 ring-neutral-100" />
                 @else
-                    <div class="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
+                    <div class="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
                         <span class="text-2xl font-bold text-primary">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
                     </div>
                 @endif
@@ -73,7 +73,7 @@
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div class="stat-card group hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
-                    <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform">
+                    <div class="h-10 w-10 rounded-md flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform">
                         @if($user->email_verified_at)
                             <i class="ph ph-envelope-simple-open text-xl"></i>
                         @else
@@ -95,7 +95,7 @@
 
             <div class="stat-card group hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
-                    <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform">
+                    <div class="h-10 w-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform">
                         <i class="ph ph-shield-check text-xl"></i>
                     </div>
                 </div>
@@ -113,7 +113,7 @@
 
             <div class="stat-card group hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
-                    <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-violet-50 text-violet-600 group-hover:scale-110 transition-transform">
+                    <div class="h-10 w-10 rounded-md flex items-center justify-center bg-violet-50 text-violet-600 group-hover:scale-110 transition-transform">
                         <i class="ph ph-buildings text-xl"></i>
                     </div>
                 </div>
@@ -127,7 +127,7 @@
 
             <div class="stat-card group hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
-                    <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform">
+                    <div class="h-10 w-10 rounded-md flex items-center justify-center bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform">
                         <i class="ph ph-clock text-xl"></i>
                     </div>
                 </div>
@@ -264,7 +264,7 @@
                 <!-- Associated Workspaces -->
                 <div class="section-card">
                     <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                        <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                             <i class="ph ph-buildings text-lg"></i>
                         </div>
                         <h2 class="font-semibold text-neutral-800">{{ __('Associated Workspaces') }}</h2>
@@ -293,7 +293,7 @@
                                                 <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors">
                                                     <td class="py-3 font-semibold text-neutral-900">{{ $workspace->name }}</td>
                                                     <td class="py-3">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-emerald-50 text-emerald-700">
                                                             {{ $workspace->status->value ?? $workspace->status }}
                                                         </span>
                                                     </td>
@@ -334,12 +334,12 @@
                                                 <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors">
                                                     <td class="py-3 font-semibold text-neutral-900">{{ $workspace->name }}</td>
                                                     <td class="py-3">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-indigo-50 text-indigo-700">
                                                             {{ $workspace->pivot->role ?? __('Member') }}
                                                         </span>
                                                     </td>
                                                     <td class="py-3">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-neutral-100 text-neutral-800">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-neutral-100 text-neutral-800">
                                                             {{ $workspace->pivot->status ?? __('Active') }}
                                                         </span>
                                                     </td>
@@ -359,7 +359,7 @@
                 <!-- Activity Log -->
                 <div class="section-card space-y-4">
                     <div class="flex items-center gap-3 border-b border-neutral-100 pb-4">
-                        <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                             <i class="ph ph-activity text-lg"></i>
                         </div>
                         <h2 class="font-semibold text-neutral-800">{{ __('Activity Log') }}</h2>

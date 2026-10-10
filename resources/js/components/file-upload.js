@@ -68,7 +68,7 @@ function renderPreview(label, input, file, variant, isImage, hiddenSrc) {
 
     const iconClass = isImage ? "ph-image" : "ph-file-text";
     previewHtml = `
-            <div class="bg-neutral-100 p-2 rounded-lg text-neutral-500">
+            <div class="bg-neutral-100 p-2 rounded-md text-neutral-500">
                 <i class="ph ${iconClass} text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
@@ -85,7 +85,7 @@ function renderPreview(label, input, file, variant, isImage, hiddenSrc) {
       " flex flex-col items-center justify-center py-6 text-center w-full h-full"; // Changed pt-5 pb-6 to py-6 and added h-full
 
     if (isImage && hiddenSrc) {
-      previewHtml = `<img src="${hiddenSrc}" class="h-24 w-auto rounded-lg object-contain mb-3 shadow-sm border border-neutral-200" alt="Preview">`;
+      previewHtml = `<img src="${hiddenSrc}" class="h-24 w-auto rounded-md object-contain mb-3 shadow-sm border border-neutral-200" alt="Preview">`;
     } else {
       const iconClass = isImage ? "ph-image" : "ph-file-text";
       previewHtml = `<i class="ph ${iconClass} text-4xl text-neutral-400 mb-2"></i>`;

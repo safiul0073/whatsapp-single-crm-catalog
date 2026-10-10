@@ -15,7 +15,7 @@
 
 /* Topbar search field */
 .topbar__search {
-  @apply hidden w-full max-w-xs items-center gap-2 rounded-full border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
+  @apply hidden w-full max-w-xs items-center gap-2 rounded-sm border border-neutral-200 bg-section px-4 py-2 text-sm text-neutral-400 transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:bg-neutral-0 sm:flex sm:max-w-sm;
 }
 
 .topbar__search input {

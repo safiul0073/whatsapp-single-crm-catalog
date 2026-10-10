@@ -33,7 +33,7 @@
 
 /* Tooltip Portal Style (for JS) */
 .sidebar-tooltip {
-  @apply bg-neutral-0 pointer-events-none fixed z-[9999] min-w-[160px] scale-95 rounded-lg border border-neutral-200 p-2 text-sm font-medium whitespace-normal text-title opacity-0 shadow-xl transition-all duration-200;
+  @apply bg-neutral-0 pointer-events-none fixed z-[9999] min-w-[160px] scale-95 rounded-md border border-neutral-200 p-2 text-sm font-medium whitespace-normal text-title opacity-0 shadow-xl transition-all duration-200;
   /* Add a small invisible bridge to prevent closing when moving mouse */
   &::before {
     content: "";
@@ -60,7 +60,7 @@
 
 /* Nav item — pill with green active state + left accent indicator */
 .nav-item {
-  @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors duration-200 outline-none;
+  @apply relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-body transition-colors duration-200 outline-none;
   @apply hover:bg-section hover:text-title;
 }
 
@@ -79,7 +79,7 @@
 
 /* Submenu Styles */
 .submenu-item {
-  @apply block rounded-lg px-4 py-2 text-sm font-medium text-neutral-500 transition-all duration-200 outline-none;
+  @apply block rounded-md px-4 py-2 text-sm font-medium text-neutral-500 transition-all duration-200 outline-none;
   @apply hover:bg-section hover:text-title;
 }
 

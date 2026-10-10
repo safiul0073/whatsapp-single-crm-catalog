@@ -78,34 +78,34 @@
                         <div class="flex flex-wrap gap-3">
                             <button
                                 type="button"
-                                class="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
+                                class="inline-flex items-center gap-2 rounded-sm border px-4 py-3 text-sm font-medium transition"
                                 :class="activeChannel === 'email' ? 'border-primary bg-primary/10 text-primary' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'"
                                 @click="setChannel('email')"
                             >
                                 <i class="ph ph-envelope-simple"></i>
                                 <span>{{ __('Email') }}</span>
                                 @unless($channelAvailability['email'])
-                                    <span class="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">{{ __('Disabled') }}</span>
+                                    <span class="rounded-sm bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">{{ __('Disabled') }}</span>
                                 @endunless
                             </button>
 
                             <button
                                 type="button"
-                                class="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
+                                class="inline-flex items-center gap-2 rounded-sm border px-4 py-3 text-sm font-medium transition"
                                 :class="activeChannel === 'sms' ? 'border-primary bg-primary/10 text-primary' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'"
                                 @click="setChannel('sms')"
                             >
                                 <i class="ph ph-chat-text"></i>
                                 <span>{{ __('SMS') }}</span>
                                 @unless($channelAvailability['sms'])
-                                    <span class="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">{{ __('Disabled') }}</span>
+                                    <span class="rounded-sm bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">{{ __('Disabled') }}</span>
                                 @endunless
                             </button>
                         </div>
 
                         <input type="hidden" name="channel" x-model="activeChannel">
 
-                        <div class="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4 text-sm text-neutral-600" x-show="!isChannelEnabled(activeChannel)" x-cloak>
+                        <div class="rounded-md border border-neutral-200 bg-neutral-50/70 p-4 text-sm text-neutral-600" x-show="!isChannelEnabled(activeChannel)" x-cloak>
                             {{ __('This channel is currently disabled in Settings → Notifications. You can still prepare the form, but delivery will be blocked until the channel is enabled.') }}
                         </div>
                     </div>
@@ -130,27 +130,27 @@
                         </p>
                     </div>
 
-                    <div class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/70 p-4" x-show="currentTemplate" x-cloak>
+                    <div class="rounded-md border border-dashed border-neutral-200 bg-neutral-50/70 p-4" x-show="currentTemplate" x-cloak>
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="text-sm font-semibold text-neutral-900" x-text="currentTemplate?.name"></p>
                                 <p class="mt-1 text-sm text-neutral-500" x-text="currentTemplate?.description || @js(__('No description available.'))"></p>
                             </div>
-                            <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary" x-text="activeChannel === 'email' ? @js(__('Template Email')) : @js(__('Template SMS'))"></span>
+                            <span class="rounded-sm bg-primary/10 px-3 py-1 text-xs font-semibold text-primary" x-text="activeChannel === 'email' ? @js(__('Template Email')) : @js(__('Template SMS'))"></span>
                         </div>
 
                         <div class="mt-4 space-y-4" x-show="currentTemplate && activeChannel === 'email'">
-                            <div class="rounded-xl border border-neutral-200 bg-white p-4">
+                            <div class="rounded-md border border-neutral-200 bg-white p-4">
                                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{{ __('Subject') }}</p>
                                 <p class="mt-2 text-sm font-medium text-neutral-900" x-text="currentTemplate?.email_subject || @js(__('No email subject configured.'))"></p>
                             </div>
-                            <div class="rounded-xl border border-neutral-200 bg-white p-4">
+                            <div class="rounded-md border border-neutral-200 bg-white p-4">
                                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{{ __('Body') }}</p>
                                 <div class="prose prose-sm mt-2 max-w-none text-neutral-600" x-html="currentTemplate?.email_body || @js(__('No email body configured.'))"></div>
                             </div>
                         </div>
 
-                        <div class="mt-4 rounded-xl border border-neutral-200 bg-white p-4" x-show="currentTemplate && activeChannel === 'sms'" x-cloak>
+                        <div class="mt-4 rounded-md border border-neutral-200 bg-white p-4" x-show="currentTemplate && activeChannel === 'sms'" x-cloak>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{{ __('SMS Message') }}</p>
                             <p class="mt-2 whitespace-pre-line text-sm text-neutral-700" x-text="currentTemplate?.sms_body || @js(__('No SMS body configured.'))"></p>
                         </div>
@@ -194,7 +194,7 @@
                             required
                         />
 
-                        <div class="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4 text-sm text-neutral-600" x-show="activeChannel === 'sms'" x-cloak>
+                        <div class="rounded-md border border-neutral-200 bg-neutral-50/70 p-4 text-sm text-neutral-600" x-show="activeChannel === 'sms'" x-cloak>
                             {{ __('For custom SMS, the title is prepended above the message body.') }}
                         </div>
                     </div>
@@ -230,11 +230,11 @@
                             @php($shortcode = '{' . '{' . $code . '}' . '}')
                             <button
                                 type="button"
-                                class="block w-full rounded-xl border border-neutral-200 p-3 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                                class="block w-full rounded-sm border border-neutral-200 p-3 text-left transition hover:border-primary/40 hover:bg-primary/5"
                                 @click="useShortcode({{ Js::from($shortcode) }})"
                             >
                                 <div class="flex items-center justify-between gap-3">
-                                    <span class="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1 font-mono text-xs font-semibold text-primary">
+                                    <span class="inline-flex items-center gap-2 rounded-md bg-primary/10 px-2.5 py-1 font-mono text-xs font-semibold text-primary">
                                         {{ $shortcode }}
                                     </span>
                                     <span class="text-[11px] font-medium text-neutral-400">{{ __('Insert + Copy') }}</span>

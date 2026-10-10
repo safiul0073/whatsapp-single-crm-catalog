@@ -36,7 +36,7 @@
                   @endphp
                   <div class="list-table__row" data-group-row>
                     <div class="flex min-w-0 items-center gap-3">
-                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl {{ $group->type === 'dynamic' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary' }}">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md {{ $group->type === 'dynamic' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary' }}">
                         <i class="ph {{ $group->type === 'dynamic' ? 'ph-arrows-clockwise' : 'ph-users-three' }} text-base"></i>
                       </span>
                       <span class="truncate font-semibold text-title">{{ $group->name }}</span>
@@ -85,7 +85,7 @@
                   </div>
                 @empty
                   <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-                    <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                       <i class="ph ph-users-three text-2xl"></i>
                     </span>
                     <h3 class="heading-4 mt-4">No groups yet</h3>

@@ -14,7 +14,7 @@
         <p class="font-semibold text-title">{{ __('Payment screenshots') }} ({{ $receiptImages->count() }})</p>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
             @foreach($receiptImages as $index => $image)
-                <button type="button" class="overflow-hidden rounded-xl border border-border text-start hover:border-primary focus-visible:outline-2 focus-visible:outline-primary" @click="open({{ $index }}, $event.currentTarget)" aria-label="{{ __('View').' '.$image['label'] }}">
+                <button type="button" class="overflow-hidden rounded-sm border border-border text-start hover:border-primary focus-visible:outline-2 focus-visible:outline-primary" @click="open({{ $index }}, $event.currentTarget)" aria-label="{{ __('View').' '.$image['label'] }}">
                     <div class="flex aspect-square items-center justify-center bg-bg-elevated p-2">
                         <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="h-full w-full object-contain" loading="lazy" :class="failedImages[{{ $index }}] ? 'hidden' : ''" x-on:error="failedImages[{{ $index }}] = true">
                         <span class="hidden p-2 text-center text-xs text-body" :class="failedImages[{{ $index }}] ? '!block' : ''">{{ __('Image unavailable') }}</span>
@@ -23,7 +23,7 @@
                 </button>
             @endforeach
         </div>
-        <dialog x-ref="viewer" aria-labelledby="payment-gallery-title" class="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-border bg-bg-elevated p-4 text-title shadow-xl backdrop:bg-black/70 sm:p-6" @close="restoreFocus()" @keydown.left.prevent="move(-1)" @keydown.right.prevent="move(1)">
+        <dialog x-ref="viewer" aria-labelledby="payment-gallery-title" class="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-md border border-border bg-bg-elevated p-4 text-title shadow-xl backdrop:bg-black/70 sm:p-6" @close="restoreFocus()" @keydown.left.prevent="move(-1)" @keydown.right.prevent="move(1)">
             <div class="flex items-center justify-between gap-3">
                 <h3 id="payment-gallery-title" class="font-semibold">{{ __('Payment screenshots') }}</h3>
                 <button type="button" class="btn btn-outline" autofocus @click="$refs.viewer.close()">{{ __('Close') }}</button>

@@ -61,7 +61,7 @@
                 @forelse($segments as $segment)
                   <div class="list-table__row">
                     <div class="flex min-w-0 items-center gap-3">
-                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl {{ $segment->type === 'dynamic' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary' }}">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md {{ $segment->type === 'dynamic' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary' }}">
                         <i class="ph {{ $segment->type === 'dynamic' ? 'ph-arrows-clockwise' : 'ph-list-bullets' }} text-base"></i>
                       </span>
                       <span class="truncate font-semibold text-title">{{ $segment->name }}</span>

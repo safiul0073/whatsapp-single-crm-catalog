@@ -16,7 +16,7 @@
             <section class="section-card space-y-4">
                 <h2 class="heading-5">{{ __('Products and boxes') }}</h2>
                 <template x-for="(group, index) in groups" :key="group.key">
-                    <div class="rounded-xl border border-border p-4 space-y-3">
+                    <div class="rounded-md border border-border p-4 space-y-3">
                         <div class="grid gap-3 md:grid-cols-4">
                             <div><label class="form-label">{{ __('Product') }}</label><select class="form-input" :name="`groups[${index}][product_id]`" x-model="group.product_id" @change="reset(group)" required><option value="">{{ __('Select product') }}</option><template x-for="product in products" :key="product.id"><option :value="product.id" x-text="product.name"></option></template></select></div>
                             <div><label class="form-label">{{ __('Purchase type') }}</label><select class="form-input" :name="`groups[${index}][mode]`" x-model="group.mode"><option value="retail">{{ __('Retail pieces') }}</option><option value="wholesale">{{ __('Wholesale boxes') }}</option></select></div>

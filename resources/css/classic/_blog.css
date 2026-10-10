@@ -10,7 +10,7 @@
   .blog-hero__content span,
   .blog-section-heading span,
   .blog-newsletter__inner span {
-    @apply inline-flex items-center rounded-full bg-tint-blue px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-brand-blue;
+    @apply inline-flex items-center rounded-sm bg-tint-blue px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-brand-blue;
   }
 
   .blog-hero__content h1 {
@@ -71,7 +71,7 @@
   }
 
   .blog-card {
-    @apply overflow-hidden rounded-lg border border-border-soft bg-white shadow-sm transition-all duration-200;
+    @apply overflow-hidden rounded-md border border-border-soft bg-white shadow-sm transition-all duration-200;
   }
 
   .blog-card:hover {
@@ -124,7 +124,7 @@
   }
 
   .blog-featured__primary {
-    @apply grid overflow-hidden rounded-lg border border-border-soft bg-white shadow-sm md:grid-cols-2;
+    @apply grid overflow-hidden rounded-md border border-border-soft bg-white shadow-sm md:grid-cols-2;
   }
 
   .blog-featured__image {
@@ -152,7 +152,7 @@
   }
 
   .blog-empty {
-    @apply rounded-lg border border-dashed border-border-default bg-bg-soft p-8 text-center font-body text-text-muted;
+    @apply rounded-md border border-dashed border-border-default bg-bg-soft p-8 text-center font-body text-text-muted;
   }
 
   .blog-newsletter {
@@ -160,7 +160,7 @@
   }
 
   .blog-newsletter__inner {
-    @apply grid items-center gap-8 rounded-lg border border-border-soft bg-white p-6 shadow-sm md:grid-cols-[1.2fr_1fr] md:p-10;
+    @apply grid items-center gap-8 rounded-md border border-border-soft bg-white p-6 shadow-sm md:grid-cols-[1.2fr_1fr] md:p-10;
   }
 
   .blog-newsletter__inner h2 {
@@ -184,11 +184,11 @@
   }
 
   .blog-newsletter__form input {
-    @apply min-h-12 flex-1 rounded-md border border-border-default px-4 text-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10;
+    @apply min-h-12 flex-1 rounded-sm border border-border-default px-4 text-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10;
   }
 
   .blog-newsletter__form button {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-brand-blue px-5 text-sm font-bold text-white transition hover:bg-primary-hover;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-sm bg-brand-blue px-5 text-sm font-bold text-white transition hover:bg-primary-hover;
   }
 
   .blog-detail__hero {
@@ -216,7 +216,7 @@
   }
 
   .blog-detail__image {
-    @apply mt-10 max-h-[520px] rounded-lg border border-border-soft shadow-sm;
+    @apply mt-10 max-h-[520px] rounded-md border border-border-soft shadow-sm;
   }
 
   .blog-detail__content {
@@ -261,6 +261,6 @@
   }
 
   .blog-detail__content pre {
-    @apply my-8 overflow-x-auto rounded-lg bg-brand-navy-ink p-5 text-sm leading-7 text-white;
+    @apply my-8 overflow-x-auto rounded-md bg-brand-navy-ink p-5 text-sm leading-7 text-white;
   }
 }

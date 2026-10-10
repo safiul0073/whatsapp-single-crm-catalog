@@ -1,7 +1,7 @@
 @props(['open' => true, 'title' => null, 'description' => null])
 
 <section {{ $attributes->merge(['class' => 'section-card']) }} x-data="{ open: @js((bool) $open) }" data-credentials-panel>
-    <button type="button" class="flex w-full items-center justify-between gap-3 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20" @click="open = ! open" :aria-expanded="open.toString()">
+    <button type="button" class="flex w-full items-center justify-between gap-3 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20" @click="open = ! open" :aria-expanded="open.toString()">
         <span class="min-w-0">
             <span class="heading-5 block">{{ $title ?? __('Credentials') }}</span>
             @if ($description)

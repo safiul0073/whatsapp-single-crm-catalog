@@ -1,6 +1,6 @@
 @php($depth = $depth ?? 0)
 @foreach($categories as $category)
-    @php($isDeletable = $category->products_count === 0 && $category->children_count === 0)
+    @php($isDeletable = $category->products_count === 0)
     <li x-data="{ editing: false, expanded: {{ $depth === 0 ? 'true' : 'false' }} }" data-category-row="{{ $category->id }}">
         <div @class([
             'group flex items-center gap-3 border-b border-neutral-100 py-2.5 pr-3 transition-colors hover:bg-section/60',
@@ -12,7 +12,7 @@
             <input type="checkbox" class="app-checkbox shrink-0" value="{{ $category->id }}" x-model="selectedCategories" aria-label="{{ __('Select :category', ['category' => $category->name]) }}" @disabled(! $isDeletable)>
 
             @if($category->children_count > 0)
-                <button type="button" class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-body transition hover:bg-neutral-100 hover:text-title" @click="expanded = !expanded" :aria-expanded="expanded" aria-label="{{ __('Toggle :category', ['category' => $category->name]) }}">
+                <button type="button" class="grid h-7 w-7 shrink-0 place-items-center rounded-sm text-body transition hover:bg-neutral-100 hover:text-title" @click="expanded = !expanded" :aria-expanded="expanded" aria-label="{{ __('Toggle :category', ['category' => $category->name]) }}">
                     <i class="ph-bold ph-caret-right text-sm transition-transform" :class="expanded && 'rotate-90'"></i>
                 </button>
             @else
@@ -53,13 +53,13 @@
             </div>
 
             <div class="flex shrink-0 items-center gap-0.5">
-                <button type="button" class="grid h-8 w-8 place-items-center rounded-md text-body transition hover:bg-neutral-100 hover:text-title" @click="editing = !editing" :aria-expanded="editing" aria-label="{{ __('Edit :category', ['category' => $category->name]) }}" title="{{ __('Edit') }}">
+                <button type="button" class="grid h-8 w-8 place-items-center rounded-sm text-body transition hover:bg-neutral-100 hover:text-title" @click="editing = !editing" :aria-expanded="editing" aria-label="{{ __('Edit :category', ['category' => $category->name]) }}" title="{{ __('Edit') }}">
                     <i class="ph ph-pencil-simple text-base"></i>
                 </button>
                 <form method="POST" action="{{ route('user.commerce.categories.destroy', $category) }}">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="grid h-8 w-8 place-items-center rounded-md text-body transition hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-body" aria-label="{{ __('Delete :category', ['category' => $category->name]) }}" title="{{ $isDeletable ? __('Delete') : __('Only empty categories can be deleted') }}" data-confirm data-confirm-title="{{ __('Delete category?') }}" data-confirm-body="{{ __('Only empty categories can be deleted. This category will be permanently removed.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error" @disabled(! $isDeletable)>
+                    <button type="submit" class="grid h-8 w-8 place-items-center rounded-sm text-body transition hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-body" aria-label="{{ __('Delete :category', ['category' => $category->name]) }}" title="{{ $isDeletable ? __('Delete') : __('Only categories without products can be deleted') }}" data-confirm data-confirm-title="{{ __('Delete category?') }}" data-confirm-body="{{ __('Only categories without products can be deleted. Child categories will be moved to the top level.') }}" data-confirm-label="{{ __('Delete') }}" data-confirm-variant="error" @disabled(! $isDeletable)>
                         <i class="ph ph-trash text-base"></i>
                     </button>
                 </form>
@@ -76,11 +76,11 @@
             @method('PUT')
             <div>
                 <label class="form-label" for="category_name_{{ $category->id }}">{{ __('Name') }}</label>
-                <input id="category_name_{{ $category->id }}" class="form-input rounded-lg!" name="name" required maxlength="120" value="{{ $category->name }}">
+                <input id="category_name_{{ $category->id }}" class="form-input rounded-md!" name="name" required maxlength="120" value="{{ $category->name }}">
             </div>
             <div>
                 <label class="form-label" for="category_parent_{{ $category->id }}">{{ __('Parent') }}</label>
-                <select id="category_parent_{{ $category->id }}" class="form-input rounded-lg!" name="parent_id">
+                <select id="category_parent_{{ $category->id }}" class="form-input rounded-md!" name="parent_id">
                     <option value="">{{ __('No parent') }}</option>
                     @foreach ($allCategories->where('id', '!=', $category->id) as $parent)
                         <option value="{{ $parent->id }}" @selected($category->parent_id === $parent->id)>{{ $parent->path ?? $parent->name }}</option>
@@ -89,12 +89,12 @@
             </div>
             <div class="flex items-end gap-2">
                 <input type="hidden" name="is_active" value="0">
-                <label class="flex h-11 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3">
+                <label class="flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3">
                     <input type="checkbox" class="app-checkbox" name="is_active" value="1" @checked($category->is_active)>
                     <span class="text-sm font-medium text-title">{{ __('Active') }}</span>
                 </label>
-                <button type="submit" class="btn btn-primary rounded-lg!">{{ __('Save') }}</button>
-                <button type="button" class="btn btn-outline rounded-lg!" @click="editing = false">{{ __('Cancel') }}</button>
+                <button type="submit" class="btn btn-primary rounded-sm!">{{ __('Save') }}</button>
+                <button type="button" class="btn btn-outline rounded-sm!" @click="editing = false">{{ __('Cancel') }}</button>
             </div>
         </form>
 

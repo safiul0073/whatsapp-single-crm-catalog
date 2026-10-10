@@ -33,8 +33,8 @@ if (grid) {
       btn.setAttribute("aria-label", `Page ${p}`);
       btn.className =
         p === page
-          ? "w-9 h-9 flex items-center justify-center rounded-xl border border-brand-blue bg-tint-blue font-mono text-micro font-semibold text-brand-blue"
-          : "w-9 h-9 flex items-center justify-center rounded-xl border border-border-default bg-white font-mono text-micro font-semibold text-text-muted hover:border-brand-blue hover:text-brand-blue transition-colors duration-150";
+          ? "w-9 h-9 flex items-center justify-center rounded-md border border-brand-blue bg-tint-blue font-mono text-micro font-semibold text-brand-blue"
+          : "w-9 h-9 flex items-center justify-center rounded-md border border-border-default bg-white font-mono text-micro font-semibold text-text-muted hover:border-brand-blue hover:text-brand-blue transition-colors duration-150";
       btn.addEventListener("click", () => {
         page = p;
         render();

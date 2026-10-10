@@ -52,7 +52,7 @@
                 class="relative">
                 <input type="file" name="attachments[]" multiple
                     accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
-                    class="block w-full text-[12px] text-text-muted file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-bg-soft file:text-text-strong file:font-medium hover:file:bg-border-soft transition-colors"
+                    class="block w-full text-[12px] text-text-muted file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:bg-bg-soft file:text-text-strong file:font-medium hover:file:bg-border-soft transition-colors"
                     @change="files = Array.from($event.target.files)"
                     :disabled="sending">
                 <p class="text-[11px] text-text-muted mt-1.5">
@@ -80,7 +80,7 @@
             </span>
             <button type="submit"
                 :disabled="sending || !message.trim()"
-                class="inline-flex items-center gap-2 rounded-xl bg-brand-blue px-6 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-all duration-300 hover:shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                class="inline-flex items-center gap-2 rounded-sm bg-brand-blue px-6 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-all duration-300 hover:shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
                 <i class="ph ph-paper-plane-tilt w-4 h-4" x-show="!sending"></i>
                 <i class="ph ph-spinner w-4 h-4 animate-spin" x-cloak x-show="sending"></i>
                 <span x-text="isClosed ? '{{ __('Reopen & Reply') }}' : '{{ $label }}'"></span>

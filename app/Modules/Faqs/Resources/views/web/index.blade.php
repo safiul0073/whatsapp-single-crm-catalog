@@ -31,7 +31,7 @@
                     </div>
 
                     <div class="flex flex-col gap-3 mt-[18px] faq2-support">
-                        <div class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-2xl faq2-support-card faq2-support-card--blue">
+                        <div class="grid grid-cols-[36px_minmax(0,1fr)] items-start gap-[12px_14px] p-[18px] border rounded-md faq2-support-card faq2-support-card--blue">
                             <span class="w-9 h-9 rounded-[10px] inline-grid place-items-center faq2-support-icon">
                                 <i class="ph ph-question text-[18px]"></i>
                             </span>

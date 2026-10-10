@@ -7,10 +7,10 @@
             <input type="text" class="min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-0 text-xl text-title placeholder:text-neutral-400 focus:border-primary focus:ring-0" maxlength="120" x-model.lazy="name" aria-label="{{ __('Widget name') }}">
             <span class="hidden font-mono text-[11px] uppercase tracking-[0.15em] text-body sm:inline" x-text="{ saved: '{{ __('Saved') }}', saving: '{{ __('Saving…') }}', pending: '{{ __('Unsaved') }}', error: '{{ __('Not saved') }}' }[saveState]"></span>
             <div class="flex items-center gap-1">
-                <button type="button" class="grid h-10 w-10 place-items-center rounded-lg border transition" x-on:click="device = 'desktop'" x-bind:class="device === 'desktop' ? 'border-primary text-primary' : 'border-transparent text-body'" aria-label="{{ __('Desktop preview') }}">
+                <button type="button" class="grid h-10 w-10 place-items-center rounded-sm border transition" x-on:click="device = 'desktop'" x-bind:class="device === 'desktop' ? 'border-primary text-primary' : 'border-transparent text-body'" aria-label="{{ __('Desktop preview') }}">
                     <i class="ph ph-desktop text-lg"></i>
                 </button>
-                <button type="button" class="grid h-10 w-10 place-items-center rounded-lg border transition" x-on:click="device = 'mobile'" x-bind:class="device === 'mobile' ? 'border-primary text-primary' : 'border-transparent text-body'" aria-label="{{ __('Mobile preview') }}">
+                <button type="button" class="grid h-10 w-10 place-items-center rounded-sm border transition" x-on:click="device = 'mobile'" x-bind:class="device === 'mobile' ? 'border-primary text-primary' : 'border-transparent text-body'" aria-label="{{ __('Mobile preview') }}">
                     <i class="ph ph-device-mobile text-lg"></i>
                 </button>
             </div>
@@ -39,24 +39,24 @@
                 <footer class="flex items-center justify-between gap-3 border-t border-neutral-200 px-5 py-4">
                     <button type="button" class="text-sm font-medium text-body hover:text-title" x-on:click="previousStep()" x-show="step > 0" x-cloak>{{ __('Previous') }}</button>
                     <span x-show="step === 0"></span>
-                    <button type="button" class="btn rounded-lg bg-title px-6 text-white hover:bg-title/90" x-on:click="nextStep()" x-show="!isLastStep">
+                    <button type="button" class="btn rounded-sm bg-title px-6 text-white hover:bg-title/90" x-on:click="nextStep()" x-show="!isLastStep">
                         {{ __('Next Step') }} <i class="ph ph-arrow-right"></i>
                     </button>
-                    <button type="button" class="btn btn-primary rounded-lg px-6" x-on:click="nextStep()" x-show="isLastStep" x-cloak>
+                    <button type="button" class="btn btn-primary rounded-sm px-6" x-on:click="nextStep()" x-show="isLastStep" x-cloak>
                         <span x-text="isPublished ? '{{ __('Update & get code') }}' : '{{ __('Publish Widget') }}'"></span>
                     </button>
                 </footer>
             </aside>
 
             <main class="min-w-0 flex-1 overflow-y-auto bg-section p-6 lg:p-10">
-                <div class="mx-auto transition-all" x-bind:class="device === 'mobile' ? 'max-w-sm rounded-[2rem] border-8 border-title bg-white shadow-2xl' : 'max-w-6xl'">
+                <div class="mx-auto transition-all" x-bind:class="device === 'mobile' ? 'max-w-sm rounded-md border-8 border-title bg-white shadow-2xl' : 'max-w-6xl'">
                     <div x-ref="preview" data-social-feed-preview></div>
                 </div>
             </main>
         </div>
 
         <div class="fixed inset-0 z-50 grid place-items-center bg-title/60 p-4" x-show="isEmbedOpen" x-cloak x-on:keydown.escape.window="isEmbedOpen = false">
-            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" x-on:click.outside="isEmbedOpen = false">
+            <div class="w-full max-w-lg rounded-md bg-white p-6 shadow-2xl" x-on:click.outside="isEmbedOpen = false">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{{ __('Published') }}</p>
@@ -65,7 +65,7 @@
                     <button type="button" class="row-action" x-on:click="isEmbedOpen = false" aria-label="{{ __('Close') }}"><i class="ph ph-x text-lg"></i></button>
                 </div>
                 <p class="mt-3 text-sm text-body">{{ __('Paste this snippet where the feed should appear — a store CMS page, a theme section, or any HTML page.') }}</p>
-                <pre class="mt-4 overflow-x-auto rounded-xl bg-title p-4 font-mono text-xs leading-relaxed text-white"><code x-text="embedCode"></code></pre>
+                <pre class="mt-4 overflow-x-auto rounded-md bg-title p-4 font-mono text-xs leading-relaxed text-white"><code x-text="embedCode"></code></pre>
                 <button type="button" class="btn btn-primary mt-4 w-full" x-on:click="copyEmbed()">
                     <i class="ph" x-bind:class="hasCopied ? 'ph-check' : 'ph-copy'"></i>
                     <span x-text="hasCopied ? '{{ __('Copied') }}' : '{{ __('Copy snippet') }}'"></span>

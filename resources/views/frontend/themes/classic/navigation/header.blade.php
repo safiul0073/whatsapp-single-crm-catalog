@@ -35,7 +35,7 @@
   <div class="container">
     <div class="flex h-[68px] items-center justify-between gap-4">
       <a href="{{ route('home') }}" class="flex items-center gap-2.5">
-        <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
+        <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
           <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zM9.5 7a.5.5 0 0 1 .5.5c0 .7.1 1.4.3 2 .1.3 0 .6-.2.8l-.8.9a8.5 8.5 0 0 0 3.5 3.5l.9-.8c.2-.2.5-.3.8-.2.6.2 1.3.3 2 .3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5A9 9 0 0 1 7 12a.5.5 0 0 1 .5-.5h2z"/></svg>
         </span>
         <span class="font-title text-xl font-extrabold tracking-tight text-title">{{ $themeVars['logo_text'] ?? 'WaPro' }}</span>
@@ -73,9 +73,9 @@
       @endforeach
       @if ($themeVars['show_auth_links'] ?? true)
         @if ($isUserSignedIn)
-          <a href="{{ route('user.dashboard') }}" class="mt-2 rounded-lg px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100 sm:hidden">{{ __('Open Dashboard') }}</a>
+          <a href="{{ route('user.dashboard') }}" class="mt-2 rounded-md px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100 sm:hidden">{{ __('Open Dashboard') }}</a>
         @else
-          <a href="{{ route('login') }}" data-auth-nav-link class="mt-2 rounded-lg px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100 sm:hidden">{{ $themeVars['sign_in_text'] ?? __('Sign in') }}</a>
+          <a href="{{ route('login') }}" data-auth-nav-link class="mt-2 rounded-md px-3 py-2.5 text-sm font-medium text-body hover:bg-neutral-100 sm:hidden">{{ $themeVars['sign_in_text'] ?? __('Sign in') }}</a>
         @endif
       @endif
     </nav>

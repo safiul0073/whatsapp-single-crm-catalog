@@ -8,13 +8,13 @@
 
 <a href="{{ $attachment->downloadUrl() }}"
    download="{{ $attachment->original_name }}"
-   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors hover:shadow-sm {{ $inBubble ? 'bg-white/90 border-white/40 text-text-strong hover:bg-white' : 'bg-bg-soft border-border-soft text-text-strong hover:bg-white hover:border-brand-blue/30' }}">
+   class="group flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors hover:shadow-sm {{ $inBubble ? 'bg-white/90 border-white/40 text-text-strong hover:bg-white' : 'bg-bg-soft border-border-soft text-text-strong hover:bg-white hover:border-brand-blue/30' }}">
     @if ($isImage)
-        <div class="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-none">
+        <div class="w-10 h-10 rounded-md overflow-hidden bg-neutral-100 flex-none">
             <img src="{{ $attachment->downloadUrl() }}" alt="{{ $attachment->original_name }}" class="w-full h-full object-cover">
         </div>
     @else
-        <div class="w-10 h-10 rounded-lg bg-white/50 inline-flex items-center justify-center flex-none">
+        <div class="w-10 h-10 rounded-md bg-white/50 inline-flex items-center justify-center flex-none">
             <i class="ph {{ $icon }} text-xl text-text-muted"></i>
         </div>
     @endif

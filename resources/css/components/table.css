@@ -8,11 +8,11 @@
 }
 
 .datatable-shell {
-  @apply overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-0 shadow-sm;
+  @apply overflow-hidden rounded-md border border-neutral-100 bg-neutral-0 shadow-sm;
 }
 
 .section-card > .datatable-shell {
-  @apply -mx-3 -my-6 rounded-2xl border-0 bg-transparent shadow-none sm:-mx-6;
+  @apply -mx-3 -my-6 rounded-md border-0 bg-transparent shadow-none sm:-mx-6;
 }
 
 .section-card > .table-responsive {
@@ -28,7 +28,7 @@
 }
 
 .datatable-per-page {
-  @apply flex items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-500;
+  @apply flex items-center gap-2 rounded-md border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-500;
 }
 
 .table {
@@ -83,7 +83,7 @@
     }
 
     tr {
-      @apply bg-neutral-0 mb-4 block rounded-xl border border-neutral-200 p-2;
+      @apply bg-neutral-0 mb-4 block rounded-md border border-neutral-200 p-2;
     }
 
     td {
@@ -151,23 +151,23 @@
   }
 
   tbody td:first-child {
-    @apply rounded-l-xl border-l;
+    @apply rounded-l-md border-l;
 
     [dir="rtl"] & {
-      @apply rounded-l-none rounded-r-xl border-r border-l-0;
+      @apply rounded-l-none rounded-r-md border-r border-l-0;
     }
   }
 
   tbody td:last-child {
-    @apply rounded-r-xl border-r;
+    @apply rounded-r-md border-r;
 
     [dir="rtl"] & {
-      @apply rounded-l-xl rounded-r-none border-r-0 border-l;
+      @apply rounded-l-md rounded-r-none border-r-0 border-l;
     }
   }
 
   .table-sort-link {
-    @apply inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -mx-2 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-800;
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-1 -mx-2 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-800;
   }
 
   .table-sort-link.active {
@@ -187,11 +187,11 @@
   }
 
   .table-empty-state {
-    @apply rounded-xl border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
+    @apply rounded-md border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
   }
 
   tbody tr:only-child td[colspan] {
-    @apply rounded-xl border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
+    @apply rounded-md border border-dashed border-neutral-200 bg-neutral-50 py-12 text-center text-neutral-500;
   }
 
   .table-empty-state__icon {
@@ -208,7 +208,7 @@
       }
 
       tbody tr {
-        @apply mb-3 block rounded-xl border border-neutral-100 bg-neutral-0 p-2 shadow-sm;
+        @apply mb-3 block rounded-md border border-neutral-100 bg-neutral-0 p-2 shadow-sm;
       }
 
       tbody td {
@@ -245,7 +245,7 @@
     border-spacing: 0;
 
     tbody tr {
-      @apply bg-transparent shadow-none max-lg:rounded-2xl lg:rounded-none;
+      @apply bg-transparent shadow-none max-lg:rounded-md lg:rounded-none;
     }
 
     tbody tr:hover {

@@ -7,7 +7,7 @@
 @if($activeLanguages->count() > 1)
 <div class="dropdown-wrapper relative">
     <button type="button"
-            class="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-neutral-500 transition-colors hover:bg-neutral-50"
+            class="flex items-center gap-1.5 rounded-sm px-2.5 py-2 text-sm text-neutral-500 transition-colors hover:bg-neutral-50"
             data-action="toggle-dropdown"
             data-target="languageDropdown"
             aria-haspopup="true"
@@ -18,7 +18,7 @@
     </button>
 
     <div id="languageDropdown"
-         class="dropdown-panel bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-100 shadow-lg"
+         class="dropdown-panel bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-md border border-neutral-100 shadow-lg"
          role="menu">
         <div class="py-1">
             @foreach($activeLanguages as $lang)

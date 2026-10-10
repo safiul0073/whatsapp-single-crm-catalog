@@ -39,7 +39,7 @@
 }
 
 .settings-nav-search input {
-  @apply w-full py-1.5 pl-8 pr-3 border border-neutral-100 rounded-lg text-[12.5px] bg-neutral-0 text-neutral-700 outline-none transition-colors duration-150;
+  @apply w-full py-1.5 pl-8 pr-3 border border-neutral-100 rounded-sm text-[12.5px] bg-neutral-0 text-neutral-700 outline-none transition-colors duration-150;
   font-family: inherit;
 }
 
@@ -175,7 +175,7 @@
 }
 
 .setting-color-swatch {
-  @apply w-10 h-10 rounded-xl border border-neutral-100 cursor-pointer p-0.5;
+  @apply w-10 h-10 rounded-md border border-neutral-100 cursor-pointer p-0.5;
   -webkit-appearance: none;
   appearance: none;
   background: none;
@@ -196,7 +196,7 @@
 }
 
 .setting-color-hex {
-  @apply w-28 py-2 px-3 border border-neutral-100 rounded-xl text-[13px] font-mono text-neutral-700 bg-neutral-0 outline-none transition-colors duration-150;
+  @apply w-28 py-2 px-3 border border-neutral-100 rounded-md text-[13px] font-mono text-neutral-700 bg-neutral-0 outline-none transition-colors duration-150;
   font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
 
   &:focus {
@@ -213,7 +213,7 @@
 }
 
 .setting-option-tile {
-  @apply flex min-h-28 cursor-pointer items-start gap-3 rounded-2xl border border-neutral-100 bg-neutral-0 p-4 text-left transition-all duration-150;
+  @apply flex min-h-28 cursor-pointer items-start gap-3 rounded-md border border-neutral-100 bg-neutral-0 p-4 text-left transition-all duration-150;
 
   &:hover {
     @apply border-primary/40 bg-primary/5;
@@ -225,7 +225,7 @@
 }
 
 .setting-option-icon {
-  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-lg text-neutral-500 transition-colors duration-150;
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-lg text-neutral-500 transition-colors duration-150;
 }
 
 .setting-option-tile.active .setting-option-icon {
@@ -253,11 +253,11 @@
 }
 
 .setting-copy-input {
-  @apply min-w-0 flex-1 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-[13px] text-neutral-700 outline-none;
+  @apply min-w-0 flex-1 rounded-sm border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-[13px] text-neutral-700 outline-none;
 }
 
 .setting-copy-button {
-  @apply inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-neutral-100 bg-neutral-0 px-3 py-2.5 text-sm font-semibold text-neutral-700 transition-colors duration-150;
+  @apply inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border border-neutral-100 bg-neutral-0 px-3 py-2.5 text-sm font-semibold text-neutral-700 transition-colors duration-150;
 
   &:hover {
     @apply border-primary/40 text-primary;
@@ -333,7 +333,7 @@
     @apply fixed left-0 right-0 z-[100] bg-neutral-0 flex flex-col;
     bottom: 0;
     max-height: 70vh;
-    border-radius: 20px 20px 0 0;
+    border-radius: 12px 12px 0 0;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.1);
     transform: translateY(100%);
     transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
@@ -371,7 +371,7 @@
   }
 
   .settings-sheet-search input {
-    @apply w-full py-2 pl-9 pr-3 border border-neutral-100 rounded-xl text-[13px] bg-neutral-50/50 text-neutral-700 outline-none transition-colors duration-150;
+    @apply w-full py-2 pl-9 pr-3 border border-neutral-100 rounded-sm text-[13px] bg-neutral-50/50 text-neutral-700 outline-none transition-colors duration-150;
     font-family: inherit;
   }
 
@@ -398,7 +398,7 @@
   .settings-sheet-list::-webkit-scrollbar-thumb { background: var(--color-neutral-200); border-radius: 2px; }
 
   .settings-sheet-item {
-    @apply flex items-center gap-3 px-4 py-2.5 text-[13.5px] text-neutral-600 rounded-xl no-underline cursor-pointer transition-all duration-150;
+    @apply flex items-center gap-3 px-4 py-2.5 text-[13.5px] text-neutral-600 rounded-md no-underline cursor-pointer transition-all duration-150;
   }
 
   .settings-sheet-item:hover {

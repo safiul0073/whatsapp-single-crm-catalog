@@ -168,7 +168,7 @@
                                                                     </template>
 
                                                                     <template x-for="(field, index) in fields" :key="index">
-                                                                        <div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                                                        <div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-md border border-neutral-200 dark:border-neutral-700">
                                                                             <div class="flex-1 min-w-0">
                                                                                 <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100" x-text="field.label"></span>
                                                                             </div>
@@ -214,7 +214,7 @@
                                         {{-- Webhook URL --}}
                                         @if (!empty($group['webhook_url']))
                                             @php $webhookUrl = url("webhooks/{$groupKey}"); @endphp
-                                            <div class="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-6">
+                                            <div class="rounded-md border border-primary/20 bg-primary/5 p-4 mt-6">
                                                 <div class="flex items-center gap-2 mb-2">
                                                     <i class="ph ph-webhooks-logo text-primary text-lg"></i>
                                                     <span class="text-sm font-semibold text-neutral-900">{{ __('Webhook URL') }}</span>
@@ -224,11 +224,11 @@
                                                 </p>
                                                 <div class="flex items-center gap-2" x-data="{ copied: false }">
                                                     <input type="text" value="{{ $webhookUrl }}" readonly
-                                                        class="flex-1 rounded-lg border border-neutral-200 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-mono text-neutral-700 dark:text-neutral-300 select-all"
+                                                        class="flex-1 rounded-sm border border-neutral-200 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-mono text-neutral-700 dark:text-neutral-300 select-all"
                                                         onclick="this.select()">
                                                     <button type="button"
                                                         @click="navigator.clipboard.writeText('{{ $webhookUrl }}'); copied = true; setTimeout(() => copied = false, 2000)"
-                                                        class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                                                        class="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
                                                         <i class="ph" :class="copied ? 'ph-check text-success' : 'ph-copy'"></i>
                                                         <span x-text="copied ? '{{ __('Copied!') }}' : '{{ __('Copy') }}'"></span>
                                                     </button>

@@ -4,7 +4,7 @@
         <div class="space-y-2">
             @foreach($recentActivity as $activity)
             <div class="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-0 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg {{ $activity['color'] }}">
+                <div class="flex h-8 w-8 items-center justify-center rounded-md {{ $activity['color'] }}">
                     <i class="ph {{ $activity['icon'] }}"></i>
                 </div>
                 <div class="flex-1 min-w-0">

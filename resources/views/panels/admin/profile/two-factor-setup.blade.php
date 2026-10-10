@@ -15,8 +15,8 @@
                     <h3 class="heading-5 text-neutral-950 mb-2">{{ __('Step 1: Scan QR Code') }}</h3>
                     <p class="text-sm text-neutral-500 mb-4">{{ __('Scan the following QR code using your authenticator app (Google Authenticator, Authy, etc.).') }}</p>
 
-                    <div class="flex justify-center rounded-xl border border-neutral-100 bg-neutral-50 p-6">
-                        <div class="bg-white rounded-lg p-3">
+                    <div class="flex justify-center rounded-md border border-neutral-100 bg-neutral-50 p-6">
+                        <div class="bg-white rounded-md p-3">
                             {!! $qrCodeSvg !!}
                         </div>
                     </div>
@@ -27,7 +27,7 @@
                     <h3 class="heading-5 text-neutral-950 mb-2">{{ __('Or enter the key manually') }}</h3>
                     <p class="text-sm text-neutral-500 mb-3">{{ __('If you cannot scan the QR code, enter this key into your authenticator app manually.') }}</p>
                     <div class="flex items-center gap-2">
-                        <code class="rounded-lg bg-neutral-50 border border-neutral-100 px-4 py-2.5 font-mono text-sm text-neutral-700 tracking-wider select-all">{{ $secret }}</code>
+                        <code class="rounded-md bg-neutral-50 border border-neutral-100 px-4 py-2.5 font-mono text-sm text-neutral-700 tracking-wider select-all">{{ $secret }}</code>
                     </div>
                 </div>
 

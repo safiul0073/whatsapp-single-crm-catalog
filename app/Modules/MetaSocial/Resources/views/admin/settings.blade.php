@@ -10,12 +10,12 @@
         </div>
 
         @if (session('status'))
-            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                 {{ session('status') }}
             </div>
         @endif
 
-        <form method="POST" action="{{ route('admin.meta-social.settings.update') }}" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+        <form method="POST" action="{{ route('admin.meta-social.settings.update') }}" class="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-950">
             @csrf
             @method('PUT')
 
@@ -56,7 +56,7 @@
                 </label>
             </div>
 
-            <div class="mt-6 rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+            <div class="mt-6 rounded-md border border-gray-100 p-4 dark:border-gray-800">
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Meta Embedded Signup') }}</p>

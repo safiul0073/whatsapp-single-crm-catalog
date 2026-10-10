@@ -9,7 +9,7 @@
 
 <section class="bg-white py-12 lg:py-16 xl:py-20" aria-label="{{ __('Get support') }}">
     <div class="section-container">
-        <div class="relative rounded-3xl bg-brand-navy-ink overflow-hidden px-8 py-14 text-center lg:px-16 lg:py-20">
+        <div class="relative rounded-md bg-brand-navy-ink overflow-hidden px-8 py-14 text-center lg:px-16 lg:py-20">
             <!-- Decoration -->
             <svg class="pointer-events-none absolute left-0 top-0 w-72 h-72 opacity-10" viewBox="0 0 288 288" fill="none" aria-hidden="true">
                 <circle cx="0" cy="0" r="100" stroke="white" stroke-width="1.5" />

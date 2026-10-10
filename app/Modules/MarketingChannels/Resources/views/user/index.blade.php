@@ -17,7 +17,7 @@
         @foreach ($cards as $card)
             <article class="card flex flex-col p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30" data-channel-card="{{ $card['key'] }}">
                 <div class="flex items-start justify-between gap-3">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph {{ $card['icon'] }} text-2xl"></i>
                     </span>
                     <x-marketing-channels::status-badge :status="$card['status']" />

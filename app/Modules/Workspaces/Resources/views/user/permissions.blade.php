@@ -51,11 +51,11 @@
 
             <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 @foreach($rolePermissions['groups'] as $group)
-                    <section class="rounded-lg border border-neutral-200 p-4">
+                    <section class="rounded-md border border-neutral-200 p-4">
                         <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ $group['label'] }}</p>
                         <div class="mt-3 grid gap-2">
                             @foreach($group['permissions'] as $permission)
-                                <label class="flex items-start gap-2 rounded-lg border border-neutral-100 bg-section px-3 py-2 text-sm text-body">
+                                <label class="flex items-start gap-2 rounded-md border border-neutral-100 bg-section px-3 py-2 text-sm text-body">
                                     <input
                                         type="checkbox"
                                         name="permissions[]"

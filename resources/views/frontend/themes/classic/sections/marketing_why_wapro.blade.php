@@ -24,7 +24,7 @@
                     <article data-reveal style="transition-delay: {{ $index * 0.12 }}s" class="choose-card">
                         <span class="choose-card__num choose-card__num--right">{{ str_pad($card['number'] ?? ($index + 1), 2, '0', STR_PAD_LEFT) }}</span>
                         <div class="flex items-center gap-3">
-                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                                 @if (!empty($card['icon_svg']))
                                     {!! $card['icon_svg'] !!}
                                 @else
@@ -41,7 +41,7 @@
             </div>
 
             <div data-reveal class="lg:order-2">
-                <div class="relative overflow-hidden rounded-3xl bg-deep p-6 text-neutral-0 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.6)] sm:p-8">
+                <div class="relative overflow-hidden rounded-md bg-deep p-6 text-neutral-0 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.6)] sm:p-8">
                     <div class="pointer-events-none absolute -top-16 -right-12 h-48 w-48 rounded-full bg-accent/20 blur-3xl animate-blob"></div>
                     <p class="s-text text-neutral-0/60">{{ $d['center_label'] ?? 'This month' }}</p>
                     <p class="mt-1 font-title text-4xl font-extrabold">{{ $d['center_value'] ?? '104.7k' }}</p>
@@ -71,7 +71,7 @@
                     <article data-reveal style="transition-delay: {{ ($index * 0.12) + 0.06 }}s" class="choose-card">
                         <span class="choose-card__num choose-card__num--left">{{ str_pad($card['number'] ?? ($rightNumOffset + $index + 1), 2, '0', STR_PAD_LEFT) }}</span>
                         <div class="flex flex-row-reverse items-center gap-3 text-right">
-                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                                 @if (!empty($card['icon_svg']))
                                     {!! $card['icon_svg'] !!}
                                 @else

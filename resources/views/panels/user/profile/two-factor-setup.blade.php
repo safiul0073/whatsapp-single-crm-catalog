@@ -41,9 +41,9 @@
                         @csrf
                         @php($firstVerifiedChannel = collect($channels)->filter(fn ($meta) => $meta['verified'])->keys()->first())
                         @foreach ($channels as $channel => $meta)
-                            <label class="flex items-center justify-between gap-4 rounded-xl border border-neutral-100 p-4 {{ $meta['verified'] ? 'cursor-pointer hover:border-primary/40' : 'opacity-60' }}">
+                            <label class="flex items-center justify-between gap-4 rounded-md border border-neutral-100 p-4 {{ $meta['verified'] ? 'cursor-pointer hover:border-primary/40' : 'opacity-60' }}">
                                 <span class="flex min-w-0 items-center gap-3">
-                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-section text-primary">
+                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-section text-primary">
                                         <i class="ph {{ $channel === 'email' ? 'ph-envelope-simple' : 'ph-device-mobile' }} text-xl"></i>
                                     </span>
                                     <span class="min-w-0">

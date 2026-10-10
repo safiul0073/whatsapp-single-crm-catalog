@@ -30,7 +30,7 @@
     <div class="space-y-3" data-repeater-items></div>
 
     <button type="button"
-        class="inline-flex items-center gap-2 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:border-primary hover:text-primary"
+        class="inline-flex items-center gap-2 rounded-sm border border-dashed border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:border-primary hover:text-primary"
         data-repeater-add>
         <i class="ph ph-plus"></i>
         {{ __('Add Item') }}
@@ -293,9 +293,9 @@
                         <input type="hidden" data-repeater-prop="${fieldName}" value="${safeValue}">
                         <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_200px]">
                           <button type="button" @click="toggle()"
-                            class="flex w-full items-center justify-between rounded-xl border border-neutral-100 bg-neutral-0 px-4 py-3 text-left transition hover:border-primary dark:border-neutral-100 dark:bg-neutral-10">
+                            class="flex w-full items-center justify-between rounded-sm border border-neutral-100 bg-neutral-0 px-4 py-3 text-left transition hover:border-primary dark:border-neutral-100 dark:bg-neutral-10">
                             <span class="flex items-center gap-3">
-                              <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-50 text-neutral-700 dark:bg-neutral-100/40 dark:text-neutral-900">
+                              <span class="flex h-11 w-11 items-center justify-center rounded-md bg-neutral-50 text-neutral-700 dark:bg-neutral-100/40 dark:text-neutral-900">
                                 <i class="ph text-xl" :class="value || 'ph-shapes'"></i>
                               </span>
                               <span class="space-y-1">
@@ -311,13 +311,13 @@
                               <input type="text" x-model="query" class="input-field has-icon-left" placeholder="{{ __('Search icons') }}" />
                             </div>
                             <button type="button" @click="clear()"
-                              class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-100 text-neutral-500 transition hover:border-error hover:text-error dark:border-neutral-100"
+                              class="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-neutral-100 text-neutral-500 transition hover:border-error hover:text-error dark:border-neutral-100"
                               aria-label="{{ __('Clear icon') }}">
                               <i class="ph ph-x"></i>
                             </button>
                           </div>
                         </div>
-                        <div x-show="open" x-cloak class="mt-3 rounded-2xl border border-neutral-100 bg-neutral-0 p-4 shadow-sm dark:border-neutral-100 dark:bg-neutral-10">
+                        <div x-show="open" x-cloak class="mt-3 rounded-md border border-neutral-100 bg-neutral-0 p-4 shadow-sm dark:border-neutral-100 dark:bg-neutral-10">
                           <div x-show="loading" class="flex justify-center py-8">
                             <i class="ph ph-spinner animate-spin text-2xl text-neutral-400"></i>
                           </div>
@@ -325,7 +325,7 @@
                             <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                               <template x-for="icon in filteredIcons" :key="icon">
                                 <button type="button" @click="select(icon)"
-                                  class="flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-center transition"
+                                  class="flex flex-col items-center gap-2 rounded-sm border px-3 py-3 text-center transition"
                                   :class="value === icon ? 'border-primary bg-primary/10 text-primary' : 'border-neutral-100 text-neutral-600 hover:border-primary hover:text-primary dark:border-neutral-100 dark:text-neutral-700 dark:hover:text-primary'">
                                   <i class="ph text-2xl" :class="icon"></i>
                                   <span class="text-xs font-medium leading-tight" x-text="icon"></span>
@@ -333,7 +333,7 @@
                               </template>
                             </div>
                             <p x-show="filteredIcons.length === 0 && loaded" x-cloak
-                              class="rounded-xl border border-dashed border-neutral-100 px-4 py-5 text-center text-sm text-neutral-500 dark:border-neutral-100">
+                              class="rounded-md border border-dashed border-neutral-100 px-4 py-5 text-center text-sm text-neutral-500 dark:border-neutral-100">
                               {{ __('No icons matched your search.') }}
                             </p>
                           </div>
@@ -500,7 +500,7 @@
                     const rowKey = repeaterSequence++;
                     const row = document.createElement('div');
 
-                    row.className = 'rounded-2xl border border-neutral-100 bg-neutral-0 p-4';
+                    row.className = 'rounded-md border border-neutral-100 bg-neutral-0 p-4';
                     row.dataset.repeaterRow = '1';
                     row.innerHTML = `
                   <div class="mb-3 flex items-center justify-between">

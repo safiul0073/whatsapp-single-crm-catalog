@@ -50,7 +50,7 @@
             @if(setting('site_logo') && media_url(setting('site_logo')))
                 <img src="{{ media_url(setting('site_logo')) }}" alt="{{ setting('site_name', config('app.name', 'Admin Panel')) }}" class="h-12 w-auto max-w-48 object-contain">
             @else
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl gradient-primary">
+                <div class="flex h-12 w-12 items-center justify-center rounded-md gradient-primary">
                     <i class="ph-bold ph-lightning text-xl text-white"></i>
                 </div>
             @endif

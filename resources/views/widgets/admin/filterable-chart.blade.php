@@ -5,11 +5,11 @@
 <div class="section-card">
     <div class="mb-4 flex items-center justify-between gap-4">
         <h2 class="heading-5 text-neutral-950">{{ $title }}</h2>
-        <div class="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-100 p-1">
+        <div class="flex shrink-0 items-center gap-1 rounded-md bg-neutral-100 p-1">
             @foreach($periods as $periodKey => $period)
                 <button
                     type="button"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors {{ $periodKey === $defaultPeriod ? 'bg-neutral-0 text-neutral-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-950' }}"
+                    class="rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors {{ $periodKey === $defaultPeriod ? 'bg-neutral-0 text-neutral-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-950' }}"
                     data-chart-period="{{ $periodKey }}"
                     data-chart-target="{{ $widgetId }}"
                 >

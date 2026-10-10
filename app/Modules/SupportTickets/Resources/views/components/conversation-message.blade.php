@@ -10,15 +10,15 @@
     {{-- Avatar --}}
     <div class="flex-none {{ $isMe ? 'ml-1' : 'mr-1' }}">
         @if ($isStaff)
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-accent inline-grid place-items-center shadow-sm">
+            <div class="w-9 h-9 rounded-md bg-gradient-to-tr from-primary to-accent inline-grid place-items-center shadow-sm">
                 <i class="ph ph-headset w-4.5 h-4.5 text-white"></i>
             </div>
         @else
             @if ($reply->user?->avatar)
                 <img src="{{ Storage::url($reply->user->avatar) }}" alt="{{ $authorName }}"
-                    class="w-9 h-9 rounded-xl object-cover ring-2 ring-white shadow-sm">
+                    class="w-9 h-9 rounded-md object-cover ring-2 ring-white shadow-sm">
             @else
-                <div class="w-9 h-9 rounded-xl bg-brand-navy-ink inline-grid place-items-center font-display font-bold text-white text-[13px] shadow-sm">
+                <div class="w-9 h-9 rounded-md bg-brand-navy-ink inline-grid place-items-center font-display font-bold text-white text-[13px] shadow-sm">
                     {{ $initial }}
                 </div>
             @endif
@@ -33,17 +33,17 @@
                     {{ $authorName }}
                 </span>
                 @if ($isStaff)
-                    <span class="inline-flex items-center gap-1 rounded-full bg-tint-blue px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-brand-blue">
+                    <span class="inline-flex items-center gap-1 rounded-sm bg-tint-blue px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-brand-blue">
                         {{ __('Staff') }}
                     </span>
                 @else
-                    <span class="inline-flex items-center gap-1 rounded-full bg-tint-green px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-brand-green">
+                    <span class="inline-flex items-center gap-1 rounded-sm bg-tint-green px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-brand-green">
                         {{ __('Owner') }}
                     </span>
                 @endif
             </div>
 
-            <div class="rounded-2xl px-4 py-3 shadow-sm {{ $isMe ? 'bg-brand-blue text-white rounded-br-md' : 'bg-bg-soft text-text-strong rounded-bl-md border border-border-soft' }}">
+            <div class="rounded-md px-4 py-3 shadow-sm {{ $isMe ? 'bg-brand-blue text-white rounded-br-md' : 'bg-bg-soft text-text-strong rounded-bl-md border border-border-soft' }}">
                 <div class="font-body text-[13.5px] leading-relaxed whitespace-pre-wrap break-words {{ $isMe ? 'text-white' : '' }}">
                     {{ $reply->message }}
                 </div>

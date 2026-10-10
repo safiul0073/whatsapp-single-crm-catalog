@@ -22,7 +22,7 @@
         @include('commerce::user.partials.help', ['helpKey' => $helpKey])
 
         @if ($errors->any())
-            <div class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
+            <div class="rounded-md border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
                 <p class="font-semibold">{{ __('The :item could not be saved.', ['item' => $singular]) }}</p>
                 <ul class="mt-2 list-disc space-y-1 pl-5">
                     @foreach ($errors->all() as $error)
@@ -35,7 +35,7 @@
         <div class="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
             <section class="section-card h-fit">
                 <div class="flex items-start gap-3">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph {{ $icon }} text-xl"></i>
                     </span>
                     <div>
@@ -77,7 +77,7 @@
                             <input type="checkbox" class="app-checkbox" :checked="allRecordsSelected()" @change="toggleAllRecords($event)" :disabled="recordIds.length === 0">
                             <span class="text-sm font-medium text-title">{{ __('Select unused') }}</span>
                         </label>
-                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-section text-primary">
+                        <span class="grid h-10 w-10 place-items-center rounded-md bg-section text-primary">
                             <i class="ph {{ $icon }} text-xl"></i>
                         </span>
                     </div>
@@ -85,11 +85,11 @@
 
                 <div class="mt-5 space-y-3">
                     @forelse ($records as $record)
-                        <article class="rounded-2xl border border-border p-4" x-data="{ editing: false }">
+                        <article class="rounded-md border border-border p-4" x-data="{ editing: false }">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-3">
                                     <input type="checkbox" class="app-checkbox" value="{{ $record->id }}" x-model="selectedRecords" aria-label="{{ __('Select :name', ['name' => $record->name]) }}" @disabled($record->products_count > 0)>
-                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                                         <i class="ph {{ $icon }} text-xl"></i>
                                     </span>
                                     <div class="min-w-0">
@@ -132,7 +132,7 @@
                             </form>
                         </article>
                     @empty
-                        <div class="rounded-2xl border border-dashed border-border p-10 text-center">
+                        <div class="rounded-md border border-dashed border-border p-10 text-center">
                             <i class="ph {{ $icon }} text-4xl text-neutral-300"></i>
                             <h3 class="mt-3 font-semibold text-title">{{ __('No :items yet', ['items' => strtolower($title)]) }}</h3>
                             <p class="mt-1 text-sm text-body">{{ __('Create the first one using the form.') }}</p>

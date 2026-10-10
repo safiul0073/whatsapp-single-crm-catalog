@@ -22,26 +22,26 @@
     <div class="section-card w-full max-w-md">
         <!-- Logo -->
         <div class="mb-8 text-center">
-            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl gradient-primary text-white shadow-lg shadow-primary/20">
+            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md gradient-primary text-white shadow-lg shadow-primary/20">
                 <i class="ph-bold ph-lightning text-2xl"></i>
             </div>
             <h1 class="text-xl font-bold text-neutral-950">{{ setting('site_name', config('app.name', 'Admin Panel')) }}</h1>
         </div>
 
         @if (session('success'))
-            <div class="mb-4 rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success">
+            <div class="mb-4 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success">
                 {{ session('success') }}
             </div>
         @endif
 
         @if (session('error'))
-            <div class="mb-4 rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+            <div class="mb-4 rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error">
                 {{ session('error') }}
             </div>
         @endif
 
         @if (session('status'))
-            <div class="mb-4 rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+            <div class="mb-4 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
                 {{ session('status') }}
             </div>
         @endif

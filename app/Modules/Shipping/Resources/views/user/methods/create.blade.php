@@ -15,7 +15,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Column: Core Details -->
             <div class="lg:col-span-2">
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
                     <h2 class="text-lg font-semibold text-neutral-800 mb-4">{{ __('Method Details') }}</h2>
                     <form action="{{ route('user.shipping.methods.store') }}" method="POST" id="methodForm">
                         @csrf
@@ -44,7 +44,7 @@
 
             <!-- Right Column: Settings -->
             <div class="lg:col-span-1 space-y-6">
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
                     <h3 class="text-md font-semibold text-neutral-800 mb-4">{{ __('Delivery Timeframe') }}</h3>
                     <div class="space-y-4">
                         <div>
@@ -59,7 +59,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6 flex flex-col gap-3">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6 flex flex-col gap-3">
                     <x-ui.button type="submit" variant="primary" class="w-full justify-center" form="methodForm">
                         <i class="ph ph-check"></i>
                         <span>{{ __('Save Method') }}</span>

@@ -16,7 +16,7 @@
 
         <div class="f-between">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5">
-                <span class="grid h-9 w-9 place-items-center rounded-xl bg-deep text-neutral-0 shadow-[0_6px_16px_-6px_rgba(7,94,84,0.7)]">
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-deep text-neutral-0 shadow-[0_6px_16px_-6px_rgba(7,94,84,0.7)]">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" /></svg>
                 </span>
                 <span class="font-title text-xl font-extrabold tracking-tight text-title">WaPro Admin</span>
@@ -28,19 +28,19 @@
         </div>
 
         <div class="flex flex-1 items-center justify-center py-10">
-            <div class="w-full max-w-md rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
+            <div class="w-full max-w-md rounded-md border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
                 <div class="text-center">
                     <h1 class="heading-2">{{ __('Forgot password') }}</h1>
                 </div>
 
                 @if (session('success'))
-                    <div class="mt-6 rounded-2xl border border-success/20 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                    <div class="mt-6 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-medium text-success">
                         {{ session('success') }}
                     </div>
                 @endif
 
                 @if (session('status'))
-                    <div class="mt-6 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+                    <div class="mt-6 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
                         {{ session('status') }}
                     </div>
                 @endif

@@ -9,7 +9,7 @@
         <div class="space-y-2">
             @foreach($loginActivities as $activity)
             <div class="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-0 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg
+                <div class="flex h-8 w-8 items-center justify-center rounded-md
                     @switch($activity->event)
                         @case('login') bg-success/10 text-success @break
                         @case('logout') bg-info/10 text-info @break

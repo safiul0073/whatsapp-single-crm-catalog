@@ -46,6 +46,13 @@
    Design Tokens — "Classic" WhatsApp-green SaaS theme
    ===================================================================== */
 @theme {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+  --radius-4xl: 12px;
   /* Typography */
   --font-primary: "Inter", sans-serif;
   --font-title: "Plus Jakarta Sans", sans-serif;
@@ -298,15 +305,15 @@ p {
 
 /* Template card surfaces used by imported whatsapp-html app pages. */
 .card {
-  @apply rounded-2xl border border-neutral-200 bg-neutral-0 p-6;
+  @apply rounded-md border border-neutral-200 bg-neutral-0 p-6;
 }
 
 .card-soft {
-  @apply rounded-2xl bg-section p-6;
+  @apply rounded-md bg-section p-6;
 }
 
 .dashboard-card {
-  @apply overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0;
+  @apply overflow-hidden rounded-md border border-neutral-200 bg-neutral-0;
 }
 
 /* =====================================================================
@@ -579,7 +586,7 @@ p {
    Badges — updated with Classic green primary
    ===================================================================== */
 @utility badge {
-  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-sm px-2.5 py-0.5 text-xs font-medium;
 }
 
 @utility badge-primary {
@@ -664,7 +671,7 @@ p {
    Button icon & Custom checkbox — from original
    ===================================================================== */
 @utility btn-icon {
-  @apply bg-neutral-0 flex cursor-pointer items-center justify-center rounded-xl border border-neutral-100 text-neutral-700 transition-all duration-300;
+  @apply bg-neutral-0 flex cursor-pointer items-center justify-center rounded-sm border border-neutral-100 text-neutral-700 transition-all duration-300;
 
   &:hover {
     @apply border-primary bg-primary/10 -translate-y-0.5;
@@ -729,11 +736,11 @@ p {
 
 /* ===== Card Elevated ===== */
 .card-elevated {
-  @apply bg-neutral-0 relative overflow-hidden rounded-2xl border border-neutral-100 transition-all duration-500;
+  @apply bg-neutral-0 relative overflow-hidden rounded-md border border-neutral-100 transition-all duration-500;
 }
 
 .section-card {
-  @apply bg-neutral-0 relative overflow-hidden rounded-2xl border border-neutral-100 px-3 py-6 transition-all duration-500 sm:px-6;
+  @apply bg-neutral-0 relative overflow-hidden rounded-md border border-neutral-100 px-3 py-6 transition-all duration-500 sm:px-6;
 }
 
 /* ===== DataTable Loading Overlay ===== */

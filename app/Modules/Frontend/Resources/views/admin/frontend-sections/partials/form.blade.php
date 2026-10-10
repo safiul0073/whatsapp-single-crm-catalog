@@ -105,7 +105,7 @@
                                 $groupHint = $field['group_hint'] ?? null;
                             @endphp
 
-                            <div class="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50/70 p-4">
                                 <div class="mb-4">
                                     <h5 class="text-sm font-semibold text-neutral-900">{{ __($groupLabel) }}</h5>
                                     @if($groupHint)

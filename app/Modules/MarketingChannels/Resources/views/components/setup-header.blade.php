@@ -13,7 +13,7 @@
 
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex min-w-0 items-center gap-4">
-            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                 <i class="ph {{ $config['icon'] ?? 'ph-plugs-connected' }} text-2xl"></i>
             </span>
             <div class="min-w-0">

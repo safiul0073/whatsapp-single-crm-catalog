@@ -172,7 +172,7 @@ class OrderManagementController extends Controller
         $workspaceSettings['commerce']['currency'] = $settings->currency;
         $workspace->update(['settings' => $workspaceSettings]);
 
-        return back()->with('success', 'Store order settings saved. Currency changes apply to new orders. Review product and shipping prices when changing currency.');
+        return back()->with('success', 'Order settings saved.');
     }
 
     private function persistPaymentMethods(Workspace $workspace, array $methods, Request $request): void

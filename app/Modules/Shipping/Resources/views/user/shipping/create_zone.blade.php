@@ -13,7 +13,7 @@
             <p class="text-sm text-neutral-500 mt-1">{{ __('Define a geographical region and the countries it covers.') }}</p>
         </div>
 
-        <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+        <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
             <form action="{{ route('user.shipping.zones.store') }}" method="POST" class="space-y-6">
                 @csrf
                 

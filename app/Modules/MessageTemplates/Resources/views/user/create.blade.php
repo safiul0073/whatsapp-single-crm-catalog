@@ -157,9 +157,9 @@
                             <input id="otpButtonText" name="otp_button_text" type="text" maxlength="25" x-model="otpText" class="form-input" placeholder="Copy code">
                         </label>
                     </div>
-                    <div class="rounded-xl border border-neutral-200 bg-section p-4 text-sm text-title">
+                    <div class="rounded-md border border-neutral-200 bg-section p-4 text-sm text-title">
                         <p class="font-semibold" x-text="authPreview"></p>
-                        <p class="mt-3 inline-block rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold" x-text="otpText || 'Copy code'"></p>
+                        <p class="mt-3 inline-block rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold" x-text="otpText || 'Copy code'"></p>
                     </div>
                     @error('code_expiration_minutes')<p class="text-xs font-semibold text-error">{{ $message }}</p>@enderror
                 </div>

@@ -8,13 +8,13 @@
                 {{ __('Track and manage all your support requests') }}</p>
         </div>
         <a href="{{ route('user.support-tickets.create') }}"
-            class="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-5 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-colors">
+            class="inline-flex items-center gap-2 rounded-md bg-brand-blue px-5 py-2.5 font-body font-semibold text-[13px] text-white shadow-brand hover:bg-primary-hover transition-colors">
             <i class="ph ph-plus w-4 h-4"></i>
             {{ __('Open New Ticket') }}
         </a>
     </div>
 
-    <div class="bg-white rounded-2xl border border-border-soft shadow-xs overflow-hidden">
+    <div class="bg-white rounded-md border border-border-soft shadow-xs overflow-hidden">
 
         {{-- Search & Filter tabs --}}
         <div class="border-b border-border-soft px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -28,7 +28,7 @@
                 @if (request('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
-                <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-4 py-2 font-body font-semibold text-[12px] text-white hover:bg-primary-hover transition-colors">
+                <button type="submit" class="inline-flex items-center gap-1.5 rounded-sm bg-brand-blue px-4 py-2 font-body font-semibold text-[12px] text-white hover:bg-primary-hover transition-colors">
                     {{ __('Search') }}
                 </button>
                 @if (request()->filled('search'))
@@ -56,7 +56,7 @@
 
         @if ($tickets->isEmpty())
             <div class="py-16 text-center">
-                <div class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-tint-blue text-brand-blue inline-grid place-items-center">
+                <div class="mx-auto mb-4 w-14 h-14 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center">
                     <i class="ph ph-lifebuoy w-6 h-6"></i>
                 </div>
                 <p class="font-display font-bold text-text-strong text-[15px]">{{ __('No tickets found') }}</p>

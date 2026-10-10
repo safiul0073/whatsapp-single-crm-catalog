@@ -42,6 +42,7 @@ class CreateUnifiedOrderRequest extends FormRequest
             'groups.*.quantity' => ['required_if:groups.*.mode,retail', 'integer', 'min:1', 'max:10000'],
             'groups.*.color_id' => ['required_if:groups.*.mode,wholesale', 'integer', 'min:1'],
             'groups.*.box_count' => ['required_if:groups.*.mode,wholesale', 'integer', 'min:1', 'max:100'],
+            'groups.*.size_quantities' => ['prohibited'],
             'subtotal' => ['prohibited'], 'total' => ['prohibited'], 'groups.*.price' => ['prohibited'], 'groups.*.unit_price' => ['prohibited'], 'groups.*.line_total' => ['prohibited'],
             'groups.*.ratio' => ['prohibited'], 'groups.*.pack_sizes' => ['prohibited'],
             'adjustments' => ['sometimes', 'array', 'max:10'],

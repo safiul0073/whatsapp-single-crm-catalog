@@ -29,7 +29,7 @@
                 @forelse($notifications as $notification)
                 <a @if($notification->getUrl()) href="{{ $notification->getUrl() }}" @endif
                    class="flex gap-4 p-4 transition-colors hover:bg-neutral-50 {{ !$notification->isRead() ? 'bg-primary/5' : '' }}">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg {{ match($notification->getType()) {
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md {{ match($notification->getType()) {
                         'success' => 'bg-success/10 text-success',
                         'warning' => 'bg-warning/10 text-warning',
                         'danger' => 'bg-error/10 text-error',

@@ -30,10 +30,10 @@
         <form method="POST" action="{{ route('user.social-widgets.store', $provider) }}" class="mt-3">
             @csrf
             <input type="hidden" name="layout" value="{{ $recommended->value }}">
-            <button type="submit" class="group grid w-full gap-6 rounded-2xl border border-title bg-linear-to-r from-section via-white to-primary/10 p-7 text-left shadow-lg transition hover:shadow-xl sm:grid-cols-[1fr_auto]" data-layout-featured="{{ $recommended->value }}">
+            <button type="submit" class="group grid w-full gap-6 rounded-sm border border-title bg-linear-to-r from-section via-white to-primary/10 p-7 text-left shadow-lg transition hover:shadow-xl sm:grid-cols-[1fr_auto]" data-layout-featured="{{ $recommended->value }}">
                 <div>
                     <p class="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-                        <span class="rounded-full bg-primary px-2 py-0.5 text-white"><i class="ph ph-sparkle"></i> {{ __('Featured') }}</span>
+                        <span class="rounded-sm bg-primary px-2 py-0.5 text-white"><i class="ph ph-sparkle"></i> {{ __('Featured') }}</span>
                         <span class="text-body">{{ __('Picked for you') }}</span>
                     </p>
                     <h3 class="mt-4 font-title text-3xl font-black tracking-tight text-title">{{ __($recommended->label()) }}</h3>
@@ -77,7 +77,7 @@
                 <form method="POST" action="{{ route('user.social-widgets.store', $provider) }}" data-layout-card data-search="{{ strtolower($layout->label().' '.$layout->description()) }}" x-show="matches($el)">
                     @csrf
                     <input type="hidden" name="layout" value="{{ $layout->value }}">
-                    <button type="submit" class="group flex h-44 w-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-title hover:shadow-md">
+                    <button type="submit" class="group flex h-44 w-full flex-col rounded-sm border border-neutral-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-title hover:shadow-md">
                         <span class="flex w-full items-start justify-between">
                             <span class="font-mono text-[11px] font-semibold text-neutral-300">{{ $layout->number() }}</span>
                             <span class="grid h-7 w-7 place-items-center rounded-full border border-neutral-200 text-body transition group-hover:border-primary group-hover:bg-primary group-hover:text-white"><i class="ph ph-arrow-up-right text-xs"></i></span>

@@ -33,9 +33,9 @@
                 <div class="mt-8 flex flex-col gap-4">
                     <!-- Email -->
                     <a href="mailto:{{ $email }}"
-                        class="group flex items-center gap-4 rounded-2xl border border-border-soft bg-bg-soft px-5 py-4 no-underline hover:border-border-strong hover:bg-white transition-colors duration-150">
+                        class="group flex items-center gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4 no-underline hover:border-border-strong hover:bg-white transition-colors duration-150">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-blue text-brand-blue inline-grid place-items-center flex-none transition-colors duration-150">
+                            class="w-10 h-10 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center flex-none transition-colors duration-150">
                             <i data-lucide="mail" class="w-5 h-5"></i>
                         </span>
                         <div>
@@ -51,9 +51,9 @@
 
                     <!-- Phone -->
                     <a href="{{ $phoneHref }}"
-                        class="group flex items-center gap-4 rounded-2xl border border-border-soft bg-bg-soft px-5 py-4 no-underline hover:border-border-strong hover:bg-white transition-colors duration-150">
+                        class="group flex items-center gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4 no-underline hover:border-border-strong hover:bg-white transition-colors duration-150">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-green text-brand-green inline-grid place-items-center flex-none">
+                            class="w-10 h-10 rounded-md bg-tint-green text-brand-green inline-grid place-items-center flex-none">
                             <i data-lucide="phone" class="w-5 h-5"></i>
                         </span>
                         <div>
@@ -68,9 +68,9 @@
                     </a>
 
                     <!-- Office -->
-                    <div class="flex items-start gap-4 rounded-2xl border border-border-soft bg-bg-soft px-5 py-4">
+                    <div class="flex items-start gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
+                            class="w-10 h-10 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
                             <i data-lucide="map-pin" class="w-5 h-5"></i>
                         </span>
                         <div>
@@ -83,9 +83,9 @@
                     </div>
 
                     <!-- Hours -->
-                    <div class="flex items-start gap-4 rounded-2xl border border-border-soft bg-bg-soft px-5 py-4">
+                    <div class="flex items-start gap-4 rounded-md border border-border-soft bg-bg-soft px-5 py-4">
                         <span
-                            class="w-10 h-10 rounded-xl bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
+                            class="w-10 h-10 rounded-md bg-tint-blue text-brand-blue inline-grid place-items-center flex-none mt-0.5">
                             <i data-lucide="clock-4" class="w-5 h-5"></i>
                         </span>
                         <div>
@@ -104,19 +104,19 @@
                         {{ __('Follow us') }}</p>
                     <div class="flex items-center gap-2.5 flex-wrap">
                         <a href="#" aria-label="{{ __('LinkedIn') }}"
-                            class="w-9 h-9 rounded-xl border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
+                            class="w-9 h-9 rounded-md border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
                             <i data-lucide="linkedin" class="w-4 h-4"></i>
                         </a>
                         <a href="#" aria-label="{{ __('Twitter / X') }}"
-                            class="w-9 h-9 rounded-xl border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
+                            class="w-9 h-9 rounded-md border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
                             <i data-lucide="twitter" class="w-4 h-4"></i>
                         </a>
                         <a href="#" aria-label="{{ __('GitHub') }}"
-                            class="w-9 h-9 rounded-xl border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
+                            class="w-9 h-9 rounded-md border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
                             <i data-lucide="github" class="w-4 h-4"></i>
                         </a>
                         <a href="#" aria-label="{{ __('Dribbble') }}"
-                            class="w-9 h-9 rounded-xl border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
+                            class="w-9 h-9 rounded-md border border-border-default bg-white inline-grid place-items-center text-text-muted hover:border-brand-blue hover:text-brand-blue hover:bg-tint-blue transition-colors duration-150">
                             <i data-lucide="dribbble" class="w-4 h-4"></i>
                         </a>
                     </div>
@@ -124,7 +124,7 @@
             </div>
 
             <!-- RIGHT — Form card -->
-            <div class="rounded-3xl border border-border-soft bg-white shadow-xs p-7 md:p-9 lg:sticky lg:top-28">
+            <div class="rounded-md border border-border-soft bg-white shadow-xs p-7 md:p-9 lg:sticky lg:top-28">
                 <!-- Eyebrow -->
                 <div class="flex items-center gap-2 mb-5">
                     <span class="srv3-eyebrow-dot w-1.5 h-1.5 rounded-pill bg-brand-blue"></span>
@@ -145,14 +145,14 @@
                             <label for="cf-first" class="font-body text-[12.5px] font-semibold text-text-strong">{{ __('First name') }} <span class="text-red-500" aria-hidden="true">*</span></label>
                             <input id="cf-first" name="first_name" type="text" autocomplete="given-name" required
                                 placeholder="{{ __('Jane') }}"
-                                class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
+                                class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
                             <p class="cf-error hidden text-[11.5px] text-red-500 font-body">{{ __('Please enter your first name.') }}</p>
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label for="cf-last" class="font-body text-[12.5px] font-semibold text-text-strong">{{ __('Last name') }} <span class="text-red-500" aria-hidden="true">*</span></label>
                             <input id="cf-last" name="last_name" type="text" autocomplete="family-name" required
                                 placeholder="{{ __('Doe') }}"
-                                class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
+                                class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
                             <p class="cf-error hidden text-[11.5px] text-red-500 font-body">{{ __('Please enter your last name.') }}</p>
                         </div>
                     </div>
@@ -163,7 +163,7 @@
                             <span class="text-red-500" aria-hidden="true">*</span></label>
                         <input id="cf-email" name="email" type="email" autocomplete="email" required
                             placeholder="jane@company.com"
-                            class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
+                            class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
                         <p class="cf-error hidden text-[11.5px] text-red-500 font-body">{{ __('Please enter a valid work email address.') }}</p>
                     </div>
 
@@ -174,14 +174,14 @@
                                 class="font-body text-[12.5px] font-semibold text-text-strong">{{ __('Company') }} <span class="text-red-500" aria-hidden="true">*</span></label>
                             <input id="cf-company" name="company" type="text" autocomplete="organization" required
                                 placeholder="Acme Inc."
-                                class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
+                                class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150" />
                             <p class="cf-error hidden text-[11.5px] text-red-500 font-body">{{ __('Please enter your company name.') }}</p>
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label for="cf-interest"
                                 class="font-body text-[12.5px] font-semibold text-text-strong">{{ __('Topic') }} <span class="text-red-500" aria-hidden="true">*</span></label>
                             <select id="cf-interest" name="interest" required
-                                class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150 appearance-none">
+                                class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150 appearance-none">
                                 <option value="" disabled selected>{{ __('Select…') }}</option>
                                 <option value="cloud-api-setup">{{ __('Cloud API setup') }}</option>
                                 <option value="migration">{{ __('Migration from QR sender') }}</option>
@@ -199,19 +199,19 @@
                             <span class="text-red-500" aria-hidden="true">*</span></label>
                         <textarea id="cf-message" name="message" rows="4" required
                             placeholder="{{ __('Tell us what you need help with: Cloud API setup, templates, campaigns, automations, or support.') }}"
-                            class="cf-field w-full rounded-xl border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150 resize-none"></textarea>
+                            class="cf-field w-full rounded-sm border border-border-default bg-bg-soft px-3.5 py-2.5 font-body text-body-sm text-text-strong placeholder:text-text-light focus:outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/15 transition-colors duration-150 resize-none"></textarea>
                         <p class="cf-error hidden text-[11.5px] text-red-500 font-body">{{ __('Please enter your message (at least 10 characters).') }}</p>
                     </div>
 
                     <!-- Submit -->
                     <button type="submit"
-                        class="contact-submit-btn mt-1 w-full inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-brand-blue to-primary-hover px-6 py-3.5 text-sm font-bold text-white shadow-hero-cta border border-white/15">
+                        class="contact-submit-btn mt-1 w-full inline-flex items-center justify-center gap-2.5 rounded-sm bg-gradient-to-b from-brand-blue to-primary-hover px-6 py-3.5 text-sm font-bold text-white shadow-hero-cta border border-white/15">
                         {{ __('Send message') }} <i data-lucide="send" class="w-4 h-4"></i>
                     </button>
 
                     <!-- Success state (hidden) -->
                     <div id="cf-success"
-                        class="hidden rounded-xl bg-tint-green border border-brand-green/20 px-4 py-3 items-center gap-3"
+                        class="hidden rounded-md bg-tint-green border border-brand-green/20 px-4 py-3 items-center gap-3"
                         role="alert" aria-live="polite">
                         <i data-lucide="check-circle" class="w-5 h-5 text-brand-green flex-none"></i>
                         <p class="font-body text-body-sm font-semibold text-brand-green">{{ __("Message sent! We'll reply within one business day.") }}</p>

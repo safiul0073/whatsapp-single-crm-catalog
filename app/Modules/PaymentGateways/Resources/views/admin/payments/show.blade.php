@@ -66,7 +66,7 @@
                 @if(!empty($payment->metadata))
                     <div>
                         <p class="text-xs text-neutral-400 uppercase tracking-wider mb-1">{{ __('Metadata') }}</p>
-                        <pre class="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-3 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">{{ json_encode($payment->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                        <pre class="rounded-md bg-neutral-50 dark:bg-neutral-900 p-3 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">{{ json_encode($payment->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                     </div>
                 @endif
             </div>
@@ -85,7 +85,7 @@
                                 {{-- Display proof images/files --}}
                                 @foreach((array) $payment->metadata['proof_media_ids'] as $mediaId)
                                     @if($mediaId)
-                                        <img src="{{ media_url($mediaId) }}" alt="Payment Proof" class="rounded-lg max-w-full border border-neutral-200 mb-2">
+                                        <img src="{{ media_url($mediaId) }}" alt="Payment Proof" class="rounded-md max-w-full border border-neutral-200 mb-2">
                                     @endif
                                 @endforeach
                             </div>

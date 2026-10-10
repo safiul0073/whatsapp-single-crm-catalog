@@ -103,7 +103,7 @@
             </span>
         </div>
         <div class="space-y-4 p-4">
-            <div class="space-y-3 rounded-lg bg-section/60 p-3 text-sm">
+            <div class="space-y-3 rounded-md bg-section/60 p-3 text-sm">
                 <div class="flex items-center justify-between gap-3">
                     <span class="inline-flex items-center gap-2 text-body">
                         <i class="ph ph-eye text-base text-neutral-400"></i>
@@ -192,9 +192,9 @@
         </div>
     </section>
 
-    <section class="rounded-lg border border-dashed border-neutral-200 bg-neutral-0 p-4">
+    <section class="rounded-md border border-dashed border-neutral-200 bg-neutral-0 p-4">
         <div class="flex gap-3">
-            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                 <i class="ph ph-check-circle text-lg"></i>
             </span>
             <div>

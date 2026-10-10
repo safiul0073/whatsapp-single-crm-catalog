@@ -96,7 +96,7 @@
           x-show="(status === 'all' || status === '{{ $cardStatus }}') && (!query || $el.dataset.search.includes(query.toLowerCase()))"
         >
           <div class="flex items-start justify-between gap-3">
-            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
               <i class="ph ph-flow-arrow text-xl"></i>
             </span>
             <form method="POST" action="{{ route('user.automations.toggle', $automation) }}">
@@ -206,7 +206,7 @@
         </div>
 
         <form method="GET" action="{{ route('user.automations.create') }}" class="space-y-4 p-5">
-          <div class="rounded-lg border border-neutral-200 bg-section p-4">
+          <div class="rounded-md border border-neutral-200 bg-section p-4">
             <p class="text-sm font-semibold text-title">Write your prompt with:</p>
             <div class="mt-3 grid gap-2 text-sm text-neutral-600 sm:grid-cols-2">
               <span><i class="ph ph-check text-primary"></i> When the flow should start</span>
@@ -230,7 +230,7 @@
             ></textarea>
           </div>
 
-          <div class="rounded-lg border border-dashed border-neutral-200 bg-neutral-0 p-4">
+          <div class="rounded-md border border-dashed border-neutral-200 bg-neutral-0 p-4">
             <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Example prompt</p>
             <p class="mt-2 text-sm text-neutral-600">Welcome new WhatsApp leads, ask what service they need, send quick reply options for Support, Sales, and Pricing, wait 1 day, then assign interested leads to the sales team and log them to Google Sheets.</p>
           </div>

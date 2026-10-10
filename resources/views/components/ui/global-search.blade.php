@@ -26,7 +26,7 @@
                     x-show="query.length > 0"
                     x-cloak
                     @click="clear(); $refs.searchInput?.focus()"
-                    class="shrink-0 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600">
+                    class="shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600">
                 <i class="ph ph-x text-lg"></i>
             </button>
             <kbd class="hidden shrink-0 rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-xs font-medium text-neutral-400 sm:inline">ESC</kbd>
@@ -69,7 +69,7 @@
                            :data-search-index="getFlatIndex(gi, ri)"
                            class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-primary/5"
                            :class="{ 'bg-primary/5': activeIndex === getFlatIndex(gi, ri) }">
-                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500">
                                 <i class="ph" :class="group.icon"></i>
                             </div>
                             <div class="min-w-0 flex-1">

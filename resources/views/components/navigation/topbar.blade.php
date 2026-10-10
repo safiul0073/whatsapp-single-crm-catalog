@@ -68,7 +68,7 @@
                 <i class="ph ph-bell text-xl"></i>
                 <span x-show="unreadCount > 0" x-cloak
                       x-text="unreadCount > 99 ? '99+' : unreadCount"
-                      class="absolute -top-0.5 -end-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white"></span>
+                      class="absolute -top-0.5 -end-0.5 flex h-5 min-w-5 items-center justify-center rounded-sm bg-error px-1 text-[10px] font-bold text-white"></span>
             </button>
 
             {{-- Notification Dropdown Panel --}}
@@ -80,7 +80,7 @@
                  x-transition:leave="transition ease-in duration-100"
                  x-transition:leave-start="opacity-100 translate-y-0"
                  x-transition:leave-end="opacity-0 translate-y-1"
-                 class="bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-neutral-100 shadow-xl md:w-96">
+                 class="bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-md border border-neutral-100 shadow-xl md:w-96">
 
                 {{-- Header --}}
                 <div class="flex items-center justify-between border-b border-neutral-100 p-4">
@@ -105,7 +105,7 @@
                                    @click="handleNotificationClick(n, $event)"
                                    class="flex gap-3 border-b border-neutral-50 p-4 transition-colors hover:bg-neutral-50 cursor-pointer"
                                    :class="{ 'bg-primary/5': !n.read_at }">
-                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
                                          :class="n.icon_bg || 'bg-primary/10 text-primary'">
                                         <i class="ph" :class="n.icon || 'ph-bell'"></i>
                                     </div>
@@ -152,7 +152,7 @@
 
             {{-- Dropdown Panel --}}
             <div id="userDropdown"
-                 class="dropdown-panel bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-neutral-100 shadow-lg"
+                 class="dropdown-panel bg-neutral-0 absolute end-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-neutral-100 shadow-lg"
                  role="menu">
 
                 {{-- User Info --}}

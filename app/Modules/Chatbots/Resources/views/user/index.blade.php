@@ -21,7 +21,7 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+        <div class="mt-4 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
             {{ session('status') }}
         </div>
     @endif
@@ -54,7 +54,7 @@
     </div>
 
     <form method="GET" action="{{ route('user.chatbots.index') }}" class="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div class="inline-flex rounded-full border border-neutral-200 bg-neutral-0 p-1">
+        <div class="inline-flex rounded-sm border border-neutral-200 bg-neutral-0 p-1">
             @foreach (['all' => __('All'), 'active' => __('Active'), 'paused' => __('Paused')] as $value => $label)
                 <button type="submit" name="status" value="{{ $value }}" class="range-btn {{ ($filters['status'] ?? 'all') === $value ? 'is-active' : '' }}">
                     {{ $label }}
@@ -69,8 +69,8 @@
     </form>
 
     @if ($chatbots->isEmpty())
-        <div class="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 px-6 py-16 text-center">
-            <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+        <div class="mt-6 flex flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 px-6 py-16 text-center">
+            <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                 <i class="ph ph-robot text-2xl"></i>
             </span>
             <h3 class="heading-4 mt-4">{{ __('No chatbots yet') }}</h3>
@@ -85,7 +85,7 @@
             @foreach ($chatbots as $chatbot)
                 <article class="app-card flex flex-col p-5">
                     <div class="flex items-start gap-3">
-                        <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                             <i class="ph ph-robot text-2xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">

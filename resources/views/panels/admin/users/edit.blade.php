@@ -19,7 +19,7 @@
                     <!-- Profile Card -->
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-user text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Profile Information') }}</h2>
@@ -45,7 +45,7 @@
                     <!-- Password Card -->
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-lock text-lg"></i>
                             </div>
                             <div>
@@ -69,7 +69,7 @@
                     <!-- Account Status -->
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-toggle-left text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Account Status') }}</h2>
@@ -83,7 +83,7 @@
                     <!-- Verification Status -->
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-shield-check text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Verification Status') }}</h2>
@@ -125,7 +125,7 @@
                     <!-- Two-Factor Authentication -->
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-key text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Two-Factor Authentication') }}</h2>
@@ -144,7 +144,7 @@
                             @if($user->two_factor_recovery_codes && is_array($user->two_factor_recovery_codes))
                                 <div class="mb-4">
                                     <p class="text-[10px] text-neutral-400 mb-1 font-semibold">{{ __('RECOVERY CODES:') }}</p>
-                                    <div class="grid grid-cols-2 gap-1 bg-neutral-50 p-2 rounded-lg border border-neutral-100">
+                                    <div class="grid grid-cols-2 gap-1 bg-neutral-50 p-2 rounded-md border border-neutral-100">
                                         @foreach($user->two_factor_recovery_codes as $code)
                                             <code class="text-[10px] text-neutral-600 font-mono">{{ $code }}</code>
                                         @endforeach

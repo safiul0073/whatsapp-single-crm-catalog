@@ -239,9 +239,9 @@
     ];
 @endphp
 
-<section class="mb-6 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between" data-page-help-banner data-help-route="{{ $routeName }}">
+<section class="mb-6 flex flex-col gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between" data-page-help-banner data-help-route="{{ $routeName }}">
     <div class="flex min-w-0 items-start gap-3">
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-neutral-0">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary text-neutral-0">
             <i class="ph {{ $guide['icon'] }} text-lg"></i>
         </span>
         <div class="min-w-0">
@@ -261,7 +261,7 @@
         <div class="modal__panel max-w-2xl" role="dialog" aria-modal="true" aria-labelledby="userPageHelpTitle">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex items-start gap-3">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph {{ $guide['icon'] }} text-xl"></i>
                     </span>
                     <div>
@@ -285,7 +285,7 @@
                 @endforeach
             </ol>
 
-            <div class="mt-5 flex items-start gap-3 rounded-xl bg-warning/10 p-4">
+            <div class="mt-5 flex items-start gap-3 rounded-md bg-warning/10 p-4">
                 <i class="ph ph-lightbulb mt-0.5 text-warning"></i>
                 <div>
                     <p class="text-sm font-semibold text-title">{{ __('Helpful tip') }}</p>

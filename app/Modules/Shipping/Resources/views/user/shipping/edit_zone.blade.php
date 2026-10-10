@@ -38,7 +38,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Zone Details -->
             <div class="lg:col-span-1">
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
                     <h2 class="text-lg font-semibold text-neutral-800 mb-4">{{ __('Zone Settings') }}</h2>
                     <form action="{{ route('user.shipping.zones.update', $zone) }}" method="POST" class="space-y-6">
                         @csrf
@@ -80,7 +80,7 @@
             <!-- Shipping Rates -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Rates Table -->
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200">
                     <div class="px-6 py-4 border-b border-neutral-200 flex justify-between items-center">
                         <h2 class="text-lg font-semibold text-neutral-800">{{ __('Shipping Rates') }}</h2>
                     </div>
@@ -131,7 +131,7 @@
                 </div>
 
                 <!-- Add Rate Form -->
-                <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+                <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
                     <h3 class="text-md font-semibold text-neutral-800 mb-4">{{ __('Add New Rate') }}</h3>
                     <form action="{{ route('user.shipping.rates.store', $zone) }}" method="POST" class="space-y-4">
                         @csrf
@@ -177,7 +177,7 @@
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div x-show="showEditModal" x-transition.opacity class="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity" aria-hidden="true" @click="showEditModal = false"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div x-show="showEditModal" x-transition.scale.origin.bottom.sm class="relative inline-block align-bottom bg-white rounded-xl text-left overflow-visible shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div x-show="showEditModal" x-transition.scale.origin.bottom.sm class="relative inline-block align-bottom bg-white rounded-md text-left overflow-visible shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <form :action="editForm.updateUrl" method="POST">
                         @csrf
                         @method('PUT')
@@ -211,7 +211,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="px-6 py-4 bg-neutral-50 flex items-center justify-end gap-3 rounded-b-xl border-t border-neutral-200">
+                        <div class="px-6 py-4 bg-neutral-50 flex items-center justify-end gap-3 rounded-b-md border-t border-neutral-200">
                             <x-ui.button type="button" variant="outline" @click="showEditModal = false">{{ __('Cancel') }}</x-ui.button>
                             <x-ui.button type="submit" variant="primary">{{ __('Update Rate') }}</x-ui.button>
                         </div>

@@ -29,7 +29,7 @@
     <div class="section-container relative z-2 flex flex-col gap-[clamp(36px,4vw,56px)]">
         <div class="grid grid-cols-12 gap-[clamp(18px,2vw,28px)] items-stretch">
             <div class="stats-grid-cards col-span-6 grid grid-cols-2 gap-[clamp(18px,2vw,28px)]">
-                <div class="stats-card relative p-[clamp(28px,3.4vw,44px)] rounded-3xl border border-[rgba(15,15,73,0.1)] bg-accent-lime overflow-hidden min-h-[280px] flex flex-col">
+                <div class="stats-card relative p-[clamp(28px,3.4vw,44px)] rounded-md border border-[rgba(15,15,73,0.1)] bg-accent-lime overflow-hidden min-h-[280px] flex flex-col">
                     <div class="flex items-center gap-2 mb-[22px]" aria-hidden="true">
                         <span class="h-px flex-1 bg-[rgba(15,15,73,0.18)]"></span><span
                             class="h-px flex-1 bg-[rgba(15,15,73,0.18)]"></span><span
@@ -44,7 +44,7 @@
                             class="ml-auto font-display text-[clamp(48px,6.4vw,84px)] font-extrabold tracking-display leading-[0.9] text-brand-navy-ink tabular-nums inline-flex items-baseline whitespace-nowrap">{{ $card1Target }}</span>
                     </div>
                 </div>
-                <div class="stats-card stats-card--green relative p-[clamp(28px,3.4vw,44px)] rounded-3xl border border-[rgba(15,15,73,0.1)] bg-brand-green text-white overflow-hidden min-h-[280px] flex flex-col">
+                <div class="stats-card stats-card--green relative p-[clamp(28px,3.4vw,44px)] rounded-md border border-[rgba(15,15,73,0.1)] bg-brand-green text-white overflow-hidden min-h-[280px] flex flex-col">
                     <div class="flex items-center gap-2 mb-[22px]" aria-hidden="true"><span
                             class="h-px flex-1"></span><span class="h-px flex-1"></span><span
                             class="h-px flex-1"></span></div>

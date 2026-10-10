@@ -67,9 +67,9 @@
                     $classes = $colorMap[$color] ?? $colorMap['blue'];
                     $bullets = array_filter(array_map('trim', explode("\n", $channel['features'] ?? '')));
                 @endphp
-                <div class="about-value-card rounded-2xl border border-border-soft bg-white px-6 py-6 shadow-xs"
+                <div class="about-value-card rounded-md border border-border-soft bg-white px-6 py-6 shadow-xs"
                     style="background: radial-gradient(60% 80% at 0% 0%, {{ $classes['grad'] }}, transparent 60%), #fff;">
-                    <div class="about-value-icon w-11 h-11 rounded-xl border inline-grid place-items-center mb-4 {{ $classes['tile'] }}">
+                    <div class="about-value-icon w-11 h-11 rounded-md border inline-grid place-items-center mb-4 {{ $classes['tile'] }}">
                         <i data-lucide="{{ $channel['icon'] ?? 'circle' }}" class="w-5 h-5" aria-hidden="true"></i>
                     </div>
                     <h3 class="font-display font-bold text-brand-navy-ink text-body tracking-body">{{ $channel['title'] ?? '' }}</h3>

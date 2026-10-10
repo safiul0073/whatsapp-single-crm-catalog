@@ -74,7 +74,7 @@
                 <h3 class="text-base font-semibold text-neutral-900">{{ __('Metadata') }}</h3>
 
                 @if(!empty($notificationLog->metadata))
-                    <pre class="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-4 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">{{ json_encode($notificationLog->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                    <pre class="rounded-md bg-neutral-50 dark:bg-neutral-900 p-4 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">{{ json_encode($notificationLog->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                 @else
                     <p class="text-sm text-neutral-400 italic">{{ __('No metadata available.') }}</p>
                 @endif

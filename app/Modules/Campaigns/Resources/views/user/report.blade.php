@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    <div class="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-body">
+    <div class="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-body">
         <span class="font-semibold text-title">{{ __('Status') }}:</span>
         {{ $statusCopy }}
     </div>
@@ -87,7 +87,7 @@
     </div>
 
     <div class="mt-6 grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
-        <div class="rounded-2xl border border-neutral-200 bg-neutral-0 p-6">
+        <div class="rounded-md border border-neutral-200 bg-neutral-0 p-6">
             <p class="font-title text-base font-bold text-title">{{ __('Delivery funnel') }}</p>
             <div class="mt-5 space-y-4">
                 @foreach ([
@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <div class="rounded-2xl border border-neutral-200 bg-neutral-0 p-6">
+        <div class="rounded-md border border-neutral-200 bg-neutral-0 p-6">
             <p class="font-title text-base font-bold text-title">{{ __('Skipped breakdown') }}</p>
             <dl class="mt-4 space-y-2.5 text-sm">
                 <div class="f-between">

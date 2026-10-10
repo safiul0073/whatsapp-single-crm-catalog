@@ -5,6 +5,7 @@ use App\Modules\Commerce\Database\Seeders\PosDemoSeeder;
 use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderPayment;
+use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderInventoryService;
@@ -12,6 +13,7 @@ use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\Media\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -32,7 +34,7 @@ function posContext(): array
     $workspace = app(WorkspaceResolver::class)->current($user);
     $settings = StoreOrderSetting::forWorkspace($workspace->id);
     $product = Product::query()->create(['workspace_id' => $workspace->id, 'name' => 'POS shirt', 'slug' => 'pos-shirt-'.$workspace->id, 'sku' => 'POS-'.$workspace->id, 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'single_piece_price' => 10, 'wholesale_price' => 6, 'ws_enabled' => true, 'ws_main_moq' => 12, 'ws_color_moq' => 6, 'ws_min_sizes' => 3, 'ws_ratio_multiplier' => 1]);
-    $color = $product->colors()->create(['workspace_id' => $workspace->id, 'name' => 'Red']);
+    $color = $product->colors()->create(['workspace_id' => $workspace->id, 'name' => 'Red', 'hex_code' => '#FF0000']);
     $product->update(['ws_size_ratios' => [$color->id => ['S' => 2, 'M' => 3, 'L' => 1]]]);
     $variants = collect(['S', 'M', 'L'])->map(fn ($size) => $product->variants()->create(['workspace_id' => $workspace->id, 'color_id' => $color->id, 'sku' => 'POS-'.$workspace->id.'-'.$size, 'meta_retailer_id' => 'POS-'.$workspace->id.'-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active']));
     $data = ['submission_reference' => (string) Str::uuid(), 'fulfillment_type' => 'pickup', 'walk_in' => false, 'handover' => false, 'customer' => ['name' => 'POS buyer', 'phone' => '+15555550123'], 'groups' => [['product_id' => $product->id, 'mode' => 'retail', 'variant_id' => $variants[0]->id, 'quantity' => 2]]];
@@ -230,6 +232,88 @@ it('renders POS screens filters receipts and validates tampered prices', functio
     $this->getJson(route('user.commerce.pos.customer-balance', $order->contact))->assertOk()->assertJsonPath('data.0.amount', '15.00');
 });
 
+it('shows primary product images and reserved-stock color and size options in POS', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $c['variants'][0]->update(['stock_quantity' => 4]);
+    $c['variants'][1]->update(['stock_quantity' => 3]);
+    $c['variants'][2]->update(['stock_quantity' => 0]);
+    $primary = Media::query()->create(['name' => 'Primary', 'file_name' => 'primary.png', 'original_name' => 'primary.png', 'extension' => 'png', 'type' => 'image', 'mime_type' => 'image/png', 'disk' => 'public', 'path' => 'https://example.test/primary.png', 'size' => 100]);
+    $colorPhoto = Media::query()->create(['name' => 'Red front', 'file_name' => 'red-front.png', 'original_name' => 'red-front.png', 'extension' => 'png', 'type' => 'image', 'mime_type' => 'image/png', 'disk' => 'public', 'path' => 'https://example.test/red-front.png', 'size' => 100]);
+    $c['product']->update(['primary_media_id' => $primary->id]);
+    $c['product']->gallery()->create(['workspace_id' => $c['workspace']->id, 'media_id' => $colorPhoto->id, 'color_id' => $c['color']->id, 'media_type' => 'image', 'position' => 0]);
+    $order = app(PosService::class)->checkout($c['workspace'], $c['data'], $c['user']);
+    expect(OrderReservation::query()->where('order_id', $order->id)->where('variant_id', $c['variants'][0]->id)->value('quantity'))->toBe(2);
+
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id])
+        ->getJson(route('user.commerce.pos.products'))
+        ->assertOk()
+        ->assertJsonPath('data.0.image_url', $primary->url)
+        ->assertJsonPath('data.0.gallery.0.url', $primary->url)
+        ->assertJsonPath('data.0.gallery.1.url', $colorPhoto->url)
+        ->assertJsonPath('data.0.colors.0.name', 'Red')
+        ->assertJsonPath('data.0.colors.0.hex_code', '#FF0000')
+        ->assertJsonPath('data.0.minimum', 12)
+        ->assertJsonPath('data.0.color_minimum', 6)
+        ->assertJsonPath('data.0.minimum_sizes', 3)
+        ->assertJsonPath('data.0.single_piece_price', '10.0000')
+        ->assertJsonPath('data.0.colors.0.available', 5)
+        ->assertJsonPath('data.0.colors.0.sizes.0.name', 'S')
+        ->assertJsonPath('data.0.colors.0.sizes.0.available', 2)
+        ->assertJsonPath('data.0.colors.0.sizes.1.name', 'M')
+        ->assertJsonCount(2, 'data.0.colors.0.sizes');
+});
+
+it('rejects mixed POS modes and wholesale orders containing different products', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $mixed = $c['data'];
+    $mixed['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]];
+    $this->postJson(route('user.commerce.pos.preview'), $mixed)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $this->postJson(route('user.commerce.pos.checkout'), $mixed)->assertUnprocessable()->assertJsonValidationErrors('groups');
+
+    $wholesale = $c['data'];
+    $wholesale['groups'] = [
+        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]],
+        ['product_id' => $c['product']->id + 1, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]],
+    ];
+    $this->postJson(route('user.commerce.pos.preview'), $wholesale)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $this->postJson(route('user.commerce.pos.checkout'), $wholesale)->assertUnprocessable()->assertJsonValidationErrors('groups');
+});
+
+it('shows uncolored available sizes and handles products without an image', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $c['variants']->each(fn ($variant) => $variant->update(['color_id' => null]));
+    $c['product']->colors()->delete();
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id])
+        ->getJson(route('user.commerce.pos.products'))
+        ->assertOk()->assertJsonPath('data.0.image_url', null)
+        ->assertJsonCount(0, 'data.0.colors')->assertJsonCount(3, 'data.0.sizes')
+        ->assertJsonPath('data.0.available', 300);
+});
+
+it('omits sizes with no remaining stock from POS availability', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $c['variants']->each(fn ($variant) => $variant->update(['stock_quantity' => 0]));
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id])
+        ->getJson(route('user.commerce.pos.products'))
+        ->assertOk()->assertJsonPath('data.0.available', 0)
+        ->assertJsonPath('data.0.colors.0.available', 0)->assertJsonCount(0, 'data.0.colors.0.sizes');
+});
+
+it('removes the redundant create-order link while keeping POS access', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id])
+        ->get(route('user.commerce.orders.index'))
+        ->assertOk()->assertDontSee('Create Order')->assertSee(route('user.commerce.pos.index'));
+    $this->get(route('user.commerce.orders.create'))->assertOk();
+});
+
 it('enforces POS permissions and isolates other workspaces on every order action', function () {
     $c = posContext();
     $order = app(PosService::class)->checkout($c['workspace'], $c['data'], $c['user']);
@@ -259,10 +343,95 @@ it('requires delivery fields but permits pickup without an address and verifies 
     $delivery = array_replace($c['data'], ['fulfillment_type' => 'delivery']);
     $this->postJson(route('user.commerce.pos.checkout'), $delivery)->assertUnprocessable()->assertJsonValidationErrors('shipping_address.line1');
     $c['data']['groups'] = [['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 1]];
-    $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.size_quantities');
     $c['data']['groups'][0]['box_count'] = 2;
     $c['data']['groups'][0]['ratio'] = ['S' => 1];
     $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.ratio');
+});
+
+it('previews and checks out multiple wholesale colors with editable total size quantities', function () {
+    $c = posContext();
+    $blue = $c['product']->colors()->create(['workspace_id' => $c['workspace']->id, 'name' => 'Blue', 'hex_code' => '#0000FF']);
+    $blueVariants = collect(['S', 'M', 'L'])->map(fn ($size) => $c['product']->variants()->create([
+        'workspace_id' => $c['workspace']->id, 'color_id' => $blue->id, 'sku' => 'POS-'.$c['workspace']->id.'-BLUE-'.$size,
+        'meta_retailer_id' => 'POS-'.$c['workspace']->id.'-BLUE-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active',
+    ]));
+    $groups = [
+        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'size_quantities' => ['S' => 6, 'M' => 7, 'L' => 6]],
+        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $blue->id, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]],
+    ];
+    $c['data']['groups'] = $groups;
+    posManager($c['user']);
+    $this->actingAs($c['user']);
+
+    $this->postJson(route('user.commerce.pos.preview'), $c['data'])
+        ->assertOk()
+        ->assertJsonPath('data.groups.0.quantity', 19)
+        ->assertJsonPath('data.groups.1.quantity', 18);
+
+    $response = $this->postJson(route('user.commerce.pos.checkout'), $c['data'])->assertCreated();
+    $order = $response->json('data.id');
+    $order = Order::query()->with(['groups', 'boxes.contents.item'])->findOrFail($order);
+
+    expect($order->items->sum('quantity'))->toBe(37)
+        ->and($order->groups->pluck('ratio')->all())->toEqual([['S' => 6, 'M' => 7, 'L' => 6], ['S' => 6, 'M' => 6, 'L' => 6]])
+        ->and($order->boxes)->toHaveCount(2)
+        ->and($order->boxes->map(fn ($box) => $box->contents->sum('quantity'))->all())->toBe([19, 18])
+        ->and($blueVariants->first()->fresh()->stock_quantity)->toBe(100);
+});
+
+it('rejects invalid POS wholesale size mixes and quantities exceeding reserved stock', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user']);
+    $group = ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id];
+    $invalidMixes = [
+        ['S' => 6, 'M' => 6],
+        ['S' => 5, 'M' => 6, 'L' => 6],
+        ['S' => 6, 'M' => 6, 'L' => 6, 'Unavailable' => 6],
+    ];
+
+    foreach ($invalidMixes as $sizeQuantities) {
+        $data = array_replace($c['data'], ['groups' => [array_merge($group, ['size_quantities' => $sizeQuantities])]]);
+        $this->postJson(route('user.commerce.pos.preview'), $data)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    }
+
+    $c['product']->update(['ws_main_moq' => 40]);
+    $belowMainMinimum = array_replace($c['data'], ['groups' => [array_merge($group, ['size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]])]]);
+    $this->postJson(route('user.commerce.pos.preview'), $belowMainMinimum)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $c['product']->update(['ws_main_moq' => 12]);
+
+    $reservedData = array_replace($c['data'], ['groups' => [array_merge($group, ['size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]])]]);
+    $this->postJson(route('user.commerce.pos.checkout'), $reservedData)->assertCreated();
+    $oversizedData = array_replace($c['data'], ['groups' => [array_merge($group, ['size_quantities' => ['S' => 95, 'M' => 6, 'L' => 6]])]]);
+    $this->postJson(route('user.commerce.pos.preview'), $oversizedData)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $this->postJson(route('user.commerce.pos.checkout'), $oversizedData)->assertStatus(409);
+    expect(Order::count())->toBe(1)->and($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
+});
+
+it('deducts completed wholesale quantities from the selected color and size variants', function () {
+    $c = posContext();
+    $blue = $c['product']->colors()->create(['workspace_id' => $c['workspace']->id, 'name' => 'Blue', 'hex_code' => '#0000FF']);
+    $blueVariants = collect(['S', 'M', 'L'])->map(fn ($size) => $c['product']->variants()->create([
+        'workspace_id' => $c['workspace']->id, 'color_id' => $blue->id, 'sku' => 'POS-'.$c['workspace']->id.'-BLUE-'.$size,
+        'meta_retailer_id' => 'POS-'.$c['workspace']->id.'-BLUE-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active',
+    ]));
+    $c['data']['handover'] = true;
+    $c['data']['groups'] = [
+        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'size_quantities' => ['S' => 8, 'M' => 6, 'L' => 6]],
+        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $blue->id, 'size_quantities' => ['S' => 6, 'M' => 7, 'L' => 6]],
+    ];
+    posManager($c['user']);
+    $this->actingAs($c['user']);
+
+    $response = $this->postJson(route('user.commerce.pos.checkout'), $c['data'])->assertCreated();
+    $order = Order::query()->with(['items', 'boxes.contents.item'])->findOrFail($response->json('data.id'));
+
+    expect($order->status)->toBe('completed')
+        ->and($order->items->sum('quantity'))->toBe(39)
+        ->and($order->boxes)->toHaveCount(2)
+        ->and($c['variants']->map(fn ($variant) => $variant->fresh()->stock_quantity)->all())->toBe([92, 94, 94])
+        ->and($blueVariants->map(fn ($variant) => $variant->fresh()->stock_quantity)->all())->toBe([94, 93, 94]);
 });
 
 it('seeds the POS demo once using the real checkout and payment workflows', function () {

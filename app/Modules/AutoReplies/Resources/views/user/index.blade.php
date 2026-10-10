@@ -90,7 +90,7 @@
         </div>
     @else
         <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                 <i class="ph ph-chat-dots text-2xl"></i>
             </span>
             <h3 class="heading-4 mt-4">No auto-reply rules yet</h3>

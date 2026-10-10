@@ -47,7 +47,7 @@
               <span class="badge" :class="channel.connected ? 'badge-success' : 'badge-soft'" x-text="channel.count"></span>
             </button>
           </template>
-          <div class="inbox__rail-helper rounded-lg border border-neutral-200 bg-neutral-0 p-3 text-sm">
+          <div class="inbox__rail-helper rounded-md border border-neutral-200 bg-neutral-0 p-3 text-sm">
             <p class="text-xs text-body" x-show="hasChannel">{{ __('Selected channel is ready for replies.') }}</p>
             <p class="text-xs text-error" x-show="!hasChannel">{{ __('Connect this channel before sending replies.') }}</p>
           </div>
@@ -125,7 +125,7 @@
         </ul>
 
         <div class="flex flex-col items-center justify-center px-6 py-16 text-center" x-show="!loading && conversations.length === 0">
-          <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+          <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
             <i class="ph ph-chats-circle text-2xl"></i>
           </span>
           <h3 class="heading-4 mt-4">{{ __('No conversations') }}</h3>
@@ -183,7 +183,7 @@
             <button type="button" class="row-action" x-show="activeConversation.provider === 'whatsapp' && routes.commerceCatalog" @click="openCommerceDrawer()" :disabled="sending" aria-label="{{ __('Open WhatsApp products') }}">
               <i class="ph ph-shopping-bag-open text-base"></i>
             </button>
-            <div class="flex items-center gap-2 rounded-lg border border-neutral-200 bg-section px-2.5 py-1.5" x-show="activeConversation.provider === 'website_widget'" x-cloak>
+            <div class="flex items-center gap-2 rounded-md border border-neutral-200 bg-section px-2.5 py-1.5" x-show="activeConversation.provider === 'website_widget'" x-cloak>
               <span class="hidden text-xs font-semibold text-body sm:inline">{{ __('Auto reply') }}</span>
               <button
                 type="button"
@@ -209,7 +209,7 @@
             x-effect="messages.length && !olderMessagesLoading && scrollToBottom()"
           >
             <div class="flex justify-center shrink-0" x-show="threadLoading">
-              <span class="rounded-full bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
+              <span class="rounded-sm bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
             </div>
             <div class="mx-auto flex w-full max-w-4xl flex-col gap-1.5 mt-auto">
               <div class="flex justify-center pb-2 shrink-0" x-show="hasOlderMessages && !threadLoading" x-cloak>
@@ -277,7 +277,7 @@
               </template>
               <div id="messagesBottomAnchor" x-ref="messagesBottomAnchor" class="h-px w-full shrink-0"></div>
               <div class="flex flex-col items-center justify-center px-6 py-16 text-center" x-show="!threadLoading && messages.length === 0">
-                <span class="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span class="grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                   <i class="ph ph-chat-circle-text text-2xl"></i>
                 </span>
                 <h3 class="heading-4 mt-4">{{ __('No messages yet') }}</h3>
@@ -319,10 +319,10 @@
             <div class="inbox-composer__field">
               <div class="inbox-composer__attachment" x-show="attachment" x-cloak>
                 <template x-if="attachmentPreviewUrl">
-                  <img :src="attachmentPreviewUrl" alt="" class="h-12 w-12 rounded-lg object-cover">
+                  <img :src="attachmentPreviewUrl" alt="" class="h-12 w-12 rounded-md object-cover">
                 </template>
                 <template x-if="!attachmentPreviewUrl">
-                  <span class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-neutral-0 text-primary">
+                  <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-neutral-0 text-primary">
                     <i class="ph ph-file text-xl"></i>
                   </span>
                 </template>
@@ -399,7 +399,7 @@
           <i class="ph ph-list"></i>
           {{ __('Open conversations') }}
         </button>
-        <span class="grid h-14 w-14 place-items-center rounded-xl bg-primary/10 text-primary">
+        <span class="grid h-14 w-14 place-items-center rounded-md bg-primary/10 text-primary">
           <i class="ph ph-chats-circle text-3xl"></i>
         </span>
         <h3 class="heading-4 mt-4">{{ __('Select a conversation') }}</h3>
@@ -428,7 +428,7 @@
               <div class="mt-3 flex flex-wrap gap-1.5"><template x-for="tag in crm.contact.tags" :key="tag.id"><span class="badge badge-soft" x-text="tag.name"></span></template></div>
             </section>
 
-            <section class="rounded-xl border border-neutral-200 bg-section p-3">
+            <section class="rounded-md border border-neutral-200 bg-section p-3">
               <template x-if="crm.current_lead">
                 <div class="space-y-2">
                   <div class="flex items-center justify-between gap-2"><p class="font-semibold text-title" x-text="crm.current_lead.title"></p><span class="badge badge-success" x-text="crm.current_lead.status"></span></div>
@@ -449,7 +449,7 @@
               <button type="button" class="btn-sm btn-outline justify-center text-error" x-show="crm.current_lead" @click="openCrmAction('lost')">{{ __('Mark Lost') }}</button>
             </div>
 
-            <form class="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3" x-show="crmAction" @submit.prevent="saveCrmAction()">
+            <form class="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3" x-show="crmAction" @submit.prevent="saveCrmAction()">
               <div class="flex items-center justify-between"><p class="text-sm font-semibold text-title" x-text="crmAction.replace('_', ' ')"></p><button type="button" class="row-action" @click="crmAction = ''; crmError = ''"><i class="ph ph-x"></i></button></div>
               <div x-show="crmAction === 'create'">
                 <label class="form-label" for="crmPipeline">{{ __('Pipeline') }}</label>
@@ -471,7 +471,7 @@
             <section>
               <h3 class="text-sm font-semibold text-title">{{ __('Follow-up tasks') }}</h3>
               <div class="mt-2 space-y-2">
-                <template x-for="task in crm.tasks" :key="task.id"><div class="rounded-lg border border-neutral-200 p-2.5"><div class="flex items-start justify-between gap-2"><div><p class="text-sm font-medium text-title" x-text="task.title"></p><p class="text-xs" :class="task.overdue ? 'text-error' : 'text-body'" x-text="formatCrmDate(task.due_at)"></p></div><button type="button" class="row-action" x-show="crmPermissions.manage" @click="completeCrmTask(task.id)" aria-label="{{ __('Complete task') }}"><i class="ph ph-check"></i></button></div></div></template>
+                <template x-for="task in crm.tasks" :key="task.id"><div class="rounded-md border border-neutral-200 p-2.5"><div class="flex items-start justify-between gap-2"><div><p class="text-sm font-medium text-title" x-text="task.title"></p><p class="text-xs" :class="task.overdue ? 'text-error' : 'text-body'" x-text="formatCrmDate(task.due_at)"></p></div><button type="button" class="row-action" x-show="crmPermissions.manage" @click="completeCrmTask(task.id)" aria-label="{{ __('Complete task') }}"><i class="ph ph-check"></i></button></div></div></template>
                 <p class="text-xs text-body" x-show="crm.tasks.length === 0">{{ __('No pending tasks.') }}</p>
               </div>
             </section>
@@ -483,7 +483,7 @@
 
             <section>
               <h3 class="text-sm font-semibold text-title">{{ __('Campaign history') }}</h3>
-              <div class="mt-2 space-y-2"><template x-for="campaign in crm.campaign_history" :key="campaign.id"><div class="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 p-2.5"><p class="truncate text-sm text-title" x-text="campaign.name || '{{ __('Campaign') }}'"></p><span class="badge badge-soft" x-text="campaign.status"></span></div></template><p class="text-xs text-body" x-show="crm.campaign_history.length === 0">{{ __('No campaign history.') }}</p></div>
+              <div class="mt-2 space-y-2"><template x-for="campaign in crm.campaign_history" :key="campaign.id"><div class="flex items-center justify-between gap-2 rounded-md border border-neutral-200 p-2.5"><p class="truncate text-sm text-title" x-text="campaign.name || '{{ __('Campaign') }}'"></p><span class="badge badge-soft" x-text="campaign.status"></span></div></template><p class="text-xs text-body" x-show="crm.campaign_history.length === 0">{{ __('No campaign history.') }}</p></div>
             </section>
           </div>
         </template>
@@ -545,9 +545,9 @@
           <p class="py-8 text-center text-sm text-body" x-show="commerceLoading">{{ __('Loading products…') }}</p>
           <div class="space-y-4" x-show="!commerceLoading">
             <template x-for="product in commerceProducts" :key="product.id">
-              <article class="overflow-hidden rounded-2xl bg-neutral-0 shadow-sm ring-1 ring-neutral-200/70">
+              <article class="overflow-hidden rounded-md bg-neutral-0 shadow-sm ring-1 ring-neutral-200/70">
                 <div class="flex gap-3 bg-section/60 p-3">
-                  <div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+                  <div class="h-20 w-20 shrink-0 overflow-hidden rounded-md bg-neutral-100">
                     <img x-show="product.image" :src="product.image" :alt="product.name" class="h-full w-full object-cover">
                     <span x-show="!product.image" class="grid h-full place-items-center text-2xl text-neutral-300"><i class="ph ph-t-shirt"></i></span>
                   </div>
@@ -555,7 +555,7 @@
                     <p class="truncate font-semibold text-title" x-text="product.name"></p>
                     <p class="text-xs text-body" x-text="`${product.variants.length} variants`"></p>
                     <div class="mt-2 flex flex-wrap gap-2">
-                      <template x-for="video in product.videos" :key="video.id"><button type="button" class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceVideo(video.id)" :disabled="sending"><i class="ph ph-video"></i> {{ __('Send video') }}</button></template>
+                      <template x-for="video in product.videos" :key="video.id"><button type="button" class="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceVideo(video.id)" :disabled="sending"><i class="ph ph-video"></i> {{ __('Send video') }}</button></template>
                     </div>
                   </div>
                 </div>
@@ -567,7 +567,7 @@
                         <p class="truncate text-sm font-medium text-title" x-text="variant.label || product.name"></p>
                         <p class="text-xs text-body"><span x-text="new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(variant.price)"></span> · <span x-text="variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'"></span></p>
                       </div>
-                      <button type="button" class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceProduct(variant.id)" :disabled="sending"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send') }}</button>
+                      <button type="button" class="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary hover:text-neutral-0 disabled:opacity-50" @click="sendCommerceProduct(variant.id)" :disabled="sending"><i class="ph ph-paper-plane-tilt"></i> {{ __('Send') }}</button>
                     </div>
                   </template>
                 </div>

@@ -94,8 +94,8 @@
                         <p class="form-error">{{ $message }}</p>
                     @enderror
 
-                    <div id="menuBuilderCanvas" class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                        <div id="menuBuilderEmpty" class="rounded-2xl border border-dashed border-neutral-300 px-4 py-12 text-center text-sm text-neutral-400">
+                    <div id="menuBuilderCanvas" class="rounded-md border border-neutral-200 bg-neutral-50 p-4">
+                        <div id="menuBuilderEmpty" class="rounded-md border border-dashed border-neutral-300 px-4 py-12 text-center text-sm text-neutral-400">
                             {{ __('No navigation items yet. Add a page link, custom URL, or group from the side panel.') }}
                         </div>
                         <ul id="menuBuilderList" class="space-y-3"></ul>
@@ -117,7 +117,7 @@
                         <p class="mt-1 text-sm text-neutral-500">{{ __('Select a row to adjust its label, destination, target, and visibility before saving the menu.') }}</p>
                     </div>
 
-                    <div id="menuInspectorEmpty" class="rounded-2xl border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-400">
+                    <div id="menuInspectorEmpty" class="rounded-md border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-400">
                         {{ __('Select a menu item to edit it here.') }}
                     </div>
 
@@ -155,7 +155,7 @@
                     <h4 class="text-sm font-bold uppercase tracking-wider text-neutral-500">{{ __('Slot Constraints') }}</h4>
                     <div class="space-y-3 text-sm text-neutral-500">
                         @foreach($slotDefinitions as $slot)
-                            <div class="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3">
                                 <p class="font-semibold text-neutral-900">{{ $slot['label'] }}</p>
                                 <p class="mt-1">{{ $slot['description'] }}</p>
                                 <p class="mt-2 text-xs uppercase tracking-wide text-neutral-400">{{ __('Max depth') }}: {{ $slot['max_depth'] }} {{ \Illuminate\Support\Str::plural('level', $slot['max_depth']) }}</p>
@@ -282,7 +282,7 @@
               items.forEach(function (item) {
                 const li = document.createElement('li');
                 const isSelected = item.temp_key === selectedKey;
-                li.className = 'rounded-2xl border bg-white p-4 shadow-sm transition cursor-move ' + (isSelected ? 'border-primary ring-2 ring-primary/10' : 'border-neutral-200');
+                li.className = 'rounded-md border bg-white p-4 shadow-sm transition cursor-move ' + (isSelected ? 'border-primary ring-2 ring-primary/10' : 'border-neutral-200');
                 li.draggable = true;
                 li.dataset.itemKey = item.temp_key;
                 li.style.marginLeft = item.depth > 0 ? '48px' : '0';
@@ -293,16 +293,16 @@
                       <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                           <p class="truncate font-medium text-neutral-900">${item.label || @json(__('Untitled item'))}</p>
-                          <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${typeLabel(item.item_type)}</span>
-                          ${item.depth > 0 ? '<span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">'+@json(__('Child'))+'</span>' : ''}
-                          ${item.is_visible ? '' : '<span class="rounded-full bg-danger/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-danger">'+@json(__('Hidden'))+'</span>'}
+                          <span class="rounded-sm bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">${typeLabel(item.item_type)}</span>
+                          ${item.depth > 0 ? '<span class="rounded-sm bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">'+@json(__('Child'))+'</span>' : ''}
+                          ${item.is_visible ? '' : '<span class="rounded-sm bg-danger/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-danger">'+@json(__('Hidden'))+'</span>'}
                         </div>
                         <p class="mt-1 truncate text-sm text-neutral-500">${itemDescription(item)}</p>
                       </div>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
-                      <button type="button" class="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-row-promote>${@json(__('Promote'))}</button>
-                      <button type="button" class="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-row-nest>${@json(__('Nest'))}</button>
+                      <button type="button" class="rounded-sm border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-row-promote>${@json(__('Promote'))}</button>
+                      <button type="button" class="rounded-sm border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-500 hover:border-primary hover:text-primary" data-row-nest>${@json(__('Nest'))}</button>
                       <button type="button" class="text-danger" data-row-remove><i class="ph ph-trash"></i></button>
                     </div>
                   </div>

@@ -35,7 +35,7 @@ $iconColor = $iconColors[$type] ?? $iconColors['info'];
 $closeColor = $closeColors[$type] ?? $closeColors['info'];
 @endphp
 
-<div {{ $attributes->merge(['class' => 'rounded-2xl border px-4 py-3 ' . $colorClass]) }} role="alert">
+<div {{ $attributes->merge(['class' => 'rounded-md border px-4 py-3 ' . $colorClass]) }} role="alert">
     <div class="flex items-start gap-3">
         <i class="ph {{ $iconClass }} mt-0.5 text-lg {{ $iconColor }}"></i>
         <div class="flex-1">

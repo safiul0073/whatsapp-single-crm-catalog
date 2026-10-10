@@ -16,7 +16,7 @@
         @foreach ($groups as $group)
             <div class="app-card p-5">
                 <div class="mb-5 flex items-start gap-3">
-                    <span class="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <span class="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="{{ $group['icon'] }} text-lg"></i>
                     </span>
                     <div>

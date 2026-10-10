@@ -40,8 +40,8 @@
                             $iconClass = trim($channel['icon_class'] ?? $fallbackIcon);
                             $iconClass = str_contains(' '.$iconClass.' ', ' ph ') ? $iconClass : 'ph '.$iconClass;
                         @endphp
-                        <li class="group flex items-center gap-4 rounded-2xl border border-neutral-200 bg-neutral-0 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-neutral-0">
+                        <li class="group flex items-center gap-4 rounded-md border border-neutral-200 bg-neutral-0 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35">
+                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-neutral-0">
                                 <i class="{{ $iconClass }} text-xl"></i>
                             </span>
                             <div class="min-w-0">
@@ -74,7 +74,7 @@
             @endif
 
             @if (!empty($d['whatsapp_title']))
-                <div class="mt-8 rounded-2xl bg-section p-5">
+                <div class="mt-8 rounded-md bg-section p-5">
                     <div class="flex items-center gap-2.5">
                         <span class="grid h-8 w-8 place-items-center rounded-full bg-primary text-neutral-0"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg></span>
                         <p class="text-sm font-bold text-title">{{ $d['whatsapp_title'] }}</p>
@@ -86,7 +86,7 @@
             @endif
         </div>
 
-        <div data-reveal class="rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
+        <div data-reveal class="rounded-md border border-neutral-200 bg-neutral-0 p-6 shadow-[0_30px_70px_-40px_rgba(10,27,20,0.35)] sm:p-8">
             <h2 class="heading-3 mb-5">{{ $d['form_heading'] ?? __('Send us a message') }}</h2>
 
             <form method="POST" action="{{ route('contact.submit') }}" class="space-y-5">

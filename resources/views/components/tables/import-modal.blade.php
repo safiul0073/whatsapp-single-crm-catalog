@@ -37,7 +37,7 @@
                 </div>
 
                 <template x-if="fileName">
-                    <div class="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
+                    <div class="flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3">
                         <i class="ph ph-file-csv text-lg text-primary-600"></i>
                         <span class="text-sm font-medium text-neutral-700" x-text="fileName"></span>
                         <button type="button" class="ml-auto text-neutral-400 hover:text-danger-600" @click="clearFile()">
@@ -81,7 +81,7 @@
                 </div>
 
                 {{-- Column Mapping --}}
-                <div class="rounded-lg border border-neutral-200">
+                <div class="rounded-md border border-neutral-200">
                     <div class="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
                         <h4 class="text-sm font-semibold text-neutral-700">{{ __('Column Mapping') }}</h4>
                     </div>
@@ -96,7 +96,7 @@
                                 </div>
                                 <div class="w-1/3">
                                     <select
-                                        class="input-field w-full rounded-lg px-3 py-1.5 text-sm"
+                                        class="input-field w-full rounded-sm px-3 py-1.5 text-sm"
                                         x-model="columnMap[index]"
                                     >
                                         <option value="skip">{{ __('-- Skip --') }}</option>
@@ -111,7 +111,7 @@
                 </div>
 
                 {{-- Preview Table --}}
-                <div class="rounded-lg border border-neutral-200">
+                <div class="rounded-md border border-neutral-200">
                     <div class="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
                         <h4 class="text-sm font-semibold text-neutral-700">{{ __('Data Preview') }} <span class="font-normal text-neutral-400">({{ __('first 5 rows') }})</span></h4>
                     </div>
@@ -162,11 +162,11 @@
             <div class="space-y-4">
                 {{-- Summary --}}
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="rounded-lg border border-success-200 bg-success-50 p-4 text-center">
+                    <div class="rounded-md border border-success-200 bg-success-50 p-4 text-center">
                         <p class="text-2xl font-bold text-success-700" x-text="resultSuccess"></p>
                         <p class="text-sm text-success-600">{{ __('Imported') }}</p>
                     </div>
-                    <div class="rounded-lg border p-4 text-center" :class="resultFailed > 0 ? 'border-danger-200 bg-danger-50' : 'border-neutral-200 bg-neutral-50'">
+                    <div class="rounded-md border p-4 text-center" :class="resultFailed > 0 ? 'border-danger-200 bg-danger-50' : 'border-neutral-200 bg-neutral-50'">
                         <p class="text-2xl font-bold" :class="resultFailed > 0 ? 'text-danger-700' : 'text-neutral-400'" x-text="resultFailed"></p>
                         <p class="text-sm" :class="resultFailed > 0 ? 'text-danger-600' : 'text-neutral-400'">{{ __('Failed') }}</p>
                     </div>
@@ -174,7 +174,7 @@
 
                 {{-- Errors --}}
                 <template x-if="Object.keys(resultErrors).length > 0">
-                    <div class="rounded-lg border border-danger-200 bg-danger-50 p-4">
+                    <div class="rounded-md border border-danger-200 bg-danger-50 p-4">
                         <h4 class="mb-2 text-sm font-semibold text-danger-700">{{ __('Errors') }}</h4>
                         <div class="max-h-48 space-y-1 overflow-y-auto">
                             <template x-for="(messages, row) in resultErrors" :key="row">

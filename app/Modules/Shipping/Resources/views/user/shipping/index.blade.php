@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <div class="bg-white shadow-xs rounded-xl border border-neutral-200">
+        <div class="bg-white shadow-xs rounded-md border border-neutral-200">
             @forelse($zones as $zone)
                 <div class="p-5 border-b border-neutral-200 last:border-b-0">
                     <div class="flex items-center justify-between">

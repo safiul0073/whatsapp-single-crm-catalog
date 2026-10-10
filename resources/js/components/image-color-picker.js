@@ -245,13 +245,13 @@ class ImageColorLoupe {
     wrapper.id = 'imageColorLoupeOverlay';
     wrapper.className = 'color-loupe-overlay pointer-events-none fixed z-[9999] opacity-0 transition-opacity duration-150';
     wrapper.innerHTML = `
-      <div class="color-loupe-lens shadow-2xl rounded-full border-2 border-white ring-2 ring-black/20 overflow-hidden relative bg-neutral-900 w-[110px] h-[110px] flex items-center justify-center">
+      <div class="color-loupe-lens shadow-2xl rounded-sm border-2 border-white ring-2 ring-black/20 overflow-hidden relative bg-neutral-900 w-[110px] h-[110px] flex items-center justify-center">
         <canvas class="color-loupe-canvas w-full h-full block" width="88" height="88"></canvas>
         <div class="color-loupe-crosshair absolute inset-0 flex items-center justify-center pointer-events-none">
           <div class="w-2.5 h-2.5 border border-white ring-1 ring-black/60 rounded-xs"></div>
         </div>
       </div>
-      <div class="color-loupe-badge mt-2 bg-neutral-900/95 text-white backdrop-blur-md rounded-xl py-1.5 px-3 shadow-xl border border-white/20 text-center flex flex-col items-center gap-0.5 min-w-[130px] -translate-x-1/2 left-1/2 relative">
+      <div class="color-loupe-badge mt-2 bg-neutral-900/95 text-white backdrop-blur-md rounded-md py-1.5 px-3 shadow-xl border border-white/20 text-center flex flex-col items-center gap-0.5 min-w-[130px] -translate-x-1/2 left-1/2 relative">
         <div class="flex items-center gap-2">
           <span class="color-loupe-swatch-dot w-3.5 h-3.5 rounded-full border border-white/40 shadow-xs shrink-0"></span>
           <span class="color-loupe-hex font-mono font-bold text-xs tracking-wider">#FFFFFF</span>

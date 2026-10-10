@@ -245,6 +245,65 @@ it('creates custom pipelines with default stages and opens the new board', funct
     ]);
 });
 
+it('shows Inbox guidance without repeated drop prompts on an empty pipeline', function (): void {
+    [$user, $workspace] = crmTestContext();
+    Permission::findOrCreate('crm.view', 'web');
+    $user->givePermissionTo('crm.view');
+    $pipeline = app(PipelineService::class)->create($workspace->id, ['name' => 'Partnerships']);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->get(route('user.crm.index', ['pipeline' => $pipeline->id]))
+        ->assertOk()
+        ->assertSee('This pipeline is ready for leads')
+        ->assertSee('Create a lead from a conversation in Inbox, or configure an automation to add leads here.')
+        ->assertSee(route('user.inbox.index'), false)
+        ->assertDontSee('Drop leads here');
+});
+
+it('keeps stage drop prompts and disables dragging for view-only members', function (): void {
+    [$owner, $workspace, $contact] = crmTestContext();
+    Permission::findOrCreate('crm.view', 'web');
+    $pipeline = app(PipelineService::class)->create($workspace->id, ['name' => 'Renewals']);
+    app(CRMLeadService::class)->createOrUpdate($workspace->id, $contact->id, ['pipeline_id' => $pipeline->id]);
+
+    $ownerResponse = $this->withoutMiddleware()
+        ->actingAs($owner)
+        ->get(route('user.crm.index', ['pipeline' => $pipeline->id]));
+    $ownerResponse->assertOk()
+        ->assertSee('Drop leads here')
+        ->assertSee('draggable="true"', false);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $role = WorkspaceRole::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'CRM Viewer',
+    ]);
+    $role->rolePermissions()->create([
+        'workspace_id' => $workspace->id,
+        'permission_name' => 'crm.view',
+    ]);
+    $workspace->members()->attach($user->id, [
+        'workspace_role_id' => $role->id,
+        'status' => WorkspaceMemberStatus::Active->value,
+    ]);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->get(route('user.crm.index', ['pipeline' => $pipeline->id]))
+        ->assertOk()
+        ->assertDontSee('This pipeline is ready for leads')
+        ->assertSee('No leads in this stage.')
+        ->assertDontSee('Drop leads here')
+        ->assertSee('draggable="false"', false)
+        ->assertDontSee('draggable="true"', false);
+
+    $this->get(route('user.crm.index', ['pipeline' => $pipeline->id, 'q' => 'not a matching lead']))
+        ->assertOk()
+        ->assertDontSee('This pipeline is ready for leads')
+        ->assertSee('No leads match the current filters.');
+});
+
 it('validates duplicate pipeline names before saving', function (): void {
     [$user, $workspace] = crmTestContext();
     Permission::findOrCreate('crm.manage', 'web');

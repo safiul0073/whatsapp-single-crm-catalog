@@ -83,7 +83,7 @@
 
                 @foreach ($providers as $providerKey => $provider)
                     @php $fields = $provider['fields'] ?? []; @endphp
-                    <section data-sms-provider-section="{{ $providerKey }}" class="rounded-xl border border-neutral-100 bg-section p-4 @if ($selectedProvider !== $providerKey) hidden @endif">
+                    <section data-sms-provider-section="{{ $providerKey }}" class="rounded-md border border-neutral-100 bg-section p-4 @if ($selectedProvider !== $providerKey) hidden @endif">
                         <div>
                             <p class="text-sm font-semibold text-title">{{ $provider['label'] }}</p>
                             @if (! empty($provider['description']))

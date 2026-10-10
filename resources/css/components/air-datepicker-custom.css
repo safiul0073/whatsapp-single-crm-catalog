@@ -1,7 +1,7 @@
 /* Air Datepicker Custom Styling */
 
 .air-datepicker {
-  @apply !bg-neutral-0 !rounded-3xl !border-neutral-100 !p-3 !shadow-2xl;
+  @apply !bg-neutral-0 !rounded-md !border-neutral-100 !p-3 !shadow-2xl;
   --adp-background-color: var(--color-neutral-0);
   --adp-color: var(--color-neutral-900) !important;
   --adp-accent-color: var(--color-primary) !important;
@@ -11,7 +11,7 @@
   --adp-cell-background-color-hover: var(--color-neutral-100) !important;
   --adp-background-color-hover: var(--color-neutral-100) !important;
   --adp-pointer-offset: 23px !important;
-  --adp-border-radius: 1.5rem !important;
+  --adp-border-radius: 12px !important;
   --adp-cell-border-radius: 0.75rem !important;
   --adp-font-family: inherit !important;
   --adp-font-size: 14px !important;
@@ -46,7 +46,7 @@
 }
 
 .air-datepicker-nav--title {
-  @apply !rounded-xl !px-3 !font-bold !text-neutral-900 transition-colors hover:!bg-neutral-50;
+  @apply !rounded-md !px-3 !font-bold !text-neutral-900 transition-colors hover:!bg-neutral-50;
 }
 
 .air-datepicker-nav--title i {
@@ -54,7 +54,7 @@
 }
 
 .air-datepicker-nav--action {
-  @apply !rounded-xl transition-all hover:!bg-neutral-50 active:!scale-95;
+  @apply !rounded-md transition-all hover:!bg-neutral-50 active:!scale-95;
 }
 
 /* Body Styles */
@@ -88,11 +88,11 @@
 }
 
 .air-datepicker-cell.-range-from- {
-  @apply !rounded-l-xl;
+  @apply !rounded-l-md;
 }
 
 .air-datepicker-cell.-range-to- {
-  @apply !rounded-r-xl;
+  @apply !rounded-r-md;
 }
 
 /* Timepicker Styles */
@@ -165,9 +165,9 @@
 
 /* Right to Left Support */
 [dir="rtl"] .air-datepicker-cell.-range-from- {
-  @apply !rounded-l-none !rounded-r-xl;
+  @apply !rounded-l-none !rounded-r-md;
 }
 
 [dir="rtl"] .air-datepicker-cell.-range-to- {
-  @apply !rounded-l-xl !rounded-r-none;
+  @apply !rounded-l-md !rounded-r-none;
 }

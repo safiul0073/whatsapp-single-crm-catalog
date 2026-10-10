@@ -13,7 +13,7 @@
     </div>
     <div>
       <label class="form-label">Group type</label>
-      <div class="mt-2 inline-flex w-full rounded-full border border-neutral-200 bg-neutral-0 p-1" data-group-type-tabs>
+      <div class="mt-2 inline-flex w-full rounded-sm border border-neutral-200 bg-neutral-0 p-1" data-group-type-tabs>
         <label class="seg-tab is-active flex-1 cursor-pointer text-center">
           <input type="radio" name="type" value="static" checked class="sr-only" data-group-type />
           Static
@@ -56,7 +56,7 @@
       />
     </div>
 
-    <div class="rounded-xl border border-neutral-200">
+    <div class="rounded-md border border-neutral-200">
       <div class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <label class="flex items-center gap-2 text-sm font-semibold text-title">
           <input type="checkbox" class="app-checkbox" data-select-visible />
@@ -67,7 +67,7 @@
       <div class="max-h-72 overflow-y-auto p-2" data-contact-list>
         @forelse($contacts as $contact)
           <label
-            class="check-row mb-2 flex items-start gap-3 rounded-xl border border-transparent px-3 py-3 last:mb-0"
+            class="check-row mb-2 flex items-start gap-3 rounded-md border border-transparent px-3 py-3 last:mb-0"
             data-contact-option
             data-search="{{ strtolower(trim(($contact->name ?: '').' '.$contact->phone.' '.($contact->email ?: ''))) }}"
           >
@@ -106,7 +106,7 @@
     <div class="space-y-3" data-rules-list></div>
 
     <template data-rule-template>
-      <div class="rounded-xl border border-neutral-200 transition-shadow hover:shadow-sm" data-rule-row>
+      <div class="rounded-md border border-neutral-200 transition-shadow hover:shadow-sm" data-rule-row>
         <div class="flex cursor-pointer items-center gap-3 px-3 py-2.5" data-rule-toggle>
           <span class="badge shrink-0 text-xs badge-neutral" data-rule-summary-join>AND</span>
           <span class="min-w-0 flex-1 truncate text-sm font-medium text-title" data-rule-summary>Choose a field</span>

@@ -48,7 +48,7 @@
                 @if($auditLog->old_values && count($auditLog->old_values) > 0)
                 <div>
                     <span class="text-sm text-neutral-400">{{ __('Old Values') }}</span>
-                    <div class="mt-2 bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                    <div class="mt-2 bg-neutral-50 border border-neutral-200 rounded-md p-4">
                         <pre class="text-sm text-neutral-900 whitespace-pre-wrap break-words">{{ json_encode($auditLog->old_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                 @if($auditLog->new_values && count($auditLog->new_values) > 0)
                 <div>
                     <span class="text-sm text-neutral-400">{{ __('New Values') }}</span>
-                    <div class="mt-2 bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                    <div class="mt-2 bg-neutral-50 border border-neutral-200 rounded-md p-4">
                         <pre class="text-sm text-neutral-900 whitespace-pre-wrap break-words">{{ json_encode($auditLog->new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                     </div>
                 </div>

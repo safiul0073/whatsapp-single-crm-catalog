@@ -74,8 +74,8 @@
                         <p class="form-error">{{ $message }}</p>
                     @enderror
 
-                    <div id="menuBuilderCanvas" class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                        <div id="menuBuilderEmpty" class="rounded-2xl border border-dashed border-neutral-300 px-4 py-12 text-center text-sm text-neutral-400">
+                    <div id="menuBuilderCanvas" class="rounded-md border border-neutral-200 bg-neutral-50 p-4">
+                        <div id="menuBuilderEmpty" class="rounded-md border border-dashed border-neutral-300 px-4 py-12 text-center text-sm text-neutral-400">
                             {{ __('No navigation items yet. Add your first item to start building the menu tree.') }}
                         </div>
                         <ul id="menuBuilderList" class="space-y-4"></ul>
@@ -97,7 +97,7 @@
                         <p class="mt-1 text-sm text-neutral-500">{{ __('Select a menu item, adjust its details here, then apply those changes back into the builder.') }}</p>
                     </div>
 
-                    <div id="menuInspectorEmpty" class="rounded-2xl border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-400">
+                    <div id="menuInspectorEmpty" class="rounded-md border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-400">
                         {{ __('Select a menu item to edit it here.') }}
                     </div>
 
@@ -133,7 +133,7 @@
                     <h4 class="text-sm font-bold uppercase tracking-wider text-neutral-500">{{ __('Slot Constraints') }}</h4>
                     <div class="space-y-3 text-sm text-neutral-500">
                         @foreach($slotDefinitions as $slot)
-                            <div class="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                            <div class="rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3">
                                 <p class="font-semibold text-neutral-900">{{ $slot['label'] }}</p>
                                 <p class="mt-1">{{ $slot['description'] }}</p>
                                 <p class="mt-2 text-xs uppercase tracking-wide text-neutral-400">{{ __('Max depth') }}: {{ $slot['max_depth'] }} {{ \Illuminate\Support\Str::plural('level', $slot['max_depth']) }}</p>

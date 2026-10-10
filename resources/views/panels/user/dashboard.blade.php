@@ -46,7 +46,7 @@
     <div class="dashboard-card mt-6">
         <div class="flex flex-wrap items-center justify-between gap-4 p-6">
             <div class="flex min-w-0 items-center gap-3">
-                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                     <i class="ph ph-whatsapp-logo text-2xl"></i>
                 </span>
                 <div class="min-w-0">
@@ -131,8 +131,8 @@
             <div class="mt-4 flex flex-col gap-2.5">
                 @foreach ($quickActions as [$label, $href, $svg])
                     <a href="{{ $href }}"
-                        class="flex items-center gap-3 rounded-xl border border-neutral-200 p-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
-                        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                        class="flex items-center gap-3 rounded-md border border-neutral-200 p-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                 {!! $svg !!}
                             </svg>

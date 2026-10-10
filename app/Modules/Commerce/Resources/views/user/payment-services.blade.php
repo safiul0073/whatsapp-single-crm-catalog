@@ -116,10 +116,10 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <x-ui.button variant="outline" href="{{ route('user.commerce.orders.settings') }}" class="rounded-md text-xs py-1.5">
+                <x-ui.button variant="outline" href="{{ route('user.commerce.orders.settings') }}" class="rounded-sm text-xs py-1.5">
                     <i class="ph ph-gear"></i> {{ __('Order Settings') }}
                 </x-ui.button>
-                <x-ui.button variant="primary" type="button" @click="addMethod()" class="rounded-md text-xs py-1.5">
+                <x-ui.button variant="primary" type="button" @click="addMethod()" class="rounded-sm text-xs py-1.5">
                     <i class="ph ph-plus"></i> {{ __('Add Service') }}
                 </x-ui.button>
             </div>
@@ -150,13 +150,13 @@
             @method('PUT')
 
             <!-- Actions Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3 shadow-2xs">
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-neutral-200 bg-white p-3 shadow-2xs">
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Quick Presets') }}:</span>
                     <button
                         type="button"
                         @click="loadDummyData()"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition"
+                        class="inline-flex items-center gap-1.5 rounded-sm border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition"
                         title="{{ __('Pre-fill Remitly, Taptap Send, and MoneyGram with realistic test account details') }}"
                     >
                         <i class="ph ph-flask"></i> {{ __('Load Sample Test Data') }}
@@ -164,7 +164,7 @@
                     <button
                         type="button"
                         @click="restoreDefaults()"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 transition"
+                        class="inline-flex items-center gap-1.5 rounded-sm border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 transition"
                     >
                         <i class="ph ph-arrow-counter-clockwise"></i> {{ __('Restore Defaults') }}
                     </button>
@@ -175,7 +175,7 @@
             </div>
 
             <!-- Payment Services Table -->
-            <div class="rounded-lg border border-neutral-200 bg-white overflow-hidden shadow-2xs">
+            <div class="rounded-md border border-neutral-200 bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="border-b border-neutral-200 bg-neutral-50 text-neutral-600 font-semibold uppercase text-[11px] tracking-wider">
@@ -215,7 +215,7 @@
                                             <button
                                                 type="button"
                                                 @click="editMethod(index)"
-                                                class="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:text-primary hover:border-primary/40 hover:bg-white transition"
+                                                class="inline-flex items-center gap-1.5 rounded-sm border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:text-primary hover:border-primary/40 hover:bg-white transition"
                                                 title="{{ __('View and edit account recipient details and instructions in modal') }}"
                                             >
                                                 <i class="ph ph-sliders text-sm text-primary"></i>
@@ -257,7 +257,7 @@
                                         <button
                                             type="button"
                                             @click="toggleStatus(index)"
-                                            class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium transition"
+                                            class="inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium transition"
                                             :class="method.active === '1' ? 'bg-success/15 text-success hover:bg-success/25' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'"
                                             :title="method.active === '1' ? 'Click to disable' : 'Click to enable'"
                                         >
@@ -275,7 +275,7 @@
                                             <button
                                                 type="button"
                                                 @click="editMethod(index)"
-                                                class="rounded-md p-1.5 text-neutral-500 hover:text-primary hover:bg-primary/10 transition"
+                                                class="rounded-sm p-1.5 text-neutral-500 hover:text-primary hover:bg-primary/10 transition"
                                                 title="{{ __('Edit service') }}"
                                             >
                                                 <i class="ph ph-pencil-simple text-base"></i>
@@ -283,7 +283,7 @@
                                             <button
                                                 type="button"
                                                 @click="removeMethod(index)"
-                                                class="rounded-md p-1.5 text-neutral-500 hover:text-error hover:bg-error/10 transition"
+                                                class="rounded-sm p-1.5 text-neutral-500 hover:text-error hover:bg-error/10 transition"
                                                 title="{{ __('Remove service') }}"
                                             >
                                                 <i class="ph ph-trash text-base"></i>
@@ -302,10 +302,10 @@
                                         <p class="text-sm font-semibold text-neutral-800">{{ __('No payment services configured') }}</p>
                                         <p class="text-xs text-neutral-500 mt-0.5">{{ __('Click Load Sample Test Data or Add Service to configure manual payment gateways.') }}</p>
                                         <div class="mt-3 flex items-center justify-center gap-2">
-                                            <button type="button" @click="loadDummyData()" class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">
+                                            <button type="button" @click="loadDummyData()" class="rounded-sm bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">
                                                 {{ __('Load Sample Data') }}
                                             </button>
-                                            <button type="button" @click="addMethod()" class="rounded-md border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                                            <button type="button" @click="addMethod()" class="rounded-sm border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
                                                 {{ __('Add Service') }}
                                             </button>
                                         </div>
@@ -340,13 +340,13 @@
             </template>
 
             <!-- Save Bar -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-md border border-neutral-200 bg-white p-4 shadow-2xs">
                 <div>
                     <h3 class="text-sm font-semibold text-neutral-900">{{ __('Ready to publish payment options?') }}</h3>
                     <p class="text-xs text-neutral-500 mt-0.5">{{ __('Enabled payment services will appear immediately on the storefront checkout page for customers to select.') }}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <x-ui.button type="submit" variant="primary" class="rounded-md px-5 py-2 text-xs font-medium">
+                    <x-ui.button type="submit" variant="primary" class="rounded-sm px-5 py-2 text-xs font-medium">
                         <i class="ph ph-check"></i> {{ __('Save Payment Services') }}
                     </x-ui.button>
                 </div>
@@ -368,7 +368,7 @@
                     x-transition:leave-start="opacity-100 scale-100"
                     x-transition:leave-end="opacity-0 scale-95"
                     @click.away="closeModal()"
-                    class="w-full max-w-3xl !rounded-lg bg-white border border-neutral-200 shadow-xl overflow-hidden"
+                    class="w-full max-w-3xl !rounded-md bg-white border border-neutral-200 shadow-xl overflow-hidden"
                 >
                     <template x-if="editingIndex !== null && methods[editingIndex]">
                         <div class="flex flex-col max-h-[90vh]">
@@ -385,7 +385,7 @@
                                     </div>
                                     <h3 class="font-semibold text-sm text-neutral-900" x-text="methods[editingIndex].name ? methods[editingIndex].name : '{{ __('New Payment Service') }}'"></h3>
                                 </div>
-                                <button type="button" @click="closeModal()" class="rounded-md p-1 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100">
+                                <button type="button" @click="closeModal()" class="rounded-sm p-1 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100">
                                     <i class="ph ph-x text-base"></i>
                                 </button>
                             </div>

@@ -31,7 +31,7 @@
 }
 
 .media-type-tab {
-  @apply px-3 py-1.5 text-[13px] font-medium text-neutral-500 rounded-lg transition-colors duration-150 border-0 bg-transparent cursor-pointer;
+  @apply px-3 py-1.5 text-[13px] font-medium text-neutral-500 rounded-md transition-colors duration-150 border-0 bg-transparent cursor-pointer;
 
   &:hover {
     @apply text-neutral-700 bg-neutral-50;
@@ -50,7 +50,7 @@
   }
 
   input {
-    @apply w-48 py-1.5 pl-8 pr-3 border border-neutral-100 rounded-lg text-[13px] bg-neutral-0 text-neutral-700 outline-none transition-colors duration-150;
+    @apply w-48 py-1.5 pl-8 pr-3 border border-neutral-100 rounded-sm text-[13px] bg-neutral-0 text-neutral-700 outline-none transition-colors duration-150;
     font-family: inherit;
   }
 
@@ -65,7 +65,7 @@
 
 /* ── Upload Zone ── */
 .media-upload-zone {
-  @apply relative mx-5 mt-5 mb-4 flex items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 transition-colors duration-150 cursor-pointer md:mx-6;
+  @apply relative mx-5 mt-5 mb-4 flex items-center justify-center rounded-md border-2 border-dashed border-neutral-200 transition-colors duration-150 cursor-pointer md:mx-6;
   min-height: 80px;
 
   &:hover {
@@ -90,7 +90,7 @@
 }
 
 .media-upload-progress {
-  @apply absolute inset-x-0 bottom-0 h-1 rounded-b-xl overflow-hidden bg-neutral-100;
+  @apply absolute inset-x-0 bottom-0 h-1 rounded-b-md overflow-hidden bg-neutral-100;
 }
 
 .media-upload-progress-bar {
@@ -105,7 +105,7 @@
 }
 
 .media-grid-item {
-  @apply relative rounded-xl border-2 border-transparent bg-neutral-50 overflow-hidden cursor-pointer transition-all duration-150;
+  @apply relative rounded-md border-2 border-transparent bg-neutral-50 overflow-hidden cursor-pointer transition-all duration-150;
   aspect-ratio: 1;
 
   &:hover {
@@ -206,7 +206,7 @@
 }
 
 .media-picker-file-icon {
-  @apply flex items-center gap-2 px-3 py-2 rounded-xl border border-neutral-100 bg-neutral-50;
+  @apply flex items-center gap-2 px-3 py-2 rounded-md border border-neutral-100 bg-neutral-50;
 
   i {
     @apply text-lg text-neutral-400;
@@ -223,7 +223,7 @@
 
 .media-picker-browse,
 .media-picker-remove {
-  @apply flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg border border-neutral-100 bg-neutral-0 text-neutral-600 transition-colors duration-150 cursor-pointer;
+  @apply flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-md border border-neutral-100 bg-neutral-0 text-neutral-600 transition-colors duration-150 cursor-pointer;
 
   i {
     @apply text-sm;

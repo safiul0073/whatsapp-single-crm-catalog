@@ -3,7 +3,7 @@
         <div class="grid grid-cols-2 gap-2">
             @foreach ($themes as $theme)
                 @php([$swatchCanvas, $swatchAccent] = $theme->swatch())
-                <button type="button" class="rounded-lg border p-2.5 text-left transition" x-on:click="applyTheme('{{ $theme->value }}')" x-bind:class="settings.style.theme === '{{ $theme->value }}' ? 'border-title shadow-sm' : 'border-neutral-200 hover:border-neutral-400'" data-theme-option="{{ $theme->value }}">
+                <button type="button" class="rounded-sm border p-2.5 text-left transition" x-on:click="applyTheme('{{ $theme->value }}')" x-bind:class="settings.style.theme === '{{ $theme->value }}' ? 'border-title shadow-sm' : 'border-neutral-200 hover:border-neutral-400'" data-theme-option="{{ $theme->value }}">
                     <span class="flex gap-1">
                         <span class="sw-swatch h-4 w-4 rounded border border-neutral-200" data-swatch="{{ $swatchCanvas }}"></span>
                         <span class="sw-swatch h-4 w-4 rounded" data-swatch="{{ $swatchAccent }}"></span>

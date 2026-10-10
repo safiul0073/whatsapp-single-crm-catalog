@@ -25,7 +25,7 @@
         <a href="{{ route('user.automations.index') }}" class="row-action" aria-label="Back to automations">
           <i class="ph ph-arrow-left text-lg"></i>
         </a>
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-neutral-0">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary text-neutral-0">
           <i class="ph ph-share-network text-lg"></i>
         </span>
         <div class="min-w-0">
@@ -37,13 +37,13 @@
             x-ref="nameInput"
             required
             aria-label="Automation name"
-            class="w-full max-w-xs truncate rounded-lg border border-transparent bg-transparent px-1 font-title text-xl font-bold text-title hover:border-neutral-200 focus:border-primary focus:bg-neutral-0 focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            class="w-full max-w-xs truncate rounded-md border border-transparent bg-transparent px-1 font-title text-xl font-bold text-title hover:border-neutral-200 focus:border-primary focus:bg-neutral-0 focus:ring-2 focus:ring-primary/20 focus:outline-none"
           />
           <textarea
             name="description"
             x-ref="descriptionInput"
             rows="1"
-            class="mt-1 w-full max-w-xl resize-none rounded-lg border border-transparent bg-transparent px-1 text-sm text-neutral-500 hover:border-neutral-200 focus:border-primary focus:bg-neutral-0 focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            class="mt-1 w-full max-w-xl resize-none rounded-sm border border-transparent bg-transparent px-1 text-sm text-neutral-500 hover:border-neutral-200 focus:border-primary focus:bg-neutral-0 focus:ring-2 focus:ring-primary/20 focus:outline-none"
             placeholder="Short description"
           >{{ old('description', $automation->description ?? ($aiDraft['description'] ?? '')) }}</textarea>
         </div>
@@ -115,7 +115,7 @@
 
       <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" x-show="testResult?.steps?.length">
         <template x-for="(step, index) in (testResult?.steps || [])" :key="`${step.node_id}-${index}`">
-          <div class="rounded-lg border border-neutral-100 bg-neutral-0 p-4">
+          <div class="rounded-md border border-neutral-100 bg-neutral-0 p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="text-xs font-bold text-neutral-400" x-text="`Step ${index + 1}`"></p>
@@ -125,7 +125,7 @@
             </div>
             <p class="m-text mt-3 text-sm" x-text="step.summary"></p>
             <p class="mt-2 text-xs font-semibold text-neutral-500">Port: <span class="text-title" x-text="step.port"></span></p>
-            <pre class="mt-3 max-h-32 overflow-auto rounded-lg bg-section p-3 text-xs text-neutral-600" x-text="JSON.stringify(step.output || {}, null, 2)"></pre>
+            <pre class="mt-3 max-h-32 overflow-auto rounded-md bg-section p-3 text-xs text-neutral-600" x-text="JSON.stringify(step.output || {}, null, 2)"></pre>
           </div>
         </template>
       </div>
@@ -147,7 +147,7 @@
           </div>
 
           <div class="space-y-4 p-5">
-            <div class="rounded-lg border border-neutral-200 bg-section p-4">
+            <div class="rounded-md border border-neutral-200 bg-section p-4">
               <p class="text-sm font-semibold text-title">A strong prompt includes:</p>
               <div class="mt-3 grid gap-2 text-sm text-neutral-600 sm:grid-cols-2">
                 <span><i class="ph ph-check text-primary"></i> Start trigger or customer event</span>
@@ -169,7 +169,7 @@
               ></textarea>
             </div>
 
-            <div class="rounded-lg border border-dashed border-neutral-200 bg-neutral-0 p-4">
+            <div class="rounded-md border border-dashed border-neutral-200 bg-neutral-0 p-4">
               <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Example prompt</p>
               <p class="mt-2 text-sm text-neutral-600">When someone asks about pricing, send a welcome message, ask their budget, show quick replies for Starter, Growth, and Enterprise, wait 1 day, tag interested leads, and assign them to sales.</p>
             </div>
@@ -195,7 +195,7 @@
     @endif
 
     <div
-      class="flow-builder-shell mt-4 grid gap-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0"
+      class="flow-builder-shell mt-4 grid gap-0 overflow-hidden rounded-md border border-neutral-200 bg-neutral-0"
       :class="paletteCollapsed
         ? 'is-palette-collapsed lg:grid-cols-[1fr]'
         : 'is-palette-open lg:grid-cols-[16rem_1fr]'"
@@ -209,7 +209,7 @@
           <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-neutral-400"></i>
           <input
             type="search"
-            class="form-input input-search h-10 rounded-full pl-9 text-sm"
+            class="form-input input-search h-10 rounded-sm pl-9 text-sm"
             placeholder="Search nodes..."
             x-model.debounce.150ms="nodeSearch"
           >
@@ -226,7 +226,7 @@
               <template x-for="step in group.nodes" :key="step.kind">
                 <button
                   type="button"
-                  class="palette-item w-full rounded-lg bg-neutral-0"
+                  class="palette-item w-full rounded-sm bg-neutral-0"
                   :class="{ 'palette-item--start': step.kind === 'trigger' }"
                   draggable="true"
                   @dragstart="startPaletteDrag(step, $event)"
@@ -243,7 +243,7 @@
           </div>
         </template>
 
-        <p class="form-hint rounded-lg border border-dashed border-neutral-200 bg-neutral-0 p-3">Tip: drag onto canvas, or click a node to add it near the center.</p>
+        <p class="form-hint rounded-md border border-dashed border-neutral-200 bg-neutral-0 p-3">Tip: drag onto canvas, or click a node to add it near the center.</p>
       </aside>
 
       <button type="button" class="flow-palette-toggle" @click="togglePalette()" :aria-label="paletteCollapsed ? 'Show node palette' : 'Hide node palette'">
@@ -407,7 +407,7 @@
             </template>
           </div>
 
-          <div class="absolute top-5 left-5 flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-0 px-3 py-2 text-xs font-semibold text-neutral-500 shadow-sm">
+          <div class="absolute top-5 left-5 flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-0 px-3 py-2 text-xs font-semibold text-neutral-500 shadow-sm">
             <span><span class="text-title" x-text="placedNodeCount"></span> steps</span>
             <span class="h-1 w-1 rounded-full bg-neutral-300"></span>
             <span><span class="text-title" x-text="connectionCount"></span> connections</span>
@@ -731,7 +731,7 @@
                 </div>
               </template>
 
-              <div class="rounded-lg border border-neutral-100 bg-section p-3 text-xs text-neutral-500" x-show="sourcePort">
+              <div class="rounded-md border border-neutral-100 bg-section p-3 text-xs text-neutral-500" x-show="sourcePort">
                 Drag from the selected output to another card input to connect it.
               </div>
             </div>

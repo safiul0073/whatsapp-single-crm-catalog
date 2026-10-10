@@ -9,7 +9,7 @@
             <p class="text-sm text-neutral-500 mt-1">{{ __('Configure global packaging weight and delivery defaults.') }}</p>
         </div>
 
-        <div class="bg-white shadow-xs rounded-xl border border-neutral-200 p-6">
+        <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
             <form action="{{ route('user.shipping.settings.update') }}" method="POST" class="space-y-6">
                 @csrf
                 @method('PUT')

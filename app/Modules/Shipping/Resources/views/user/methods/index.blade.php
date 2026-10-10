@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <div class="bg-white shadow-xs rounded-xl border border-neutral-200">
+        <div class="bg-white shadow-xs rounded-md border border-neutral-200">
             @if($methods->isEmpty())
                 <div class="p-8 text-center text-neutral-500">
                     {{ __('No shipping methods found. Add one to get started.') }}

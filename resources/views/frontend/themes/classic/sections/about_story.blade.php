@@ -70,15 +70,15 @@
 
                         if ($loop->first) {
                             $cardClasses = 'col-span-2 flex items-center gap-5 bg-white border-border-soft p-6 shadow-sm aboutv2-metric-card';
-                            $iconWrapper = '<div class="flex-none w-12 h-12 rounded-xl bg-tint-blue flex items-center justify-center text-brand-blue"><i class="ph '.$icon.' text-xl"></i></div>';
+                            $iconWrapper = '<div class="flex-none w-12 h-12 rounded-md bg-tint-blue flex items-center justify-center text-brand-blue"><i class="ph '.$icon.' text-xl"></i></div>';
                             $valueClasses = 'font-display text-[clamp(28px,3vw,36px)] font-extrabold leading-none tracking-display text-brand-navy-ink';
                             $labelClasses = 'font-mono text-micro text-text-muted mt-1 tracking-[0.08em] uppercase';
                         } elseif ($color === 'navy') {
-                            $cardClasses = 'flex flex-col gap-2 rounded-3xl bg-brand-navy-ink border border-white/8 p-6 shadow-sm aboutv2-metric-card';
+                            $cardClasses = 'flex flex-col gap-2 rounded-md bg-brand-navy-ink border border-white/8 p-6 shadow-sm aboutv2-metric-card';
                             $valueClasses = 'font-display text-[clamp(32px,3.5vw,44px)] font-extrabold leading-none tracking-display text-white';
                             $labelClasses = 'font-mono text-micro text-white/45 leading-body tracking-[0.08em] uppercase';
                         } elseif ($color === 'brand') {
-                            $cardClasses = 'flex flex-col gap-2 rounded-3xl border border-brand-blue/20 p-6 shadow-brand aboutv2-metric-card';
+                            $cardClasses = 'flex flex-col gap-2 rounded-md border border-brand-blue/20 p-6 shadow-brand aboutv2-metric-card';
                             $valueClasses = 'font-display text-[clamp(32px,3.5vw,44px)] font-extrabold leading-none tracking-display text-white';
                             $labelClasses = 'font-mono text-micro text-white/60 leading-body tracking-[0.08em] uppercase';
                         }

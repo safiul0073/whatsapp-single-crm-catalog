@@ -128,7 +128,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-xl border border-neutral-100 bg-section p-4">
+                <div class="rounded-md border border-neutral-100 bg-section p-4">
                     <div class="flex items-center gap-2.5">
                         <input id="supports_channels" name="supports_channels" type="checkbox" value="1" class="app-checkbox" @checked(old('supports_channels', $settings['supports_channels'] ?? false))>
                         <label for="supports_channels" class="text-sm font-semibold text-title">{{ __('Enable channel broadcasting') }}</label>

@@ -63,16 +63,16 @@
                             data-stk-panel="{{ $stackCategory->slug }}">
                             @foreach($stackCategory->stacks as $stackIndex => $stack)
                                 <article
-                                    class="stk2-tool-card flex flex-col items-center gap-3 p-4 md:p-5 bg-white border border-border-soft rounded-2xl shadow-xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                                    class="stk2-tool-card flex flex-col items-center gap-3 p-4 md:p-5 bg-white border border-border-soft rounded-md shadow-xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-default"
                                     style="--card-delay: {{ $stackIndex * 60 }}ms">
                                     @if($stack->media?->url)
-                                        <span class="w-12 h-12 rounded-xl inline-grid place-items-center {{ $stack->logo_bg_color ? '' : 'bg-white border border-border-soft' }}"
+                                        <span class="w-12 h-12 rounded-md inline-grid place-items-center {{ $stack->logo_bg_color ? '' : 'bg-white border border-border-soft' }}"
                                             @if($stack->logo_bg_color) style="background-color: {{ $stack->logo_bg_color }}" @endif>
                                             <img src="{{ $stack->media->url }}" alt="{{ e($stack->name) }}"
                                                 class="w-6 h-6{{ $stack->logo_invert ? ' brightness-0 invert' : '' }}" />
                                         </span>
                                     @else
-                                        <span class="w-12 h-12 rounded-xl inline-grid place-items-center bg-[#e5e7eb] font-display text-[11px] font-extrabold text-neutral-600 text-center leading-tight px-1">
+                                        <span class="w-12 h-12 rounded-md inline-grid place-items-center bg-[#e5e7eb] font-display text-[11px] font-extrabold text-neutral-600 text-center leading-tight px-1">
                                             {{ mb_strimwidth($stack->name, 0, 4) }}
                                         </span>
                                     @endif

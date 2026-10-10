@@ -36,7 +36,7 @@
 
             <div class="section-card space-y-4">
                 <h3 class="text-base font-semibold text-neutral-900">{{ __('Payload') }}</h3>
-                <pre class="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-4 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto max-h-96">{{ json_encode($webhookLog->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                <pre class="rounded-md bg-neutral-50 dark:bg-neutral-900 p-4 text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto max-h-96">{{ json_encode($webhookLog->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
             </div>
         </div>
     </div>

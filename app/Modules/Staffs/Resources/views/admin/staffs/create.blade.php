@@ -16,7 +16,7 @@
                 <div class="lg:col-span-2 space-y-6">
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-user-circle-plus text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Staff Profile') }}</h2>
@@ -36,7 +36,7 @@
 
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-lock text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Password Security') }}</h2>
@@ -55,7 +55,7 @@
                 <div class="space-y-6">
                     <div class="section-card">
                         <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 mb-4">
-                            <div class="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                                 <i class="ph ph-shield-chevron text-lg"></i>
                             </div>
                             <h2 class="font-semibold text-neutral-800">{{ __('Roles & Status') }}</h2>
@@ -63,7 +63,7 @@
                         <div class="space-y-6">
                             <div class="space-y-3">
                                 <label class="block text-xs font-bold text-neutral-400 uppercase tracking-wider">{{ __('Roles') }}</label>
-                                <div class="space-y-2 bg-neutral-50/50 p-3 rounded-xl border border-neutral-100">
+                                <div class="space-y-2 bg-neutral-50/50 p-3 rounded-md border border-neutral-100">
                                     @foreach($roles as $role)
                                         <x-forms.checkbox :label="$role->name" name="roles[]" :value="$role->name" />
                                     @endforeach

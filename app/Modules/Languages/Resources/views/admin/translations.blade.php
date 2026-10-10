@@ -50,7 +50,7 @@
                     </tbody>
                 </x-tables.table>
 
-                <div class="sticky bottom-0 z-10 flex items-center gap-3 p-4 border-t border-neutral-100 bg-neutral-0 rounded-b-2xl">
+                <div class="sticky bottom-0 z-10 flex items-center gap-3 p-4 border-t border-neutral-100 bg-neutral-0 rounded-b-md">
                     <x-forms.submit :label="__('Save Translations')" />
                     <x-ui.button variant="ghost" href="{{ route('admin.languages.index') }}">{{ __('Cancel') }}</x-ui.button>
                 </div>

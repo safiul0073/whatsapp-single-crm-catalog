@@ -88,19 +88,19 @@
     </div>
 
     @if (session('status'))
-        <div class="mt-4 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+        <div class="mt-4 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
             {{ session('status') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="mt-4 rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
+        <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
             {{ $errors->first() }}
         </div>
     @endif
 
     <div class="mt-6 overflow-x-auto scrollbar-hide">
-        <div class="inline-flex rounded-full border border-neutral-200 bg-neutral-0 p-1">
+        <div class="inline-flex rounded-md border border-neutral-200 bg-neutral-0 p-1">
             <a href="{{ route('user.message-templates.index', ['provider' => 'whatsapp']) }}" class="range-btn {{ $isWhatsApp ? 'is-active' : '' }}">
                 <i class="ph ph-whatsapp-logo text-base"></i>
                 WhatsApp
@@ -177,7 +177,7 @@
 
     <div class="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
         <div class="overflow-x-auto scrollbar-hide">
-            <div data-range-group data-status-filter data-range-value="all" class="inline-flex rounded-full border border-neutral-200 bg-neutral-0 p-1">
+            <div data-range-group data-status-filter data-range-value="all" class="inline-flex rounded-md border border-neutral-200 bg-neutral-0 p-1">
                 <button type="button" class="range-btn is-active" data-range="all">All</button>
                 <button type="button" class="range-btn" data-range="approved">Approved</button>
                 <button type="button" class="range-btn" data-range="pending">Pending</button>
@@ -196,7 +196,7 @@
         @forelse ($templates->groupBy('category') as $category => $categoryTemplates)
             <section class="mt-8" data-category-group>
                 <div class="flex items-center gap-3">
-                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <span class="grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-{{ $category === 'utility' ? 'gear-six' : ($category === 'authentication' ? 'shield-check' : 'megaphone') }} text-base"></i>
                     </span>
                     <h3 class="font-title text-lg font-bold text-title">{{ Str::headline($category) }}</h3>
@@ -249,14 +249,14 @@
                             @endif
 
                             @if (! $latestFailedSubmission?->metaErrorMessage() && filled($template->rejection_reason))
-                                <div class="mt-3 rounded-xl border border-error/20 bg-error/10 px-3 py-2 text-xs text-error">
+                                <div class="mt-3 rounded-md border border-error/20 bg-error/10 px-3 py-2 text-xs text-error">
                                     <p class="font-semibold">Meta review feedback</p>
                                     <p class="mt-1">{{ str($template->rejection_reason)->replace('_', ' ')->lower()->ucfirst() }}</p>
                                 </div>
                             @endif
 
                             @if ($latestFailedSubmission?->metaErrorMessage())
-                                <div class="mt-3 rounded-xl border border-error/20 bg-error/10 px-3 py-2 text-xs text-error">
+                                <div class="mt-3 rounded-md border border-error/20 bg-error/10 px-3 py-2 text-xs text-error">
                                     @if ($latestFailedSubmission->metaErrorTitle())
                                         <p class="font-semibold">{{ $latestFailedSubmission->metaErrorTitle() }}</p>
                                     @endif
@@ -310,7 +310,7 @@
         @empty
             <section class="mt-8">
                 <div class="card-soft p-8 text-center">
-                    <span class="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span class="mx-auto grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph ph-file-text text-2xl"></i>
                     </span>
                     <h3 class="heading-4 mt-4">No templates yet</h3>
@@ -342,7 +342,7 @@
         @keydown.escape.window="closeAiModal()"
     >
         <div class="absolute inset-0" @click="closeAiModal()"></div>
-        <form class="relative w-full max-w-2xl rounded-2xl bg-neutral-0 p-5 shadow-xl sm:p-6" @submit.prevent="generateTemplate()">
+        <form class="relative w-full max-w-2xl rounded-md bg-neutral-0 p-5 shadow-xl sm:p-6" @submit.prevent="generateTemplate()">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h3 id="aiTemplateTitle" class="heading-4">Generate {{ $isWhatsApp ? 'WhatsApp' : 'Telegram' }} Template</h3>
@@ -353,7 +353,7 @@
                 </button>
             </div>
 
-            <div class="mt-5 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-title">
+            <div class="mt-5 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-title">
                 @if ($isWhatsApp)
                     <p class="font-semibold">WhatsApp template guidance</p>
                     <p class="mt-1 text-body">Ask for a reusable Meta template with a clear purpose, category, optional short header, helpful body, examples for placeholders, and buttons if needed. Avoid starting or ending the body with variables.</p>

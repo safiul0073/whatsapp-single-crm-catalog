@@ -45,7 +45,7 @@
     <div class="grid grid-cols-1 gap-y-12 py-16 lg:grid-cols-[1.15fr_0.85fr_0.85fr_1.15fr] lg:gap-x-12 lg:py-24">
       <div class="lg:pr-10">
         <a href="{{ route('home') }}" class="mb-10 inline-flex items-center gap-2.5">
-          <span class="grid h-9 w-9 place-items-center rounded-lg bg-accent text-deep">
+          <span class="grid h-9 w-9 place-items-center rounded-md bg-accent text-deep">
             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zM9.5 7a.5.5 0 0 1 .5.5c0 .7.1 1.4.3 2 .1.3 0 .6-.2.8l-.8.9a8.5 8.5 0 0 0 3.5 3.5l.9-.8c.2-.2.5-.3.8-.2.6.2 1.3.3 2 .3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5A9 9 0 0 1 7 12a.5.5 0 0 1 .5-.5h2z"/></svg>
           </span>
           <span class="font-title text-2xl font-extrabold tracking-tight">{{ $themeVars['logo_text'] ?? 'WaPro' }}</span>
@@ -126,7 +126,7 @@
             required
             placeholder="{{ __('Your email ...') }}"
             aria-label="{{ __('Your email') }}"
-            class="w-full rounded-full border border-neutral-0/10 bg-neutral-0/6 py-4 pr-16 pl-6 text-base text-neutral-0 transition-colors placeholder:text-neutral-0/45 focus:border-accent/60 focus:outline-none"
+            class="w-full rounded-sm border border-neutral-0/10 bg-neutral-0/6 py-4 pr-16 pl-6 text-base text-neutral-0 transition-colors placeholder:text-neutral-0/45 focus:border-accent/60 focus:outline-none"
           />
           <button
             type="submit"

@@ -51,15 +51,41 @@ class UnifiedOrderService
                 if (isset($selection['ratio']) || isset($selection['pack_sizes'])) {
                     $this->invalid('groups', 'Box contents are configured by the store.');
                 }
+                if (array_key_exists('size_quantities', $selection) && ($data['source'] ?? null) !== 'pos') {
+                    $this->invalid('groups', 'Custom pack contents are only available in the POS.');
+                }
                 $colorId = (int) $selection['color_id'];
-                $ratio = $product->getEffectiveSizeRatios()[$colorId] ?? [];
+                $color = $product->colors->firstWhere('id', $colorId);
+                if (! $color) {
+                    $this->invalid('groups', 'Select a color available for this product.');
+                }
+                $customSizeQuantities = $selection['size_quantities'] ?? null;
+                $ratio = is_array($customSizeQuantities)
+                    ? $customSizeQuantities
+                    : ($product->getEffectiveSizeRatios()[$colorId] ?? []);
                 $ratio = array_filter($ratio, fn ($quantity) => (int) $quantity > 0);
                 if ($ratio === []) {
                     $this->invalid('groups', 'This pack has no sizes configured.');
                 }
-                $multiplier = max(1, (int) $product->ws_ratio_multiplier);
+                $editablePackContents = is_array($customSizeQuantities);
+                $multiplier = $editablePackContents ? 1 : max(1, (int) $product->ws_ratio_multiplier);
+                if ($editablePackContents) {
+                    $minimumSizes = max(1, (int) ($product->ws_min_sizes ?? 1));
+                    $colorMoq = max(1, (int) ($product->ws_color_moq ?? 1));
+                    if (count($ratio) < $minimumSizes) {
+                        $this->invalid('groups', "{$color->display_name} must include at least {$minimumSizes} sizes per pack.");
+                    }
+                    foreach ($ratio as $size => $quantity) {
+                        if (! $product->variants->contains(fn ($variant): bool => $variant->color_id === $colorId && $variant->size === (string) $size && $variant->status === 'active')) {
+                            $this->invalid('groups', "The {$size} size is unavailable for {$color->display_name}.");
+                        }
+                        if ((int) $quantity < $colorMoq) {
+                            $this->invalid('groups', "Each selected {$color->display_name} size requires at least {$colorMoq} pieces per pack.");
+                        }
+                    }
+                }
                 $boxCount = (int) $selection['box_count'];
-                $group = array_replace($group, ['color_id' => $colorId, 'color_name' => $product->colors->firstWhere('id', $colorId)?->name, 'box_count' => $boxCount, 'ratio' => $ratio, 'multiplier' => $multiplier, 'pieces_per_box' => array_sum($ratio) * $multiplier]);
+                $group = array_replace($group, ['color_id' => $colorId, 'color_name' => $color->display_name, 'box_count' => $boxCount, 'ratio' => $ratio, 'multiplier' => $multiplier, 'pieces_per_box' => array_sum($ratio) * $multiplier]);
                 foreach ($ratio as $size => $perBox) {
                     $variant = $product->variants->first(fn ($variant) => $variant->color_id === $colorId && $variant->size === (string) $size && $variant->status === 'active');
                     if (! $variant) {
@@ -115,6 +141,9 @@ class UnifiedOrderService
             $variant = ProductVariant::query()->where('workspace_id', $workspace->id)->findOrFail($variantId);
             $held = OrderReservation::query()->where('variant_id', $variantId)->where('state', 'reserved')->where('expires_at', '>', now())->sum('quantity');
             $availability[] = ['variant_id' => $variantId, 'sku' => $variant->sku, 'required' => $quantity, 'available' => max(0, $variant->stock_quantity - (int) $held)];
+        }
+        if (($data['source'] ?? null) === 'pos' && collect($availability)->contains(fn (array $stock): bool => $stock['required'] > $stock['available'])) {
+            $this->invalid('groups', 'One or more selected sizes do not have enough available stock.');
         }
         if (collect($groups)->sum('box_count') > 500) {
             $this->invalid('groups', 'An order can contain at most 500 boxes.');
