@@ -31,6 +31,11 @@ class InboxService
 {
     protected const MESSAGE_PAGE_SIZE = 50;
 
+    /**
+     * Provider events that modify an earlier message and never get a bubble of their own.
+     */
+    protected const EVENT_MESSAGE_TYPES = ['reaction', 'edit', 'revoke'];
+
     public function __construct(
         protected WorkspaceResolver $workspaces,
         protected ChannelManager $channels,
@@ -345,12 +350,14 @@ class InboxService
         $latestMessage = Message::query()
             ->where('workspace_id', $conversation->workspace_id)
             ->where('conversation_id', $conversation->id)
+            ->tap(fn (Builder $query) => $this->excludeEventMessages($query))
             ->latest('id')
             ->first();
 
         $messages = Message::query()
             ->where('workspace_id', $conversation->workspace_id)
             ->where('conversation_id', $conversation->id)
+            ->tap(fn (Builder $query) => $this->excludeEventMessages($query))
             ->when($beforeId, fn (Builder $query) => $query->where('id', '<', $beforeId))
             ->orderByDesc('id')
             ->limit(self::MESSAGE_PAGE_SIZE + 1)
@@ -375,6 +382,11 @@ class InboxService
         ];
     }
 
+    protected function excludeEventMessages(Builder $query): void
+    {
+        $query->whereNotIn('type', self::EVENT_MESSAGE_TYPES);
+    }
+
     protected function latestMessagesFor(Collection $conversations): Collection
     {
         if ($conversations->isEmpty()) {
@@ -383,6 +395,7 @@ class InboxService
 
         return Message::query()
             ->whereIn('conversation_id', $conversations->pluck('id'))
+            ->tap(fn (Builder $query) => $this->excludeEventMessages($query))
             ->orderByDesc('id')
             ->get()
             ->unique('conversation_id')
@@ -518,6 +531,10 @@ class InboxService
             'type' => $message->type,
             'body' => $this->messageBody($message),
             'attachment' => $this->messageAttachment($message),
+            'reactions' => array_values(array_filter((array) data_get($message->payload, 'reactions', []))),
+            'is_edited' => filled(data_get($message->payload, 'edited_at')),
+            'is_deleted' => filled(data_get($message->payload, 'deleted_at')),
+            'is_notice' => in_array($message->type, ['system', 'unsupported'], true),
             'status' => $message->status?->value ?? (string) $message->status,
             'provider_message_id' => $message->provider_message_id,
             'created_at' => optional($message->created_at)->toIso8601String(),
@@ -527,6 +544,10 @@ class InboxService
 
     protected function messageBody(Message $message): string
     {
+        if (filled(data_get($message->payload, 'deleted_at'))) {
+            return __('This message was deleted');
+        }
+
         if (filled($message->body)) {
             return (string) $message->body;
         }
@@ -551,7 +572,11 @@ class InboxService
             return (string) $attachmentName;
         }
 
-        return '';
+        return match ($message->type) {
+            'system' => (string) data_get($message->payload, 'system.body', __('Account notice')),
+            'unsupported' => __('Unsupported message type. Ask the customer to resend it as text, an image or a voice note.'),
+            default => '',
+        };
     }
 
     protected function outboundPayload(string $body, ?array $attachment): array

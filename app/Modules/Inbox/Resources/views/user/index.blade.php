@@ -223,15 +223,17 @@
                   <div class="chat-date-separator" x-show="message.show_date_separator">
                     <span x-text="message.date_label"></span>
                   </div>
+                  <div class="chat-notice" x-show="message.is_notice" x-text="message.body"></div>
                   <div
                     class="chat-message"
+                    x-show="!message.is_notice"
                     :class="[
                       message.direction === 'outbound' ? 'chat-message--out' : 'chat-message--in',
                       message.grouped_with_previous ? 'chat-message--grouped' : ''
                     ]"
                   >
                     <div class="chat-bubble" :class="message.direction === 'outbound' ? 'chat-bubble--out' : 'chat-bubble--in'">
-                      <template x-if="message.attachment">
+                      <template x-if="message.attachment && !message.is_deleted">
                         <div class="mb-2">
                           <template x-if="message.attachment.type === 'image'">
                             <a :href="message.attachment.url" target="_blank" class="chat-attachment chat-attachment--image">
@@ -257,12 +259,18 @@
                           </template>
                         </div>
                       </template>
-                      <p class="chat-bubble__body" x-show="message.body && (!message.attachment || message.body !== message.attachment.name)" x-text="message.body || ''"></p>
+                      <p class="chat-bubble__body" :class="message.is_deleted ? 'chat-bubble__body--deleted' : ''" x-show="message.body && (!message.attachment || message.body !== message.attachment.name)" x-text="message.body || ''"></p>
                       <p class="chat-bubble__meta" :class="message.status === 'failed' ? 'text-error' : ''">
+                        <span x-show="message.is_edited">{{ __('Edited') }}</span>
                         <span x-text="message.time"></span>
                         <i class="ph text-xs" :class="statusIcon(message.status)" x-show="message.direction === 'outbound'"></i>
                         <span x-show="message.status === 'failed'">{{ __('Failed') }}</span>
                       </p>
+                      <div class="chat-reactions" x-show="message.reactions && message.reactions.length">
+                        <template x-for="(emoji, index) in message.reactions" :key="index">
+                          <span x-text="emoji"></span>
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </div>
