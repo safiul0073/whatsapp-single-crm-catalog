@@ -18,6 +18,16 @@ class WorkspaceResolver
             return null;
         }
 
+        $mobileWorkspaceId = request()->attributes->get('mobile_workspace_id');
+        if ($mobileWorkspaceId !== null) {
+            return Workspace::query()->whereKey($mobileWorkspaceId)
+                ->where('status', WorkspaceStatus::Active->value)
+                ->where(function ($query) use ($user): void {
+                    $query->where('owner_id', $user->id)
+                        ->orWhereHas('members', fn ($members) => $members->where('users.id', $user->id)->where('workspace_members.status', WorkspaceMemberStatus::Active->value));
+                })->first();
+        }
+
         $activeWorkspaceId = session('active_workspace_id');
 
         if ($activeWorkspaceId) {

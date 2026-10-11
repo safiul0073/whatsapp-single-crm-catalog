@@ -25,7 +25,8 @@ class ProductApiController extends Controller
             ->withMin([
                 'variants as starting_price' => fn ($q) => $q->whereIn('status', ['active', 'out_of_stock']),
             ], 'price')
-            ->where('status', 'active')->where('visibility', 'published');
+            ->where('status', 'active')->where('visibility', 'published')
+            ->where('workspace_id', $request->attributes->get('store_workspace')->id);
 
         if ($request->query('selling_mode') === 'wholesale') {
             $query->whereIn('selling_mode', ['wholesale', 'both']);
@@ -128,6 +129,7 @@ class ProductApiController extends Controller
             ], 'price')
             ->where('status', 'active')
             ->where('visibility', 'published')
+            ->where('workspace_id', $request->attributes->get('store_workspace')->id)
             ->when($request->query('selling_mode') === 'wholesale', fn ($query) => $query->whereIn('selling_mode', ['wholesale', 'both']))
             ->orderByDesc('published_at')
             ->latest('id')
@@ -157,6 +159,7 @@ class ProductApiController extends Controller
             ])
             ->where('status', 'active')
             ->where('visibility', 'published')
+            ->where('workspace_id', $request->attributes->get('store_workspace')->id)
             ->where(function ($q) use ($product) {
                 $q->where('slug', $product)->orWhere('id', $product);
             })
@@ -170,7 +173,7 @@ class ProductApiController extends Controller
      */
     public function filters(Request $request)
     {
-        $workspaceId = $request->get('workspace_id', 1); // Defaults to 1 for demo purposes if not passed
+        $workspaceId = $request->attributes->get('store_workspace')->id;
 
         // Fetch hierarchical categories
         $categories = Category::where('workspace_id', $workspaceId)
