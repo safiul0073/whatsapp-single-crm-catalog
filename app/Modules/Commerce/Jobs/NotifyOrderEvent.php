@@ -4,6 +4,8 @@ namespace App\Modules\Commerce\Jobs;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
+use App\Modules\Commerce\Models\MobileCustomerDevice;
+use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
@@ -13,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 
 class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
 {
@@ -50,6 +53,12 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         }
         $event->increment('notification_attempts');
         $order = Order::query()->with('contact')->findOrFail($event->order_id);
+        if (filled($order->customer_reference) && Cache::add('mobile-order-alert:'.$event->id, true, now()->addDays(7))) {
+            MobileCustomerDevice::query()->where('workspace_id', $order->workspace_id)
+                ->where('customer_reference', $order->customer_reference)->each(function (MobileCustomerDevice $device) use ($order, $event): void {
+                    $device->notify(new MobileAlert($order->number, $event->label, ['type' => 'order', 'reference' => $order->submission_reference]));
+                });
+        }
         $owner = Workspace::query()->findOrFail($order->workspace_id)->owner;
         if (! $event->staff_notified_at && $owner) {
             $notifications->send($owner, ['title' => $order->number.' — '.$event->label, 'body' => $order->currency.' '.($order->total ?? $order->subtotal), 'url' => route('user.commerce.orders.show', $order)], 'commerce');

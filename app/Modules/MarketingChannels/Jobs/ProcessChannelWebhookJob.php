@@ -239,6 +239,17 @@ class ProcessChannelWebhookJob implements ShouldQueue
             ]
         );
 
+        if ($message->wasRecentlyCreated) {
+            $owner = \App\Modules\Workspaces\Models\Workspace::query()->find($account->workspace_id)?->owner;
+            if ($owner?->deviceTokens()->exists()) {
+                $owner->notify(new \App\Modules\NotificationTemplates\Notifications\MobileAlert(
+                    'New '.$account->provider.' message',
+                    mb_strimwidth($body ?: 'New attachment', 0, 120),
+                    ['type' => 'inbox', 'workspace_id' => $account->workspace_id, 'conversation_id' => $conversation->id],
+                ));
+            }
+        }
+
         $conversation->update([
             'last_message_at' => now(),
             'session_expires_at' => $account->provider === 'whatsapp' ? now()->addHours(24) : $conversation->session_expires_at,
