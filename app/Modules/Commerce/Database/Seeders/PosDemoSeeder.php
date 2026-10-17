@@ -32,7 +32,12 @@ class PosDemoSeeder extends Seeder
             $role->givePermissionTo([Permission::findOrCreate('commerce.view', 'web'), Permission::findOrCreate('commerce.manage', 'web')]);
             $user->assignRole($role);
         } elseif ($workspaceId) {
-            $workspace = Workspace::query()->with('owner')->findOrFail($workspaceId);
+            $workspace = Workspace::query()->with('owner')->find($workspaceId) ?? Workspace::query()->with('owner')->first();
+            if (! $workspace) {
+                $this->command?->warn('No active workspace found for POS demo data. Seeding skipped.');
+
+                return;
+            }
             $user = $workspace->owner;
         } else {
             $this->command?->warn('Set COMMERCE_DEMO_WORKSPACE_ID to an existing demo workspace before seeding POS data.');

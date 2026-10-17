@@ -3,6 +3,7 @@
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
+use App\Modules\Commerce\Storefront\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
@@ -86,4 +87,32 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('conversations/{conversation}/product', [CommerceController::class, 'sendProduct'])->name('conversations.product');
     Route::post('conversations/{conversation}/product-list', [CommerceController::class, 'sendProductList'])->name('conversations.product-list');
     Route::post('conversations/{conversation}/product-video', [CommerceController::class, 'sendProductVideo'])->name('conversations.product-video');
+});
+
+Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('permission:commerce.manage')->group(function (): void {
+    $c = AdminController::class;
+    Route::get('/', [$c, 'index'])->name('index');
+    Route::put('settings', [$c, 'settings'])->name('settings');
+    Route::post('pages', [$c, 'savePage'])->name('pages.store');
+    Route::get('pages/{id}', [$c, 'editor'])->name('pages.edit');
+    Route::put('pages/{id}', [$c, 'savePage'])->name('pages.update');
+    Route::post('pages/{id}/publish', [$c, 'publish'])->name('pages.publish');
+    Route::post('pages/{id}/preview', [$c, 'preview'])->name('pages.preview');
+    Route::post('sliders', [$c, 'slider'])->name('sliders.store');
+    Route::put('sliders/{id}', [$c, 'slider'])->name('sliders.update');
+    Route::put('menus', [$c, 'menu'])->name('menus');
+    Route::post('domains', [$c, 'addDomain'])->name('domains.store');
+    Route::post('domains/{id}/verify', [$c, 'verifyDomain'])->name('domains.verify');
+    Route::post('domains/{id}/primary', [$c, 'primaryDomain'])->name('domains.primary');
+    Route::delete('domains/{id}', [$c, 'deleteDomain'])->name('domains.delete');
+    Route::post('coupons', [$c, 'coupon'])->name('coupons.store');
+    Route::put('coupons/{id}', [$c, 'coupon'])->name('coupons.update');
+    Route::put('reviews/{id}', [$c, 'review'])->name('reviews.update');
+});
+
+Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('permission:commerce.manage')->group(function (): void {
+    $c = AdminController::class;
+    Route::post('contents', [$c, 'content'])->name('contents.store');
+    Route::put('contents/{id}', [$c, 'content'])->name('contents.update');
+    Route::put('domains/{id}/handle', [$c, 'renameDomain'])->name('domains.rename');
 });

@@ -1,0 +1,23 @@
+<x-layouts.user title="Edit storefront page">
+<form method="POST" action="{{ route('user.commerce.storefront.pages.update',$page->id) }}" class="space-y-5" x-data="storefrontPageEditor({{ Illuminate\Support\Js::from($sections) }})">@csrf @method('PUT')
+<h1 class="text-2xl font-semibold">Edit {{ $page->title }}</h1>
+@if($errors->any())<ul role="alert">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
+<label class="grid gap-1">Title<input required name="title" class="rounded border p-2" value="{{ $page->title }}"></label><label class="grid gap-1">Slug<input required name="slug" class="rounded border p-2" value="{{ $page->slug }}"></label>
+<label class="grid gap-1">SEO title<input name="seo[title]" class="rounded border p-2" value="{{ $page->seo['title'] ?? '' }}"></label><label class="grid gap-1">SEO description<textarea name="seo[description]" class="rounded border p-2">{{ $page->seo['description'] ?? '' }}</textarea></label>
+<input type="hidden" name="sections" :value="JSON.stringify(sections)">
+<template x-for="(section,index) in sections" :key="section.key"><div class="rounded-xl border p-5 space-y-3" draggable="true" @dragstart="drag=index" @dragover.prevent @drop.prevent="move(drag,index)">
+<div class="flex gap-3"><strong x-text="section.type"></strong><button type="button" @click="move(index,index-1)">↑</button><button type="button" @click="move(index,index+1)">↓</button><button type="button" @click="sections.splice(index,1)">Remove</button></div>
+<label class="grid gap-1">Title<input class="rounded border p-2" x-model="section.config.title"></label><label class="grid gap-1">Subtitle<input class="rounded border p-2" x-model="section.config.subtitle"></label>
+<template x-if="section.type==='hero_slider'"><label class="grid gap-1">Slider ID<input type="number" min="1" class="rounded border p-2" x-model.number="section.config.slider_id"></label></template>
+<template x-if="section.type==='product_carousel'"><div class="grid gap-3"><label>Source<select class="rounded border p-2" x-model="section.config.source"><option>new-arrivals</option><option>featured</option><option>deals</option><option>category</option><option>brand</option><option>manual</option></select></label><label>Category slug<input class="rounded border p-2" x-model="section.config.category"></label><label>Brand slug<input class="rounded border p-2" x-model="section.config.brand"></label><label>Product IDs (comma separated)<input class="rounded border p-2" :value="(section.config.product_ids || []).join(',')" @input="section.config.product_ids=$event.target.value.split(',').map(Number).filter(Boolean)"></label><label>Product count<input type="number" min="1" max="24" class="rounded border p-2" x-model.number="section.config.limit"></label></div></template>
+<template x-if="['promo_banner','content_grid','testimonials'].includes(section.type)"><label class="grid gap-1">Items (title, text, image, link)<textarea rows="5" class="rounded border p-2 font-mono" :value="JSON.stringify(section.config.items || [],null,2)" @change="parseItems(section,$event.target.value)"></textarea></label></template>
+<template x-if="section.type==='rich_text'"><label class="grid gap-1">Content<textarea rows="8" class="rounded border p-2" x-model="section.config.text"></textarea></label></template>
+<template x-if="section.type==='countdown_deal'"><label>Deal ends<input type="datetime-local" class="rounded border p-2" x-model="section.config.ends_at"></label></template>
+<label class="grid gap-1">Button text<input class="rounded border p-2" x-model="section.config.button_text"></label><label class="grid gap-1">Button link<input class="rounded border p-2" x-model="section.config.button_link"></label>
+<label><input type="checkbox" x-model="section.active"> Active</label><select class="rounded border p-2" x-model="section.visibility"><option value="all">All screens</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option></select>
+<label>Starts<input type="datetime-local" x-model="section.starts_at" class="rounded border p-2"></label><label>Ends<input type="datetime-local" x-model="section.ends_at" class="rounded border p-2"></label>
+</div></template>
+<div class="flex gap-3"><select x-ref="type" class="rounded border p-2">@foreach($types as $type)<option>{{ $type }}</option>@endforeach</select><button type="button" class="rounded border p-2" @click="add($refs.type.value)">Add section</button></div><p role="alert" x-text="error"></p><button class="rounded bg-blue-600 px-6 py-3 text-white" :disabled="!!error">Save draft</button>
+</form>
+<script src="{{ asset('js/storefront-editor.js') }}" defer></script>
+</x-layouts.user>
