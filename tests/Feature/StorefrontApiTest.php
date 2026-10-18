@@ -287,3 +287,27 @@ it('filters mobile owner orders with real-time KPI counts and auto-packs on pack
         ->assertJsonPath('data.status', 'shipped')
         ->assertJsonPath('data.tracking_number', 'PTH-998877');
 });
+
+it('allows tracking an order using only the tracking reference or number without phone', function (): void {
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    $orderData = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
+
+    // 1. Track using tracking_code without phone
+    $this->getJson('/api/storefront/v1/orders/track?ref='.$orderData['tracking_code'], $headers)
+        ->assertOk()
+        ->assertJsonPath('data.number', $orderData['number'])
+        ->assertJsonPath('data.tracking_code', $orderData['tracking_code']);
+
+    // 2. Track using order number without phone
+    $this->getJson('/api/storefront/v1/orders/track?ref='.$orderData['number'], $headers)
+        ->assertOk()
+        ->assertJsonPath('data.number', $orderData['number']);
+
+    // 3. Reject empty tracking ref
+    $this->getJson('/api/storefront/v1/orders/track?ref=', $headers)
+        ->assertUnprocessable();
+
+    // 4. Return 404 for unknown tracking code
+    $this->getJson('/api/storefront/v1/orders/track?ref=UNKNOWN-12345', $headers)
+        ->assertNotFound();
+});

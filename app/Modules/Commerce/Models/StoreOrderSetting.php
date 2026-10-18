@@ -12,11 +12,16 @@ class StoreOrderSetting extends Model
 
     protected $table = 'commerce_store_order_settings';
 
-    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions'];
+    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'order_number_prefix', 'order_number_digits', 'next_order_sequence'];
 
     protected function casts(): array
     {
-        return ['whatsapp_notifications' => 'boolean', 'reservation_hours' => 'integer'];
+        return [
+            'whatsapp_notifications' => 'boolean',
+            'reservation_hours' => 'integer',
+            'order_number_digits' => 'integer',
+            'next_order_sequence' => 'integer',
+        ];
     }
 
     public static function forWorkspace(int $workspaceId): self
@@ -24,7 +29,20 @@ class StoreOrderSetting extends Model
         $workspace = Workspace::findOrFail($workspaceId);
         $currency = $workspace->settings['commerce']['currency'] ?? Catalog::query()->where('workspace_id', $workspaceId)->value('currency') ?? 'USD';
 
-        return static::query()->firstOrCreate(['workspace_id' => $workspaceId], ['currency' => strtoupper($currency)]);
+        return static::query()->firstOrCreate(['workspace_id' => $workspaceId], [
+            'currency' => strtoupper($currency),
+            'order_number_prefix' => 'ORD-',
+            'order_number_digits' => 5,
+            'next_order_sequence' => 1,
+        ]);
+    }
+
+    public function formatOrderNumber(int $sequence): string
+    {
+        $prefix = (string) ($this->order_number_prefix ?? 'ORD-');
+        $digits = max(3, min(10, (int) ($this->order_number_digits ?? 5)));
+
+        return sprintf('%s%0'.$digits.'d', $prefix, max(1, $sequence));
     }
 
     public static function catalogCurrency(int $workspaceId): string

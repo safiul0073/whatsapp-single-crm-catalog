@@ -3,10 +3,14 @@
 namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Models\Brand;
+use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\Coupon;
+use App\Modules\Commerce\Storefront\Models\CouponUsage;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
@@ -37,31 +41,97 @@ class AdminController extends Controller
     public function index(Request $r): View
     {
         $w = $this->workspace($r);
+        $credentials = $this->cms->credentials($w, true);
+        $settings = StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? $this->cms->settings($w);
 
-        return view('commerce::user.storefront', ['settings' => StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? $this->cms->settings($w), 'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(), 'domains' => StoreDomain::query()->where('workspace_id', $w)->get(), 'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(), 'menus' => StorefrontMenu::query()->where('workspace_id', $w)->get(), 'coupons' => Coupon::query()->where('workspace_id', $w)->get(), 'reviews' => ProductReview::query()->where('workspace_id', $w)->where('status', 'pending')->get(), 'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->limit(100)->get(), 'types' => CmsService::TYPES]);
+        return view('commerce::user.storefront', [
+            'settings' => $settings,
+            'credentials' => $credentials,
+            'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(),
+            'domains' => StoreDomain::query()->where('workspace_id', $w)->get(),
+            'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
+            'menus' => StorefrontMenu::query()->where('workspace_id', $w)->get(),
+            'defaultMenus' => [
+                'header' => $this->cms->defaultMenuItems('header'),
+                'footer' => $this->cms->defaultMenuItems('footer'),
+                'mobile' => $this->cms->defaultMenuItems('mobile'),
+            ],
+            'categories' => Category::query()->where('workspace_id', $w)->orderBy('name')->get(),
+            'brands' => Brand::query()->where('workspace_id', $w)->orderBy('name')->get(),
+            'coupons' => Coupon::query()->where('workspace_id', $w)->get(),
+            'reviews' => ProductReview::query()->where('workspace_id', $w)->where('status', 'pending')->get(),
+            'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->limit(100)->get(),
+            'types' => CmsService::TYPES,
+        ]);
+    }
+
+    private function redirectTab(Request $request, string $defaultTab, ?string $message = null, string $level = 'success'): RedirectResponse
+    {
+        $tab = (string) ($request->input('_tab') ?: $defaultTab);
+        session()->flash('storefront_tab', $tab);
+        $url = route('user.commerce.storefront.index').'?tab='.$tab.'#'.$tab;
+
+        $response = redirect()->to($url);
+        if ($message) {
+            $response->with($level, $message);
+        }
+
+        return $response;
     }
 
     public function settings(AdminRequest $r): RedirectResponse
     {
         $w = $this->workspace($r);
-        StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $r->validated('config')]);
+        $existing = (array) (StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? []);
+        $newConfig = $r->validated('config');
+        if (isset($existing['deployment'])) {
+            $newConfig['deployment'] = $existing['deployment'];
+        }
+        StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $newConfig]);
         $this->invalidate($w);
 
-        return back()->with('success', 'Settings saved.');
+        return $this->redirectTab($r, 'settings', 'Settings saved.');
+    }
+
+    public function generateCredentials(AdminRequest $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $target = (string) ($r->validated('target') ?? 'all');
+        $this->cms->rotateCredentials($w, $target);
+
+        return $this->redirectTab($r, 'deployment', $target === 'all' ? 'All storefront API secrets regenerated.' : 'Storefront secret key rotated.');
+    }
+
+    public function updateCredentials(AdminRequest $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $this->cms->saveDeploymentEndpoints($w, $r->validated());
+
+        return $this->redirectTab($r, 'deployment', 'Storefront deployment endpoints saved.');
     }
 
     public function editor(Request $r, int $id): View
     {
         $w = $this->workspace($r);
 
-        return view('commerce::user.storefront-page', ['page' => StorefrontPage::query()->where('workspace_id', $w)->findOrFail($id), 'sections' => StorefrontSection::query()->where('workspace_id', $w)->where('page_id', $id)->orderBy('position')->get(), 'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->limit(100)->get(), 'types' => CmsService::TYPES]);
+        return view('commerce::user.storefront-page', [
+            'page' => StorefrontPage::query()->where('workspace_id', $w)->findOrFail($id),
+            'sections' => StorefrontSection::query()->where('workspace_id', $w)->where('page_id', $id)->orderBy('position')->get(),
+            'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->limit(100)->get(),
+            'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
+            'categories' => Category::query()->where('workspace_id', $w)->orderBy('name')->get(),
+            'brands' => Brand::query()->where('workspace_id', $w)->orderBy('name')->get(),
+            'products' => Product::query()->where('workspace_id', $w)->where('status', 'active')->select(['id', 'name', 'slug', 'primary_media_id'])->with('primaryMedia')->latest()->limit(100)->get(),
+            'types' => CmsService::TYPES,
+        ]);
     }
 
     public function savePage(AdminRequest $r, ?int $id = null): RedirectResponse
     {
         $w = $this->workspace($r);
         $sections = array_map(fn ($s) => $this->cms->validateSection($s), $r->validated('sections'));
-        DB::transaction(function () use ($r, $id, $w, $sections): void {
+        $page = null;
+        DB::transaction(function () use ($r, $id, $w, $sections, &$page): void {
             $page = $id ? StorefrontPage::query()->where('workspace_id', $w)->findOrFail($id) : new StorefrontPage(['workspace_id' => $w]);
             abort_if(StorefrontPage::query()->where('workspace_id', $w)->where('slug', $r->input('slug'))->when($id, fn ($q) => $q->whereKeyNot($id))->exists(), 422, 'Page slug already exists.');
             $page->fill($r->safe()->only(['slug', 'title', 'seo']))->save();
@@ -71,7 +141,19 @@ class AdminController extends Controller
             }
         });
 
-        return redirect()->route('user.commerce.storefront.index')->with('success', 'Draft saved. Publish to update the storefront.');
+        if ($r->boolean('publish_now') && $page) {
+            $sectionRecords = StorefrontSection::query()->where('workspace_id', $w)->where('page_id', $page->id)->orderBy('position')->get()->toArray();
+            $page->update(['status' => 'published', 'published_at' => now(), 'published_content' => ['title' => $page->title, 'seo' => $page->seo, 'sections' => $sectionRecords]]);
+            $this->invalidate($w);
+
+            return redirect()->route('user.commerce.storefront.pages.edit', $page->id)->with('success', 'Page saved and published live to your storefront.');
+        }
+
+        if ($r->input('save_action') === 'stay' || $id) {
+            return redirect()->route('user.commerce.storefront.pages.edit', $page->id)->with('success', 'Page draft saved successfully.');
+        }
+
+        return redirect()->route('user.commerce.storefront.pages.edit', $page->id)->with('success', 'New page created! Start adding sections below.');
     }
 
     public function publish(AdminRequest $r, int $id): RedirectResponse
@@ -82,7 +164,22 @@ class AdminController extends Controller
         $p->update(['status' => 'published', 'published_at' => now(), 'published_content' => ['title' => $p->title, 'seo' => $p->seo, 'sections' => $sections]]);
         $this->invalidate($w);
 
+        if ($r->input('_tab') === 'pages' || str_contains($r->headers->get('referer', ''), 'commerce/storefront')) {
+            return $this->redirectTab($r, 'pages', 'Page published.');
+        }
+
         return back()->with('success', 'Page published.');
+    }
+
+    public function deletePage(AdminRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $p = StorefrontPage::query()->where('workspace_id', $w)->findOrFail($id);
+        abort_if($p->slug === 'home', 422, 'The home page cannot be deleted.');
+        $p->delete();
+        $this->invalidate($w);
+
+        return $this->redirectTab($r, 'pages', 'Page deleted.');
     }
 
     public function preview(AdminRequest $r, int $id): RedirectResponse
@@ -103,16 +200,23 @@ class AdminController extends Controller
         $s->fill($r->validated())->save();
         $this->invalidate($w);
 
-        return back()->with('success', 'Slider saved.');
+        session()->flash('storefront_slider', (string) $s->id);
+
+        return $this->redirectTab($r, 'sliders', 'Slider saved.');
     }
 
     public function menu(AdminRequest $r): RedirectResponse
     {
         $w = $this->workspace($r);
-        StorefrontMenu::query()->updateOrCreate(['workspace_id' => $w, 'slot' => $r->validated('slot')], ['items' => $r->validated('items')]);
+        $slot = $r->validated('slot');
+        StorefrontMenu::query()->updateOrCreate(['workspace_id' => $w, 'slot' => $slot], ['items' => $r->validated('items')]);
         $this->invalidate($w);
 
-        return back()->with('success', 'Menu saved.');
+        session()->flash('storefront_tab', 'menus');
+
+        return redirect()
+            ->to(route('user.commerce.storefront.index').'?tab=menus&slot='.$slot.'#menus')
+            ->with('success', 'Menu saved.');
     }
 
     public function addDomain(AdminRequest $r): RedirectResponse
@@ -122,7 +226,7 @@ class AdminController extends Controller
         $d = StoreDomain::query()->create(['workspace_id' => $this->workspace($r), 'host' => $host, 'verification_token' => Str::random(48)]);
         VerifyStoreDomainJob::dispatch($d->id);
 
-        return back()->with('success', 'Domain added. Configure DNS, then verify.');
+        return $this->redirectTab($r, 'domains', 'Domain added. Configure DNS, then verify.');
     }
 
     public function verifyDomain(AdminRequest $r, int $id): RedirectResponse
@@ -130,7 +234,7 @@ class AdminController extends Controller
         $d = StoreDomain::query()->where('workspace_id', $this->workspace($r))->findOrFail($id);
         VerifyStoreDomainJob::dispatch($d->id);
 
-        return back()->with('success', 'Verification queued.');
+        return $this->redirectTab($r, 'domains', 'Verification queued.');
     }
 
     public function primaryDomain(AdminRequest $r, int $id): RedirectResponse
@@ -143,7 +247,7 @@ class AdminController extends Controller
             $d->update(['is_primary' => true]);
         });
 
-        return back();
+        return $this->redirectTab($r, 'domains', 'Primary domain updated.');
     }
 
     private function workspacesLock(int $w): void
@@ -157,7 +261,7 @@ class AdminController extends Controller
         abort_if($d->is_primary || $d->type === 'system', 422, 'Keep the system domain and choose another primary before removing this domain.');
         $d->delete();
 
-        return back();
+        return $this->redirectTab($r, 'domains', 'Domain deleted.');
     }
 
     public function coupon(AdminRequest $r, ?int $id = null): RedirectResponse
@@ -166,14 +270,40 @@ class AdminController extends Controller
         $c = $id ? Coupon::query()->where('workspace_id', $w)->findOrFail($id) : new Coupon(['workspace_id' => $w]);
         $c->fill($r->validated())->save();
 
-        return back()->with('success', 'Coupon saved.');
+        return $this->redirectTab($r, 'coupons', 'Coupon saved.');
+    }
+
+    public function toggleCoupon(AdminRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $c = Coupon::query()->where('workspace_id', $w)->findOrFail($id);
+        if ($r->has('active')) {
+            $c->active = (bool) $r->input('active');
+        } else {
+            $c->active = ! $c->active;
+        }
+        $c->save();
+
+        return $this->redirectTab($r, 'coupons', 'Coupon status updated.');
+    }
+
+    public function deleteCoupon(AdminRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $c = Coupon::query()->where('workspace_id', $w)->findOrFail($id);
+        DB::transaction(function () use ($c): void {
+            CouponUsage::query()->where('coupon_id', $c->id)->delete();
+            $c->delete();
+        });
+
+        return $this->redirectTab($r, 'coupons', 'Coupon deleted successfully.');
     }
 
     public function review(AdminRequest $r, int $id): RedirectResponse
     {
         ProductReview::query()->where('workspace_id', $this->workspace($r))->findOrFail($id)->update($r->validated());
 
-        return back();
+        return $this->redirectTab($r, 'reviews', 'Review updated.');
     }
 
     public function content(AdminRequest $r, ?int $id = null): RedirectResponse
@@ -185,7 +315,7 @@ class AdminController extends Controller
         $record->save();
         $this->invalidate($w);
 
-        return back()->with('success', 'Content saved.');
+        return $this->redirectTab($r, 'content', 'Content saved.');
     }
 
     public function renameDomain(AdminRequest $r, int $id): RedirectResponse
@@ -195,7 +325,7 @@ class AdminController extends Controller
         abort_if(StoreDomain::query()->where('host', $host)->whereKeyNot($id)->exists(), 422, 'Handle is already in use.');
         $domain->update(['handle' => $r->validated('handle'), 'host' => $host]);
 
-        return back()->with('success', 'Store handle updated.');
+        return $this->redirectTab($r, 'domains', 'Store handle updated.');
     }
 
     private function invalidate(int $w): void

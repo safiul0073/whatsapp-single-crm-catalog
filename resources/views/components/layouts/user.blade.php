@@ -81,6 +81,9 @@
     {{-- Global Search Modal --}}
     <x-ui.global-search />
 
+    {{-- Global Confirmation Modal --}}
+    <x-ui.global-confirm />
+
     {{-- Modals & Drawers --}}
     @stack('modals')
     @stack('drawers')

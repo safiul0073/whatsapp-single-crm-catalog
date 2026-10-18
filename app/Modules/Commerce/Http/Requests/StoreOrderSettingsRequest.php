@@ -37,7 +37,17 @@ class StoreOrderSettingsRequest extends FormRequest
             'payment_methods.*.fields.*.name' => ['required', 'string', 'regex:/^[a-z][a-z0-9_]*$/', 'max:60'],
             'payment_methods.*.fields.*.label' => ['required', 'string', 'max:100'],
             'payment_methods.*.fields.*.required' => ['required', 'boolean'],
-            'whatsapp_notifications' => ['sometimes', 'boolean'], 'whatsapp_channel_id' => ['nullable', 'integer'], 'whatsapp_template_id' => ['nullable', 'integer'], 'owner_whatsapp_number' => ['nullable', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'], 'currency' => ['required', 'in:USD,BDT,EUR,GBP,CAD,AUD,JPY,KWD,BHD,OMR,CHF,SAR,AED,INR,SGD,NZD,CNY'], 'reservation_hours' => ['required', 'integer', 'min:1', 'max:168'], 'payment_instructions' => ['nullable', 'string', 'max:4000']];
+            'whatsapp_notifications' => ['sometimes', 'boolean'],
+            'whatsapp_channel_id' => ['nullable', 'integer'],
+            'whatsapp_template_id' => ['nullable', 'integer'],
+            'owner_whatsapp_number' => ['nullable', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'],
+            'currency' => ['required', 'in:USD,BDT,EUR,GBP,CAD,AUD,JPY,KWD,BHD,OMR,CHF,SAR,AED,INR,SGD,NZD,CNY'],
+            'reservation_hours' => ['required', 'integer', 'min:1', 'max:168'],
+            'payment_instructions' => ['nullable', 'string', 'max:4000'],
+            'order_number_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9#\-_ ]+$/'],
+            'order_number_digits' => ['nullable', 'integer', 'min:3', 'max:10'],
+            'next_order_sequence' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+        ];
     }
 
     public function after(): array

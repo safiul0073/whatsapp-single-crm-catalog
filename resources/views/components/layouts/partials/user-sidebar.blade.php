@@ -1,350 +1,15 @@
 @php
     $authUser = auth()->user();
     $siteName = 'WaPro';
-    $canSeeSidebarItem = function (?string $permission) use ($authUser): bool {
-        if (!$permission) {
-            return true;
-        }
+    $navigation = app(\App\Services\Navigation\WorkspaceNavigationRegistry::class)->forUser($authUser);
+    $modules = $navigation['modules'];
+    $activeModule = $navigation['active_module_data'];
+    $hasRouteContext = $navigation['has_route_context'];
 
-        $permissions = explode('|', $permission);
-
-        return $authUser->canAny($permissions);
-    };
-
-    $groups = [
-        [
-            'label' => __('Workspace'),
-            'items' => [
-                [
-                    'label' => __('Dashboard'),
-                    'route' => 'user.dashboard',
-                    'active' => 'user.dashboard',
-                    'icon' => 'ph-house',
-                    'permission' => 'workspace.view',
-                ],
-                [
-                    'label' => __('Inbox'),
-                    'route' => 'user.inbox.index',
-                    'active' => 'user.inbox.*',
-                    'icon' => 'ph-chat-text',
-                    'permission' => 'inbox.view|inbox.assigned_only',
-                ],
-                [
-                    'label' => __('Team & Members'),
-                    'route' => 'user.workspaces.team',
-                    'active' => 'user.workspaces.team*',
-                    'icon' => 'ph-users',
-                    'permission' => 'team.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Customers'),
-            'items' => [
-                [
-                    'label' => __('Contacts'),
-                    'route' => 'user.contacts.index',
-                    'active' => 'user.contacts.*',
-                    'icon' => 'ph-users-three',
-                    'permission' => 'contacts.view',
-                ],
-                [
-                    'label' => __('CRM'),
-                    'route' => 'user.crm.index',
-                    'active' => 'user.crm.*',
-                    'icon' => 'ph-kanban',
-                    'permission' => 'crm.view',
-                ],
-                [
-                    'label' => __('Generated Leads'),
-                    'route' => 'user.leads.index',
-                    'active' => 'user.leads.*',
-                    'icon' => 'ph-user-focus',
-                    'permission' => 'leads.view',
-                ],
-                [
-                    'label' => __('Groups'),
-                    'route' => 'user.groups.index',
-                    'active' => ['user.groups.*', 'user.segments.*'],
-                    'icon' => 'ph-folders',
-                    'permission' => 'contacts.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Campaigns'),
-            'items' => [
-                [
-                    'label' => __('Campaigns'),
-                    'route' => 'user.campaigns.index',
-                    'active' => 'user.campaigns.*',
-                    'icon' => 'ph-paper-plane-tilt',
-                    'permission' => 'campaigns.view',
-                ],
-                [
-                    'label' => __('Templates'),
-                    'route' => 'user.message-templates.index',
-                    'active' => 'user.message-templates.*',
-                    'icon' => 'ph-file-text',
-                    'permission' => 'templates.manage',
-                ],
-                [
-                    'label' => __('Auto Replies'),
-                    'route' => 'user.auto-replies.index',
-                    'active' => 'user.auto-replies.*',
-                    'icon' => 'ph-arrow-bend-up-left',
-                    'permission' => 'automations.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Automation'),
-            'items' => [
-                [
-                    'label' => __('Automations'),
-                    'route' => 'user.automations.index',
-                    'active' => 'user.automations.*',
-                    'icon' => 'ph-flow-arrow',
-                    'permission' => 'automations.manage',
-                ],
-                [
-                    'label' => __('Chatbots'),
-                    'route' => 'user.chatbots.index',
-                    'active' => [
-                        'user.chatbots.index',
-                        'user.chatbots.create',
-                        'user.chatbots.config',
-                        'user.chatbots.store',
-                        'user.chatbots.update',
-                        'user.chatbots.toggle',
-                        'user.chatbots.destroy',
-                        'user.chatbots.test',
-                    ],
-                    'icon' => 'ph-robot',
-                    'permission' => 'chatbots.manage',
-                ],
-                [
-                    'label' => __('Knowledge Bases'),
-                    'route' => 'user.knowledge-bases.index',
-                    'active' => 'user.knowledge-bases.*',
-                    'icon' => 'ph-books',
-                    'permission' => 'chatbots.manage',
-                ],
-                [
-                    'label' => __('Website Widgets'),
-                    'route' => 'user.chatbots.widgets.index',
-                    'active' => 'user.chatbots.widgets.*',
-                    'icon' => 'ph-browser',
-                    'permission' => 'chatbots.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Commerce'),
-            'items' => [
-                [
-                    'label' => __('POS'),
-                    'route' => 'user.commerce.pos.index',
-                    'active' => 'user.commerce.pos.*',
-                    'icon' => 'ph-cash-register',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Orders'),
-                    'route' => 'user.commerce.orders.index',
-                    'active' => ['user.commerce.orders.index', 'user.commerce.orders.show', 'user.commerce.orders.create', 'user.commerce.orders.packing-slip', 'user.commerce.orders.receipt'],
-                    'icon' => 'ph-package',
-                    'permission' => 'commerce.view',
-                ],
-                [
-                    'label' => __('Payment services'),
-                    'route' => 'user.commerce.payment-services.index',
-                    'active' => 'user.commerce.payment-services.*',
-                    'icon' => 'ph-credit-card',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Order settings'),
-                    'route' => 'user.commerce.orders.settings',
-                    'active' => 'user.commerce.orders.settings*',
-                    'icon' => 'ph-gear',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Products'),
-                    'route' => 'user.commerce.products.index',
-                    'active' => 'user.commerce.products.*',
-                    'icon' => 'ph-t-shirt',
-                    'permission' => 'commerce.view',
-                ],
-                [
-                    'label' => __('Meta Catalog'),
-                    'route' => 'user.commerce.catalog',
-                    'active' => 'user.commerce.catalog*',
-                    'icon' => 'ph-storefront',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Categories'),
-                    'route' => 'user.commerce.categories.index',
-                    'active' => 'user.commerce.categories.*',
-                    'icon' => 'ph-tree-structure',
-                    'permission' => 'commerce.view',
-                ],
-                [
-                    'label' => __('Brands'),
-                    'route' => 'user.commerce.brands.index',
-                    'active' => 'user.commerce.brands.*',
-                    'icon' => 'ph-seal-check',
-                    'permission' => 'commerce.view',
-                ],
-                [
-                    'label' => __('Audiences'),
-                    'route' => 'user.commerce.audiences.index',
-                    'active' => 'user.commerce.audiences.*',
-                    'icon' => 'ph-users-three',
-                    'permission' => 'commerce.view',
-                ],
-                [
-                    'label' => __('Variants & Sizes'),
-                    'route' => 'user.commerce.variants.index',
-                    'active' => 'user.commerce.variants.*',
-                    'icon' => 'ph-squares-four',
-                    'permission' => 'commerce.view',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Shipping Management'),
-            'items' => [
-                [
-                    'label' => __('Shipping Zones'),
-                    'route' => 'user.shipping.index',
-                    'active' => ['user.shipping.index', 'user.shipping.zones.*', 'user.shipping.rates.*'],
-                    'icon' => 'ph-globe-hemisphere-west',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Shipping Methods'),
-                    'route' => 'user.shipping.methods.index',
-                    'active' => 'user.shipping.methods.*',
-                    'icon' => 'ph-truck',
-                    'permission' => 'commerce.manage',
-                ],
-                [
-                    'label' => __('Settings'),
-                    'route' => 'user.shipping.settings',
-                    'active' => 'user.shipping.settings.*',
-                    'icon' => 'ph-gear',
-                    'permission' => 'commerce.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Channels'),
-            'items' => [
-                [
-                    'label' => __('All channels'),
-                    'route' => 'user.channels.index',
-                    'active' => 'user.channels.*',
-                    'icon' => 'ph-plugs-connected',
-                    'permission' => 'workspace.view',
-                ],
-                [
-                    'label' => __('WhatsApp Cloud'),
-                    'route' => 'user.whatsapp-cloud.channel-setup',
-                    'active' => 'user.whatsapp-cloud.*',
-                    'icon' => 'ph-whatsapp-logo',
-                    'permission' => 'channels.manage',
-                ],
-                [
-                    'label' => __('Social'),
-                    'route' => 'user.meta-social.setup',
-                    'active' => 'user.meta-social.*',
-                    'icon' => 'ph-share-network',
-                    'permission' => 'meta-social.manage',
-                ],
-                [
-                    'label' => __('Telegram'),
-                    'route' => 'user.telegram.index',
-                    'active' => 'user.telegram.*',
-                    'icon' => 'ph-telegram-logo',
-                    'permission' => 'telegram.manage',
-                ],
-                [
-                    'label' => __('Email'),
-                    'route' => 'user.email.index',
-                    'active' => 'user.email.*',
-                    'icon' => 'ph-envelope-simple',
-                    'permission' => 'email.manage',
-                ],
-                [
-                    'label' => __('SMS'),
-                    'route' => 'user.sms.index',
-                    'active' => 'user.sms.*',
-                    'icon' => 'ph-chat-text',
-                    'permission' => 'sms.manage',
-                ],
-                [
-                    'label' => __('Widgets'),
-                    'route' => 'user.social-widgets.library',
-                    'active' => 'user.social-widgets.*',
-                    'icon' => 'ph-squares-four',
-                    'permission' => 'meta-social.manage',
-                ],
-            ],
-        ],
-        [
-            'label' => __('Account'),
-            'items' => [
-                // ['label' => __('Subscription'), 'route' => 'user.subscription.show', 'active' => 'user.subscription.*', 'icon' => 'ph-credit-card', 'permission' => 'subscription.manage'],
-                [
-                    'label' => __('Media'),
-                    'route' => 'user.media.index',
-                    'active' => 'user.media.*',
-                    'icon' => 'ph-image-square',
-                    'permission' => 'workspace.view',
-                ],
-                [
-                    'label' => __('Activity Log'),
-                    'route' => 'user.audit-log.index',
-                    'active' => 'user.audit-log.*',
-                    'icon' => 'ph-list-magnifying-glass',
-                    'permission' => 'workspace.view',
-                ],
-                [
-                    'label' => __('Support'),
-                    'route' => 'user.support-tickets.index',
-                    'active' => 'user.support-tickets.*',
-                    'icon' => 'ph-question',
-                    'permission' => 'workspace.view',
-                ],
-                [
-                    'label' => __('Notifications'),
-                    'route' => 'user.system-notifications.index',
-                    'active' => 'user.system-notifications.*',
-                    'icon' => 'ph-bell',
-                    'permission' => 'workspace.view',
-                    'badge' => 'notifications',
-                ],
-            ],
-        ],
+    $coreWorkspaceRoutes = [
+        ['label' => __('CRM'), 'route' => 'user.crm.index'],
+        ['label' => __('Templates'), 'route' => 'user.message-templates.index'],
     ];
-
-    // Filter out groups with no visible items (due to disabled routes or missing permissions)
-    $filteredGroups = [];
-    foreach ($groups as $group) {
-        $visibleItems = [];
-        foreach ($group['items'] as $item) {
-            if (Route::has($item['route']) && $canSeeSidebarItem($item['permission'] ?? null)) {
-                $visibleItems[] = $item;
-            }
-        }
-        if (!empty($visibleItems)) {
-            $group['items'] = $visibleItems;
-            $filteredGroups[] = $group;
-        }
-    }
 @endphp
 
 <div id="appSidebarBackdrop" class="app-backdrop lg:hidden"></div>
@@ -357,13 +22,13 @@
                     class="h-9 w-9 shrink-0 rounded-md object-cover">
             @else
                 <span
-                    class="grid h-9 w-9 place-items-center rounded-md bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
+                    class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary text-neutral-0 shadow-[0_6px_16px_-6px_rgba(31,170,83,0.7)]">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" />
                     </svg>
                 </span>
             @endif
-            <span class="truncate font-title text-lg font-extrabold tracking-tight text-title">
+            <span class="app-sidebar__brand-text truncate font-title text-lg font-extrabold tracking-tight text-title">
                 {{ $siteName }}
             </span>
         </a>
@@ -375,22 +40,64 @@
         </button>
     </div>
 
+    @if (!empty($modules))
+        <div class="app-sidebar__modules" aria-label="{{ __('Switch module') }}">
+            <div class="flex flex-wrap gap-1.5">
+                @foreach ($modules as $module)
+                    <button type="button"
+                        class="app-sidebar__module-btn {{ $module['is_active'] ? 'is-active' : '' }}"
+                        data-module-switch="{{ $module['id'] }}"
+                        data-module-label="{{ $module['label'] }}"
+                        data-module-icon="{{ $module['icon'] }}"
+                        aria-label="{{ $module['label'] }}">
+                        <i class="ph {{ $module['icon'] }} text-sm"></i>
+                        <span>{{ $module['short_label'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <nav class="app-nav scrollbar-hide flex-1 overflow-y-auto px-3 py-4" aria-label="{{ __('Sidebar navigation') }}">
-        @foreach ($filteredGroups as $group)
-            <p class="app-nav__group">{{ $group['label'] }}</p>
-            <div class="space-y-0.5">
-                @foreach ($group['items'] as $item)
-                    <a href="{{ route($item['route']) }}"
-                        class="app-nav__link {{ request()->routeIs(...(array) $item['active']) ? 'is-active' : '' }}"
-                        aria-label="{{ $item['label'] }}">
-                        <span class="relative inline-grid place-items-center">
-                            <i class="ph {{ $item['icon'] }} text-xl"></i>
-                            @if (($item['badge'] ?? null) === 'notifications' && ($sidebarUnreadCount ?? 0) > 0)
-                                <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-error"></span>
-                            @endif
-                        </span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
+        <div id="appSidebarFavorites" class="app-nav__favorites is-hidden mb-3 border-b border-neutral-100 pb-3">
+            <p class="app-nav__group">{{ __('Favorites') }}</p>
+            <div id="appSidebarFavoritesList" class="space-y-0.5"></div>
+        </div>
+
+        @foreach ($modules as $module)
+            <div class="app-nav__module-panel {{ ($module['is_active'] || ! $hasRouteContext) ? '' : 'is-hidden' }}"
+                data-module-panel="{{ $module['id'] }}">
+                @foreach ($module['groups'] as $group)
+                    <p class="app-nav__group">{{ $group['label'] }}</p>
+                    <div class="space-y-0.5">
+                        @foreach ($group['items'] as $item)
+                            <div class="app-nav__item group/nav relative flex items-center">
+                                <a href="{{ $item['url'] }}"
+                                    class="app-nav__link flex-1 {{ $item['is_active'] ? 'is-active' : '' }}"
+                                    aria-label="{{ $item['label'] }}"
+                                    data-nav-route="{{ $item['route'] }}"
+                                    data-nav-label="{{ $item['label'] }}"
+                                    data-nav-icon="{{ $item['icon'] }}"
+                                    data-nav-module="{{ $module['id'] }}">
+                                    <span class="relative inline-grid shrink-0 place-items-center">
+                                        <i class="ph {{ $item['icon'] }} text-xl"></i>
+                                        @if (($item['badge'] ?? null) === 'notifications' && ($sidebarUnreadCount ?? 0) > 0)
+                                            <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-error"></span>
+                                        @endif
+                                    </span>
+                                    <span class="app-nav__text truncate">{{ $item['label'] }}</span>
+                                </a>
+                                <button type="button"
+                                    class="app-nav__pin"
+                                    data-action="toggle-favorite"
+                                    data-fav-route="{{ $item['route'] }}"
+                                    aria-label="{{ __('Pin to favorites') }}"
+                                    title="{{ __('Pin to favorites') }}">
+                                    <i class="ph ph-push-pin text-xs"></i>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
                 @endforeach
             </div>
         @endforeach
@@ -402,11 +109,11 @@
                 class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-deep text-sm font-bold text-neutral-0">
                 {{ strtoupper(substr($authUser->name ?? 'U', 0, 2)) }}
             </span>
-            <div class="min-w-0 flex-1">
+            <div class="app-sidebar__user-meta min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-title">{{ $authUser->name ?? __('User') }}</p>
                 <p class="truncate text-xs text-body">{{ $authUser->email ?? '' }}</p>
             </div>
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" class="app-sidebar__logout">
                 @csrf
                 <button type="submit"
                     class="grid h-8 w-8 shrink-0 place-items-center rounded-sm text-body transition-colors hover:bg-neutral-100 hover:text-error"

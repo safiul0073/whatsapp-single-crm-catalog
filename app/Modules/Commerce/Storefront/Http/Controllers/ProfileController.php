@@ -33,8 +33,13 @@ class ProfileController extends Controller
     public function saveAddress(ProfileRequest $r, ?int $id = null): JsonResponse
     {
         $c = $r->attributes->get('store_customer');
-        $a = $id ? $this->addressesQuery($r)->findOrFail($id) : new CustomerAddress(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id]);
+        $isFirst = ! $this->addressesQuery($r)->exists();
+        $a = $id ? $this->addressesQuery($r)->findOrFail($id) : new CustomerAddress(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id, 'is_default' => $isFirst]);
         $a->fill($r->validated())->save();
+
+        if ($a->is_default || $isFirst) {
+            $this->syncContactAddress($c, $a->address);
+        }
 
         return response()->json(['data' => $a]);
     }
@@ -54,9 +59,30 @@ class ProfileController extends Controller
             $a = $this->addressesQuery($r)->findOrFail($id);
             $this->addressesQuery($r)->update(['is_default' => false]);
             $a->update(['is_default' => true]);
+            $this->syncContactAddress($c, $a->address);
         });
 
         return $this->addresses($r);
+    }
+
+    private function syncContactAddress($customer, ?array $address): void
+    {
+        $contact = $customer->contact;
+        if (! $contact || ! is_array($address)) {
+            return;
+        }
+
+        $contactData = [];
+        if (! empty($address['city'])) {
+            $contactData['city'] = $address['city'];
+        }
+        if (! empty($address['country'])) {
+            $contactData['country'] = $address['country'];
+        }
+        $customFields = $contact->custom_fields ?? [];
+        $customFields['address'] = $address;
+        $contactData['custom_fields'] = $customFields;
+        $contact->update($contactData);
     }
 
     private function addressesQuery(Request $r): Builder

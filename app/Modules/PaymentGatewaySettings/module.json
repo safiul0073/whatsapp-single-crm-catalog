@@ -8,5 +8,5 @@
         "App\\Modules\\PaymentGatewaySettings\\Providers\\PaymentGatewaySettingsServiceProvider"
     ],
     "requires": [],
-    "active": false
+    "active": true
 }

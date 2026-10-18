@@ -72,10 +72,18 @@
                             <span class="text-sm text-body">{{ $order->boxes->count() }} {{ __('packs') }} · {{ $packedPieces }} {{ __('pieces') }}</span>
                         </div>
                         @foreach($packProductGroups as $productBoxes)
-                            @php($packProducts = $productBoxes->flatMap->contents->map->item->unique($productKey))
-                            <div class="space-y-3" data-pack-product-group>
+                            @php $packProducts = $productBoxes->flatMap->contents->map->item->unique($productKey); @endphp
+                                @php
+                                    $customPackSnapshot = $productBoxes->first()?->group?->pack_snapshot;
+                                    $customPackName = $customPackSnapshot['name'] ?? null;
+                                @endphp
                                 <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-soft pb-3">
-                                    <h3 class="text-sm font-semibold leading-snug text-title">{{ $packProducts->count() === 1 ? $packProducts->first()->product_name : __('Mixed products') }}</h3>
+                                    <h3 class="text-sm font-semibold leading-snug text-title flex items-center gap-1.5">
+                                        @if($customPackName)
+                                            <span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-950 dark:text-indigo-300">{{ $customPackName }}</span>
+                                        @endif
+                                        <span>{{ $packProducts->count() === 1 ? $packProducts->first()->product_name : __('Mixed products') }}</span>
+                                    </h3>
                                     @if($packProductGroups->count() > 1)
                                         <span class="text-xs text-body">{{ $productBoxes->count() }} {{ __('packs') }} · {{ $productBoxes->flatMap->contents->sum('quantity') }} {{ __('pieces') }}</span>
                                     @endif
@@ -85,7 +93,7 @@
                                         <article class="min-w-0 space-y-3 rounded-md border border-border-soft bg-bg-elevated p-4" data-pack-card data-pack-id="{{ $box->id }}">
                                             <div class="divide-y divide-border-soft">
                                                 @foreach($box->contents->groupBy(fn ($content) => $productKey($content->item).'|'.($content->item->attributes['color'] ?? ''))->map(fn ($contents) => $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)) as $productColorContents)
-                                                    @php($packItem = $productColorContents->first()->item)
+                                                    @php $packItem = $productColorContents->first()->item; @endphp
                                                     <div class="space-y-3 py-3 first:pt-0 last:pb-0">
                                                         <div class="flex items-center gap-3">
                                                             @include('commerce::user.partials.order-product-image', ['item' => $packItem])
@@ -137,7 +145,7 @@
                                 <h3 class="border-b border-border-soft pb-3 text-sm font-semibold leading-snug text-title">{{ $productItems->first()->product_name }}</h3>
                                 <div class="grid gap-3 md:grid-cols-2">
                                     @foreach($productItems as $item)
-                                        @php($remainingQuantity = $item->quantity - ($packedQuantities[$item->id] ?? 0))
+                                        @php $remainingQuantity = $item->quantity - ($packedQuantities[$item->id] ?? 0); @endphp
                                         <article class="min-w-0 space-y-4 rounded-md border border-border-soft bg-bg-elevated p-4" data-order-item="{{ $item->id }}">
                                             <div class="flex items-center gap-3">
                                                 @include('commerce::user.partials.order-product-image', ['item' => $item])
@@ -188,12 +196,48 @@
                     </dl>
                 </section>
 
-                <section class="section-card space-y-2 text-sm">
-                    <h2 class="heading-5 text-title">{{ __('Customer') }}</h2>
-                    <p class="text-title">{{ $order->contact?->name ?? $order->customer_snapshot['name'] ?? $address['name'] ?? '—' }}</p>
-                    <p class="text-body">{{ $order->contact?->phone ?? ($address['phone'] ?? '') }}</p>
+                @php
+                    $contactPerson = $order->contact;
+                    $contactAddr = ($customerAddresses ?? collect())->firstWhere('is_default', true)?->address 
+                        ?? ($contactPerson?->custom_fields['address'] ?? null) 
+                        ?? ($order->customer_snapshot['address'] ?? null)
+                        ?? $address 
+                        ?? [];
+                    $customerName = $contactPerson?->name ?? ($order->customer_snapshot['name'] ?? ($address['name'] ?? ''));
+                    $customerPhone = $contactPerson?->phone ?? ($order->customer_snapshot['phone'] ?? ($address['phone'] ?? ''));
+                    $customerEmail = $contactPerson?->email ?? ($order->customer_snapshot['email'] ?? ($address['email'] ?? ''));
+                @endphp
+                <section class="section-card space-y-3 text-sm">
+                    <div class="flex items-center justify-between">
+                        <h2 class="heading-5 text-title">{{ __('Customer') }}</h2>
+                        @can('commerce.manage')
+                        <button type="button" class="btn btn-outline btn-sm rounded-sm text-xs py-1 px-2.5" data-modal-open="editCustomerModal">
+                            <i class="ph ph-pencil-simple"></i> {{ __('Edit Contact') }}
+                        </button>
+                        @endcan
+                    </div>
+                    <div class="space-y-1">
+                        <p class="font-medium text-title">{{ $customerName ?: '—' }}</p>
+                        @if($customerPhone)<p class="text-body flex items-center gap-1.5"><i class="ph ph-phone text-muted"></i>{{ $customerPhone }}</p>@endif
+                        @if($customerEmail)<p class="text-body flex items-center gap-1.5"><i class="ph ph-envelope-simple text-muted"></i>{{ $customerEmail }}</p>@endif
+                    </div>
+                    <div class="border-t border-border pt-2 space-y-0.5">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-muted mb-1">{{ __('Contact Address') }}</p>
+                        @if(!empty($contactAddr) && (filled($contactAddr['line1'] ?? null) || filled($contactAddr['city'] ?? null)))
+                            @if(filled($contactAddr['line1'] ?? null))<p class="text-body">{{ $contactAddr['line1'] }}@if(filled($contactAddr['line2'] ?? null)), {{ $contactAddr['line2'] }}@endif</p>@endif
+                            @php
+                                $cityStateZip = collect([$contactAddr['city'] ?? null, $contactAddr['state'] ?? null, $contactAddr['postal_code'] ?? null])->filter()->implode(', ');
+                            @endphp
+                            @if(filled($cityStateZip))<p class="text-body">{{ $cityStateZip }}</p>@endif
+                            @if(filled($contactAddr['country'] ?? null))<p class="text-body">{{ $contactAddr['country'] }}</p>@endif
+                        @else
+                            <p class="text-xs text-muted">{{ __('No contact address saved.') }}</p>
+                        @endif
+                    </div>
                     @if($order->conversation)
-                        <a href="{{ route('user.inbox.index', ['conversation' => $order->conversation->id]) }}" class="text-primary"><i class="ph ph-chat-circle"></i> {{ __('Open conversation') }}</a>
+                        <div class="pt-1">
+                            <a href="{{ route('user.inbox.index', ['conversation' => $order->conversation->id]) }}" class="text-primary hover:underline inline-flex items-center gap-1"><i class="ph ph-chat-circle"></i> {{ __('Open conversation') }}</a>
+                        </div>
                     @endif
                 </section>
 
@@ -250,5 +294,65 @@
             </aside>
         </div>
         @include('commerce::user.partials.order-product-gallery')
+
+        @can('commerce.manage')
+        <x-ui.modal id="editCustomerModal" :title="__('Edit Customer Contact & Address')">
+            <form method="POST" action="{{ route('user.commerce.orders.customer.update', $order) }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label for="edit_customer_name" class="form-label">{{ __('Name') }} <span class="text-error">*</span></label>
+                        <input id="edit_customer_name" type="text" name="name" class="form-input" value="{{ old('name', $customerName) }}" required>
+                    </div>
+                    <div>
+                        <label for="edit_customer_phone" class="form-label">{{ __('Phone') }}</label>
+                        <input id="edit_customer_phone" type="text" name="phone" class="form-input" value="{{ old('phone', $customerPhone) }}">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="edit_customer_email" class="form-label">{{ __('Email') }}</label>
+                        <input id="edit_customer_email" type="email" name="email" class="form-input" value="{{ old('email', $customerEmail) }}">
+                    </div>
+                </div>
+                <div class="border-t border-border pt-3">
+                    <h4 class="font-medium text-title text-sm mb-3">{{ __('Contact Address') }}</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="edit_customer_line1" class="form-label">{{ __('Address Line 1') }}</label>
+                            <input id="edit_customer_line1" type="text" name="address_line1" class="form-input" value="{{ old('address_line1', $contactAddr['line1'] ?? '') }}" placeholder="{{ __('Street address, P.O. Box') }}">
+                        </div>
+                        <div>
+                            <label for="edit_customer_line2" class="form-label">{{ __('Address Line 2') }}</label>
+                            <input id="edit_customer_line2" type="text" name="address_line2" class="form-input" value="{{ old('address_line2', $contactAddr['line2'] ?? '') }}" placeholder="{{ __('Apartment, suite, unit, building, floor') }}">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="edit_customer_city" class="form-label">{{ __('City') }}</label>
+                                <input id="edit_customer_city" type="text" name="city" class="form-input" value="{{ old('city', $contactAddr['city'] ?? '') }}">
+                            </div>
+                            <div>
+                                <label for="edit_customer_state" class="form-label">{{ __('State / Province') }}</label>
+                                <input id="edit_customer_state" type="text" name="state" class="form-input" value="{{ old('state', $contactAddr['state'] ?? '') }}">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="edit_customer_postal_code" class="form-label">{{ __('Postal / ZIP Code') }}</label>
+                                <input id="edit_customer_postal_code" type="text" name="postal_code" class="form-input" value="{{ old('postal_code', $contactAddr['postal_code'] ?? '') }}">
+                            </div>
+                            <div>
+                                <label for="edit_customer_country" class="form-label">{{ __('Country') }}</label>
+                                <input id="edit_customer_country" type="text" name="country" class="form-input" value="{{ old('country', $contactAddr['country'] ?? '') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn btn-outline btn-sm" data-modal-close="editCustomerModal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary btn-sm">{{ __('Save changes') }}</button>
+                </div>
+            </form>
+        </x-ui.modal>
+        @endcan
     </div>
 </x-layouts.user>

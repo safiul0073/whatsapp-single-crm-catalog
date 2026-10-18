@@ -30,11 +30,15 @@ Alpine.data("bulkActions", (config = {}) => ({
   async bulkDelete() {
     if (!this.deleteAction || this.selectedIds.length === 0) return;
 
-    if (
-      !confirm(
-        `Are you sure you want to delete ${this.count} selected record(s)? This action cannot be undone.`,
-      )
-    ) {
+    const confirmed = await window.requestConfirm?.({
+      title: "Delete Selected Records?",
+      message: `Are you sure you want to delete ${this.count} selected record(s)? This action cannot be undone.`,
+      confirmText: "Yes, Delete",
+      variant: "danger",
+      icon: "ph-trash",
+    });
+
+    if (!confirmed) {
       return;
     }
 

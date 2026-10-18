@@ -35,7 +35,7 @@ class CheckoutController extends Controller
         $s = $this->carts->summary($cart);
         abort_unless(count($s['items']) > 0 && ! $s['warnings'], 422, 'Review unavailable items in your cart.');
         $a = CustomerAddress::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->findOrFail($r->integer('address_id'));
-        $data = ['source' => 'storefront_checkout', 'draft' => false, 'contact_id' => $c->contact_id, 'customer_reference' => 'storefront:'.$c->id, 'shipping_address' => $a->address, 'shipping_method_id' => $r->input('shipping_method_id'), 'groups' => array_map(fn ($i) => ['product_id' => $i['product_id'], 'variant_id' => $i['variant_id'], 'mode' => 'retail', 'quantity' => $i['quantity']], $s['items'])];
+        $data = ['source' => 'storefront_checkout', 'draft' => false, 'contact_id' => $c->contact_id, 'customer_reference' => 'storefront:'.$c->id, 'shipping_address' => $a->address, 'shipping_method_id' => $r->input('shipping_method_id'), 'groups' => $this->carts->checkoutGroups($cart)];
         if ($cart->coupon_code) {
             $data['adjustments'] = [['type' => 'coupon', 'amount' => $s['discount'], 'currency' => $s['currency'], 'reference' => $cart->coupon_code]];
         }

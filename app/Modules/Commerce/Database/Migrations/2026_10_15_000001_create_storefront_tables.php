@@ -110,6 +110,31 @@ return new class extends Migration
             $t->timestamp('completed_at')->nullable();
             $t->timestamps();
         });
+        Schema::create('commerce_pack_templates', function (Blueprint $t): void {
+            $t->id();
+            $t->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
+            $t->string('name');
+            $t->text('description')->nullable();
+            $t->boolean('published')->default(false);
+            $t->unsignedInteger('position')->default(0);
+            $t->json('product_ids');
+            foreach (['min_pieces', 'min_products', 'min_colors', 'min_sizes', 'min_variant_quantity'] as $field) {
+                $t->unsignedInteger($field)->default(1);
+            }
+            $t->unsignedInteger('max_pieces')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('commerce_cart_groups', function (Blueprint $t): void {
+            $t->id();
+            $t->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
+            $t->foreignId('cart_id')->constrained('commerce_carts')->cascadeOnDelete();
+            $t->json('selection');
+            $t->string('request_key', 36)->nullable();
+            $t->string('request_hash', 64)->nullable();
+            $t->timestamp('removed_at')->nullable();
+            $t->unique(['cart_id', 'request_key']);
+            $t->timestamps();
+        });
         Schema::create('commerce_cart_items', function (Blueprint $t): void {
             $t->id();
             $t->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
@@ -118,7 +143,8 @@ return new class extends Migration
             $t->foreignId('variant_id')->constrained('commerce_product_variants');
             $t->unsignedInteger('quantity');
             $t->decimal('price_snapshot', 18, 4)->default(0);
-            $t->unique(['cart_id', 'variant_id']);
+            $t->foreignId('group_id')->nullable()->constrained('commerce_cart_groups')->cascadeOnDelete();
+            $t->unique(['cart_id', 'group_id', 'variant_id']);
             $t->timestamps();
         });
         Schema::create('commerce_coupons', function (Blueprint $t): void {
@@ -202,6 +228,8 @@ return new class extends Migration
         Schema::dropIfExists('commerce_coupon_usages');
         Schema::dropIfExists('commerce_coupons');
         Schema::dropIfExists('commerce_cart_items');
+        Schema::dropIfExists('commerce_cart_groups');
+        Schema::dropIfExists('commerce_pack_templates');
         Schema::dropIfExists('commerce_carts');
         Schema::dropIfExists('commerce_customer_addresses');
         Schema::dropIfExists('commerce_customers');

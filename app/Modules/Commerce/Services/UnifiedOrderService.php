@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Storefront\Services\PackSelectionService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Services\ShippingCalculatorService;
@@ -51,7 +52,7 @@ class UnifiedOrderService
                 if (isset($selection['ratio']) || isset($selection['pack_sizes'])) {
                     $this->invalid('groups', 'Box contents are configured by the store.');
                 }
-                if (array_key_exists('size_quantities', $selection) && ($data['source'] ?? null) !== 'pos') {
+                if (array_key_exists('size_quantities', $selection) && ($data['source'] ?? null) !== 'pos' && ! isset($selection['pack_snapshot'])) {
                     $this->invalid('groups', 'Custom pack contents are only available in the POS.');
                 }
                 $colorId = (int) $selection['color_id'];
@@ -69,7 +70,10 @@ class UnifiedOrderService
                 }
                 $editablePackContents = is_array($customSizeQuantities);
                 $multiplier = $editablePackContents ? 1 : max(1, (int) $product->ws_ratio_multiplier);
-                if ($editablePackContents) {
+                if (isset($selection['pack_snapshot'])) {
+                    $group['pack_snapshot'] = $selection['pack_snapshot'];
+                }
+                if ($editablePackContents && ! isset($selection['pack_snapshot'])) {
                     $minimumSizes = max(1, (int) ($product->ws_min_sizes ?? 1));
                     $colorMoq = max(1, (int) ($product->ws_color_moq ?? 1));
                     if (count($ratio) < $minimumSizes) {
@@ -100,10 +104,11 @@ class UnifiedOrderService
         foreach (collect($groups)->where('mode', 'wholesale')->groupBy('product_id') as $productId => $productGroups) {
             $product = Product::query()->with('tierPrices')->findOrFail($productId);
             $quantity = $productGroups->sum('quantity');
-            if ($quantity < max(1, (int) $product->ws_main_moq)) {
+            $standardGroups = $productGroups->filter(fn ($g) => empty($g['pack_snapshot']));
+            if ($standardGroups->isNotEmpty() && $standardGroups->sum('quantity') < max(1, (int) $product->ws_main_moq)) {
                 $this->invalid('groups', "{$product->name} requires at least {$product->ws_main_moq} pieces.");
             }
-            foreach ($productGroups->groupBy('color_id') as $colorGroups) {
+            foreach ($standardGroups->groupBy('color_id') as $colorGroups) {
                 if ($colorGroups->sum('quantity') < max(1, (int) $product->ws_color_moq)) {
                     $this->invalid('groups', 'The selected color does not meet its minimum quantity.');
                 }
@@ -145,7 +150,7 @@ class UnifiedOrderService
         if (($data['source'] ?? null) === 'pos' && collect($availability)->contains(fn (array $stock): bool => $stock['required'] > $stock['available'])) {
             $this->invalid('groups', 'One or more selected sizes do not have enough available stock.');
         }
-        if (collect($groups)->sum('box_count') > 500) {
+        if (app(PackSelectionService::class)->physicalBoxCount($groups) > 500) {
             $this->invalid('groups', 'An order can contain at most 500 boxes.');
         }
         $discount = 0;
@@ -190,10 +195,11 @@ class UnifiedOrderService
             $walkIn = ($data['source'] ?? null) === 'pos' && ($data['walk_in'] ?? false);
             $contact = $walkIn ? null : (isset($data['contact_id']) ? Contact::query()->where('workspace_id', $workspace->id)->findOrFail($data['contact_id']) : $this->orderContact($workspace, $data));
             $draft = $data['draft'] ?? false;
+            $orderNumber = ! empty($data['number']) ? $data['number'] : $this->generateOrderNumber($workspace);
             $order = Order::query()->create([
                 'workspace_id' => $workspace->id, 'contact_id' => $contact?->id,
                 'source' => $data['source'] ?? 'manual', 'submission_reference' => $data['submission_reference'], 'payload_hash' => $hash,
-                'customer_reference' => $data['customer_reference'] ?? null, 'customer_snapshot' => $walkIn ? ['name' => 'Walk-in customer'] : (isset($data['contact_id']) ? $contact->only(['name', 'phone', 'email']) : $data['customer']), 'number' => 'ORD-'.Str::upper(Str::random(12)),
+                'customer_reference' => $data['customer_reference'] ?? null, 'customer_snapshot' => $walkIn ? ['name' => 'Walk-in customer'] : (isset($data['contact_id']) ? $contact->only(['name', 'phone', 'email']) : $data['customer']), 'number' => $orderNumber,
                 'conversation_id' => $data['conversation_id'] ?? null, 'channel_account_id' => $data['channel_account_id'] ?? null, 'provider_message_id' => $data['provider_message_id'] ?? null, 'catalog_id' => $data['catalog_id'] ?? null, 'issues' => $data['issues'] ?? [], 'provider_payload' => array_replace($data['provider_payload'] ?? [], ['checkout_quote' => ['weight' => $preview['weight'], 'chargeable_weight_kg' => $preview['chargeable_weight_kg']]]),
                 'tracking_code' => 'TRK-'.Str::upper(Str::random(24)), 'status' => $draft ? 'draft' : (! empty($data['issues']) ? 'needs_details' : ($preview['shipping_quote_required'] ? 'requested' : 'awaiting_payment')),
                 'currency' => $preview['currency'], 'subtotal' => $preview['subtotal'], 'discount_amount' => $preview['discount_amount'], 'adjustments' => $data['adjustments'] ?? [],
@@ -233,6 +239,7 @@ class UnifiedOrderService
 
     private function saveGroups(Order $order, array $groups, int $workspaceId): void
     {
+        $customBoxes = [];
         foreach ($groups as $snapshot) {
             $group = $order->groups()->create(collect($snapshot)->except('items')->all());
             $saved = [];
@@ -240,7 +247,17 @@ class UnifiedOrderService
                 $saved[] = $order->items()->create(array_merge($item, ['workspace_id' => $workspaceId, 'group_id' => $group->id, 'product_name' => $snapshot['product_name']]));
             }
             for ($index = 0; $index < $group->box_count; $index++) {
-                $box = $order->boxes()->create(['group_id' => $group->id, 'label' => $order->number.'-BOX-'.($order->boxes()->count() + 1), 'kind' => 'wholesale']);
+                $packKey = null;
+                if (isset($snapshot['pack_snapshot'])) {
+                    $instanceKey = $snapshot['pack_snapshot']['cart_group_id']
+                        ?? $snapshot['pack_snapshot']['pack_instance_id']
+                        ?? (($snapshot['pack_snapshot']['template_id'] ?? 'custom').':'.json_encode($snapshot['pack_snapshot']['selection'] ?? []));
+                    $packKey = $instanceKey.':'.$index;
+                }
+                $box = $packKey && isset($customBoxes[$packKey]) ? $customBoxes[$packKey] : $order->boxes()->create(['group_id' => $group->id, 'label' => $order->number.'-BOX-'.($order->boxes()->count() + 1), 'kind' => 'wholesale']);
+                if ($packKey) {
+                    $customBoxes[$packKey] = $box;
+                }
                 foreach ($saved as $item) {
                     $box->contents()->create(['order_item_id' => $item->id, 'quantity' => intdiv($item->quantity, $group->box_count)]);
                 }
@@ -258,28 +275,117 @@ class UnifiedOrderService
 
     public function payload(Order $order): array
     {
-        $order->loadMissing(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'groups', 'boxes.contents.item', 'events', 'shipment']);
-        $imageUrlByItemId = $order->items->mapWithKeys(fn (OrderItem $item): array => [
-            $item->id => ($item->variant?->color?->swatchMedia ?? $item->variant?->product?->primaryMedia)?->url,
+        $order->loadMissing([
+            'items.variant.media',
+            'items.variant.color.swatchMedia',
+            'items.variant.product.primaryMedia',
+            'items.variant.product.gallery.media',
+            'groups',
+            'boxes.contents.item',
+            'events',
+            'shipment',
         ]);
 
-        $payload = array_merge($order->only(['id', 'number', 'source', 'submission_reference', 'status', 'currency', 'subtotal', 'discount_amount', 'adjustments', 'shipping_amount', 'shipping_quote_required', 'total', 'payment_state', 'payment_instructions', 'tracking_code', 'tracking_number', 'tracking_url', 'shipping_address']), ['items' => $order->items->toArray(), 'groups' => $order->groups->toArray(), 'boxes' => $order->boxes->toArray(), 'shipment' => $order->shipment?->toArray(), 'timeline' => $order->trackingTimeline()]);
+        $metaByItemId = $order->items->mapWithKeys(function (OrderItem $item): array {
+            $variant = $item->variant;
+            $product = $variant?->product;
+            $color = $variant?->color;
+            $colorImageUrl = $variant?->media?->url
+                ?? $color?->swatchMedia?->url
+                ?? ($product && $variant?->color_id ? $product->gallery->firstWhere('color_id', $variant->color_id)?->media?->url : null)
+                ?? $product?->primaryMedia?->url
+                ?? $product?->gallery->first()?->media?->url;
+            $productImageUrl = $product?->primaryMedia?->url ?? $colorImageUrl;
+
+            return [
+                $item->id => [
+                    'image_url' => $colorImageUrl,
+                    'product_image_url' => $productImageUrl,
+                    'product_slug' => $product?->slug,
+                    'color_id' => $variant?->color_id,
+                    'color_name' => $color?->display_name ?? $color?->name ?? ($item->attributes['color'] ?? null),
+                    'color_hex' => $color?->hex_code,
+                    'size' => $variant?->size ?? ($item->attributes['size'] ?? null),
+                ],
+            ];
+        });
+
+        $payload = array_merge(
+            $order->only([
+                'id',
+                'number',
+                'source',
+                'submission_reference',
+                'status',
+                'currency',
+                'subtotal',
+                'discount_amount',
+                'adjustments',
+                'shipping_amount',
+                'shipping_quote_required',
+                'delivery_method',
+                'total',
+                'payment_state',
+                'payment_instructions',
+                'tracking_code',
+                'tracking_number',
+                'tracking_url',
+                'shipping_address',
+                'customer_snapshot',
+            ]),
+            [
+                'created_at' => $order->created_at?->toIso8601String(),
+                'items' => $order->items->toArray(),
+                'groups' => $order->groups->toArray(),
+                'boxes' => $order->boxes->toArray(),
+                'shipment' => $order->shipment?->toArray(),
+                'timeline' => $order->trackingTimeline(),
+            ]
+        );
         $precision = (new StoreOrderSetting(['currency' => $order->currency]))->precision();
         foreach (['subtotal', 'discount_amount', 'shipping_amount', 'total'] as $field) {
             if ($payload[$field] !== null) {
                 $payload[$field] = OrderMoney::decimal(OrderMoney::minor($payload[$field], $precision), $precision);
             }
         }
-        $payload['items'] = array_map(function (array $item) use ($precision, $imageUrlByItemId): array {
+        $payload['items'] = array_map(function (array $item) use ($precision, $metaByItemId): array {
             foreach (['unit_price', 'line_total'] as $field) {
                 $item[$field] = OrderMoney::decimal(OrderMoney::minor($item[$field], $precision), $precision);
             }
             unset($item['variant']);
-            $item['image_url'] = $imageUrlByItemId[$item['id']] ?? null;
+            $meta = $metaByItemId[$item['id']] ?? [];
+            $item['image_url'] = $meta['image_url'] ?? null;
+            $item['product_image_url'] = $meta['product_image_url'] ?? null;
+            $item['product_slug'] = $meta['product_slug'] ?? null;
+            $item['color_id'] = $meta['color_id'] ?? null;
+            $item['color_name'] = $meta['color_name'] ?? ($item['attributes']['color'] ?? null);
+            $item['color_hex'] = $meta['color_hex'] ?? null;
+            $item['size'] = $meta['size'] ?? ($item['attributes']['size'] ?? null);
 
             return $item;
         }, $payload['items']);
         $itemsById = collect($payload['items'])->keyBy('id');
+        $itemsByGroupId = collect($payload['items'])->groupBy('group_id');
+        $payload['groups'] = array_map(function (array $group) use ($itemsByGroupId, $precision): array {
+            $groupItems = $itemsByGroupId->get($group['id'], collect());
+            $firstItem = $groupItems->first();
+            $sizeBreakdown = [];
+            foreach ($groupItems as $gi) {
+                $sz = (string) ($gi['size'] ?? $gi['attributes']['size'] ?? 'STD');
+                $sizeBreakdown[$sz] = ($sizeBreakdown[$sz] ?? 0) + (int) ($gi['quantity'] ?? 0);
+            }
+            $groupMinorTotal = $groupItems->sum(fn (array $gi): int => OrderMoney::minor($gi['line_total'], $precision));
+            $group['product_slug'] = $firstItem['product_slug'] ?? null;
+            $group['product_image_url'] = $firstItem['product_image_url'] ?? $firstItem['image_url'] ?? null;
+            $group['color_image_url'] = $firstItem['image_url'] ?? null;
+            $group['color_hex'] = $firstItem['color_hex'] ?? null;
+            $group['color_name'] = $group['color_name'] ?? $firstItem['color_name'] ?? null;
+            $group['unit_price'] = $firstItem['unit_price'] ?? OrderMoney::decimal(0, $precision);
+            $group['line_total'] = OrderMoney::decimal($groupMinorTotal, $precision);
+            $group['size_breakdown'] = $sizeBreakdown;
+
+            return $group;
+        }, $payload['groups']);
         $payload['boxes'] = array_map(function (array $box) use ($itemsById): array {
             $box['contents'] = array_map(fn (array $content): array => array_merge($content, ['item' => $itemsById[$content['order_item_id']] ?? $content['item']]), $box['contents']);
 
@@ -290,7 +396,6 @@ class UnifiedOrderService
         $payload['charges'] = [];
 
         return $payload;
-
     }
 
     private function shippingAmount(ShippingRate $rate, int $precision): int
@@ -334,5 +439,59 @@ class UnifiedOrderService
             'email' => $isEmailTaken ? null : $email,
             'country' => $data['shipping_address']['country'] ?? null,
         ]);
+    }
+
+    public function generateOrderNumber(Workspace $workspace): string
+    {
+        $settings = StoreOrderSetting::query()
+            ->where('workspace_id', $workspace->id)
+            ->lockForUpdate()
+            ->first() ?? StoreOrderSetting::forWorkspace($workspace->id);
+
+        $prefix = (string) ($settings->order_number_prefix ?? 'ORD-');
+        $digits = max(3, min(10, (int) ($settings->order_number_digits ?? 5)));
+
+        $highest = $this->resolveHighestOrderSequence($workspace->id, $prefix);
+        $seq = (int) ($settings->next_order_sequence ?? 0);
+        if ($seq <= $highest) {
+            $seq = $highest + 1;
+        }
+        if ($seq < 1) {
+            $seq = 1;
+        }
+
+        do {
+            $formatted = sprintf('%s%0'.$digits.'d', $prefix, $seq);
+            $seq++;
+            $exists = Order::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('number', $formatted)
+                ->exists();
+        } while ($exists);
+
+        $settings->next_order_sequence = $seq;
+        $settings->save();
+
+        return $formatted;
+    }
+
+    public function resolveHighestOrderSequence(int $workspaceId, string $prefix = 'ORD-'): int
+    {
+        $orders = Order::query()
+            ->where('workspace_id', $workspaceId)
+            ->pluck('number');
+
+        $max = 0;
+        $quotedPrefix = preg_quote($prefix, '/');
+        foreach ($orders as $num) {
+            if (preg_match('/^'.$quotedPrefix.'(\d+)$/', (string) $num, $matches)) {
+                $val = (int) $matches[1];
+                if ($val > $max) {
+                    $max = $val;
+                }
+            }
+        }
+
+        return $max;
     }
 }

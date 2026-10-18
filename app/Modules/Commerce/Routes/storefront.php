@@ -8,6 +8,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\CmsController;
 use App\Modules\Commerce\Storefront\Http\Controllers\DomainController;
 use App\Modules\Commerce\Storefront\Http\Controllers\EngagementController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
+use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticateCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticatePlatform;
@@ -16,6 +17,7 @@ use App\Modules\Commerce\Storefront\Http\Middleware\ResolveStore;
 use Illuminate\Support\Facades\Route;
 
 $storefrontRoutes = function (): void {
+    Route::get('pack-templates', [PackController::class, 'templates']);
     Route::get('catalog/menu', [CatalogController::class, 'menu']);
     Route::get('catalog/categories', [CatalogController::class, 'categories']);
     Route::get('catalog/categories/{slug}', [CatalogController::class, 'category']);
@@ -43,8 +45,13 @@ $storefrontRoutes = function (): void {
     Route::middleware(OptionalCustomer::class)->group(function (): void {
         Route::post('cart', [CartController::class, 'create']);
         Route::get('cart', [CartController::class, 'show']);
+        Route::post('cart/groups/preview', [PackController::class, 'preview']);
+        Route::post('cart/groups', [PackController::class, 'store']);
+        Route::put('cart/groups/{id}', [PackController::class, 'update']);
+        Route::delete('cart/groups/{id}', [PackController::class, 'destroy']);
         Route::post('cart/items', [CartController::class, 'add']);
         Route::patch('cart/items/{id}', [CartController::class, 'update']);
+        Route::post('cart/items/{id}/confirm-retail', [CartController::class, 'confirmRetail']);
         Route::delete('cart/items/{id}', [CartController::class, 'delete']);
         Route::delete('cart/clear', [CartController::class, 'clear']);
         Route::post('cart/coupon', [CartController::class, 'coupon']);

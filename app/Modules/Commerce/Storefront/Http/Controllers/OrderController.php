@@ -67,14 +67,33 @@ class OrderController extends Controller
 
     public function track(Request $r): JsonResponse
     {
-        $ref = (string) $r->query('ref');
-        $phone = (string) $r->query('phone');
-        abort_if(strlen($ref) > 100 || ! preg_match('/^\+[1-9]\d{7,14}$/D', $phone), 422);
-        $order = Order::query()->where('workspace_id', $r->attributes->get('store_workspace')->id)->where(function ($q) use ($ref): void {
-            $q->where('number', $ref)->orWhere('tracking_code', $ref);
-        })->first();
-        abort_unless($order && hash_equals((string) ($order->shipping_address['phone'] ?? ''), $phone), 404);
+        $ref = trim((string) $r->query('ref'));
+        abort_if($ref === '' || strlen($ref) > 100, 422, 'Tracking reference is required.');
 
-        return response()->json(['data' => ['number' => $order->number, 'status' => $order->status, 'tracking_number' => $order->tracking_number, 'tracking_url' => $order->tracking_url, 'timeline' => $order->trackingTimeline()]]);
+        $order = Order::query()
+            ->where('workspace_id', $r->attributes->get('store_workspace')->id)
+            ->where(function ($q) use ($ref): void {
+                $q->where('number', $ref)
+                    ->orWhere('tracking_code', $ref)
+                    ->orWhere('tracking_number', $ref)
+                    ->orWhere('submission_reference', $ref);
+            })
+            ->first();
+
+        abort_unless($order, 404, 'No order or shipment found matching this tracking reference.');
+
+        return response()->json([
+            'data' => [
+                'number' => $order->number,
+                'submission_reference' => $order->submission_reference,
+                'status' => $order->status,
+                'payment_state' => $order->payment_state,
+                'tracking_code' => $order->tracking_code,
+                'tracking_number' => $order->tracking_number,
+                'tracking_url' => $order->tracking_url,
+                'delivery_method' => $order->delivery_method,
+                'timeline' => $order->trackingTimeline(),
+            ],
+        ]);
     }
 }

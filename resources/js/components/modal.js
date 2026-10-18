@@ -64,19 +64,77 @@ function buildAndSubmitDynamicForm(action, method = "POST") {
   form.submit();
 }
 
+let activeConfirmResolver = null;
+
+function applyConfirmModalAppearance(modal, { variant = "danger", icon = "", hideCancel = false, cancelText = "Cancel" } = {}) {
+  const iconWrapEl = modal.querySelector("[data-confirm-icon-wrap]");
+  const iconEl = modal.querySelector("[data-confirm-icon]");
+  const buttonEl = modal.querySelector("[data-confirm-btn]");
+  const cancelEl = modal.querySelector("[data-confirm-cancel]");
+
+  const normalizedVariant = ["warning", "amber"].includes(variant)
+    ? "warning"
+    : ["primary", "info"].includes(variant)
+      ? "primary"
+      : "danger";
+
+  if (iconWrapEl) {
+    iconWrapEl.className = "mb-5 flex h-14 w-14 items-center justify-center rounded-full transition-colors ";
+    if (normalizedVariant === "warning") {
+      iconWrapEl.className += "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+    } else if (normalizedVariant === "primary") {
+      iconWrapEl.className += "bg-primary/10 text-primary";
+    } else {
+      iconWrapEl.className += "bg-error/10 text-error";
+    }
+  }
+
+  if (iconEl) {
+    const resolvedIcon =
+      icon ||
+      (normalizedVariant === "warning"
+        ? "ph-warning"
+        : normalizedVariant === "primary"
+          ? "ph-info"
+          : "ph-warning-circle");
+    iconEl.className = `ph-bold ${resolvedIcon} text-2xl`;
+  }
+
+  if (buttonEl) {
+    buttonEl.className = "btn w-full justify-center ";
+    if (normalizedVariant === "warning") {
+      buttonEl.className += "bg-amber-600 text-white hover:bg-amber-700 border-amber-600";
+    } else if (normalizedVariant === "primary") {
+      buttonEl.className += "btn-primary";
+    } else {
+      buttonEl.className += "btn-danger";
+    }
+  }
+
+  if (cancelEl) {
+    cancelEl.textContent = cancelText || "Cancel";
+    cancelEl.classList.toggle("hidden", Boolean(hideCancel));
+  }
+}
+
 function configureGlobalConfirm(trigger) {
   const modal = document.getElementById("globalConfirmModal");
   if (!modal) return;
+
+  activeConfirmResolver = null;
 
   const title = trigger.dataset.confirmTitle || "Confirm Action";
   const message = trigger.dataset.confirmMessage || trigger.dataset.confirmBody || "Please confirm this action.";
   const action = trigger.dataset.confirmAction || "";
   const method = trigger.dataset.confirmMethod || "POST";
   const buttonText = trigger.dataset.confirmButton || trigger.dataset.confirmLabel || "Confirm";
+  const cancelText = trigger.dataset.confirmCancelLabel || "Cancel";
+  const variant = trigger.dataset.confirmVariant || "danger";
+  const icon = trigger.dataset.confirmIcon || "";
   let formId = trigger.dataset.confirmForm || "";
 
   if (!formId && !action) {
-    const form = trigger.closest("form");
+    const form = trigger.tagName === "FORM" ? trigger : trigger.closest("form");
     if (form) {
       if (!form.id) {
         form.id = `confirm-form-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -93,6 +151,15 @@ function configureGlobalConfirm(trigger) {
   if (titleEl) titleEl.textContent = title;
   if (messageEl) messageEl.textContent = message;
   if (buttonEl) {
+    delete buttonEl.dataset.confirmAlertOnly;
+    if (trigger.name) {
+      buttonEl.dataset.submitterName = trigger.name;
+      buttonEl.dataset.submitterValue = trigger.value || "";
+    } else {
+      delete buttonEl.dataset.submitterName;
+      delete buttonEl.dataset.submitterValue;
+    }
+
     if (formId) {
       buttonEl.dataset.confirmForm = formId;
       delete buttonEl.dataset.confirmAction;
@@ -104,6 +171,89 @@ function configureGlobalConfirm(trigger) {
     }
   }
   if (buttonLabelEl) buttonLabelEl.textContent = buttonText;
+
+  applyConfirmModalAppearance(modal, { variant, icon, hideCancel: false, cancelText });
+}
+
+/**
+ * Opens the global confirmation modal programmatically and returns a Promise<boolean>.
+ */
+export function requestConfirm({
+  title = "Confirm Action",
+  message = "Please confirm this action.",
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  variant = "danger",
+  icon = "",
+} = {}) {
+  const modal = document.getElementById("globalConfirmModal");
+  if (!modal) {
+    return Promise.resolve(false);
+  }
+
+  const titleEl = modal.querySelector("[data-confirm-title]");
+  const messageEl = modal.querySelector("[data-confirm-message]");
+  const buttonEl = modal.querySelector("[data-confirm-btn]");
+  const buttonLabelEl = modal.querySelector("[data-confirm-button-label]");
+
+  if (titleEl) titleEl.textContent = title;
+  if (messageEl) messageEl.textContent = message;
+  if (buttonLabelEl) buttonLabelEl.textContent = confirmText;
+
+  if (buttonEl) {
+    delete buttonEl.dataset.confirmForm;
+    delete buttonEl.dataset.confirmAction;
+    delete buttonEl.dataset.confirmMethod;
+    delete buttonEl.dataset.submitterName;
+    delete buttonEl.dataset.submitterValue;
+    delete buttonEl.dataset.confirmAlertOnly;
+  }
+
+  applyConfirmModalAppearance(modal, { variant, icon, hideCancel: false, cancelText });
+  openModal("globalConfirmModal");
+
+  return new Promise((resolve) => {
+    activeConfirmResolver = resolve;
+  });
+}
+
+/**
+ * Opens the global modal in single-button alert mode.
+ */
+export function showAlertModal({
+  title = "Notice",
+  message = "",
+  buttonText = "OK",
+  variant = "warning",
+  icon = "",
+} = {}) {
+  const modal = document.getElementById("globalConfirmModal");
+  if (!modal) {
+    return;
+  }
+
+  activeConfirmResolver = null;
+
+  const titleEl = modal.querySelector("[data-confirm-title]");
+  const messageEl = modal.querySelector("[data-confirm-message]");
+  const buttonEl = modal.querySelector("[data-confirm-btn]");
+  const buttonLabelEl = modal.querySelector("[data-confirm-button-label]");
+
+  if (titleEl) titleEl.textContent = title;
+  if (messageEl) messageEl.textContent = message;
+  if (buttonLabelEl) buttonLabelEl.textContent = buttonText;
+
+  if (buttonEl) {
+    delete buttonEl.dataset.confirmForm;
+    delete buttonEl.dataset.confirmAction;
+    delete buttonEl.dataset.confirmMethod;
+    delete buttonEl.dataset.submitterName;
+    delete buttonEl.dataset.submitterValue;
+    buttonEl.dataset.confirmAlertOnly = "true";
+  }
+
+  applyConfirmModalAppearance(modal, { variant, icon, hideCancel: true });
+  openModal("globalConfirmModal");
 }
 
 /**
@@ -120,6 +270,12 @@ export function closeModal(elementOrId) {
   }
 
   if (modal) {
+    if (modal.id === "globalConfirmModal" && typeof activeConfirmResolver === "function") {
+      const resolve = activeConfirmResolver;
+      activeConfirmResolver = null;
+      resolve(false);
+    }
+
     modal.classList.remove("active");
     modal.classList.remove("is-open");
     document.dispatchEvent(new CustomEvent('modal:closed', { detail: { id: modal.id, modal } }));
@@ -145,7 +301,7 @@ export function closeAllModals() {
 // Event delegation — registered on document immediately (no DOMContentLoaded needed)
 document.addEventListener("click", (e) => {
   const confirmTrigger = e.target.closest("[data-confirm]");
-  if (confirmTrigger && !confirmTrigger.closest("[data-confirm-btn]")) {
+  if (confirmTrigger && confirmTrigger.tagName !== "FORM" && !confirmTrigger.closest("[data-confirm-btn]")) {
     e.preventDefault();
     configureGlobalConfirm(confirmTrigger);
     openModal("globalConfirmModal");
@@ -200,21 +356,59 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // 4. Confirm Button — submit the linked form
+  // 4. Confirm Button — submit the linked form or resolve promise
   const confirmBtn = e.target.closest("[data-confirm-btn]");
   if (confirmBtn) {
-    const formId = confirmBtn.dataset.confirmForm;
-    if (formId) {
-      const form = document.getElementById(formId);
-      if (form) form.submit();
+    if (confirmBtn.dataset.confirmAlertOnly === "true") {
+      closeModal("globalConfirmModal");
       return;
     }
 
+    if (typeof activeConfirmResolver === "function") {
+      const resolve = activeConfirmResolver;
+      activeConfirmResolver = null;
+      closeModal("globalConfirmModal");
+      resolve(true);
+      return;
+    }
+
+    const formId = confirmBtn.dataset.confirmForm;
+    if (formId) {
+      const form = document.getElementById(formId);
+      if (form) {
+        if (confirmBtn.dataset.submitterName) {
+          let hiddenInput = form.querySelector(`input[data-confirm-submitter="${confirmBtn.dataset.submitterName}"]`);
+          if (!hiddenInput) {
+            hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = confirmBtn.dataset.submitterName;
+            hiddenInput.dataset.confirmSubmitter = confirmBtn.dataset.submitterName;
+            form.appendChild(hiddenInput);
+          }
+          hiddenInput.value = confirmBtn.dataset.submitterValue || "";
+        }
+        form.dataset.confirmed = "true";
+        closeModal("globalConfirmModal");
+        form.submit();
+      }
+      return;
+    }
+
+    closeModal("globalConfirmModal");
     buildAndSubmitDynamicForm(
       confirmBtn.dataset.confirmAction,
       confirmBtn.dataset.confirmMethod || "POST",
     );
     return;
+  }
+});
+
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("form[data-confirm]");
+  if (form && form.dataset.confirmed !== "true") {
+    e.preventDefault();
+    configureGlobalConfirm(form);
+    openModal("globalConfirmModal");
   }
 });
 
@@ -228,4 +422,7 @@ document.addEventListener("keydown", (e) => {
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.closeAllModals = closeAllModals;
+window.requestConfirm = requestConfirm;
+window.showAlertModal = showAlertModal;
+
 

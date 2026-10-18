@@ -59,10 +59,19 @@
                             {{ __('Sync from Meta') }}
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.disconnect') }}" onsubmit="return confirm('{{ __('Disconnect this WhatsApp channel?') }}')">
+                    <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.disconnect') }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error">
+                        <button
+                            type="submit"
+                            data-confirm
+                            data-confirm-title="{{ __('Disconnect WhatsApp Channel?') }}"
+                            data-confirm-message="{{ __('Disconnect this WhatsApp channel from your workspace?') }}"
+                            data-confirm-button="{{ __('Disconnect') }}"
+                            data-confirm-variant="danger"
+                            data-confirm-icon="ph-plugs"
+                            class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                        >
                             <i class="ph ph-plugs text-base"></i>
                             {{ __('Disconnect') }}
                         </button>

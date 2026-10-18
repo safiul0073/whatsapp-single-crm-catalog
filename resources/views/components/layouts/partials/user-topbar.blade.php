@@ -2,6 +2,11 @@
 
 @php
     $authUser = auth()->user();
+    $navigation = app(\App\Services\Navigation\WorkspaceNavigationRegistry::class)->forUser($authUser);
+    $modules = $navigation['modules'];
+    $primaryModules = array_slice($modules, 0, 5);
+    $overflowModules = array_slice($modules, 5);
+    $overflowActive = collect($overflowModules)->contains('is_active', true);
 
     $bellConfig = [
         'initialUnreadCount' => $topbarUnreadCount ?? 0,
@@ -14,31 +19,83 @@
 @endphp
 
 <header class="app-topbar">
-    <div class="flex min-w-0 flex-1 items-center gap-3">
+    <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
         <button type="button" id="appSidebarOpen"
-            class="app-topbar__sidebar-toggle lg:hidden"
+            class="app-topbar__sidebar-toggle"
             aria-label="{{ __('Toggle sidebar') }}">
             <i class="ph ph-list text-xl"></i>
         </button>
 
-        <button type="button" class="app-topbar__search" data-modal-trigger="globalSearchModal"
-            aria-label="{{ __('Search') }}">
-            <i class="ph ph-magnifying-glass shrink-0 text-base"></i>
-            <span class="w-full text-left">{{ __('Search contacts, campaigns, chats...') }}</span>
+        <button type="button" id="appSidebarCollapseBtn"
+            class="app-topbar__collapse-btn"
+            data-action="toggle-sidebar"
+            aria-label="{{ __('Collapse or expand sidebar') }}"
+            title="{{ __('Toggle sidebar width') }}">
+            <i class="ph ph-sidebar-simple text-lg"></i>
         </button>
 
-        <button type="button" class="app-topbar__icon sm:hidden" data-modal-trigger="globalSearchModal"
-            aria-label="{{ __('Search') }}">
-            <i class="ph ph-magnifying-glass text-xl"></i>
-        </button>
+        @if (!empty($modules))
+            <span class="hidden h-5 w-px shrink-0 bg-neutral-200 lg:block" aria-hidden="true"></span>
+
+            <nav class="app-topnav" aria-label="{{ __('Main modules') }}" data-topnav>
+                @foreach ($modules as $index => $module)
+                    <a href="{{ $module['url'] }}"
+                        data-module-trigger="{{ $module['id'] }}"
+                        data-module-label="{{ $module['label'] }}"
+                        data-module-icon="{{ $module['icon'] }}"
+                        class="app-topnav__link {{ $module['is_active'] ? 'is-active' : '' }} {{ $index >= 5 ? 'app-topnav__link--overflow' : '' }}"
+                        aria-current="{{ $module['is_active'] ? 'page' : 'false' }}">
+                        <i class="ph {{ $module['icon'] }} app-topnav__icon"></i>
+                        <span>{{ $module['short_label'] }}</span>
+                    </a>
+                @endforeach
+
+                @if (!empty($overflowModules))
+                    <div class="dropdown-wrapper app-topnav__more relative">
+                        <button type="button"
+                            class="app-topnav__link {{ $overflowActive ? 'is-active' : '' }}"
+                            data-action="toggle-dropdown"
+                            data-target="topnavMoreDropdown"
+                            aria-haspopup="true"
+                            aria-label="{{ __('More modules') }}">
+                            <i class="ph ph-dots-three-bold app-topnav__icon"></i>
+                            <span>{{ __('More') }}</span>
+                            <i class="ph ph-caret-down text-[11px] opacity-70"></i>
+                        </button>
+
+                        <div id="topnavMoreDropdown"
+                            class="dropdown-panel absolute start-0 top-full z-50 mt-2 w-52 rounded-md border border-neutral-200 bg-neutral-0 p-1.5 shadow-xl"
+                            role="menu">
+                            @foreach ($overflowModules as $module)
+                                <a href="{{ $module['url'] }}"
+                                    data-module-trigger="{{ $module['id'] }}"
+                                    data-module-label="{{ $module['label'] }}"
+                                    data-module-icon="{{ $module['icon'] }}"
+                                    class="dropdown-item {{ $module['is_active'] ? 'bg-primary/10 font-semibold text-primary' : '' }}"
+                                    role="menuitem">
+                                    <i class="ph {{ $module['icon'] }} text-base"></i>
+                                    <span>{{ $module['label'] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </nav>
+        @endif
     </div>
 
-    <div class="flex items-center gap-1.5 sm:gap-2.5">
-        <button type="button" class="app-topbar__icon" data-modal-open="userPageHelp"
-            aria-label="{{ __('Help for this page') }}" title="{{ __('Help for this page') }}">
-            <i class="ph ph-question text-xl"></i>
+    <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <button type="button" class="app-topbar__search" data-modal-trigger="globalSearchModal"
+            aria-label="{{ __('Search') }}">
+            <i class="ph ph-magnifying-glass shrink-0 text-sm text-neutral-400"></i>
+            <span class="truncate text-left text-xs font-medium text-neutral-400">{{ __('Search...') }}</span>
+            <kbd class="app-topbar__kbd">⌘K</kbd>
         </button>
 
+        <button type="button" class="app-topbar__search-mobile" data-modal-trigger="globalSearchModal"
+            aria-label="{{ __('Search') }}">
+            <i class="ph ph-magnifying-glass text-lg"></i>
+        </button>
         <button type="button" class="app-topbar__icon" data-action="toggle-theme"
             aria-label="{{ __('Toggle theme') }}">
             <svg id="sunIcon" class="hidden h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2"

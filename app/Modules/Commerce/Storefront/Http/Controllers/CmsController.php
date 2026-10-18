@@ -15,11 +15,15 @@ class CmsController extends Controller
         return response()->json(['data' => $cms->settings($r->attributes->get('store_workspace')->id)]);
     }
 
-    public function menu(Request $r, string $slot): JsonResponse
+    public function menu(Request $r, string $slot, CmsService $cms): JsonResponse
     {
         abort_unless(in_array($slot, ['header', 'footer', 'mobile']), 404);
+        $record = StorefrontMenu::query()
+            ->where('workspace_id', $r->attributes->get('store_workspace')->id)
+            ->where('slot', $slot)
+            ->first();
 
-        return response()->json(['data' => StorefrontMenu::query()->where('workspace_id', $r->attributes->get('store_workspace')->id)->where('slot', $slot)->first()?->items ?? []]);
+        return response()->json(['data' => $record ? ($record->items ?? []) : $cms->defaultMenuItems($slot)]);
     }
 
     public function page(Request $r, string $slug, CmsService $cms): JsonResponse

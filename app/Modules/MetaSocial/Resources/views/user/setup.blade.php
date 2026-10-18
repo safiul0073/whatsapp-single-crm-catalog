@@ -105,10 +105,19 @@
                                             {{ __('Test Connection') }}
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ $isThreads ? route('user.whatsapp-cloud.channel-setup.disconnect-channel', $account) : route('user.meta-social.setup.disconnect', $account) }}" onsubmit="return confirm('{{ __('Disconnect this channel?') }}')">
+                                    <form method="POST" action="{{ $isThreads ? route('user.whatsapp-cloud.channel-setup.disconnect-channel', $account) : route('user.meta-social.setup.disconnect', $account) }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error">
+                                        <button
+                                            type="submit"
+                                            data-confirm
+                                            data-confirm-title="{{ __('Disconnect Channel?') }}"
+                                            data-confirm-message="{{ __('Disconnect this social channel from your workspace?') }}"
+                                            data-confirm-button="{{ __('Disconnect') }}"
+                                            data-confirm-variant="danger"
+                                            data-confirm-icon="ph-plugs"
+                                            class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                                        >
                                             <i class="ph ph-plugs text-base"></i>
                                             {{ __('Disconnect') }}
                                         </button>

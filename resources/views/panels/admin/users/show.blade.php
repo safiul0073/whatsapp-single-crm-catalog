@@ -18,7 +18,11 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Failed to start impersonation');
+                window.showAlertModal?.({
+                    title: '{{ __('Impersonation Failed') }}',
+                    message: '{{ __('Failed to start impersonation. Please try again.') }}',
+                    variant: 'danger',
+                });
             });
         }
     </script>

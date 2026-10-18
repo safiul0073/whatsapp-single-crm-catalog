@@ -13,6 +13,7 @@ use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -52,7 +53,7 @@ function unifiedContext(): array
 }
 
 beforeEach(function () {
-    Queue::fake([NotifyOrderEvent::class]);
+    Queue::fake([NotifyOrderEvent::class, RevalidateStorefront::class]);
 });
 
 it('snapshots three ratio boxes and reserves their exact variant pieces', function () {

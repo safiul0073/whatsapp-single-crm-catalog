@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Database\Seeders;
 
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
@@ -83,6 +84,18 @@ class DummyCustomerSeeder extends Seeder
                         'country' => 'BD',
                     ],
                 ]);
+            }
+
+            // 5. Enable default manual payment methods for storefront checkout
+            $settings = $workspace->settings ?? [];
+            if (empty($settings['commerce']['payment_methods'])) {
+                $paymentMethods = StoreOrderSetting::defaultPaymentMethods();
+                foreach ($paymentMethods as &$method) {
+                    $method['active'] = '1';
+                }
+                unset($method);
+                $settings['commerce']['payment_methods'] = $paymentMethods;
+                $workspace->update(['settings' => $settings]);
             }
         }
     }
