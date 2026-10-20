@@ -54,6 +54,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             CommerceDemoSeeder::class,
             DummyCustomerSeeder::class,
+            StorefrontDemoContentSeeder::class,
             ShippingSeeder::class,
         ]);
     }

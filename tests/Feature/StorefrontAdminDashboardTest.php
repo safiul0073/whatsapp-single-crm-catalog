@@ -2,15 +2,20 @@
 
 use App\Models\User;
 use App\Modules\Commerce\Storefront\Models\Coupon;
+use App\Modules\Commerce\Storefront\Models\PackTemplate;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontMenu;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
+use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceMember;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\StorefrontDatabase;
 
 beforeEach(function (): void {
@@ -78,7 +83,10 @@ it('renders the improved storefront management dashboard with live preview and s
     $response->assertSee('Pages &amp; CMS', false);
     $response->assertSee('Coupons &amp; Promo', false);
     $response->assertSee('Review Moderation', false);
-    $response->assertSee('Inquiries &amp; Content', false);
+    $response->assertSee('Journal &amp; FAQs', false);
+    $response->assertSee('Customer Inquiries', false);
+    $response->assertSee(route('user.commerce.pack-templates.index'));
+    $response->assertSee('Custom Pack Templates');
 });
 
 it('smoothly saves updated storefront settings including colors and relative logo paths', function (): void {
@@ -449,4 +457,235 @@ it('saves navigation menus with mega-menu styles, badges, and nested sub-links',
         ->and($menu->items[0]['mega'])->toBe('custom')
         ->and($menu->items[0]['badge'])->toBe('HOT')
         ->and($menu->items[0]['children'])->toHaveCount(2);
+});
+
+it('renders the custom pack templates settings pages including separate create and edit forms', function (): void {
+    $user = User::query()->create([
+        'id' => 20,
+        'name' => 'Pack Admin',
+        'email' => 'pack-admin@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+
+    $workspace = Workspace::query()->create([
+        'name' => 'Pack Workspace',
+        'slug' => 'pack-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    $template = PackTemplate::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Existing Bundle',
+        'description' => 'Test bundle description',
+        'min_pieces' => 12,
+        'max_pieces' => 24,
+        'min_products' => 2,
+        'min_colors' => 2,
+        'min_sizes' => 2,
+        'min_variant_quantity' => 1,
+        'product_ids' => [],
+        'published' => true,
+        'position' => 1,
+    ]);
+
+    // Index Page
+    $indexResponse = $this->actingAs($user)->get(route('user.commerce.pack-templates.index'));
+    $indexResponse->assertOk();
+    $indexResponse->assertSee('Custom Pack Templates');
+    $indexResponse->assertSee('Create Template');
+    $indexResponse->assertSee('Existing Bundle');
+    $indexResponse->assertSee(route('user.commerce.pack-templates.create'));
+    $indexResponse->assertSee(route('user.commerce.pack-templates.edit', $template->id));
+    $indexResponse->assertSee(route('user.commerce.storefront.index'));
+
+    // Dedicated Create Page
+    $createResponse = $this->actingAs($user)->get(route('user.commerce.pack-templates.create'));
+    $createResponse->assertOk();
+    $createResponse->assertSee('Create Custom Pack Template');
+    $createResponse->assertSee('Back to Custom Pack Templates');
+    $createResponse->assertSee('Rule Calculator');
+    $createResponse->assertSee('Eligible Wholesale Products');
+    $createResponse->assertSee('Filter products by name...');
+    $createResponse->assertSee('Create Pack Template');
+
+    // Dedicated Edit Page
+    $editResponse = $this->actingAs($user)->get(route('user.commerce.pack-templates.edit', $template->id));
+    $editResponse->assertOk();
+    $editResponse->assertSee('Edit Custom Pack Template');
+    $editResponse->assertSee('Existing Bundle');
+    $editResponse->assertSee('Back to Custom Pack Templates');
+    $editResponse->assertSee('Rule Calculator');
+    $editResponse->assertSee('Update Pack Template');
+});
+
+it('allows store owners to publish blog posts, FAQs, and review/delete customer inquiries', function (): void {
+    $user = User::query()->create([
+        'id' => 35,
+        'name' => 'Editorial Owner',
+        'email' => 'editor@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+
+    $workspace = Workspace::query()->create([
+        'name' => 'Editorial Workspace',
+        'slug' => 'editorial-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    // 1. Create a blog article using standard form fields
+    $this->actingAs($user)->post(route('user.commerce.storefront.contents.store'), [
+        'type' => 'blog',
+        'title' => 'The Art of Heavyweight French Terry',
+        'slug' => 'art-of-heavyweight-french-terry',
+        'category' => 'Fabric & Quality',
+        'excerpt' => 'A guide to GSM weights and loops.',
+        'content' => 'Full article detailing 450 GSM french terry cotton craftsmanship.',
+        'published' => 1,
+    ])->assertRedirect(route('user.commerce.storefront.index').'?tab=content#content');
+
+    $blog = StorefrontContent::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('type', 'blog')
+        ->where('slug', 'art-of-heavyweight-french-terry')
+        ->first();
+
+    expect($blog)->not->toBeNull()
+        ->and($blog->data['title'])->toBe('The Art of Heavyweight French Terry')
+        ->and($blog->published_at)->not->toBeNull();
+
+    // 2. Create an FAQ using standard form fields
+    $this->actingAs($user)->post(route('user.commerce.storefront.contents.store'), [
+        'type' => 'faq',
+        'question' => 'How long does worldwide express take?',
+        'slug' => 'faq-how-long-does-worldwide-express-take',
+        'category' => 'Orders & Shipping',
+        'answer' => 'Express delivery arrives within 3-5 business days.',
+        'published' => 1,
+    ])->assertRedirect(route('user.commerce.storefront.index').'?tab=content#content');
+
+    $faq = StorefrontContent::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('type', 'faq')
+        ->first();
+
+    expect($faq)->not->toBeNull()
+        ->and($faq->data['question'])->toBe('How long does worldwide express take?');
+
+    // 3. Receive a contact submission and display in inquiries
+    $inquiry = StorefrontContent::query()->create([
+        'workspace_id' => $workspace->id,
+        'type' => 'contact',
+        'slug' => 'contact-'.Str::uuid(),
+        'data' => [
+            'name' => 'Marcus Vance',
+            'email' => 'marcus@boutique.co',
+            'phone' => '+14155552671',
+            'subject' => 'Wholesale Inquiry',
+            'message' => 'Looking to order 200 units of heavy oversized tees.',
+        ],
+        'published_at' => now(),
+    ]);
+
+    $viewResponse = $this->actingAs($user)->get(route('user.commerce.storefront.index').'?tab=inquiries');
+    $viewResponse->assertOk();
+    $viewResponse->assertSee('Marcus Vance');
+    $viewResponse->assertSee('marcus@boutique.co');
+    $viewResponse->assertSee('Wholesale Inquiry');
+
+    // 4. Delete the inquiry
+    $this->actingAs($user)
+        ->delete(route('user.commerce.storefront.contents.destroy', $inquiry->id))
+        ->assertRedirect(route('user.commerce.storefront.index').'?tab=inquiries#inquiries');
+
+    expect(StorefrontContent::query()->find($inquiry->id))->toBeNull();
+});
+
+it('allows store owners to configure and upload mobile apps for iOS and Android', function (): void {
+    Storage::fake('public');
+
+    $user = User::query()->create([
+        'id' => 45,
+        'name' => 'Mobile App Admin',
+        'email' => 'mobile@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+
+    $workspace = Workspace::query()->create([
+        'name' => 'Mobile Workspace',
+        'slug' => 'mobile-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    // 1. Direct AJAX upload of Android APK
+    $apkFile = UploadedFile::fake()->create('fashionfiest-release.apk', 5000, 'application/vnd.android.package-archive');
+    $uploadResponse = $this->actingAs($user)->postJson(route('user.commerce.storefront.upload-app'), [
+        'file' => $apkFile,
+        'platform' => 'android',
+    ]);
+
+    $uploadResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'platform' => 'android',
+            'filename' => 'fashionfiest-release.apk',
+        ]);
+
+    $apkUrl = $uploadResponse->json('url');
+    expect($apkUrl)->toContain('/storage/storefront/apps/app-android-');
+
+    // 2. Save settings with mobile app links and verify
+    $this->actingAs($user)->put(route('user.commerce.storefront.settings'), [
+        'config' => [
+            'name' => 'FashionFiest App Store',
+            'primary' => '#0866FF',
+            'hover' => '#0055D4',
+            'footer_color' => '#0A2540',
+            'app_download_enabled' => 1,
+            'app_download_title' => 'Download FashionFiest App',
+            'app_ios_url' => 'https://apps.apple.com/app/fashionfiest/id987654321',
+            'app_android_url' => $apkUrl,
+        ],
+    ])->assertRedirect(route('user.commerce.storefront.index').'?tab=settings#settings');
+
+    $cms = app(CmsService::class);
+    $settings = $cms->settings($workspace->id);
+
+    expect($settings['app_download_enabled'])->toBeTrue()
+        ->and($settings['app_download_title'])->toBe('Download FashionFiest App')
+        ->and($settings['app_ios_url'])->toBe('https://apps.apple.com/app/fashionfiest/id987654321')
+        ->and($settings['app_android_url'])->toContain('/storage/storefront/apps/app-android-');
+
+    // 3. Render settings dashboard page and check for mobile app configuration UI
+    $response = $this->actingAs($user)->get(route('user.commerce.storefront.index').'?tab=settings');
+    $response->assertOk();
+    $response->assertSee('Mobile App Downloads (iOS &amp; Android)', false);
+    $response->assertSee('Download FashionFiest App');
+    $response->assertSee('Choose .apk file');
 });

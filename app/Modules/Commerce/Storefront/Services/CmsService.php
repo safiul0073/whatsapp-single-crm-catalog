@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Storefront\Services;
 
+use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Storefront\Http\Resources\ProductResource;
@@ -36,17 +37,63 @@ class CmsService
         return $section;
     }
 
+    public const CHAT_CHANNEL_DEFAULTS = [
+        'enabled' => false, 'position' => 'bottom-right', 'layout' => 'stacked', 'tooltip' => 'Need help? Chat with us',
+        'whatsapp' => ['enabled' => false, 'phone' => '', 'message' => ''],
+        'messenger' => ['enabled' => false, 'page_id' => ''],
+        'telegram' => ['enabled' => false, 'username' => ''],
+        'custom_chatbot' => ['enabled' => false, 'source' => 'marketing_chatbot', 'title' => 'AI Assistant', 'icon' => 'bot', 'widget_token' => '', 'script_url' => '', 'direct_url' => ''],
+    ];
+
     public function settings(int $workspace): array
     {
         $settings = array_replace(
-            ['name' => 'Store', 'primary' => '#0866FF', 'hover' => '#0055D4', 'footer_color' => '#0A2540', 'canvas' => '#F0F2F5', 'logo' => null, 'logo_height' => 68, 'logo_show_name' => false, 'announcement' => '', 'contact_email' => '', 'contact_phone' => '', 'footer_text' => '', 'socials' => []],
+            [
+                'name' => 'Fashion Fiest',
+                'primary' => '#0866FF',
+                'hover' => '#0055D4',
+                'footer_color' => '#0A2540',
+                'canvas' => '#F0F2F5',
+                'logo' => null,
+                'logo_height' => 68,
+                'logo_show_name' => false,
+                'announcement' => '',
+                'contact_email' => 'sales@fashionfiest.com',
+                'contact_phone' => '+1 (800) 555-0199',
+                'footer_text' => 'Direct from factory wholesale and retail streetwear, premium heavyweight hoodies, tees, and denim.',
+                'socials' => [],
+                'app_download_enabled' => true,
+                'app_download_title' => 'Experience On Mobile',
+                'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
+                'app_ios_url' => '',
+                'app_android_url' => '',
+            ],
             array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment']))
         );
         if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
-            $settings['logo'] = rtrim(config('app.url'), '/').'/storage/'.ltrim($settings['logo'], '/');
+            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
+            $settings['logo'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
         }
+        if (! empty($settings['app_ios_url']) && ! str_starts_with($settings['app_ios_url'], 'http') && ! str_starts_with($settings['app_ios_url'], '#')) {
+            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['app_ios_url'], '/'));
+            $settings['app_ios_url'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
+        }
+        if (! empty($settings['app_android_url']) && ! str_starts_with($settings['app_android_url'], 'http') && ! str_starts_with($settings['app_android_url'], '#')) {
+            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['app_android_url'], '/'));
+            $settings['app_android_url'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
+        }
+        $settings['app_download_enabled'] = (bool) ($settings['app_download_enabled'] ?? true);
         $settings['logo_height'] = max(32, min(120, (int) ($settings['logo_height'] ?? 68)));
         $settings['logo_show_name'] = (bool) ($settings['logo_show_name'] ?? false);
+
+        $settings['chat_channels'] = array_replace_recursive(self::CHAT_CHANNEL_DEFAULTS, $settings['chat_channels'] ?? []);
+        $bot = &$settings['chat_channels']['custom_chatbot'];
+        if ($bot['enabled'] && $bot['source'] === 'marketing_chatbot') {
+            $widget = ChatbotWidget::query()
+                ->where('workspace_id', $workspace)->where('public_token', $bot['widget_token'])->where('is_active', true)->first();
+            $bot['enabled'] = $widget !== null;
+            $bot['script_url'] = $widget ? route('widgets.chatbot.loader', $widget->public_token) : '';
+        }
 
         return $settings;
     }
@@ -72,9 +119,8 @@ class CmsService
                 ['label' => 'All Products', 'href' => '/products', 'mega' => 'none', 'badge' => '', 'children' => []],
                 ['label' => 'New Arrivals', 'href' => '/collections/new-arrivals', 'mega' => 'none', 'badge' => '', 'children' => []],
                 ['label' => 'Special Deals', 'href' => '/collections/deals', 'mega' => 'none', 'badge' => '', 'children' => []],
-                ['label' => 'Track Your Order', 'href' => '/track-order', 'mega' => 'none', 'badge' => '', 'children' => []],
-                ['label' => 'FAQs', 'href' => '/faqs', 'mega' => 'none', 'badge' => '', 'children' => []],
-                ['label' => 'Contact Us', 'href' => '/contact', 'mega' => 'none', 'badge' => '', 'children' => []],
+                ['label' => 'Custom Packs', 'href' => '/packs', 'mega' => 'none', 'badge' => 'MIX', 'children' => []],
+                ['label' => 'Journal', 'href' => '/blog', 'mega' => 'none', 'badge' => '', 'children' => []],
             ],
             default => [],
         };

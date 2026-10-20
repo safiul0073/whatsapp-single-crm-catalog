@@ -23,6 +23,7 @@ class StorefrontDatabase
                 } (require $path)->up();
             }
         }
+        (require app_path('Modules/Chatbots/Database/Migrations/2026_07_07_000003_create_chatbot_widgets_table.php'))->up();
         $paths = glob(app_path('Modules/Commerce/Database/Migrations/*'));
         sort($paths);
         foreach ($paths as $path) {

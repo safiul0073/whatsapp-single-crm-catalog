@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::middleware('permission:commerce.manage')->group(function (): void {
         Route::get('pack-templates', [PackTemplateAdminController::class, 'index'])->name('pack-templates.index');
+        Route::get('pack-templates/create', [PackTemplateAdminController::class, 'create'])->name('pack-templates.create');
         Route::post('pack-templates', [PackTemplateAdminController::class, 'save'])->name('pack-templates.store');
+        Route::get('pack-templates/{id}/edit', [PackTemplateAdminController::class, 'edit'])->name('pack-templates.edit');
         Route::put('pack-templates/{id}', [PackTemplateAdminController::class, 'save'])->name('pack-templates.update');
         Route::delete('pack-templates/{id}', [PackTemplateAdminController::class, 'destroy'])->name('pack-templates.destroy');
     });
@@ -103,6 +105,8 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('
     $c = AdminController::class;
     Route::get('/', [$c, 'index'])->name('index');
     Route::put('settings', [$c, 'settings'])->name('settings');
+    Route::post('upload-app', [$c, 'uploadApp'])->name('upload-app');
+    Route::put('chat-channels', [$c, 'chatChannels'])->name('chat-channels');
     Route::post('pages', [$c, 'savePage'])->name('pages.store');
     Route::get('pages/{id}', [$c, 'editor'])->name('pages.edit');
     Route::put('pages/{id}', [$c, 'savePage'])->name('pages.update');
@@ -127,6 +131,7 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('
     $c = AdminController::class;
     Route::post('contents', [$c, 'content'])->name('contents.store');
     Route::put('contents/{id}', [$c, 'content'])->name('contents.update');
+    Route::delete('contents/{id}', [$c, 'deleteContent'])->name('contents.destroy');
     Route::put('domains/{id}/handle', [$c, 'renameDomain'])->name('domains.rename');
     Route::post('credentials/generate', [$c, 'generateCredentials'])->name('credentials.generate');
     Route::put('credentials', [$c, 'updateCredentials'])->name('credentials.update');

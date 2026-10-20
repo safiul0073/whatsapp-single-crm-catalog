@@ -3,10 +3,12 @@
 namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\Coupon;
@@ -23,9 +25,11 @@ use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\DomainResolver;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -46,6 +50,7 @@ class AdminController extends Controller
 
         return view('commerce::user.storefront', [
             'settings' => $settings,
+            'chatWidgets' => ChatbotWidget::query()->where('workspace_id', $w)->where('is_active', true)->orderBy('name')->get(['name', 'public_token']),
             'credentials' => $credentials,
             'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(),
             'domains' => StoreDomain::query()->where('workspace_id', $w)->get(),
@@ -60,7 +65,11 @@ class AdminController extends Controller
             'brands' => Brand::query()->where('workspace_id', $w)->orderBy('name')->get(),
             'coupons' => Coupon::query()->where('workspace_id', $w)->get(),
             'reviews' => ProductReview::query()->where('workspace_id', $w)->where('status', 'pending')->get(),
-            'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->limit(100)->get(),
+            'contents' => StorefrontContent::query()->where('workspace_id', $w)->latest()->get(),
+            'inquiries' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'contact')->latest()->get(),
+            'blogs' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'blog')->latest()->get(),
+            'faqs' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'faq')->latest()->get(),
+            'collections' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'collection')->latest()->get(),
             'types' => CmsService::TYPES,
         ]);
     }
@@ -84,13 +93,70 @@ class AdminController extends Controller
         $w = $this->workspace($r);
         $existing = (array) (StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? []);
         $newConfig = $r->validated('config');
+        unset($newConfig['chat_channels']);
+        if (isset($existing['chat_channels'])) {
+            $newConfig['chat_channels'] = $existing['chat_channels'];
+        }
         if (isset($existing['deployment'])) {
             $newConfig['deployment'] = $existing['deployment'];
         }
+
+        if ($r->hasFile('android_app_file')) {
+            $file = $r->file('android_app_file');
+            $ext = strtolower($file->getClientOriginalExtension());
+            $filename = 'app-android-'.time().'.'.$ext;
+            $path = $file->storeAs('storefront/apps', $filename, 'public');
+            $newConfig['app_android_url'] = Storage::disk('public')->url($path);
+        }
+
+        if ($r->hasFile('ios_app_file')) {
+            $file = $r->file('ios_app_file');
+            $ext = strtolower($file->getClientOriginalExtension());
+            $filename = 'app-ios-'.time().'.'.$ext;
+            $path = $file->storeAs('storefront/apps', $filename, 'public');
+            $newConfig['app_ios_url'] = Storage::disk('public')->url($path);
+        }
+
         StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $newConfig]);
         $this->invalidate($w);
 
         return $this->redirectTab($r, 'settings', 'Settings saved.');
+    }
+
+    public function uploadApp(AdminRequest $r): JsonResponse
+    {
+        $this->workspace($r);
+        $file = $r->file('file');
+        $platform = $r->input('platform', 'android') === 'ios' ? 'ios' : 'android';
+        $ext = strtolower($file->getClientOriginalExtension());
+        $filename = 'app-'.$platform.'-'.time().'.'.$ext;
+        $path = $file->storeAs('storefront/apps', $filename, 'public');
+        $url = Storage::disk('public')->url($path);
+
+        return response()->json([
+            'success' => true,
+            'url' => $url,
+            'path' => $path,
+            'platform' => $platform,
+            'filename' => $file->getClientOriginalName(),
+            'size' => $file->getSize(),
+        ]);
+    }
+
+    public function chatChannels(ChatChannelsRequest $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $existing = (array) (StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? []);
+        $channels = array_replace_recursive(CmsService::CHAT_CHANNEL_DEFAULTS, $r->validated('chat_channels'));
+        $channels['enabled'] = (bool) $channels['enabled'];
+        foreach (['whatsapp', 'messenger', 'telegram', 'custom_chatbot'] as $channel) {
+            $channels[$channel]['enabled'] = (bool) $channels[$channel]['enabled'];
+        }
+        $existing['chat_channels'] = $channels;
+        StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $existing]);
+        $this->invalidate($w);
+
+        return $this->redirectTab($r, 'chat-channels', 'Contact channels saved.');
     }
 
     public function generateCredentials(AdminRequest $r): RedirectResponse
@@ -316,6 +382,17 @@ class AdminController extends Controller
         $this->invalidate($w);
 
         return $this->redirectTab($r, 'content', 'Content saved.');
+    }
+
+    public function deleteContent(Request $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $record = StorefrontContent::query()->where('workspace_id', $w)->findOrFail($id);
+        $tab = $record->type === 'contact' ? 'inquiries' : 'content';
+        $record->delete();
+        $this->invalidate($w);
+
+        return $this->redirectTab($r, $tab, 'Item deleted.');
     }
 
     public function renameDomain(AdminRequest $r, int $id): RedirectResponse

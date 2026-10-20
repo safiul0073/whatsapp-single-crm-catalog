@@ -10,6 +10,7 @@ use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\Wishlist;
 use App\Modules\Commerce\Storefront\Services\CatalogService;
+use App\Modules\SystemNotifications\Models\SystemNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -82,7 +83,35 @@ class EngagementController extends Controller
 
     public function contact(EngagementRequest $r): JsonResponse
     {
-        StorefrontContent::query()->create(['workspace_id' => $r->attributes->get('store_workspace')->id, 'type' => 'contact', 'slug' => (string) Str::uuid(), 'data' => $r->validated()]);
+        $workspace = $r->attributes->get('store_workspace');
+        $payload = $r->validated();
+
+        StorefrontContent::query()->create([
+            'workspace_id' => $workspace->id,
+            'type' => 'contact',
+            'slug' => (string) Str::uuid(),
+            'data' => $payload,
+        ]);
+
+        rescue(function () use ($workspace, $payload): void {
+            $owner = $workspace->owner;
+            if ($owner) {
+                SystemNotification::query()->create([
+                    'type' => 'storefront.contact_inquiry',
+                    'notifiable_type' => get_class($owner),
+                    'notifiable_id' => $owner->id,
+                    'data' => [
+                        'title' => 'New Storefront Inquiry: '.($payload['subject'] ?? 'General Inquiry'),
+                        'message' => ($payload['name'] ?? 'Customer').' sent a message: '.Str::limit($payload['message'] ?? '', 100),
+                        'customer_name' => $payload['name'] ?? '',
+                        'customer_email' => $payload['email'] ?? '',
+                        'subject' => $payload['subject'] ?? 'General Inquiry',
+                        'action_url' => route('user.commerce.storefront.index').'?tab=inquiries#inquiries',
+                        'icon' => 'ph ph-chats-circle',
+                    ],
+                ]);
+            }
+        }, report: false);
 
         return response()->json(['data' => ['success' => true]], 201);
     }

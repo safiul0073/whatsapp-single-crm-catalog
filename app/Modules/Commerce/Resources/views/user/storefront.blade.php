@@ -1,5 +1,4 @@
 <x-layouts.user :title="__('Storefront Settings & Studio')">
-<a class="btn btn-secondary" href="{{ route('user.commerce.pack-templates.index') }}">{{ __('Custom Pack Templates') }}</a>
 
 @php
     $defaults = [
@@ -13,6 +12,11 @@
         'contact_phone' => '',
         'footer_text' => '',
         'password_login' => false,
+        'app_download_enabled' => true,
+        'app_download_title' => 'Experience On Mobile',
+        'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
+        'app_ios_url' => '',
+        'app_android_url' => '',
     ];
     $cfg = array_merge($defaults, (array) ($settings ?? []));
 
@@ -195,11 +199,64 @@
             contact_email: {{ Illuminate\Support\Js::from($cfg['contact_email'] ?? '') }},
             contact_phone: {{ Illuminate\Support\Js::from($cfg['contact_phone'] ?? '') }},
             footer_text: {{ Illuminate\Support\Js::from($cfg['footer_text'] ?? '') }},
-            password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }}
+            password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }},
+            app_download_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['app_download_enabled'] ?? true)) }},
+            app_download_title: {{ Illuminate\Support\Js::from($cfg['app_download_title'] ?? 'Experience On Mobile') }},
+            app_download_subtitle: {{ Illuminate\Support\Js::from($cfg['app_download_subtitle'] ?? 'Download our mobile apps for faster checkout and exclusive drops.') }},
+            app_ios_url: {{ Illuminate\Support\Js::from($cfg['app_ios_url'] ?? '') }},
+            app_android_url: {{ Illuminate\Support\Js::from($cfg['app_android_url'] ?? '') }}
         },
         initialLogoUrl: {{ Illuminate\Support\Js::from($initialLogoUrl) }},
         previewDevice: 'desktop',
         btnHover: false,
+        uploadingApp: false,
+        uploadAppMessage: '',
+        uploadAppPlatform: '',
+
+        uploadAppFile(event, platform) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            this.uploadingApp = true;
+            this.uploadAppPlatform = platform;
+            this.uploadAppMessage = 'Uploading ' + file.name + '...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('platform', platform);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            fetch('{{ route('user.commerce.storefront.upload-app') }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Upload failed with status ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (data.url) {
+                    if (platform === 'ios') {
+                        this.form.app_ios_url = data.url;
+                    } else {
+                        this.form.app_android_url = data.url;
+                    }
+                    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                    this.uploadAppMessage = 'Uploaded ' + file.name + ' (' + sizeMb + ' MB) successfully!';
+                }
+            })
+            .catch(err => {
+                this.uploadAppMessage = 'Upload error: ' + (err.message || 'Failed to upload');
+            })
+            .finally(() => {
+                this.uploadingApp = false;
+                setTimeout(() => { this.uploadAppMessage = ''; }, 6000);
+            });
+        },
 
         getPreviewLogo() {
             if (!this.form.logo) return '';
@@ -365,6 +422,13 @@
                 </a>
             @endif
             <a
+                href="{{ route('user.commerce.pack-templates.index') }}"
+                class="btn btn-outline btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
+            >
+                <i class="ph ph-package text-base"></i>
+                <span>{{ __('Custom Pack Templates') }}</span>
+            </a>
+            <a
                 href="{{ route('user.commerce.products.index') }}"
                 class="btn btn-ghost btn-sm rounded-lg flex items-center gap-1.5 text-xs text-body hover:text-title"
             >
@@ -523,8 +587,28 @@
                 : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
             class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
         >
+            <i class="ph ph-article text-lg"></i>
+            <span>{{ __('Journal & FAQs') }}</span>
+            <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                {{ ($blogs->count() ?? 0) + ($faqs->count() ?? 0) }}
+            </span>
+        </button>
+
+        <button
+            type="button"
+            @click="switchTab('inquiries')"
+            :class="activeTab === 'inquiries'
+                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
+                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
+            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
+        >
             <i class="ph ph-chats-circle text-lg"></i>
-            <span>{{ __('Inquiries & Content') }}</span>
+            <span>{{ __('Customer Inquiries') }}</span>
+            @if(($inquiries->count() ?? 0) > 0)
+                <span class="rounded-full bg-primary/10 text-primary dark:bg-primary/20 px-2 py-0.5 text-[11px] font-bold">
+                    {{ $inquiries->count() }}
+                </span>
+            @endif
         </button>
 
         <button
@@ -538,6 +622,10 @@
             <i class="ph ph-key text-lg"></i>
             <span>{{ __('API & Deployment (.env)') }}</span>
         </button>
+        <button type="button" @click="switchTab('chat-channels')" :class="activeTab === 'chat-channels' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-neutral-600 dark:text-neutral-400'" class="flex items-center gap-2 whitespace-nowrap rounded-t-lg border-b-2 px-4 py-2.5 text-sm">
+            <i class="ph ph-chat-circle-dots text-lg"></i>
+            <span>{{ __('Channel Chatbot & Contact') }}</span>
+        </button>
     </nav>
 
     {{-- =====================================================================
@@ -546,7 +634,7 @@
     <div x-show="activeTab === 'settings'" x-cloak class="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
         {{-- Settings Form (Left 7 cols) --}}
         <div class="space-y-6 lg:col-span-7">
-            <form method="POST" action="{{ route('user.commerce.storefront.settings') }}" class="space-y-6">
+            <form method="POST" action="{{ route('user.commerce.storefront.settings') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="_tab" value="settings">
@@ -1006,6 +1094,147 @@
                     </div>
                 </div>
 
+                {{-- 5. Mobile App Downloads (iOS & Android) Card --}}
+                <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-5">
+                    <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <i class="ph ph-device-mobile text-lg"></i>
+                            </span>
+                            <div>
+                                <h2 class="heading-4 text-title text-base font-semibold">{{ __('Mobile App Downloads (iOS & Android)') }}</h2>
+                                <p class="text-xs text-body">{{ __('Upload your mobile app (.apk) or provide App Store and Google Play links for storefront footer download.') }}</p>
+                            </div>
+                        </div>
+                        {{-- Toggle Switch --}}
+                        <div class="flex items-center gap-2">
+                            <input type="hidden" name="config[app_download_enabled]" value="0">
+                            <label class="relative inline-flex cursor-pointer items-center">
+                                <input
+                                    type="checkbox"
+                                    name="config[app_download_enabled]"
+                                    value="1"
+                                    x-model="form.app_download_enabled"
+                                    class="peer sr-only"
+                                >
+                                <div class="peer h-6 w-11 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div x-show="form.app_download_enabled" class="space-y-5">
+                        {{-- App Section Heading --}}
+                        <div>
+                            <label class="form-label text-xs font-semibold" for="app_download_title">
+                                {{ __('Footer App Section Heading') }}
+                            </label>
+                            <input
+                                id="app_download_title"
+                                type="text"
+                                name="config[app_download_title]"
+                                x-model="form.app_download_title"
+                                maxlength="120"
+                                class="form-input text-xs"
+                                placeholder="Experience On Mobile or Download Our App"
+                            >
+                            <p class="form-hint">{{ __('Small label displayed above the two app badges in the footer.') }}</p>
+                        </div>
+
+                        {{-- iOS and Android 2-Column Grid --}}
+                        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            {{-- iOS / App Store Card --}}
+                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="grid h-7 w-7 place-items-center rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm">
+                                            <i class="ph ph-apple-logo"></i>
+                                        </span>
+                                        <span class="font-bold text-xs text-neutral-900 dark:text-white">{{ __('iOS App (Apple)') }}</span>
+                                    </div>
+                                    <span class="rounded bg-neutral-200/70 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+                                        {{ __('App Store') }}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <label class="form-label text-xs" for="app_ios_url">{{ __('App Store URL / iOS Link') }}</label>
+                                    <input
+                                        id="app_ios_url"
+                                        type="text"
+                                        name="config[app_ios_url]"
+                                        x-model="form.app_ios_url"
+                                        class="form-input text-xs font-mono"
+                                        placeholder="https://apps.apple.com/app/your-app-id"
+                                    >
+                                    <p class="form-hint">{{ __('Leave empty to use standard Apple App Store landing page.') }}</p>
+                                </div>
+                            </div>
+
+                            {{-- Android / Google Play / Direct APK Upload Card --}}
+                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 text-white text-sm">
+                                            <i class="ph ph-google-play-logo"></i>
+                                        </span>
+                                        <span class="font-bold text-xs text-neutral-900 dark:text-white">{{ __('Android App (Google Play / APK)') }}</span>
+                                    </div>
+                                    <span class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                        {{ __('Direct APK / Store') }}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <label class="form-label text-xs" for="app_android_url">{{ __('Google Play URL or APK Download Link') }}</label>
+                                    <input
+                                        id="app_android_url"
+                                        type="text"
+                                        name="config[app_android_url]"
+                                        x-model="form.app_android_url"
+                                        class="form-input text-xs font-mono"
+                                        placeholder="https://play.google.com/store/apps/details?id=... or .apk URL"
+                                    >
+                                </div>
+
+                                {{-- Direct APK File Upload Helper --}}
+                                <div class="pt-2 border-t border-neutral-200/60 dark:border-neutral-700/60 space-y-2">
+                                    <span class="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300 block">
+                                        {{ __('Direct APK Upload:') }}
+                                    </span>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <label class="btn btn-outline btn-sm rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1.5 hover:border-primary hover:text-primary transition-colors">
+                                            <i class="ph ph-upload-simple text-sm"></i>
+                                            <span>{{ __('Choose .apk file') }}</span>
+                                            <input
+                                                type="file"
+                                                name="android_app_file"
+                                                accept=".apk,.zip"
+                                                class="sr-only"
+                                                @change="uploadAppFile($event, 'android')"
+                                            >
+                                        </label>
+                                        <template x-if="uploadingApp && uploadAppPlatform === 'android'">
+                                            <span class="inline-flex items-center gap-1.5 text-xs text-primary animate-pulse font-medium">
+                                                <i class="ph ph-spinner gap-1 animate-spin"></i>
+                                                <span x-text="uploadAppMessage"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="!uploadingApp && uploadAppMessage && uploadAppPlatform === 'android'">
+                                            <span class="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                                                <i class="ph ph-check-circle"></i>
+                                                <span x-text="uploadAppMessage"></span>
+                                            </span>
+                                        </template>
+                                    </div>
+                                    <p class="text-[11px] text-neutral-500">
+                                        {{ __('Upload your compiled Android build (.apk). It is stored on your server and linked automatically.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- 5. Customer Authentication Security Card --}}
                 <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-4">
                     <div class="flex items-center gap-2.5 border-b border-neutral-100 pb-4 dark:border-neutral-800">
@@ -1253,6 +1482,21 @@
                             <div class="space-y-1">
                                 <span class="font-bold text-xs tracking-tight text-white block" x-text="form.name || 'Store Name'"></span>
                                 <p class="text-[10px] text-white/70 line-clamp-2 leading-relaxed" x-text="form.footer_text || 'Premium wholesale & retail e-commerce platform.'"></p>
+                                <template x-if="form.app_download_enabled">
+                                    <div class="pt-2 space-y-1">
+                                        <span class="text-[8px] font-bold uppercase tracking-wider text-white/70 block" x-text="form.app_download_title || 'Experience On Mobile'"></span>
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="inline-flex items-center gap-1 rounded bg-black/40 border border-white/20 px-1.5 py-0.5 text-[8.5px] text-white font-medium">
+                                                <i class="ph ph-apple-logo text-[10px]"></i>
+                                                <span>App Store</span>
+                                            </div>
+                                            <div class="inline-flex items-center gap-1 rounded bg-black/40 border border-white/20 px-1.5 py-0.5 text-[8.5px] text-white font-medium">
+                                                <i class="ph ph-google-play-logo text-[10px] text-emerald-400"></i>
+                                                <span>Google Play</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
                             <div class="text-[10px] text-white/70 space-y-1 shrink-0 text-right">
                                 <template x-if="form.contact_email">
@@ -2770,124 +3014,20 @@
     </div>
 
     {{-- =====================================================================
-         TAB 8: INQUIRIES & CONTENT (CONTACT MESSAGES, SUBSCRIBERS, ARTICLES)
+         TAB 8: JOURNAL, FAQS & CURATED CONTENT
          ===================================================================== --}}
-    <div x-show="activeTab === 'content'" x-cloak class="space-y-6">
-        {{-- Contact Messages & Subscribers --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-6">
-            <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
-                <div class="flex items-center gap-2.5">
-                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <i class="ph ph-envelope-simple text-lg"></i>
-                    </span>
-                    <div>
-                        <h2 class="heading-4 text-title text-base font-semibold">{{ __('Customer Messages & Newsletter Subscribers') }}</h2>
-                        <p class="text-xs text-body">{{ __('Submissions received directly via your storefront contact form and newsletter popups.') }}</p>
-                    </div>
-                </div>
-            </div>
+    @include('commerce::user.storefront-journal-faqs')
 
-            <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
-                @forelse($contents->whereIn('type', ['contact', 'subscriber']) as $msg)
-                    <div class="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-3 text-xs">
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-neutral-900 dark:text-neutral-100">
-                                    {{ $msg->data['name'] ?? $msg->data['email'] ?? 'Store Customer' }}
-                                </span>
-                                <span class="rounded bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                                    {{ ucfirst($msg->type) }}
-                                </span>
-                            </div>
-                            <p class="text-neutral-500 font-mono">{{ $msg->data['email'] ?? '' }}</p>
-                            @if(!empty($msg->data['message']))
-                                <p class="text-neutral-700 dark:text-neutral-300 font-medium pt-1">
-                                    "{{ $msg->data['message'] }}"
-                                </p>
-                            @endif
-                        </div>
-                        <div class="text-[11px] text-neutral-400 shrink-0">
-                            {{ $msg->created_at?->diffForHumans() }}
-                        </div>
-                    </div>
-                @empty
-                    <div class="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-xs text-neutral-500 dark:border-neutral-700">
-                        {{ __('No contact messages or newsletter subscribers yet.') }}
-                    </div>
-                @endforelse
-            </div>
-        </div>
-
-        {{-- Journal, FAQs and Collections --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-6">
-            <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
-                <div class="flex items-center gap-2.5">
-                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <i class="ph ph-article text-lg"></i>
-                    </span>
-                    <div>
-                        <h2 class="heading-4 text-title text-base font-semibold">{{ __('Articles, FAQs & Curated Collections') }}</h2>
-                        <p class="text-xs text-body">{{ __('Manage editorial stories, help center questions, and featured product groups.') }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                @foreach($contents->whereIn('type', ['blog', 'faq', 'collection'])->concat([null]) as $content)
-                    <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 space-y-3">
-                        <form
-                            method="POST"
-                            action="{{ $content ? route('user.commerce.storefront.contents.update', $content->id) : route('user.commerce.storefront.contents.store') }}"
-                            class="space-y-3"
-                        >
-                            @csrf
-                            @if($content) @method('PUT') @endif
-                            <input type="hidden" name="_tab" value="content">
-
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                                <div class="sm:col-span-3">
-                                    <label class="form-label text-xs">{{ __('Content Type') }}</label>
-                                    <select name="type" class="form-input text-xs font-semibold">
-                                        @foreach(['blog', 'faq', 'collection'] as $t)
-                                            <option value="{{ $t }}" @selected(($content?->type ?? '') === $t)>{{ ucfirst($t) }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="sm:col-span-6">
-                                    <label class="form-label text-xs">{{ __('URL Slug') }} *</label>
-                                    <input name="slug" required value="{{ $content?->slug }}" placeholder="e.g. return-policy" class="form-input text-xs font-mono">
-                                </div>
-                                <div class="sm:col-span-3 pb-2 flex items-center gap-2">
-                                    <input type="hidden" name="published" value="0">
-                                    <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold">
-                                        <input type="checkbox" name="published" value="1" @checked($content?->published_at) class="rounded text-primary focus:ring-primary">
-                                        <span>{{ __('Published') }}</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="form-label text-xs">{{ __('Content Data (JSON Object)') }}</label>
-                                <textarea name="data" rows="4" class="form-input font-mono text-xs">{{ json_encode($content?->data ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</textarea>
-                                <p class="text-[11px] text-neutral-400 mt-1">{{ __('Blog: title, excerpt, content • FAQ: question, answer • Collection: title, product_ids') }}</p>
-                            </div>
-
-                            <div class="flex justify-end pt-1">
-                                <button type="submit" class="btn btn-outline btn-sm text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                                    <i class="ph ph-check text-sm"></i>
-                                    <span>{{ $content ? __('Update Content') : __('Create Content') }}</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
+    {{-- =====================================================================
+         TAB: CUSTOMER INQUIRIES & CONTACT MESSAGES
+         ===================================================================== --}}
+    @include('commerce::user.storefront-inquiries')
 
     {{-- =====================================================================
          TAB 9: API & DEPLOYMENT (.ENV) CREDENTIALS
          ===================================================================== --}}
+    @include('commerce::user.storefront-chat-channels')
+
     <div x-show="activeTab === 'deployment'" x-cloak class="space-y-6">
         {{-- 1. Ready-to-Use Next.js Storefront .env Block --}}
         <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-5">

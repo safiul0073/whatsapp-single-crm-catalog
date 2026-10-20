@@ -30,9 +30,9 @@ class RevalidateStorefront implements ShouldQueue
             ->where('workspace_id', $this->workspace)
             ->value('config')['deployment'] ?? []);
 
-        $secret = (string) config('storefront.revalidation_secret');
+        $secret = (string) ($deployment['revalidation_secret'] ?? '');
         if (strlen($secret) < 32) {
-            $secret = (string) ($deployment['revalidation_secret'] ?? '');
+            $secret = (string) config('storefront.revalidation_secret');
         }
         if (strlen($secret) < 32) {
             return;

@@ -73,6 +73,7 @@
                         </div>
                         @foreach($packProductGroups as $productBoxes)
                             @php $packProducts = $productBoxes->flatMap->contents->map->item->unique($productKey); @endphp
+                            <div class="space-y-4" data-pack-product-group>
                                 @php
                                     $customPackSnapshot = $productBoxes->first()?->group?->pack_snapshot;
                                     $customPackName = $customPackSnapshot['name'] ?? null;

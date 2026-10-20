@@ -16,8 +16,10 @@ class InvoiceService
     {
         $order->loadMissing([
             'groups',
-            'items.variant.color',
-            'items.variant.product',
+            'items.variant.color.swatchMedia',
+            'items.variant.media',
+            'items.variant.product.primaryMedia',
+            'items.variant.product.gallery.media',
         ]);
 
         $precision = (new StoreOrderSetting(['currency' => $order->currency]))->precision();
@@ -30,27 +32,48 @@ class InvoiceService
         $storeName = (string) ($storeSetting?->config['name'] ?? Workspace::query()->find($order->workspace_id)?->name ?? 'Storefront');
 
         $rows = $this->buildInvoiceRows($order, $precision, $currency);
+        $rowChunks = $this->paginateRows($rows);
 
-        $firstPageMaxRows = 9;
-        $otherPageMaxRows = 14;
-        $rowChunks = [];
-        if (count($rows) <= $firstPageMaxRows) {
-            $rowChunks[] = $rows;
-        } else {
-            $rowChunks[] = array_slice($rows, 0, $firstPageMaxRows);
-            $remaining = array_slice($rows, $firstPageMaxRows);
-            foreach (array_chunk($remaining, $otherPageMaxRows) as $chunk) {
-                $rowChunks[] = $chunk;
+        $totalPages = max(1, count($rowChunks));
+
+        // Scale and embed unique thumbnail images
+        $imageCache = [];
+        $imageUrlToName = [];
+        $imageResources = [];
+        $imageObjects = [];
+        $nextObjId = 5 + $totalPages * 2;
+        $imgCounter = 1;
+
+        foreach ($rows as $row) {
+            $url = $row['image_url'] ?? null;
+            if ($url && ! array_key_exists($url, $imageCache)) {
+                $scaled = $this->loadAndScaleImage($url);
+                $imageCache[$url] = $scaled;
+                if ($scaled) {
+                    $name = 'Im'.$imgCounter++;
+                    $objId = $nextObjId++;
+                    $imageUrlToName[$url] = $name;
+                    $imageResources[$name] = $objId.' 0 R';
+                    $imageObjects[$objId] = '<< /Type /XObject /Subtype /Image /Width '.$scaled['width'].' /Height '.$scaled['height'].' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($scaled['data']).">>\nstream\n".$scaled['data']."\nendstream";
+                }
             }
         }
 
-        $totalPages = max(1, count($rowChunks));
         $objects = [
             1 => '<< /Type /Catalog /Pages 2 0 R >>',
             3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
             4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
         ];
         $kids = [];
+
+        $xObjectDict = '';
+        if (! empty($imageResources)) {
+            $xEntries = [];
+            foreach ($imageResources as $name => $ref) {
+                $xEntries[] = '/'.$name.' '.$ref;
+            }
+            $xObjectDict = ' /XObject << '.implode(' ', $xEntries).' >>';
+        }
 
         foreach ($rowChunks as $pageIndex => $pageRows) {
             $pageObjId = 5 + $pageIndex * 2;
@@ -66,12 +89,17 @@ class InvoiceService
                 isFirstPage: $isFirstPage,
                 isLastPage: $isLastPage,
                 pageNum: $pageIndex + 1,
-                totalPages: $totalPages
+                totalPages: $totalPages,
+                imageUrlToName: $imageUrlToName
             );
 
-            $objects[$pageObjId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '.$contentObjId.' 0 R >>';
+            $objects[$pageObjId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>'.$xObjectDict.' >> /Contents '.$contentObjId.' 0 R >>';
             $objects[$contentObjId] = '<< /Length '.strlen($stream).">>\nstream\n".$stream."\nendstream";
             $kids[] = $pageObjId.' 0 R';
+        }
+
+        foreach ($imageObjects as $id => $objStr) {
+            $objects[$id] = $objStr;
         }
 
         $objects[2] = '<< /Type /Pages /Kids ['.implode(' ', $kids).'] /Count '.count($kids).' >>';
@@ -93,13 +121,46 @@ class InvoiceService
     }
 
     /**
-     * @return array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string}>
+     * @param  array<int, mixed>  $rows
+     * @return array<int, array<int, mixed>>
+     */
+    private function paginateRows(array $rows): array
+    {
+        $totalRows = count($rows);
+        if ($totalRows === 0) {
+            return [[]];
+        }
+
+        $singlePageMaxRows = 8;
+        if ($totalRows <= $singlePageMaxRows) {
+            return [$rows];
+        }
+
+        $page1MaxRows = 8;
+        $otherPageMaxRows = 9;
+
+        $pages = [];
+        $pages[] = array_slice($rows, 0, $page1MaxRows);
+        $remaining = array_slice($rows, $page1MaxRows);
+
+        while (count($remaining) > 0) {
+            $chunk = array_slice($remaining, 0, $otherPageMaxRows);
+            $pages[] = $chunk;
+            $remaining = array_slice($remaining, count($chunk));
+        }
+
+        return $pages;
+    }
+
+    /**
+     * @return array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>
      */
     private function buildInvoiceRows(Order $order, int $precision, string $currency): array
     {
         $rows = [];
         $itemsByGroup = $order->items->groupBy('group_id');
         $handledItemIds = [];
+        $sizeOrder = array_flip(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']);
 
         foreach ($order->groups as $group) {
             /** @var OrderGroup $group */
@@ -118,6 +179,12 @@ class InvoiceService
                     $sz = (string) ($gi->variant?->size ?? $gi->attributes['size'] ?? 'STD');
                     $sizes[$sz] = ($sizes[$sz] ?? 0) + (int) $gi->quantity;
                 }
+                uksort($sizes, function (string $a, string $b) use ($sizeOrder): int {
+                    $orderA = $sizeOrder[strtoupper(trim($a))] ?? 99;
+                    $orderB = $sizeOrder[strtoupper(trim($b))] ?? 99;
+
+                    return $orderA !== $orderB ? ($orderA <=> $orderB) : strcasecmp($a, $b);
+                });
                 $sizeParts = [];
                 foreach ($sizes as $sz => $qty) {
                     $sizeParts[] = $sz.': '.$qty;
@@ -136,12 +203,13 @@ class InvoiceService
 
                 $rows[] = [
                     'title' => $isCustom ? '['.$packName.'] '.(string) $group->product_name : (string) $group->product_name,
-                    'subtitle' => ($isCustom ? 'Custom Pack ('.$packName.')' : 'Wholesale Pack').'  |  Color: '.$colorName.'  |  '.$boxCount.' Pack(s) x '.$pcsPerPack.' pcs/pack',
+                    'subtitle' => ($isCustom ? 'Custom Pack ('.$packName.')' : 'Wholesale Pack').'  |  Color: '.$colorName.'  |  '.$pcsPerPack.' pcs/pack',
                     'breakdown' => 'Size Breakdown: '.implode(', ', $sizeParts),
                     'type_label' => $isCustom ? $boxCount.' Custom Pack(s)' : $boxCount.' Pack(s)',
                     'qty' => $totalPcs.' pcs',
                     'unit_price' => OrderMoney::decimal($unitMinor, $precision).' '.$currency,
                     'line_total' => OrderMoney::decimal($lineMinor, $precision).' '.$currency,
+                    'image_url' => $this->resolveItemImageUrl($firstItem),
                 ];
             } else {
                 foreach ($groupItems as $item) {
@@ -167,6 +235,12 @@ class InvoiceService
                         $sz = (string) ($gi->variant?->size ?? $gi->attributes['size'] ?? 'STD');
                         $sizes[$sz] = ($sizes[$sz] ?? 0) + (int) $gi->quantity;
                     }
+                    uksort($sizes, function (string $a, string $b) use ($sizeOrder): int {
+                        $orderA = $sizeOrder[strtoupper(trim($a))] ?? 99;
+                        $orderB = $sizeOrder[strtoupper(trim($b))] ?? 99;
+
+                        return $orderA !== $orderB ? ($orderA <=> $orderB) : strcasecmp($a, $b);
+                    });
                     $sizeParts = [];
                     foreach ($sizes as $sz => $qty) {
                         $sizeParts[] = $sz.': '.$qty;
@@ -183,6 +257,7 @@ class InvoiceService
                         'qty' => $totalPcs.' pcs',
                         'unit_price' => OrderMoney::decimal($unitMinor, $precision).' '.$currency,
                         'line_total' => OrderMoney::decimal($lineMinor, $precision).' '.$currency,
+                        'image_url' => $this->resolveItemImageUrl($firstItem),
                     ];
                 } else {
                     $rows[] = $this->formatSingleItemRow($groupedItems->first(), $precision, $currency);
@@ -194,13 +269,13 @@ class InvoiceService
     }
 
     /**
-     * @return array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string}
+     * @return array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}
      */
     private function formatSingleItemRow(OrderItem $item, int $precision, string $currency): array
     {
         $color = $item->variant?->color?->display_name ?? $item->variant?->color?->name ?? ($item->attributes['color'] ?? null);
         $size = $item->variant?->size ?? ($item->attributes['size'] ?? null);
-        $meta = ['Single Product'];
+        $meta = [];
         if ($color) {
             $meta[] = 'Color: '.$color;
         }
@@ -209,6 +284,9 @@ class InvoiceService
         }
         if ($item->sku) {
             $meta[] = 'SKU: '.$item->sku;
+        }
+        if (empty($meta)) {
+            $meta[] = 'Single Product';
         }
 
         return [
@@ -219,9 +297,124 @@ class InvoiceService
             'qty' => $item->quantity.' pc(s)',
             'unit_price' => OrderMoney::decimal(OrderMoney::minor($item->unit_price, $precision), $precision).' '.$currency,
             'line_total' => OrderMoney::decimal(OrderMoney::minor($item->line_total, $precision), $precision).' '.$currency,
+            'image_url' => $this->resolveItemImageUrl($item),
         ];
     }
 
+    private function resolveItemImageUrl(?OrderItem $item): ?string
+    {
+        if (! $item) {
+            return null;
+        }
+
+        $images = $item->productImages();
+        if (! empty($images[0]['url'])) {
+            return (string) $images[0]['url'];
+        }
+
+        $variant = $item->variant;
+        $product = $variant?->product;
+        $color = $variant?->color;
+
+        $url = $variant?->media?->url
+            ?? $color?->swatchMedia?->url
+            ?? ($product && $variant?->color_id ? $product->gallery?->firstWhere('color_id', $variant->color_id)?->media?->url : null)
+            ?? $product?->primaryMedia?->url
+            ?? $product?->gallery?->first()?->media?->url
+            ?? ($item->attributes['image_url'] ?? null);
+
+        return $url ? (string) $url : null;
+    }
+
+    /**
+     * @return array{width: int, height: int, data: string}|null
+     */
+    private function loadAndScaleImage(?string $url): ?array
+    {
+        if (! $url || ! extension_loaded('gd')) {
+            return null;
+        }
+
+        $rawData = null;
+        $parsedPath = parse_url($url, PHP_URL_PATH);
+        if ($parsedPath) {
+            $localPath = public_path(ltrim($parsedPath, '/'));
+            if (file_exists($localPath)) {
+                $rawData = @file_get_contents($localPath);
+            }
+        }
+
+        if ($rawData === null && file_exists($url)) {
+            $rawData = @file_get_contents($url);
+        }
+
+        if ($rawData === null && filter_var($url, FILTER_VALIDATE_URL)) {
+            $ctx = stream_context_create([
+                'http' => ['timeout' => 2],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $rawData = @file_get_contents($url, false, $ctx);
+        }
+
+        if (! $rawData) {
+            return null;
+        }
+
+        $src = @imagecreatefromstring($rawData);
+        if (! $src) {
+            return null;
+        }
+
+        $targetSize = 100;
+        $canvas = imagecreatetruecolor($targetSize, $targetSize);
+        if (! $canvas) {
+            imagedestroy($src);
+
+            return null;
+        }
+
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefilledrectangle($canvas, 0, 0, $targetSize, $targetSize, $white);
+
+        $sw = imagesx($src);
+        $sh = imagesy($src);
+        if ($sw <= 0 || $sh <= 0) {
+            imagedestroy($canvas);
+            imagedestroy($src);
+
+            return null;
+        }
+
+        $scale = min($targetSize / $sw, $targetSize / $sh);
+        $dw = (int) round($sw * $scale);
+        $dh = (int) round($sh * $scale);
+        $dx = (int) round(($targetSize - $dw) / 2);
+        $dy = (int) round(($targetSize - $dh) / 2);
+
+        imagecopyresampled($canvas, $src, $dx, $dy, 0, 0, $dw, $dh, $sw, $sh);
+
+        ob_start();
+        imagejpeg($canvas, null, 85);
+        $jpegData = ob_get_clean();
+
+        imagedestroy($canvas);
+        imagedestroy($src);
+
+        if (! $jpegData) {
+            return null;
+        }
+
+        return [
+            'width' => $targetSize,
+            'height' => $targetSize,
+            'data' => $jpegData,
+        ];
+    }
+
+    /**
+     * @param  array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>  $rows
+     * @param  array<string, string>  $imageUrlToName
+     */
     private function renderPageStream(
         Order $order,
         string $storeName,
@@ -230,7 +423,8 @@ class InvoiceService
         bool $isFirstPage,
         bool $isLastPage,
         int $pageNum,
-        int $totalPages
+        int $totalPages,
+        array $imageUrlToName = []
     ): string {
         $ops = [];
 
@@ -283,7 +477,7 @@ class InvoiceService
             $ops[] = $this->text(315, 691, 'Tracking Code: '.$this->truncate($trackingCode, 30), 'F2', 9, [0.07, 0.09, 0.15]);
             $ops[] = $this->text(315, 676, 'Carrier Tracking #: '.$this->truncate($carrierTracking, 28), 'F1', 9, [0.25, 0.30, 0.38]);
             $ops[] = $this->text(315, 662, 'Shipping Method: '.$this->truncate($deliveryMethod, 30), 'F1', 9, [0.25, 0.30, 0.38]);
-            $ops[] = $this->text(315, 648, 'Track online at /track-order with code & phone', 'F1', 8, [0.35, 0.42, 0.55]);
+            $ops[] = $this->text(315, 648, 'Track online at /track-order with tracking code', 'F1', 8, [0.35, 0.42, 0.55]);
 
             $y = 612;
         }
@@ -291,16 +485,16 @@ class InvoiceService
         // Table Header
         $ops[] = '0.12 0.16 0.23 rg 40 '.($y - 22).' 515 22 re f';
         $ops[] = $this->text(48, $y - 14, 'PRODUCT / WHOLESALE PACK DETAILS', 'F2', 8.5, [1, 1, 1]);
-        $ops[] = $this->text(315, $y - 14, 'PACK / MODE', 'F2', 8.5, [1, 1, 1]);
-        $ops[] = $this->text(385, $y - 14, 'QTY', 'F2', 8.5, [1, 1, 1]);
-        $ops[] = $this->text(435, $y - 14, 'UNIT PRICE', 'F2', 8.5, [1, 1, 1]);
-        $ops[] = $this->text(500, $y - 14, 'LINE TOTAL', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(325, $y - 14, 'PACK / MODE', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(395, $y - 14, 'QTY', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(445, $y - 14, 'UNIT PRICE', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(505, $y - 14, 'LINE TOTAL', 'F2', 8.5, [1, 1, 1]);
 
         $y -= 22;
 
         foreach ($rows as $idx => $row) {
             $hasBreakdown = $row['breakdown'] !== '';
-            $rowHeight = $hasBreakdown ? 46 : 34;
+            $rowHeight = $hasBreakdown ? 52 : 44;
             $nextY = $y - $rowHeight;
 
             if ($idx % 2 === 1) {
@@ -308,16 +502,39 @@ class InvoiceService
             }
             $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 '.$nextY.' 515 '.$rowHeight.' re S';
 
-            $ops[] = $this->text(48, $y - 13, $this->truncate($row['title'], 50), 'F2', 9.5, [0.07, 0.09, 0.15]);
-            $ops[] = $this->text(48, $y - 25, $this->truncate($row['subtitle'], 62), 'F1', 8, [0.32, 0.37, 0.46]);
-            if ($hasBreakdown) {
-                $ops[] = $this->text(48, $y - 37, $this->truncate($row['breakdown'], 66), 'F2', 8, [0.15, 0.25, 0.45]);
+            // Thumbnail image (36x36) centered vertically in the row
+            $imgX = 48;
+            $imgSize = 36;
+            $imgY = $nextY + (int) round(($rowHeight - $imgSize) / 2);
+            $imgUrl = $row['image_url'] ?? null;
+            $imgName = $imgUrl ? ($imageUrlToName[$imgUrl] ?? null) : null;
+
+            if ($imgName) {
+                $ops[] = 'q '.$imgSize.' 0 0 '.$imgSize.' '.$imgX.' '.$imgY.' cm /'.$imgName.' Do Q';
+                $ops[] = '0.85 0.88 0.92 RG 0.5 w '.$imgX.' '.$imgY.' '.$imgSize.' '.$imgSize.' re S';
+            } else {
+                $ops[] = '0.94 0.95 0.97 rg 0.82 0.85 0.90 RG 0.5 w '.$imgX.' '.$imgY.' '.$imgSize.' '.$imgSize.' re B';
+                $lbl = $hasBreakdown ? 'PACK' : 'ITEM';
+                $ops[] = $this->text($imgX + 7, $imgY + 14, $lbl, 'F2', 7, [0.55, 0.60, 0.70]);
             }
 
-            $ops[] = $this->text(315, $y - 19, $this->truncate($row['type_label'], 14), 'F2', 8.5, [0.15, 0.20, 0.30]);
-            $ops[] = $this->text(385, $y - 19, $this->truncate($row['qty'], 10), 'F2', 8.5, [0.07, 0.09, 0.15]);
-            $ops[] = $this->text(435, $y - 19, $this->truncate($row['unit_price'], 14), 'F1', 8.5, [0.25, 0.30, 0.38]);
-            $ops[] = $this->text(500, $y - 19, $this->truncate($row['line_total'], 14), 'F2', 9, [0.07, 0.09, 0.15]);
+            // Product text starting at X = 92
+            $textX = 92;
+            if ($hasBreakdown) {
+                $ops[] = $this->text($textX, $y - 14, $this->truncate($row['title'], 44), 'F2', 9.5, [0.07, 0.09, 0.15]);
+                $ops[] = $this->text($textX, $y - 27, $this->truncate($row['subtitle'], 58), 'F1', 8, [0.32, 0.37, 0.46]);
+                $ops[] = $this->text($textX, $y - 40, $this->truncate($row['breakdown'], 62), 'F2', 7.5, [0.15, 0.25, 0.45]);
+            } else {
+                $ops[] = $this->text($textX, $y - 16, $this->truncate($row['title'], 44), 'F2', 9.5, [0.07, 0.09, 0.15]);
+                $ops[] = $this->text($textX, $y - 30, $this->truncate($row['subtitle'], 58), 'F1', 8, [0.32, 0.37, 0.46]);
+            }
+
+            // Columns 2-5 vertically centered
+            $midY = $y - ($rowHeight / 2) + 2;
+            $ops[] = $this->text(325, $midY, $this->truncate($row['type_label'], 13), 'F2', 8.5, [0.15, 0.20, 0.30]);
+            $ops[] = $this->text(395, $midY, $this->truncate($row['qty'], 10), 'F2', 8.5, [0.07, 0.09, 0.15]);
+            $ops[] = $this->text(445, $midY, $this->truncate($row['unit_price'], 14), 'F1', 8.5, [0.25, 0.30, 0.38]);
+            $ops[] = $this->text(505, $midY, $this->truncate($row['line_total'], 14), 'F2', 9, [0.07, 0.09, 0.15]);
 
             $y = $nextY;
         }
