@@ -13,7 +13,16 @@
                 <h1 class="text-2xl md:text-3xl text-neutral-800 font-bold mt-2">{{ $method->name }}</h1>
             </div>
             
-            <form action="{{ route('user.shipping.methods.destroy', $method) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this shipping method?') }}');">
+            <form
+                action="{{ route('user.shipping.methods.destroy', $method) }}"
+                method="POST"
+                data-confirm
+                data-confirm-title="{{ __('Delete Shipping Method?') }}"
+                data-confirm-message="{{ __('Are you sure you want to delete this shipping method?') }}"
+                data-confirm-button="{{ __('Delete Method') }}"
+                data-confirm-variant="danger"
+                data-confirm-icon="ph-trash"
+            >
                 @csrf
                 @method('DELETE')
                 <x-ui.button type="submit" variant="danger" class="text-error border-error hover:bg-error/10">

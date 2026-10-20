@@ -8,10 +8,10 @@ class OrderGroup extends Model
 {
     protected $table = 'commerce_order_groups';
 
-    protected $fillable = ['order_id', 'product_id', 'color_id', 'mode', 'product_name', 'color_name', 'box_count', 'ratio', 'multiplier', 'pieces_per_box', 'quantity'];
+    protected $fillable = ['order_id', 'product_id', 'color_id', 'mode', 'product_name', 'color_name', 'box_count', 'ratio', 'multiplier', 'pieces_per_box', 'quantity', 'pack_snapshot'];
 
     protected function casts(): array
     {
-        return ['ratio' => 'array', 'box_count' => 'integer', 'quantity' => 'integer'];
+        return ['pack_snapshot' => 'array', 'ratio' => 'array', 'box_count' => 'integer', 'quantity' => 'integer'];
     }
 }

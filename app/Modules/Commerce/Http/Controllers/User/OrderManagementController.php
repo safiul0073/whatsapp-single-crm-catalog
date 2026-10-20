@@ -239,7 +239,15 @@ class OrderManagementController extends Controller
     {
         $this->assertOrder($request, $order);
 
-        return view('commerce::user.packing-slip', ['order' => $order->load('boxes.contents.item')]);
+        return view('commerce::user.packing-slip', [
+            'order' => $order->load([
+                'contact',
+                'groups',
+                'boxes.group',
+                'boxes.contents.item.variant.product.primaryMedia',
+                'boxes.contents.item.variant.color',
+            ]),
+        ]);
     }
 
     public function receipt(Request $request, Order $order): BinaryFileResponse

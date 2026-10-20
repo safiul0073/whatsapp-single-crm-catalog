@@ -97,7 +97,7 @@ class OrderIntakeService
                 'tracking_code' => 'TRK-'.Str::upper(Str::random(24)),
                 'customer_snapshot' => $contact->only(['name', 'phone', 'email']),
                 'source' => 'native_whatsapp',
-                'number' => 'WA-'.now()->format('ymd').'-'.Str::upper(Str::random(6)),
+                'number' => app(UnifiedOrderService::class)->generateOrderNumber($account->workspace ?? Workspace::query()->findOrFail($account->workspace_id)),
                 'provider_message_id' => $providerMessageId,
                 'provider_catalog_id' => $providerCatalogId,
                 'status' => $issues === [] ? 'requested' : 'needs_details',

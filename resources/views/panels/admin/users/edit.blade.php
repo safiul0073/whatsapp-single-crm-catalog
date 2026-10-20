@@ -153,10 +153,30 @@
                             @endif
 
                             <div class="flex gap-2">
-                                <button type="submit" name="2fa_action" value="disable" class="btn btn-xs btn-outline-danger w-full flex justify-center py-1.5" onclick="return confirm('{{ __('Are you sure you want to disable 2FA for this user?') }}')">
+                                <button
+                                    type="submit"
+                                    name="2fa_action"
+                                    value="disable"
+                                    data-confirm
+                                    data-confirm-title="{{ __('Disable Two-Factor Auth?') }}"
+                                    data-confirm-message="{{ __('Are you sure you want to disable 2FA for this user?') }}"
+                                    data-confirm-button="{{ __('Disable 2FA') }}"
+                                    data-confirm-variant="danger"
+                                    class="btn btn-xs btn-outline-danger w-full flex justify-center py-1.5"
+                                >
                                     {{ __('Disable 2FA') }}
                                 </button>
-                                <button type="submit" name="2fa_action" value="reset" class="btn btn-xs btn-outline-warning w-full flex justify-center py-1.5" onclick="return confirm('{{ __('Are you sure you want to reset 2FA for this user?') }}')">
+                                <button
+                                    type="submit"
+                                    name="2fa_action"
+                                    value="reset"
+                                    data-confirm
+                                    data-confirm-title="{{ __('Reset Two-Factor Auth?') }}"
+                                    data-confirm-message="{{ __('Are you sure you want to reset 2FA for this user?') }}"
+                                    data-confirm-button="{{ __('Reset 2FA') }}"
+                                    data-confirm-variant="warning"
+                                    class="btn btn-xs btn-outline-warning w-full flex justify-center py-1.5"
+                                >
                                     {{ __('Reset 2FA') }}
                                 </button>
                             </div>

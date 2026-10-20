@@ -1,13 +1,17 @@
 (function () {
+  "use strict";
   if (window.WaProChatbotWidgetLoaded) return;
   window.WaProChatbotWidgetLoaded = true;
 
-  const token = @json($token);
-  const configUrl = @json($configUrl);
-  const baseUrl = @json($baseUrl);
+  const token = {{ Illuminate\Support\Js::from($token) }};
+  const configUrl = {{ Illuminate\Support\Js::from($configUrl) }};
+  const baseUrl = {{ Illuminate\Support\Js::from($baseUrl) }};
+  const embeddedLauncher = document.currentScript?.dataset.externalLauncher === "true";
+  const position = document.currentScript?.dataset.position;
   const storageKey = `wapro_widget_${token}`;
   let config = null;
-  let session = JSON.parse(localStorage.getItem(storageKey) || "null");
+  let session = null;
+  try { session = JSON.parse(localStorage.getItem(storageKey) || "null"); } catch {}
   let lastMessageId = 0;
   let polling = null;
   let selectedAttachment = null;
@@ -48,6 +52,7 @@
   document.body.appendChild(root);
 
   const launcher = root.querySelector(".wapro-launcher");
+  if (embeddedLauncher) launcher.hidden = true;
   const panel = root.querySelector(".wapro-panel");
   const close = root.querySelector(".wapro-close");
   const messages = root.querySelector(".wapro-messages");
@@ -155,7 +160,7 @@
     const payload = {visitor_uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), page_url: location.href, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone};
     fields.querySelectorAll("input").forEach((input) => payload[input.name] = input.value);
     session = await postJson(`${baseUrl}/widgets/chatbot/${token}/sessions`, payload);
-    localStorage.setItem(storageKey, JSON.stringify(session));
+    try { localStorage.setItem(storageKey, JSON.stringify(session)); } catch {}
     renderFields();
     return session;
   }
@@ -175,8 +180,11 @@
   }
 
   async function boot() {
-    config = await fetch(configUrl, {headers: {"Accept":"application/json"}}).then((response) => response.json());
-    root.className = `wapro-widget ${config.settings.position || "right"}`;
+    config = await fetch(configUrl, {headers: {"Accept":"application/json"}}).then((response) => {
+      if (!response.ok) throw new Error("Chat unavailable");
+      return response.json();
+    });
+    root.className = `wapro-widget ${position || config.settings.position || "right"}`;
     root.style.setProperty("--wapro-primary", config.settings.primary_color || "#16a34a");
     launcher.textContent = config.settings.launcher_label || "Chat";
     root.querySelector(".wapro-title").textContent = config.name || "Chat";
@@ -184,16 +192,21 @@
     if (config.greeting) appendMessage({id: "greeting", direction: "outbound", body: config.greeting});
   }
 
-  launcher.addEventListener("click", () => {
+  function openPanel() {
     panel.classList.add("open");
     launcher.style.display = "none";
-    polling = polling || setInterval(poll, 4000);
-    poll();
-  });
+    polling = polling || setInterval(() => poll().catch(() => {}), 4000);
+    poll().catch(() => {});
+    panel.querySelector(".wapro-close").focus();
+  }
+  launcher.addEventListener("click", openPanel);
 
   close.addEventListener("click", () => {
     panel.classList.remove("open");
     launcher.style.display = "";
+    clearInterval(polling);
+    polling = null;
+    window.dispatchEvent(new CustomEvent("wapro-chatbot-closed"));
   });
 
   attachButton.addEventListener("click", () => attachmentInput.click());
@@ -235,7 +248,20 @@
     }
   });
 
-  boot().catch(() => {
+  const ready = boot();
+  window.WaProChatbotWidget = {
+    token,
+    ready,
+    open: openPanel,
+    destroy() {
+      clearInterval(polling);
+      root.remove();
+      style.remove();
+      delete window.WaProChatbotWidget;
+      window.WaProChatbotWidgetLoaded = false;
+    }
+  };
+  ready.catch(() => {
     launcher.textContent = "Chat unavailable";
     launcher.disabled = true;
   });

@@ -66,6 +66,80 @@
                 </div>
             </section>
 
+            <section
+                x-data="{
+                    prefix: '{{ old('order_number_prefix', $settings->order_number_prefix ?? 'ORD-') }}',
+                    digits: {{ (int) old('order_number_digits', $settings->order_number_digits ?? 5) }},
+                    seq: {{ (int) old('next_order_sequence', $settings->next_order_sequence ?? 1) }},
+                    format(s) {
+                        const num = Math.max(1, parseInt(s) || 1);
+                        const d = Math.max(3, Math.min(10, parseInt(this.digits) || 5));
+                        return (this.prefix || '') + String(num).padStart(d, '0');
+                    }
+                }"
+                class="section-card space-y-4 rounded-md border border-neutral-200"
+            >
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                        <h2 class="heading-4 text-title">{{ __('Order Numbering') }}</h2>
+                        <p class="text-xs text-body">{{ __('Sequential dynamic order numbers (e.g. ORD-00001, ORD-00002).') }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 rounded-md bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 text-xs">
+                        <span class="text-neutral-500">{{ __('Live Preview:') }}</span>
+                        <span class="font-mono font-bold text-primary" x-text="format(seq)"></span>
+                        <span class="text-neutral-400">&rarr;</span>
+                        <span class="font-mono text-neutral-600 dark:text-neutral-300" x-text="format(seq + 1)"></span>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div>
+                        <label class="form-label" for="order_number_prefix">{{ __('Prefix') }}</label>
+                        <input
+                            class="form-input font-mono"
+                            id="order_number_prefix"
+                            name="order_number_prefix"
+                            type="text"
+                            maxlength="20"
+                            placeholder="ORD-"
+                            x-model="prefix"
+                            value="{{ old('order_number_prefix', $settings->order_number_prefix ?? 'ORD-') }}"
+                        >
+                        <p class="mt-1 text-xs text-body">{{ __('Letters, numbers or hyphen (e.g. ORD-).') }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="next_order_sequence">{{ __('Next order number') }}</label>
+                        <input
+                            class="form-input font-mono"
+                            id="next_order_sequence"
+                            name="next_order_sequence"
+                            type="number"
+                            min="1"
+                            max="2147483647"
+                            x-model.number="seq"
+                            value="{{ old('next_order_sequence', $settings->next_order_sequence ?? 1) }}"
+                        >
+                        <p class="mt-1 text-xs text-body">{{ __('Starts from 1 and increments automatically.') }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="order_number_digits">{{ __('Minimum digits (padding)') }}</label>
+                        <input
+                            class="form-input font-mono"
+                            id="order_number_digits"
+                            name="order_number_digits"
+                            type="number"
+                            min="3"
+                            max="10"
+                            x-model.number="digits"
+                            value="{{ old('order_number_digits', $settings->order_number_digits ?? 5) }}"
+                        >
+                        <p class="mt-1 text-xs text-body">{{ __('5 digits pads 1 as 00001.') }}</p>
+                    </div>
+                </div>
+            </section>
+
             <section class="section-card space-y-4 rounded-md border border-neutral-200">
                 <h2 class="heading-4 text-title">{{ __('WhatsApp notifications') }}</h2>
 

@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderBox extends Model
@@ -19,5 +20,10 @@ class OrderBox extends Model
     public function contents(): HasMany
     {
         return $this->hasMany(OrderBoxItem::class, 'box_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(OrderGroup::class, 'group_id');
     }
 }

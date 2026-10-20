@@ -40,6 +40,8 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Storefront\Models\Customer;
+use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -62,7 +64,10 @@ class CommerceController extends Controller implements HasMiddleware
 
     public static function middleware(): array
     {
-        return [new Middleware('permission:commerce.view', only: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'conversationProducts']), new Middleware('permission:commerce.manage', except: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'conversationProducts'])];
+        return [
+            new Middleware('permission:commerce.view', only: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'customers', 'customer', 'conversationProducts']),
+            new Middleware('permission:commerce.manage', except: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'customers', 'customer', 'conversationProducts']),
+        ];
     }
 
     public function index(Request $request): View
@@ -562,13 +567,71 @@ class CommerceController extends Controller implements HasMiddleware
     {
         $workspace = $this->workspaces->current($request->user());
 
+        $query = Order::query()->with(['contact', 'payments'])->where('workspace_id', $workspace->id);
+
+        if ($request->filled('search')) {
+            $search = trim($request->string('search')->toString());
+            $query->where(function ($q) use ($search) {
+                $q->where('number', 'like', "%{$search}%")
+                    ->orWhere('tracking_code', 'like', "%{$search}%")
+                    ->orWhere('tracking_number', 'like', "%{$search}%")
+                    ->orWhere('customer_snapshot->name', 'like', "%{$search}%")
+                    ->orWhere('customer_snapshot->phone', 'like', "%{$search}%")
+                    ->orWhere('customer_snapshot->email', 'like', "%{$search}%")
+                    ->orWhereHas('contact', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->string('status')->toString();
+            if ($status === 'awaiting_payment') {
+                $query->whereIn('status', ['awaiting_payment', 'quoted', 'needs_details']);
+            } elseif ($status === 'processing') {
+                $query->whereIn('status', ['processing', 'packed']);
+            } elseif ($status === 'completed') {
+                $query->whereIn('status', ['completed', 'delivered']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('source')) {
+            $query->where('source', $request->string('source')->toString());
+        }
+
+        if ($request->filled('payment_state')) {
+            $query->where('payment_state', $request->string('payment_state')->toString());
+        }
+
+        if ($request->filled('contact_id')) {
+            $query->where('contact_id', $request->integer('contact_id'));
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->date('to'));
+        }
+
+        $statusCounts = Order::query()
+            ->where('workspace_id', $workspace->id)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $totalCount = Order::query()->where('workspace_id', $workspace->id)->count();
+
         return view('commerce::user.orders', [
-            'orders' => Order::query()->with(['contact', 'payments'])->where('workspace_id', $workspace->id)
-                ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')->toString()))
-                ->when($request->filled('payment_state'), fn ($query) => $query->where('payment_state', $request->string('payment_state')->toString()))
-                ->when($request->filled('contact_id'), fn ($query) => $query->where('contact_id', $request->integer('contact_id')))
-                ->latest()->paginate(25)->withQueryString(),
+            'orders' => $query->latest()->paginate(25)->withQueryString(),
             'sources' => Order::query()->where('workspace_id', $workspace->id)->whereNotNull('source')->distinct()->pluck('source'),
+            'statusCounts' => $statusCounts,
+            'totalCount' => $totalCount,
         ]);
     }
 
@@ -579,11 +642,169 @@ class CommerceController extends Controller implements HasMiddleware
         $order->load(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'items.variant.product.gallery', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery', 'contact', 'conversation', 'events', 'shipment', 'payments.staff']);
         $pos = app(PosService::class);
 
+        $storeCustomer = $order->contact_id
+            ? Customer::query()->where('workspace_id', $order->workspace_id)->where('contact_id', $order->contact_id)->first()
+            : null;
+        $customerAddresses = $storeCustomer
+            ? CustomerAddress::query()->where('customer_id', $storeCustomer->id)->orderByDesc('is_default')->get()
+            : collect();
+
         return view('commerce::user.order', [
             'order' => $order,
             'paymentMethods' => $order->source === 'pos' ? $pos->paymentMethods($order->workspace_id) : [],
             'customerBalances' => $order->source === 'pos' && $order->contact ? $pos->customerBalances($order->contact) : [],
+            'storeCustomer' => $storeCustomer,
+            'customerAddresses' => $customerAddresses,
         ]);
+    }
+
+    public function customers(Request $request): View
+    {
+        $workspace = $this->workspaces->current($request->user());
+
+        $query = Customer::query()
+            ->with(['contact', 'addresses'])
+            ->withCount('orders')
+            ->where('workspace_id', $workspace->id);
+
+        if ($request->filled('search')) {
+            $search = trim($request->string('search')->toString());
+            $query->where(function ($q) use ($search) {
+                $q->where('verified_phone', 'like', "%{$search}%")
+                    ->orWhereHas('contact', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('city', 'like', "%{$search}%")
+                            ->orWhere('country', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $customers = $query->latest('registered_at')->latest('id')->paginate(25)->withQueryString();
+
+        $contactIds = $customers->pluck('contact_id')->filter()->unique()->values();
+        $spending = Order::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('contact_id', $contactIds)
+            ->whereIn('status', ['paid', 'processing', 'packed', 'shipped', 'completed'])
+            ->selectRaw('contact_id, currency, sum(total) as total_spent')
+            ->groupBy('contact_id', 'currency')
+            ->get()
+            ->groupBy('contact_id');
+
+        return view('commerce::user.customers', [
+            'customers' => $customers,
+            'spending' => $spending,
+        ]);
+    }
+
+    public function customer(Request $request, Customer $customer): View|JsonResponse
+    {
+        $this->assertWorkspace($request, $customer->workspace_id);
+
+        $customer->load(['contact', 'addresses']);
+        $orders = Order::query()
+            ->where('workspace_id', $customer->workspace_id)
+            ->where('contact_id', $customer->contact_id)
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'customer' => $customer,
+                'orders' => $orders,
+            ]);
+        }
+
+        return view('commerce::user.customer-detail', [
+            'customer' => $customer,
+            'orders' => $orders,
+        ]);
+    }
+
+    public function updateCustomer(Request $request, Order $order): RedirectResponse
+    {
+        $this->assertWorkspace($request, $order->workspace_id);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address_line1' => ['nullable', 'string', 'max:255'],
+            'address_line2' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'postal_code' => ['nullable', 'string', 'max:30'],
+            'country' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $addressData = array_filter([
+            'name' => $data['name'],
+            'phone' => $data['phone'] ?? null,
+            'line1' => $data['address_line1'] ?? null,
+            'line2' => $data['address_line2'] ?? null,
+            'city' => $data['city'] ?? null,
+            'state' => $data['state'] ?? null,
+            'postal_code' => $data['postal_code'] ?? null,
+            'country' => $data['country'] ?? null,
+        ]);
+
+        $contact = $order->contact;
+        if ($contact) {
+            $customFields = $contact->custom_fields ?? [];
+            if (! empty($addressData)) {
+                $customFields['address'] = $addressData;
+            }
+            $contactUpdate = [
+                'name' => $data['name'],
+                'custom_fields' => $customFields,
+            ];
+            if (! empty($data['phone'])) {
+                $contactUpdate['phone'] = $data['phone'];
+            }
+            if (! empty($data['email'])) {
+                $contactUpdate['email'] = $data['email'];
+            }
+            if (! empty($addressData['city'])) {
+                $contactUpdate['city'] = $addressData['city'];
+            }
+            if (! empty($addressData['country'])) {
+                $contactUpdate['country'] = $addressData['country'];
+            }
+            $contact->update($contactUpdate);
+
+            $customer = Customer::query()->where('workspace_id', $order->workspace_id)->where('contact_id', $contact->id)->first();
+            if ($customer && ! empty($addressData)) {
+                $defaultAddress = CustomerAddress::query()->where('customer_id', $customer->id)->orderByDesc('is_default')->first();
+                if ($defaultAddress) {
+                    $defaultAddress->update(['address' => array_merge($defaultAddress->address ?? [], $addressData)]);
+                } else {
+                    CustomerAddress::query()->create([
+                        'workspace_id' => $order->workspace_id,
+                        'customer_id' => $customer->id,
+                        'label' => 'Primary Contact',
+                        'is_default' => true,
+                        'address' => $addressData,
+                    ]);
+                }
+            }
+        }
+
+        $snapshot = $order->customer_snapshot ?? [];
+        $snapshot['name'] = $data['name'];
+        if (! empty($data['phone'])) {
+            $snapshot['phone'] = $data['phone'];
+        }
+        if (! empty($data['email'])) {
+            $snapshot['email'] = $data['email'];
+        }
+        if (! empty($addressData)) {
+            $snapshot['address'] = $addressData;
+        }
+        $order->update(['customer_snapshot' => $snapshot]);
+
+        return back()->with('success', __('Customer contact details updated.'));
     }
 
     public function quote(QuoteOrderRequest $request, Order $order): RedirectResponse

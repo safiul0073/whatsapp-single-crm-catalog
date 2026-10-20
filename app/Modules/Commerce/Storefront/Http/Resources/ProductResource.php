@@ -1,0 +1,115 @@
+<?php
+
+namespace App\Modules\Commerce\Storefront\Http\Resources;
+
+use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class ProductResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $currency = StoreOrderSetting::catalogCurrency($this->workspace_id);
+        $singlePrice = (string) ($this->single_piece_price ?? $this->variants->where('status', 'active')->min('price') ?? '0');
+        $wholesalePrice = (string) ($this->wholesale_price ?? '0');
+        $sellingMode = $this->selling_mode ?? 'both';
+        $itemMoq = (int) ($this->ws_main_moq ?: ($this->moq ?: 1));
+
+        $wsSettings = [
+            'enabled' => (bool) ($this->ws_enabled ?? false),
+            'main_moq' => $itemMoq,
+            'color_moq' => (int) ($this->ws_color_moq ?: 1),
+            'min_sizes' => $this->ws_min_sizes ? (int) $this->ws_min_sizes : null,
+            'size_ratios' => $this->getEffectiveSizeRatios(),
+            'ratio_multiplier' => (int) ($this->ws_ratio_multiplier ?: 1),
+        ];
+
+        $storefrontSetting = StorefrontSetting::where('workspace_id', $this->workspace_id)->first();
+        $whatsappNumber = $storefrontSetting?->config['whatsapp_number']
+            ?? $storefrontSetting?->config['phone']
+            ?? '+1234567890';
+
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'description' => $this->description,
+            'short_description' => $this->short_description,
+            'price' => $singlePrice,
+            'single_piece_price' => $singlePrice,
+            'wholesale_price' => $wholesalePrice,
+            'selling_mode' => $sellingMode,
+            'moq' => $itemMoq,
+            'ws_main_moq' => $itemMoq,
+            'ws_color_moq' => (int) ($this->ws_color_moq ?: 1),
+            'ws_min_sizes' => $this->ws_min_sizes ? (int) $this->ws_min_sizes : null,
+            'ws_enabled' => (bool) ($this->ws_enabled ?? false),
+            'wholesale_settings' => $wsSettings,
+            'currency' => $currency,
+            'image' => $this->primaryMedia?->url,
+            'primary_image' => $this->primaryMedia?->url,
+            'category' => $this->category?->only(['id', 'name', 'slug']),
+            'brand' => $this->brandRecord?->only(['id', 'name', 'slug']),
+            'gallery' => $this->whenLoaded('gallery', fn () => $this->gallery->map(fn ($g) => [
+                'url' => $g->media?->url,
+                'type' => $g->media_type,
+                'color_id' => $g->color_id,
+            ])),
+            'variants' => $this->variants->whereIn('status', ['active', 'out_of_stock'])->values()->map(fn ($v) => [
+                'id' => $v->id,
+                'sku' => $v->sku,
+                'size' => $v->size,
+                'color_id' => $v->color_id,
+                'price' => (string) ($this->single_piece_price ?? $v->price),
+                'stock' => $v->status === 'active' ? $v->stock_quantity : 0,
+                'image' => $v->image,
+            ]),
+            'colors' => $this->colors->map(function ($c) {
+                $colorImg = $c->swatchMedia?->url
+                    ?? $this->variants->firstWhere('color_id', $c->id)?->image
+                    ?? ($this->relationLoaded('gallery') ? $this->gallery->firstWhere('color_id', $c->id)?->media?->url : null);
+
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'hex' => $c->hex_code,
+                    'hex_code' => $c->hex_code,
+                    'swatch_image' => $colorImg,
+                ];
+            }),
+            'options' => $this->options->map(fn ($o) => [
+                'id' => $o->id,
+                'name' => $o->name,
+                'code' => $o->code,
+                'values' => $o->relationLoaded('values') ? $o->values->pluck('value')->all() : [],
+            ]),
+            'tier_prices' => $this->tierPrices->map(fn ($t) => [
+                'id' => $t->id,
+                'min_quantity' => (int) $t->min_quantity,
+                'max_quantity' => $t->max_quantity ? (int) $t->max_quantity : null,
+                'price' => (float) $t->price,
+                'discount_percentage' => (int) $t->discount_percentage,
+            ]),
+            'feature_highlights' => $this->feature_highlights ?? [],
+            'specifications' => $this->specifications ?? [],
+            'condition' => $this->condition ?? 'new',
+            'delivery_time' => $this->delivery_time ?? '6-10 Working Days',
+            'shipping_info' => $this->shipping_info ?? 'USA & Canada',
+            'care_information' => $this->care_information,
+            'features' => $this->features ?? [],
+            'rating' => (float) ($this->rating ?? 5.0),
+            'reviews_count' => (int) ($this->reviews_count ?? 0),
+            'whatsapp_number' => $whatsappNumber,
+            'shipping_estimate' => [
+                'country' => 'US',
+                'currency' => $currency,
+                'available_methods' => [
+                    ['id' => 'standard', 'name' => 'Standard Air Freight', 'cost' => 10.00, 'formatted_cost' => '10.00', 'estimated_delivery' => '6-10 Working Days'],
+                    ['id' => 'home_delivery', 'name' => 'Home Delivery', 'cost' => 15.00, 'formatted_cost' => '15.00', 'estimated_delivery' => '3-5 Working Days'],
+                ],
+            ],
+        ];
+    }
+}

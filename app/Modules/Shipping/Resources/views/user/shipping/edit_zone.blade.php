@@ -25,7 +25,16 @@
                 <h1 class="text-2xl md:text-3xl text-neutral-800 font-bold mt-2">{{ $zone->name }}</h1>
             </div>
             
-            <form action="{{ route('user.shipping.zones.destroy', $zone) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this zone?') }}');">
+            <form
+                action="{{ route('user.shipping.zones.destroy', $zone) }}"
+                method="POST"
+                data-confirm
+                data-confirm-title="{{ __('Delete Shipping Zone?') }}"
+                data-confirm-message="{{ __('Are you sure you want to delete this zone?') }}"
+                data-confirm-button="{{ __('Delete Zone') }}"
+                data-confirm-variant="danger"
+                data-confirm-icon="ph-trash"
+            >
                 @csrf
                 @method('DELETE')
                 <x-ui.button type="submit" variant="danger">
@@ -113,10 +122,19 @@
                                                     <button type="button" @click="openEditModal({ id: {{ $rate->id }}, shipping_method_id: {{ $rate->shipping_method_id }}, min_weight_kg: {{ (float)$rate->min_weight_kg }}, max_weight_kg: {{ $rate->max_weight_kg ? (float)$rate->max_weight_kg : 'null' }}, price: {{ (float)$rate->price }} })" class="text-neutral-500 hover:text-primary p-1">
                                                         <i class="ph ph-pencil-simple"></i>
                                                     </button>
-                                                    <form action="{{ route('user.shipping.rates.destroy', $rate) }}" method="POST" onsubmit="return confirm('{{ __('Remove this rate?') }}');">
+                                                    <form action="{{ route('user.shipping.rates.destroy', $rate) }}" method="POST">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="text-error hover:text-error/80 p-1">
+                                                        <button
+                                                            type="submit"
+                                                            data-confirm
+                                                            data-confirm-title="{{ __('Remove Shipping Rate?') }}"
+                                                            data-confirm-message="{{ __('Remove this shipping rate from the zone?') }}"
+                                                            data-confirm-button="{{ __('Remove Rate') }}"
+                                                            data-confirm-variant="danger"
+                                                            data-confirm-icon="ph-trash"
+                                                            class="text-error hover:text-error/80 p-1"
+                                                        >
                                                             <i class="ph ph-trash"></i>
                                                         </button>
                                                     </form>

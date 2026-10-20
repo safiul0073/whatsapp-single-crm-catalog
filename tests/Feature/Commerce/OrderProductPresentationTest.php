@@ -156,3 +156,41 @@ it('keeps product names visible inside mixed product packs', function () {
     $response = $this->get(route('user.commerce.orders.show', $order))->assertOk();
     $response->assertSee('Mixed products')->assertSee('Second snapshot product')->assertSee('Snapshot shirt');
 });
+
+it('renders multiple products with multiple packs inside separate pack product groups within the packs section', function () {
+    $product2 = Product::query()->create([
+        'workspace_id' => $this->workspace->id, 'name' => 'Second product hoodie', 'slug' => 'hoodie', 'sku' => 'hoodie',
+        'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'wholesale', 'single_piece_price' => 20,
+        'wholesale_price' => 15, 'ws_enabled' => true, 'ws_main_moq' => 3, 'ws_color_moq' => 3,
+        'ws_min_sizes' => 3, 'ws_ratio_multiplier' => 1,
+    ]);
+    $color2 = $product2->colors()->create(['workspace_id' => $this->workspace->id, 'name' => 'Black']);
+    $product2->update(['ws_size_ratios' => [$color2->id => ['S' => 1, 'M' => 1, 'L' => 1]]]);
+    collect(['S', 'M', 'L'])->each(fn ($size) => $product2->variants()->create([
+        'workspace_id' => $this->workspace->id, 'color_id' => $color2->id, 'sku' => 'hoodie-'.$size,
+        'meta_retailer_id' => 'hoodie-'.$size, 'size' => $size, 'price' => 20, 'stock_quantity' => 100, 'status' => 'active',
+    ]));
+
+    $wholesale1 = array_merge($this->wholesale, ['box_count' => 2]);
+    $wholesale2 = ['product_id' => $product2->id, 'mode' => 'wholesale', 'color_id' => $color2->id, 'box_count' => 3];
+
+    $order = ($this->createOrder)([$wholesale1, $wholesale2]);
+    $response = $this->get(route('user.commerce.orders.show', $order))->assertOk();
+    $document = new DOMDocument;
+    $previousErrors = libxml_use_internal_errors(true);
+    $document->loadHTML($response->getContent());
+    libxml_clear_errors();
+    libxml_use_internal_errors($previousErrors);
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//*[@data-pack-product-group]'))->toHaveCount(2)
+        ->and($xpath->query('//*[@data-pack-product-group]/div/h3'))->toHaveCount(2)
+        ->and($xpath->query('//*[@data-pack-card]'))->toHaveCount(5)
+        ->and($xpath->query('//div[contains(@class, "lg:grid-cols-3")]/aside'))->toHaveCount(1);
+
+    $response->assertSee('Snapshot shirt')
+        ->assertSee('Second product hoodie')
+        ->assertSee('2 packs · 6 pieces')
+        ->assertSee('3 packs · 9 pieces')
+        ->assertSee('5 packs · 15 pieces');
+});

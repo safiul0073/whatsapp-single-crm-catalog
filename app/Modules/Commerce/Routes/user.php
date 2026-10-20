@@ -3,9 +3,19 @@
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
+use App\Modules\Commerce\Storefront\Http\Controllers\AdminController;
+use App\Modules\Commerce\Storefront\Http\Controllers\PackTemplateAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
+    Route::middleware('permission:commerce.manage')->group(function (): void {
+        Route::get('pack-templates', [PackTemplateAdminController::class, 'index'])->name('pack-templates.index');
+        Route::get('pack-templates/create', [PackTemplateAdminController::class, 'create'])->name('pack-templates.create');
+        Route::post('pack-templates', [PackTemplateAdminController::class, 'save'])->name('pack-templates.store');
+        Route::get('pack-templates/{id}/edit', [PackTemplateAdminController::class, 'edit'])->name('pack-templates.edit');
+        Route::put('pack-templates/{id}', [PackTemplateAdminController::class, 'save'])->name('pack-templates.update');
+        Route::delete('pack-templates/{id}', [PackTemplateAdminController::class, 'destroy'])->name('pack-templates.destroy');
+    });
     Route::prefix('pos')->name('pos.')->group(function (): void {
         Route::middleware('permission:commerce.manage')->group(function (): void {
             Route::get('/', [PosController::class, 'index'])->name('index');
@@ -61,6 +71,8 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog/{catalog}/verify-access', [CommerceController::class, 'verifyCatalogAccess'])->name('catalog.verify-access');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->name('orders.index');
+    Route::get('customers', [CommerceController::class, 'customers'])->name('customers.index');
+    Route::get('customers/{customer}', [CommerceController::class, 'customer'])->name('customers.show');
     Route::middleware('permission:commerce.manage')->group(function (): void {
         $controller = OrderManagementController::class;
         Route::get('orders/create', [$controller, 'create'])->name('orders.create');
@@ -79,6 +91,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.view')->name('orders.packing-slip');
     Route::get('orders/{order}/receipt', [OrderManagementController::class, 'receipt'])->middleware('permission:commerce.manage')->name('orders.receipt');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->name('orders.show');
+    Route::put('orders/{order}/customer', [CommerceController::class, 'updateCustomer'])->name('orders.customer.update');
     Route::put('orders/{order}/quote', [CommerceController::class, 'quote'])->name('orders.quote');
     Route::put('orders/{order}/status', [CommerceController::class, 'transition'])->name('orders.transition');
     Route::post('conversations/{conversation}/catalog', [CommerceController::class, 'sendCatalog'])->name('conversations.catalog');
@@ -86,4 +99,40 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('conversations/{conversation}/product', [CommerceController::class, 'sendProduct'])->name('conversations.product');
     Route::post('conversations/{conversation}/product-list', [CommerceController::class, 'sendProductList'])->name('conversations.product-list');
     Route::post('conversations/{conversation}/product-video', [CommerceController::class, 'sendProductVideo'])->name('conversations.product-video');
+});
+
+Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('permission:commerce.manage')->group(function (): void {
+    $c = AdminController::class;
+    Route::get('/', [$c, 'index'])->name('index');
+    Route::put('settings', [$c, 'settings'])->name('settings');
+    Route::post('upload-app', [$c, 'uploadApp'])->name('upload-app');
+    Route::put('chat-channels', [$c, 'chatChannels'])->name('chat-channels');
+    Route::post('pages', [$c, 'savePage'])->name('pages.store');
+    Route::get('pages/{id}', [$c, 'editor'])->name('pages.edit');
+    Route::put('pages/{id}', [$c, 'savePage'])->name('pages.update');
+    Route::delete('pages/{id}', [$c, 'deletePage'])->name('pages.destroy');
+    Route::post('pages/{id}/publish', [$c, 'publish'])->name('pages.publish');
+    Route::post('pages/{id}/preview', [$c, 'preview'])->name('pages.preview');
+    Route::post('sliders', [$c, 'slider'])->name('sliders.store');
+    Route::put('sliders/{id}', [$c, 'slider'])->name('sliders.update');
+    Route::put('menus', [$c, 'menu'])->name('menus');
+    Route::post('domains', [$c, 'addDomain'])->name('domains.store');
+    Route::post('domains/{id}/verify', [$c, 'verifyDomain'])->name('domains.verify');
+    Route::post('domains/{id}/primary', [$c, 'primaryDomain'])->name('domains.primary');
+    Route::delete('domains/{id}', [$c, 'deleteDomain'])->name('domains.delete');
+    Route::post('coupons', [$c, 'coupon'])->name('coupons.store');
+    Route::put('coupons/{id}', [$c, 'coupon'])->name('coupons.update');
+    Route::post('coupons/{id}/toggle', [$c, 'toggleCoupon'])->name('coupons.toggle');
+    Route::delete('coupons/{id}', [$c, 'deleteCoupon'])->name('coupons.delete');
+    Route::put('reviews/{id}', [$c, 'review'])->name('reviews.update');
+});
+
+Route::prefix('commerce/storefront')->name('commerce.storefront.')->middleware('permission:commerce.manage')->group(function (): void {
+    $c = AdminController::class;
+    Route::post('contents', [$c, 'content'])->name('contents.store');
+    Route::put('contents/{id}', [$c, 'content'])->name('contents.update');
+    Route::delete('contents/{id}', [$c, 'deleteContent'])->name('contents.destroy');
+    Route::put('domains/{id}/handle', [$c, 'renameDomain'])->name('domains.rename');
+    Route::post('credentials/generate', [$c, 'generateCredentials'])->name('credentials.generate');
+    Route::put('credentials', [$c, 'updateCredentials'])->name('credentials.update');
 });

@@ -8,5 +8,5 @@
         "App\\Modules\\ManualPaymentMethods\\Providers\\ManualPaymentMethodsServiceProvider"
     ],
     "requires": [],
-    "active": false
+    "active": true
 }

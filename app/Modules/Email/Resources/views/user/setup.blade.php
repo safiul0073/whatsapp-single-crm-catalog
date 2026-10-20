@@ -39,10 +39,19 @@
                         </button>
                     </form>
                     @if ($isConnected)
-                        <form method="POST" action="{{ route('user.email.destroy', $channel) }}" onsubmit="return confirm('{{ __('Disconnect this email channel?') }}')">
+                        <form method="POST" action="{{ route('user.email.destroy', $channel) }}">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error">
+                            <button
+                                type="submit"
+                                data-confirm
+                                data-confirm-title="{{ __('Disconnect Email Channel?') }}"
+                                data-confirm-message="{{ __('Disconnect this email channel from your workspace?') }}"
+                                data-confirm-button="{{ __('Disconnect') }}"
+                                data-confirm-variant="danger"
+                                data-confirm-icon="ph-plugs"
+                                class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                            >
                                 <i class="ph ph-plugs text-base"></i>
                                 {{ __('Disconnect') }}
                             </button>

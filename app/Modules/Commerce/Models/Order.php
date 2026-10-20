@@ -89,7 +89,7 @@ class Order extends Model
 
     public function boxes(): HasMany
     {
-        return $this->hasMany(OrderBox::class);
+        return $this->hasMany(OrderBox::class)->orderBy('id');
     }
 
     public function events(): HasMany

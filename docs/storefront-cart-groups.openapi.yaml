@@ -1,0 +1,360 @@
+openapi: 3.0.3
+info:
+  title: Storefront Cart Groups & Pack Templates API
+  version: 1.0.0
+  description: API for managing retail items, standard wholesale packs, and owner-configured custom mixed-product packs.
+
+paths:
+  /api/storefront/v1/pack-templates:
+    get:
+      summary: List published custom pack templates
+      description: Returns all published custom pack templates configured for the store workspace with their eligible products.
+      responses:
+        '200':
+          description: List of pack templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PackTemplate'
+
+  /api/storefront/v1/cart/groups/preview:
+    post:
+      summary: Preview and validate a proposed cart group
+      description: Dry-runs pack rules, tiered pricing, and inventory constraints without mutating the cart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selection
+              properties:
+                selection:
+                  $ref: '#/components/schemas/CartGroupSelection'
+                replace_group_id:
+                  type: integer
+                  nullable: true
+      responses:
+        '200':
+          description: Simulated cart summary including estimated group pricing and requirements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+        '422':
+          description: Validation failure or stock constraint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /api/storefront/v1/cart/groups:
+    post:
+      summary: Atomically add a cart group
+      description: Adds a retail item, standard wholesale pack, or custom mixed pack. Requires Idempotency-Key header to prevent duplicate additions.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selection
+              properties:
+                selection:
+                  $ref: '#/components/schemas/CartGroupSelection'
+      responses:
+        '200':
+          description: Cart summary with updated groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+        '409':
+          description: Idempotency key reused with mismatched payload
+
+  /api/storefront/v1/cart/groups/{id}:
+    put:
+      summary: Atomically update an existing cart group
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selection
+              properties:
+                selection:
+                  $ref: '#/components/schemas/CartGroupSelection'
+      responses:
+        '200':
+          description: Cart summary with updated group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+    delete:
+      summary: Atomically remove a cart group
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cart summary with group removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+
+  /api/storefront/v1/cart/items/{id}/confirm-retail:
+    post:
+      summary: Confirm a legacy unconfirmed cart line as retail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cart summary with line item migrated to a retail group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+        '422':
+          description: Product is wholesale-only and cannot be confirmed as retail
+
+components:
+  schemas:
+    PackTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        workspace_id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        published:
+          type: boolean
+        position:
+          type: integer
+        product_ids:
+          type: array
+          items:
+            type: integer
+        min_pieces:
+          type: integer
+        max_pieces:
+          type: integer
+          nullable: true
+        min_products:
+          type: integer
+        min_colors:
+          type: integer
+        min_sizes:
+          type: integer
+        min_variant_quantity:
+          type: integer
+        products:
+          type: array
+          items:
+            type: object
+
+    CartGroupSelection:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [retail, standard_wholesale, custom_pack]
+        variant_id:
+          type: integer
+          description: Required when type is retail
+        quantity:
+          type: integer
+          description: Required when type is retail
+        product_id:
+          type: integer
+          description: Required when type is standard_wholesale
+        colors:
+          type: array
+          description: Required when type is standard_wholesale
+          items:
+            type: object
+            required:
+              - color_id
+              - box_count
+            properties:
+              color_id:
+                type: integer
+              box_count:
+                type: integer
+        template_id:
+          type: integer
+          description: Required when type is custom_pack
+        pack_count:
+          type: integer
+          description: Required when type is custom_pack
+        items:
+          type: array
+          description: Quantities per single pack. Required when type is custom_pack
+          items:
+            type: object
+            required:
+              - variant_id
+              - quantity
+            properties:
+              variant_id:
+                type: integer
+              quantity:
+                type: integer
+
+    CartGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [retail, standard_wholesale, custom_pack]
+        mode:
+          type: string
+          enum: [retail, wholesale]
+        name:
+          type: string
+        selection:
+          $ref: '#/components/schemas/CartGroupSelection'
+        requirements:
+          type: object
+        violations:
+          type: array
+          items:
+            type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartLineItem'
+        total_pieces:
+          type: integer
+        total:
+          type: string
+
+    CartLineItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        variant_id:
+          type: integer
+        name:
+          type: string
+        color_name:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        price:
+          type: string
+        line_total:
+          type: string
+        mode:
+          type: string
+          enum: [retail, wholesale, unconfirmed]
+        group_id:
+          type: integer
+          nullable: true
+
+    CartSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        checkout_allowed:
+          type: boolean
+        currency:
+          type: string
+        precision:
+          type: integer
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartGroup'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartLineItem'
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              item_id:
+                type: string
+              group_id:
+                type: integer
+                nullable: true
+              message:
+                type: string
+        subtotal:
+          type: string
+        discount:
+          type: string
+        total:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object

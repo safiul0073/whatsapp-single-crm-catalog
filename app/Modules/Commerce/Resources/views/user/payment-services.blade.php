@@ -90,8 +90,15 @@
             closeModal() {
                 this.editingIndex = null;
             },
-            removeMethod(index) {
-                if (confirm('{{ __('Remove this payment service?') }}')) {
+            async removeMethod(index) {
+                const confirmed = await window.requestConfirm?.({
+                    title: '{{ __('Remove Payment Service?') }}',
+                    message: '{{ __('Remove this payment service from your checkout options?') }}',
+                    confirmText: '{{ __('Remove') }}',
+                    variant: 'danger',
+                    icon: 'ph-trash',
+                });
+                if (confirmed) {
                     this.methods.splice(index, 1);
                     if (this.editingIndex === index) {
                         this.editingIndex = null;

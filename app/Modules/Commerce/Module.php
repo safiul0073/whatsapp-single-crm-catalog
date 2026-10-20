@@ -30,6 +30,8 @@ class Module extends BasePanelModule
             ['label' => 'Products', 'route' => 'user.commerce.products.index'],
             ['label' => 'POS', 'route' => 'user.commerce.pos.index'],
             ['label' => 'Orders', 'route' => 'user.commerce.orders.index'],
+            ['label' => 'Customers', 'route' => 'user.commerce.customers.index'],
+            ['label' => 'Storefront', 'route' => 'user.commerce.storefront.index'],
             ['label' => 'Meta Catalog', 'route' => 'user.commerce.catalog'],
             ['label' => 'Shipping', 'route' => 'user.shipping.*'],
         ]);

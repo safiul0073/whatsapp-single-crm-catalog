@@ -31,6 +31,7 @@ return new class extends Migration
             $table->json('ratio')->nullable();
             $table->unsignedInteger('multiplier')->default(1);
             $table->unsignedInteger('pieces_per_box')->default(0);
+            $table->json('pack_snapshot')->nullable();
             $table->unsignedInteger('quantity');
             $table->timestamps();
         });

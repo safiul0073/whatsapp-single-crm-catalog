@@ -46,10 +46,19 @@
                             {{ __('Set Webhook') }}
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('user.telegram.destroy', $channel) }}" onsubmit="return confirm('{{ __('Disconnect this Telegram channel?') }}')">
+                    <form method="POST" action="{{ route('user.telegram.destroy', $channel) }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn-sm btn-outline text-error hover:border-error hover:text-error">
+                        <button
+                            type="submit"
+                            data-confirm
+                            data-confirm-title="{{ __('Disconnect Telegram Channel?') }}"
+                            data-confirm-message="{{ __('Disconnect this Telegram channel from your workspace?') }}"
+                            data-confirm-button="{{ __('Disconnect') }}"
+                            data-confirm-variant="danger"
+                            data-confirm-icon="ph-plugs"
+                            class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                        >
                             <i class="ph ph-plugs text-base"></i>
                             {{ __('Disconnect') }}
                         </button>

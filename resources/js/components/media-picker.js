@@ -33,8 +33,27 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentPage = 1;
   let hasMore = false;
   let isLoading = false;
-  const colorPickerToggleBtn = modal.querySelector('[data-media-color-picker-toggle]');
   let galleryColorPickerActive = false;
+  let customCallback = null;
+
+  window.openMediaLibrary = function (callback, options = {}) {
+    activePicker = null;
+    customCallback = callback;
+    const accept = options.type || 'image';
+    currentType = accept === 'all' ? '' : accept;
+    typeTabs.forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.mediaType === currentType);
+    });
+    currentPage = 1;
+    if (searchInput) searchInput.value = '';
+    currentSearch = '';
+    selectedMedia = null;
+    updateSelectBtn();
+    openModal('mediaLibraryModal');
+    loadMedia(false);
+  };
+
+  const colorPickerToggleBtn = modal.querySelector('[data-media-color-picker-toggle]');
 
   function updateColorPickerToggle() {
     if (!colorPickerToggleBtn) return;
@@ -240,9 +259,38 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSelectBtn();
   });
 
+  // ── Double Click Item to Select Immediately ──
+  grid.addEventListener('dblclick', function (e) {
+    if (galleryColorPickerActive) return;
+    const item = e.target.closest('[data-media-item]');
+    if (!item) return;
+    if (activePicker?.dataset.mediaMultiple === 'true') return;
+
+    try {
+      const media = JSON.parse(item.dataset.mediaItem);
+      selectedMedia = media;
+      if (selectBtn) {
+        selectBtn.disabled = false;
+        selectBtn.click();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
   // ── Confirm Select ──
   selectBtn.addEventListener('click', function () {
-    if (!selectedMedia || !activePicker || (Array.isArray(selectedMedia) && selectedMedia.length === 0)) return;
+    if (!selectedMedia || (Array.isArray(selectedMedia) && selectedMedia.length === 0)) return;
+
+    if (typeof customCallback === 'function') {
+      const cb = customCallback;
+      customCallback = null;
+      cb(selectedMedia);
+      closeModal('mediaLibraryModal');
+      return;
+    }
+
+    if (!activePicker) return;
 
     if (activePicker.dataset.mediaMultiple === 'true') {
       activePicker.dispatchEvent(new CustomEvent('media-picker:selected', {
@@ -257,8 +305,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const preview = activePicker.querySelector('[data-media-picker-preview]');
 
     if (input) {
-      input.value = selectedMedia.id;
+      const valType = activePicker.dataset.mediaValueType || 'id';
+      input.value = valType === 'url' ? selectedMedia.url : selectedMedia.id;
       input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     if (preview) {
@@ -268,6 +318,11 @@ document.addEventListener('DOMContentLoaded', function () {
         preview.innerHTML = '<div class="media-picker-file-icon"><i class="ph ph-file-text"></i><span>' + selectedMedia.original_name + '</span></div>';
       }
     }
+
+    activePicker.dispatchEvent(new CustomEvent('media-picker:selected', {
+      bubbles: true,
+      detail: { media: selectedMedia }
+    }));
 
     updateBrowseButton(activePicker, true);
 
@@ -520,6 +575,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Reset color picker when media modal is closed
   document.addEventListener('modal:closed', function (e) {
     if (e.detail?.id === 'mediaLibraryModal') {
+      customCallback = null;
       galleryColorPickerActive = false;
       updateColorPickerToggle();
       if (window.ImageColorPicker?.loupe) {

@@ -5,8 +5,11 @@ namespace App\Modules\Commerce\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderBoxItem;
+use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,10 +18,68 @@ class MobileOrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('commerce.view'), 403);
-        $orders = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))
-            ->with('contact:id,name,phone')->latest()->paginate(25);
+        $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
+        $status = trim((string) $request->query('status', ''));
+        $search = trim((string) $request->query('q', ''));
 
-        return response()->json($orders);
+        $orders = Order::query()
+            ->where('workspace_id', $workspaceId)
+            ->with('contact:id,name,phone,email')
+            ->when($status !== '' && $status !== 'all', function (Builder $query) use ($status): void {
+                if ($status === 'new') {
+                    $query->whereIn('status', ['requested', 'needs_details', 'quoted', 'awaiting_payment']);
+
+                    return;
+                }
+
+                if ($status === 'active_fulfillment') {
+                    $query->whereIn('status', ['paid', 'processing', 'packed']);
+
+                    return;
+                }
+
+                $query->where('status', $status);
+            })
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $nested) use ($search): void {
+                    $nested->where('number', 'like', "%{$search}%")
+                        ->orWhere('tracking_code', 'like', "%{$search}%")
+                        ->orWhere('tracking_number', 'like', "%{$search}%")
+                        ->orWhere('submission_reference', 'like', "%{$search}%")
+                        ->orWhereHas('contact', function (Builder $contactQuery) use ($search): void {
+                            $contactQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->latest()
+            ->paginate(25);
+
+        $rawCounts = Order::query()
+            ->where('workspace_id', $workspaceId)
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $countFor = static fn (array $statuses): int => collect($statuses)
+            ->sum(static fn (string $key): int => (int) ($rawCounts[$key] ?? 0));
+
+        $payload = $orders->toArray();
+        $payload['counts'] = [
+            'all' => (int) $rawCounts->sum(),
+            'new' => $countFor(['requested', 'needs_details', 'quoted', 'awaiting_payment']),
+            'awaiting_payment' => (int) ($rawCounts['awaiting_payment'] ?? 0),
+            'paid' => (int) ($rawCounts['paid'] ?? 0),
+            'processing' => (int) ($rawCounts['processing'] ?? 0),
+            'packed' => (int) ($rawCounts['packed'] ?? 0),
+            'active_fulfillment' => $countFor(['paid', 'processing', 'packed']),
+            'shipped' => (int) ($rawCounts['shipped'] ?? 0),
+            'completed' => (int) ($rawCounts['completed'] ?? 0),
+            'cancelled' => (int) ($rawCounts['cancelled'] ?? 0),
+        ];
+
+        return response()->json($payload);
     }
 
     public function show(Request $request, string $order, UnifiedOrderService $orders): JsonResponse
@@ -29,11 +90,50 @@ class MobileOrderController extends Controller
         return response()->json(['data' => $orders->payload($model)]);
     }
 
-    public function transition(TransitionOrderRequest $request, string $order, OrderWorkflowService $workflow, UnifiedOrderService $orders): JsonResponse
-    {
+    public function transition(
+        TransitionOrderRequest $request,
+        string $order,
+        OrderWorkflowService $workflow,
+        UnifiedOrderService $orders,
+        OrderPackingService $packing
+    ): JsonResponse {
         $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($order);
-        $updated = $workflow->transition($model, $request->validated('status'), $request->safe()->except('status'));
+        $targetStatus = (string) $request->validated('status');
+
+        if ($targetStatus === 'packed' && in_array($model->status, ['paid', 'processing'], true)) {
+            $this->autoPackOrderForMobile($model, $packing);
+            $model = $model->fresh();
+        }
+
+        $updated = $workflow->transition($model, $targetStatus, $request->safe()->except('status'));
 
         return response()->json(['data' => $orders->payload($updated)]);
+    }
+
+    private function autoPackOrderForMobile(Order $order, OrderPackingService $packing): void
+    {
+        $order->loadMissing(['items', 'groups', 'boxes']);
+        $unallocatedRetail = [];
+
+        foreach ($order->items as $item) {
+            $group = $order->groups->firstWhere('id', $item->group_id);
+            if ($group && $group->mode === 'wholesale') {
+                continue;
+            }
+
+            $allocated = (int) OrderBoxItem::query()->where('order_item_id', $item->id)->sum('quantity');
+            $remaining = $item->quantity - $allocated;
+            if ($remaining > 0) {
+                $unallocatedRetail[$item->id] = $remaining;
+            }
+        }
+
+        if ($unallocatedRetail !== []) {
+            $packing->addRetailBox($order, $unallocatedRetail);
+        }
+
+        foreach ($order->boxes()->whereNull('packed_at')->pluck('id') as $boxId) {
+            $packing->markPacked($order, (int) $boxId);
+        }
     }
 }

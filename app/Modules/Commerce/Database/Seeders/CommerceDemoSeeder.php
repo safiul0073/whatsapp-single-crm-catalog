@@ -39,13 +39,22 @@ class CommerceDemoSeeder extends Seeder
     public function run(): void
     {
         $workspaceId = config('commerce-demo.workspace_id');
-        if (! $workspaceId) {
-            $this->command?->warn('Commerce demo skipped. Set COMMERCE_DEMO_WORKSPACE_ID to an existing workspace ID.');
+        $workspace = null;
+
+        if ($workspaceId) {
+            $workspace = Workspace::query()->with('owner')->find($workspaceId);
+        }
+
+        if (! $workspace) {
+            $workspace = Workspace::query()->with('owner')->first();
+        }
+
+        if (! $workspace) {
+            $this->command?->warn('Commerce demo skipped. No active workspace found. Set COMMERCE_DEMO_WORKSPACE_ID to an existing workspace ID.');
 
             return;
         }
 
-        $workspace = Workspace::query()->with('owner')->findOrFail($workspaceId);
         if (! $workspace->owner) {
             throw new RuntimeException('The demo workspace must have an owner.');
         }
