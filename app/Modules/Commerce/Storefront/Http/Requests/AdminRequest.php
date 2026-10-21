@@ -54,6 +54,7 @@ class AdminRequest extends FormRequest
                 'config.footer_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/D',
                 'config.password_login' => 'boolean',
                 'config.logo' => 'nullable|string|max:2048',
+                'config.favicon' => 'nullable|string|max:2048',
                 'config.logo_height' => 'nullable|integer|min:32|max:120',
                 'config.logo_show_name' => 'boolean',
                 'config.announcement' => 'nullable|string|max:250',

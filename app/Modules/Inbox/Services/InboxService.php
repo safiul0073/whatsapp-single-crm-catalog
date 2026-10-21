@@ -507,12 +507,44 @@ class InboxService
             'reply_disabled_reason' => $this->replyDisabledReason($conversation),
             'automated_reply_enabled' => $this->automatedReplyEnabled($conversation),
             'attachment_supported' => $this->supportsAttachments((string) $conversation->provider),
-            'last_message' => $latestMessage ? $this->messageBody($latestMessage) : __('No messages yet.'),
+            'last_message' => $latestMessage ? $this->lastMessageSnippet($latestMessage) : __('No messages yet.'),
             'last_message_direction' => $latestMessage?->direction,
             'last_message_status' => $latestMessage?->status?->value ?? $latestMessage?->status,
             'last_message_at' => optional($conversation->last_message_at ?: $latestMessage?->created_at)->toIso8601String(),
             'last_message_time' => $this->shortTime($conversation->last_message_at ?: $latestMessage?->created_at),
         ];
+    }
+
+    protected function lastMessageSnippet(Message $message): string
+    {
+        if (filled(data_get($message->payload, 'deleted_at'))) {
+            return __('This message was deleted');
+        }
+
+        if (filled($message->body)) {
+            return (string) $message->body;
+        }
+
+        if ($message->type === 'template') {
+            $templateName = data_get($message->payload, 'template_name')
+                ?: data_get($message->payload, 'meta_payload.template.name');
+            $templateBody = $this->templateMessageBody($message, $templateName);
+
+            return filled($templateBody) ? $templateBody : (filled($templateName) ? __('Template: :name', ['name' => $templateName]) : __('WhatsApp template message'));
+        }
+
+        $attachmentType = data_get($message->payload, 'attachment.type') ?: $message->type;
+        $attachmentName = data_get($message->payload, 'attachment.name');
+
+        return match ($attachmentType) {
+            'image' => __('Photo'),
+            'video' => __('Video'),
+            'audio' => __('Voice message'),
+            'document' => filled($attachmentName) ? (string) preg_replace('/^[0-9a-fA-F-]{36}-/', '', (string) $attachmentName) : __('Document'),
+            'system' => (string) data_get($message->payload, 'system.body', __('Account notice')),
+            'unsupported' => __('Unsupported message type. Ask the customer to resend it as text, an image or a voice note.'),
+            default => filled($attachmentName) ? (string) preg_replace('/^[0-9a-fA-F-]{36}-/', '', (string) $attachmentName) : '',
+        };
     }
 
     protected function formatMessage(Message $message): array
@@ -558,10 +590,9 @@ class InboxService
                 : __('WhatsApp template message');
         }
 
-        $attachmentName = data_get($message->payload, 'attachment.name');
-
-        if (filled($attachmentName)) {
-            return (string) $attachmentName;
+        $attachment = data_get($message->payload, 'attachment');
+        if (is_array($attachment)) {
+            return '';
         }
 
         return match ($message->type) {

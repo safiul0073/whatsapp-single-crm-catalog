@@ -7,6 +7,7 @@
         'hover' => '#0055D4',
         'footer_color' => '#0A2540',
         'logo' => '',
+        'favicon' => '',
         'announcement' => '',
         'contact_email' => '',
         'contact_phone' => '',
@@ -28,6 +29,17 @@
             $initialLogoUrl = $initialLogo;
         } else {
             $initialLogoUrl = asset('storage/' . ltrim($initialLogo, '/'));
+        }
+    }
+
+    // Normalize initial favicon URL for preview if stored as relative storage path
+    $initialFavicon = $cfg['favicon'] ?? '';
+    $initialFaviconUrl = '';
+    if (!empty($initialFavicon)) {
+        if (str_starts_with($initialFavicon, 'http://') || str_starts_with($initialFavicon, 'https://') || str_starts_with($initialFavicon, '//')) {
+            $initialFaviconUrl = $initialFavicon;
+        } else {
+            $initialFaviconUrl = asset('storage/' . ltrim($initialFavicon, '/'));
         }
     }
 
@@ -193,6 +205,7 @@
             hover: {{ Illuminate\Support\Js::from($cfg['hover'] ?? '#0055D4') }},
             footer_color: {{ Illuminate\Support\Js::from($cfg['footer_color'] ?? '#0A2540') }},
             logo: {{ Illuminate\Support\Js::from($cfg['logo'] ?? '') }},
+            favicon: {{ Illuminate\Support\Js::from($cfg['favicon'] ?? '') }},
             logo_height: {{ Illuminate\Support\Js::from((int) ($cfg['logo_height'] ?? 68)) }},
             logo_show_name: {{ Illuminate\Support\Js::from((bool) ($cfg['logo_show_name'] ?? false)) }},
             announcement: {{ Illuminate\Support\Js::from($cfg['announcement'] ?? '') }},
@@ -207,6 +220,7 @@
             app_android_url: {{ Illuminate\Support\Js::from($cfg['app_android_url'] ?? '') }}
         },
         initialLogoUrl: {{ Illuminate\Support\Js::from($initialLogoUrl) }},
+        initialFaviconUrl: {{ Illuminate\Support\Js::from($initialFaviconUrl) }},
         previewDevice: 'desktop',
         btnHover: false,
         uploadingApp: false,
@@ -269,6 +283,17 @@
             return '/storage/' + this.form.logo.replace(/^\/+/, '');
         },
 
+        getPreviewFavicon() {
+            if (!this.form.favicon) return '';
+            if (this.form.favicon.startsWith('http://') || this.form.favicon.startsWith('https://') || this.form.favicon.startsWith('//')) {
+                return this.form.favicon;
+            }
+            if (this.form.favicon === {{ Illuminate\Support\Js::from($cfg['favicon'] ?? '') }} && this.initialFaviconUrl) {
+                return this.initialFaviconUrl;
+            }
+            return '/storage/' + this.form.favicon.replace(/^\/+/, '');
+        },
+
         setPalette(primary, hover, footer) {
             this.form.primary = primary;
             this.form.hover = hover;
@@ -280,6 +305,16 @@
                 window.openMediaLibrary((media) => {
                     if (media && media.url) {
                         this.form.logo = media.url;
+                    }
+                }, { type: 'image' });
+            }
+        },
+
+        openGalleryForFavicon() {
+            if (typeof window.openMediaLibrary === 'function') {
+                window.openMediaLibrary((media) => {
+                    if (media && media.url) {
+                        this.form.favicon = media.url;
                     }
                 }, { type: 'image' });
             }
@@ -815,6 +850,91 @@
                                             </label>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Store Favicon (Browser Tab Icon) --}}
+                        <div class="pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                            <label class="form-label flex items-center gap-1.5" for="store_favicon">
+                                <i class="ph ph-browsers text-primary text-base"></i>
+                                <span>{{ __('Browser Favicon (Tab Icon)') }}</span>
+                            </label>
+
+                            <div class="rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 space-y-4">
+                                <div class="flex flex-col sm:flex-row items-center gap-4">
+                                    {{-- Visual Favicon Preview in Simulated Browser Tab --}}
+                                    <div class="relative shrink-0 flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-2xs dark:border-neutral-700 dark:bg-neutral-900">
+                                        <div class="h-6 w-6 rounded flex items-center justify-center overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                                            <template x-if="getPreviewFavicon()">
+                                                <img
+                                                    :src="getPreviewFavicon()"
+                                                    alt="Favicon"
+                                                    class="h-5 w-5 object-contain"
+                                                    x-on:error="$el.style.display='none'"
+                                                >
+                                            </template>
+                                            <template x-if="!getPreviewFavicon() && getPreviewLogo()">
+                                                <img
+                                                    :src="getPreviewLogo()"
+                                                    alt="Favicon (from Logo)"
+                                                    class="h-5 w-5 object-contain"
+                                                    x-on:error="$el.style.display='none'"
+                                                >
+                                            </template>
+                                            <template x-if="!getPreviewFavicon() && !getPreviewLogo()">
+                                                <i class="ph ph-globe text-neutral-400 text-sm"></i>
+                                            </template>
+                                        </div>
+                                        <div class="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-[100px]" x-text="form.name || 'Store'"></div>
+                                    </div>
+
+                                    {{-- Action Buttons & Guidance --}}
+                                    <div class="flex-1 space-y-2 text-center sm:text-left">
+                                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                                            <button
+                                                type="button"
+                                                @click="openGalleryForFavicon()"
+                                                class="btn btn-primary btn-sm rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                                            >
+                                                <i class="ph ph-images text-base"></i>
+                                                <span>{{ __('Choose Favicon from Gallery') }}</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                x-show="form.favicon"
+                                                @click="form.favicon = ''"
+                                                class="btn btn-outline btn-sm rounded-lg text-xs text-red-600 hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-950/40 flex items-center gap-1"
+                                            >
+                                                <i class="ph ph-trash text-sm"></i>
+                                                <span>{{ __('Remove Favicon') }}</span>
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-neutral-500">
+                                            {{ __('Appears in the browser tab next to the page title. Recommended: 32×32px, 64×64px, or SVG. If left empty, your store logo or default icon is used.') }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {{-- Direct URL / Storage Path Input --}}
+                                <div class="pt-3 border-t border-neutral-200/60 dark:border-neutral-700/60 space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <label for="store_favicon" class="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
+                                            {{ __('Favicon URL or Storage Path:') }}
+                                        </label>
+                                        <template x-if="form.favicon">
+                                            <span class="text-[10px] text-neutral-400 font-mono truncate max-w-xs" x-text="form.favicon"></span>
+                                        </template>
+                                    </div>
+                                    <input
+                                        id="store_favicon"
+                                        type="text"
+                                        name="config[favicon]"
+                                        x-model="form.favicon"
+                                        class="form-input text-xs font-mono"
+                                        placeholder="https://... or /storage/media/favicon.png"
+                                    >
                                 </div>
                             </div>
                         </div>

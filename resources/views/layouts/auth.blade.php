@@ -7,7 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Welcome') — {{ config('app.name', 'Classic') }}</title>
     <meta name="description" content="@yield('meta_description', 'Sign in to your ' . config('app.name', 'WaPro') . ' account to manage WhatsApp campaigns, inboxes, automations, and AI replies.')" />
-    <link rel="icon" type="image/x-icon" href="{{ asset('assets/brand/favicon.png') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" />
+    <link rel="icon" type="image/png" href="{{ asset('assets/brand/favicon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     @vite(['resources/css/classic/main.css', 'resources/js/classic/index.js'])
 </head>
