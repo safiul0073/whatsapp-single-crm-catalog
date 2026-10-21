@@ -193,11 +193,11 @@ it('lists inbox conversations from config enabled inbox providers only', functio
         ->assertJsonPath('conversations.0.provider_label', 'Messenger');
 });
 
-it('only shows conversations and filters for connected inbox channels', function (): void {
+it('shows conversation history when a channel disconnects and keeps replies disabled', function (): void {
     [$user, $workspace] = inboxChannelContext();
 
     $connected = inboxChannel($workspace->id, 'whatsapp');
-    $disconnected = inboxChannel($workspace->id, 'telegram', 'disconnected');
+    $disconnected = inboxChannel($workspace->id, 'telegram', 'error');
     $contact = Contact::query()->create([
         'workspace_id' => $workspace->id,
         'name' => 'Connected Customer',
@@ -236,19 +236,33 @@ it('only shows conversations and filters for connected inbox channels', function
         ->actingAs($user)
         ->getJson(route('user.inbox.conversations', ['provider' => 'all']))
         ->assertOk()
-        ->assertJsonPath('counts.all', 1)
-        ->assertJsonCount(1, 'conversations')
-        ->assertJsonPath('conversations.0.provider', 'whatsapp')
+        ->assertJsonPath('counts.all', 2)
+        ->assertJsonCount(2, 'conversations')
+        ->assertJsonPath('conversations.0.provider', 'telegram')
+        ->assertJsonPath('conversations.1.provider', 'whatsapp')
         ->assertJsonPath('channels.0.value', 'all')
         ->assertJsonPath('channels.1.value', 'whatsapp')
-        ->assertJsonMissingPath('channels.2');
+        ->assertJsonPath('channels.2.value', 'telegram')
+        ->assertJsonPath('channels.2.connected', false)
+        ->assertJsonPath('channels.2.count', 1);
 
     $this->withoutMiddleware()
         ->actingAs($user)
         ->getJson(route('user.inbox.conversations', ['provider' => 'telegram']))
         ->assertOk()
-        ->assertJsonPath('counts.all', 0)
-        ->assertJsonCount(0, 'conversations');
+        ->assertJsonPath('counts.all', 1)
+        ->assertJsonCount(1, 'conversations')
+        ->assertJsonPath('has_channel', false)
+        ->assertJsonPath('conversations.0.provider', 'telegram')
+        ->assertJsonPath('conversations.0.can_reply', false)
+        ->assertJsonPath('conversations.0.last_message', 'Telegram hello');
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->getJson(route('user.inbox.conversations.show', ['conversation' => $conversation->id]))
+        ->assertOk()
+        ->assertJsonPath('has_channel', false)
+        ->assertJsonPath('messages.0.body', 'Telegram hello');
 });
 
 it('paginates conversation messages instead of returning the entire thread', function (): void {

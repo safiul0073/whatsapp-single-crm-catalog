@@ -3237,7 +3237,7 @@
                                     </code>
                                 </div>
                                 <div class="relative flex items-center">
-                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
                                         <i class="ph ph-link-simple text-sm"></i>
                                     </span>
                                     <input
@@ -3247,7 +3247,8 @@
                                         required
                                         value="{{ old('marketing_api_url', $marketingApiUrl) }}"
                                         placeholder="https://app.yourdomain.com"
-                                        class="form-input w-full pl-9 @if(!empty($marketingApiUrl)) pr-8 @else pr-3 @endif text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        class="form-input input-with-leading-icon @if(!empty($marketingApiUrl)) input-with-trailing-icon !pr-10 @else pr-3 @endif w-full !pl-10 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        style="padding-left: 2.5rem !important; @if(!empty($marketingApiUrl)) padding-right: 2.5rem !important; @endif"
                                         x-ref="marketingApiInput"
                                     >
                                     @if(!empty($marketingApiUrl))
@@ -3255,7 +3256,7 @@
                                             href="{{ $marketingApiUrl }}"
                                             target="_blank"
                                             rel="noreferrer"
-                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors"
+                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors flex items-center justify-center"
                                             title="{{ __('Test Backend URL in new tab') }}"
                                         >
                                             <i class="ph ph-arrow-square-out text-sm"></i>
@@ -3284,7 +3285,7 @@
                                     </code>
                                 </div>
                                 <div class="relative flex items-center">
-                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
                                         <i class="ph ph-image text-sm"></i>
                                     </span>
                                     <input
@@ -3294,7 +3295,8 @@
                                         required
                                         value="{{ old('media_origin', $mediaOrigin) }}"
                                         placeholder="https://app.yourdomain.com"
-                                        class="form-input w-full pl-9 pr-14 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        class="form-input input-with-leading-icon input-with-trailing-action w-full !pl-10 !pr-20 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        style="padding-left: 2.5rem !important; padding-right: 4.75rem !important;"
                                         x-ref="mediaOriginInput"
                                     >
                                     <button
@@ -3344,7 +3346,7 @@
                                     </code>
                                 </div>
                                 <div class="relative flex items-center">
-                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
                                         <i class="ph ph-browsers text-sm"></i>
                                     </span>
                                     <input
@@ -3354,14 +3356,15 @@
                                         required
                                         value="{{ old('storefront_url', $storefrontAppUrl) }}"
                                         placeholder="https://store.yourdomain.com"
-                                        class="form-input w-full pl-9 @if(!empty($storefrontAppUrl)) pr-8 @else pr-3 @endif text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        class="form-input input-with-leading-icon @if(!empty($storefrontAppUrl)) input-with-trailing-icon !pr-10 @else pr-3 @endif w-full !pl-10 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        style="padding-left: 2.5rem !important; @if(!empty($storefrontAppUrl)) padding-right: 2.5rem !important; @endif"
                                     >
                                     @if(!empty($storefrontAppUrl))
                                         <a
                                             href="{{ $storefrontAppUrl }}"
                                             target="_blank"
                                             rel="noreferrer"
-                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors"
+                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors flex items-center justify-center"
                                             title="{{ __('Visit Storefront URL in new tab') }}"
                                         >
                                             <i class="ph ph-arrow-square-out text-sm"></i>
@@ -3391,7 +3394,7 @@
                                         </code>
                                     </div>
                                     <div class="relative flex items-center">
-                                        <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
                                             <i class="ph ph-at text-sm"></i>
                                         </span>
                                         <input
@@ -3400,7 +3403,8 @@
                                             name="root_domain"
                                             value="{{ old('root_domain', $rootDomain) }}"
                                             placeholder="fashionfiest.com"
-                                            class="form-input w-full pl-9 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                            class="form-input input-with-leading-icon w-full !pl-10 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                            style="padding-left: 2.5rem !important;"
                                         >
                                     </div>
                                     @error('root_domain')
@@ -3424,7 +3428,7 @@
                                         </code>
                                     </div>
                                     <div class="relative flex items-center">
-                                        <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
                                             <i class="ph ph-share-network text-sm"></i>
                                         </span>
                                         <input
@@ -3433,7 +3437,8 @@
                                             name="dns_target"
                                             value="{{ old('dns_target', $dnsTarget) }}"
                                             placeholder="cname.vercel-dns.com"
-                                            class="form-input w-full pl-9 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                            class="form-input input-with-leading-icon w-full !pl-10 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                            style="padding-left: 2.5rem !important;"
                                         >
                                     </div>
                                     @error('dns_target')
