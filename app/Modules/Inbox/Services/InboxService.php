@@ -165,7 +165,12 @@ class InboxService
         $recipient = $this->recipientFor($contact, $provider);
         $body = trim($body);
 
-        $account = $this->connectedConversationAccount($conversation) ?: $this->connectedAccount($workspace->id, $provider);
+        $account = $this->connectedConversationAccount($conversation)
+            ?: $this->connectedAccount($workspace->id, $provider)
+            ?: ChannelAccount::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('provider', $provider)
+                ->first();
 
         if ($attachment && ! $this->supportsAttachments($provider)) {
             throw ValidationException::withMessages([
@@ -838,7 +843,11 @@ class InboxService
             return true;
         }
 
-        return $this->connectedAccount($workspaceId, $provider) !== null;
+        return $this->connectedAccount($workspaceId, $provider) !== null
+            || ChannelAccount::query()
+                ->where('workspace_id', $workspaceId)
+                ->where('provider', $provider)
+                ->exists();
     }
 
     protected function supportsAttachments(string $provider): bool
@@ -851,7 +860,7 @@ class InboxService
         $contact = $conversation->contact;
 
         if (! $contact) {
-            return false;
+            return filled($conversation->provider_conversation_id);
         }
 
         if ($conversation->provider === 'website_widget') {
@@ -871,8 +880,10 @@ class InboxService
             return ! $this->automatedReplyEnabled($conversation);
         }
 
-        return $this->hasReplyChannel((int) $conversation->workspace_id, (string) $conversation->provider)
-            && $this->recipientReady($conversation);
+        $hasChannel = $this->connectedConversationAccount($conversation) !== null
+            || $this->hasReplyChannel((int) $conversation->workspace_id, (string) $conversation->provider);
+
+        return $hasChannel && $this->recipientReady($conversation);
     }
 
     protected function replyDisabledReason(Conversation $conversation): ?string

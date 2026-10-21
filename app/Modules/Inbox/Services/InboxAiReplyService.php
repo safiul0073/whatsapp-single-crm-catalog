@@ -16,6 +16,11 @@ class InboxAiReplyService
 {
     public function __construct(protected AiUsageLogger $usageLogger) {}
 
+    public function isAvailable(): bool
+    {
+        return $this->hasConfiguredTextProvider($this->platformTextProvider());
+    }
+
     /**
      * @return array{reply: string, provider: string, model: ?string}
      */

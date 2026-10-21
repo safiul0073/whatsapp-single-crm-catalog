@@ -8,4 +8,5 @@ Route::prefix('mobile/workspaces/{workspace}/inbox')->middleware(['auth:sanctum'
     Route::get('conversations', [MobileInboxController::class, 'index']);
     Route::get('conversations/{conversation}', [MobileInboxController::class, 'show']);
     Route::post('conversations/{conversation}/messages', [MobileInboxController::class, 'store']);
+    Route::post('conversations/{conversation}/ai-reply', [MobileInboxController::class, 'aiReply']);
 });
