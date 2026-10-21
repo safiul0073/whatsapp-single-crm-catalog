@@ -8,6 +8,7 @@
         $displayPhoneNumberId = $channel?->provider_phone_id;
         $displayVerifyToken = $channel?->webhook_verify_token;
         $hasAccessToken = filled($channel?->credential('access_token'));
+        $isConnected = $channel && $channel->status?->value === 'connected' && $hasAccessToken;
         $readiness = [
             ['label' => __('Access token'), 'ok' => $hasAccessToken, 'detail' => $hasAccessToken ? __('Configured') : __('Missing')],
             ['label' => __('WABA ID'), 'ok' => filled($displayWabaId), 'detail' => $displayWabaId ?: __('Missing')],
@@ -45,37 +46,61 @@
                 ]"
             >
                 <x-slot:actions>
-                    <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.test-channel', $channel) }}">
-                        @csrf
-                        <button type="submit" class="btn-sm btn-outline">
+                    @if ($isConnected)
+                        <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.test-channel', $channel) }}">
+                            @csrf
+                            <button type="submit" class="btn-sm btn-outline">
+                                <i class="ph ph-plugs-connected text-base"></i>
+                                {{ __('Test Connection') }}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.sync') }}">
+                            @csrf
+                            <button type="submit" class="btn-sm btn-outline">
+                                <i class="ph ph-arrows-clockwise text-base"></i>
+                                {{ __('Sync from Meta') }}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.disconnect') }}">
+                            @csrf
+                            @method('DELETE')
+                            <button
+                                type="submit"
+                                data-confirm
+                                data-confirm-title="{{ __('Disconnect WhatsApp Channel?') }}"
+                                data-confirm-message="{{ __('Disconnect this WhatsApp channel from your workspace?') }}"
+                                data-confirm-button="{{ __('Disconnect') }}"
+                                data-confirm-variant="danger"
+                                data-confirm-icon="ph-plugs"
+                                class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                            >
+                                <i class="ph ph-plugs text-base"></i>
+                                {{ __('Disconnect') }}
+                            </button>
+                        </form>
+                    @else
+                        <a href="#whatsapp-connect" class="btn-sm btn-primary">
                             <i class="ph ph-plugs-connected text-base"></i>
-                            {{ __('Test Connection') }}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.sync') }}">
-                        @csrf
-                        <button type="submit" class="btn-sm btn-outline">
-                            <i class="ph ph-arrows-clockwise text-base"></i>
-                            {{ __('Sync from Meta') }}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.disconnect') }}">
-                        @csrf
-                        @method('DELETE')
-                        <button
-                            type="submit"
-                            data-confirm
-                            data-confirm-title="{{ __('Disconnect WhatsApp Channel?') }}"
-                            data-confirm-message="{{ __('Disconnect this WhatsApp channel from your workspace?') }}"
-                            data-confirm-button="{{ __('Disconnect') }}"
-                            data-confirm-variant="danger"
-                            data-confirm-icon="ph-plugs"
-                            class="btn-sm btn-outline text-error hover:border-error hover:text-error"
-                        >
-                            <i class="ph ph-plugs text-base"></i>
-                            {{ __('Disconnect') }}
-                        </button>
-                    </form>
+                            {{ __('Reconnect Channel') }}
+                        </a>
+                        <form method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.destroy', $channel) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button
+                                type="submit"
+                                data-confirm
+                                data-confirm-title="{{ __('Remove WhatsApp Channel?') }}"
+                                data-confirm-message="{{ __('Permanently remove this WhatsApp channel configuration from your workspace?') }}"
+                                data-confirm-button="{{ __('Remove Channel') }}"
+                                data-confirm-variant="danger"
+                                data-confirm-icon="ph-trash"
+                                class="btn-sm btn-outline text-error hover:border-error hover:text-error"
+                            >
+                                <i class="ph ph-trash text-base"></i>
+                                {{ __('Remove') }}
+                            </button>
+                        </form>
+                    @endif
                 </x-slot:actions>
             </x-marketing-channels::connected-summary>
 
@@ -105,7 +130,7 @@
             </section>
         @endif
 
-        <section class="section-card" data-whatsapp-connect>
+        <section class="section-card" data-whatsapp-connect id="whatsapp-connect">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3">
                     <span class="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-[#1877F2]/10 text-[#1877F2]">
@@ -175,8 +200,9 @@
         </section>
 
         <x-marketing-channels::credentials-panel
-            :open="! $channel || $validationErrors?->any()"
-            :title="$channel ? __('Update credentials') : __('Set up manually')"
+            id="whatsapp-manual-setup"
+            :open="! $isConnected || $validationErrors?->any()"
+            :title="$isConnected ? __('Update credentials') : __('Set up manually')"
             :description="__('Enter the Meta Business details yourself instead of using Embedded Signup.')"
         >
             <form class="space-y-4" method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.store') }}">
@@ -218,7 +244,7 @@
                 <div class="pt-1">
                     <button type="submit" class="btn btn-primary w-full justify-center">
                         <i class="ph ph-whatsapp-logo text-base"></i>
-                        {{ $channel ? __('Update WhatsApp') : __('Connect WhatsApp') }}
+                        {{ $isConnected ? __('Update WhatsApp') : __('Connect WhatsApp') }}
                     </button>
                 </div>
             </form>

@@ -14,4 +14,5 @@ Route::middleware(['can:channels.manage'])->group(function () {
     Route::post('channel-setup/{channel}/test', [ChannelSetupController::class, 'test'])->name('whatsapp-cloud.channel-setup.test-channel');
     Route::delete('channel-setup', [ChannelSetupController::class, 'disconnect'])->name('whatsapp-cloud.channel-setup.disconnect');
     Route::delete('channel-setup/{channel}', [ChannelSetupController::class, 'disconnect'])->name('whatsapp-cloud.channel-setup.disconnect-channel');
+    Route::delete('channel-setup/{channel}/destroy', [ChannelSetupController::class, 'destroy'])->name('whatsapp-cloud.channel-setup.destroy');
 });
