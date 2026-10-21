@@ -82,22 +82,25 @@ class MobileOrderController extends Controller
         return response()->json($payload);
     }
 
-    public function show(Request $request, string $order, UnifiedOrderService $orders): JsonResponse
+    public function show(Request $request, string $workspace, string $order, UnifiedOrderService $orders): JsonResponse
     {
         abort_unless($request->user()->can('commerce.view'), 403);
-        $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($order);
+        $orderId = (string) ($request->route('order') ?? $order);
+        $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($orderId);
 
         return response()->json(['data' => $orders->payload($model)]);
     }
 
     public function transition(
         TransitionOrderRequest $request,
+        string $workspace,
         string $order,
         OrderWorkflowService $workflow,
         UnifiedOrderService $orders,
         OrderPackingService $packing
     ): JsonResponse {
-        $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($order);
+        $orderId = (string) ($request->route('order') ?? $order);
+        $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($orderId);
         $targetStatus = (string) $request->validated('status');
 
         if ($targetStatus === 'packed' && in_array($model->status, ['paid', 'processing'], true)) {

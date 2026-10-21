@@ -66,6 +66,16 @@ it('isolates catalog and rejects unbounded pagination', function (): void {
     $this->getJson('/api/storefront/v1/catalog/products?per_page=100000', $this->headers)->assertUnprocessable();
 });
 
+it('provides whatsapp_number in product resource from storefront setting contact_phone', function (): void {
+    StorefrontSetting::query()->updateOrCreate(
+        ['workspace_id' => $this->store->id],
+        ['config' => ['contact_phone' => '+18801711657272']]
+    );
+
+    $res = $this->getJson('/api/storefront/v1/catalog/products', $this->headers)->assertOk();
+    expect($res->json('data.0.whatsapp_number'))->toBe('+18801711657272');
+});
+
 it('uses published workspace collections and real sale prices', function (): void {
     StorefrontContent::query()->create(['workspace_id' => $this->store->id, 'type' => 'collection', 'slug' => 'featured', 'data' => ['title' => 'Featured', 'product_ids' => [$this->product->id]], 'published_at' => now()]);
     $this->getJson('/api/storefront/v1/catalog/collections/featured', $this->headers)->assertOk()->assertJsonCount(1, 'data');
