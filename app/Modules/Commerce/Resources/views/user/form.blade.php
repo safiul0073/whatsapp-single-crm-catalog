@@ -615,8 +615,8 @@
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Colors') }}</h2>
                             <p class="text-xs text-neutral-500 mt-0.5">{{ __('Add unlimited colors with hex codes and assign dedicated photos for each color variation.') }}</p>
                         </div>
-                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs" @click="addColor()">
-                            <i class="ph ph-plus"></i> {{ __('+ Add Color') }}
+                        <button type="button" class="btn btn-sm btn-primary text-xs shadow-2xs flex items-center gap-1.5" @click="addColor()">
+                            <i class="ph-bold ph-plus"></i> {{ __('Add Color') }}
                         </button>
                     </div>
 
@@ -632,19 +632,38 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-neutral-200 bg-white">
-                                <template x-for="(col, cIdx) in colors" :key="col.id || cIdx">
+                                <template x-if="colors.length === 0">
+                                    <tr>
+                                        <td colspan="4" class="px-4 py-8 text-center text-neutral-400">
+                                            <i class="ph ph-palette text-2xl mb-1 block"></i>
+                                            <p class="text-xs font-medium">{{ __('No colors added yet.') }}</p>
+                                            <button type="button" class="mt-2 text-xs font-semibold text-primary hover:underline" @click="addColor()">
+                                                {{ __('+ Add your first color') }}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-for="(col, cIdx) in colors" :key="col._uid || col.id || cIdx">
                                     <tr class="hover:bg-neutral-50/50">
                                         {{-- Color Name --}}
                                         <td class="px-4 py-3">
                                             <div class="flex items-center gap-2.5">
-                                                <span class="h-6 w-6 rounded-full border border-neutral-300 shadow-2xs shrink-0" :style="`background-color: ${col.hex_code || '#2563EB'}`"></span>
+                                                <label class="relative h-6 w-6 rounded-full border border-neutral-300 shadow-2xs shrink-0 cursor-pointer overflow-hidden block transition hover:scale-105" :style="`background-color: ${col.hex_code || '#2563EB'}`" title="{{ __('Click to choose color') }}">
+                                                    <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" :value="col.hex_code && col.hex_code.startsWith('#') && col.hex_code.length === 7 ? col.hex_code : '#2563EB'" @input="col.hex_code = $event.target.value.toUpperCase(); dirty = true;">
+                                                </label>
                                                 <input type="text" class="form-input text-xs font-semibold h-9" x-model="col.name" placeholder="{{ __('Light Blue') }}">
                                             </div>
                                         </td>
 
                                         {{-- Color Code --}}
                                         <td class="px-4 py-3">
-                                            <input type="text" class="form-input text-xs font-mono uppercase h-9" x-model="col.hex_code" placeholder="#87CEEB">
+                                            <input
+                                                type="text"
+                                                class="form-input text-xs font-mono uppercase h-9"
+                                                x-model="col.hex_code"
+                                                placeholder="#87CEEB"
+                                                @blur="col.hex_code = normalizeHex(col.hex_code)"
+                                            >
                                         </td>
 
                                         {{-- Color Images Thumbnail --}}
@@ -668,7 +687,7 @@
                     </div>
 
                     {{-- Hidden inputs for Colors --}}
-                    <template x-for="(col, cIdx) in colors" :key="col.id || cIdx">
+                    <template x-for="(col, cIdx) in colors" :key="col._uid || col.id || cIdx">
                         <div>
                             <input type="hidden" :name="`colors[${cIdx}][id]`" :value="col.id || ''">
                             <input type="hidden" :name="`colors[${cIdx}][name]`" :value="col.name || ''">
@@ -683,7 +702,7 @@
                             <input type="hidden" :name="`media[${index}][id]`" :value="item.id">
                             <input type="hidden" :name="`media[${index}][is_primary]`" :value="item.is_primary ? '1' : '0'">
                             <input type="hidden" :name="`media[${index}][alt_text]`" :value="item.alt_text || ''">
-                            <input type="hidden" :name="`media[${index}][color_id]`" :value="item.color_id || ''">
+                            <input type="hidden" :name="`media[${index}][color_id]`" :value="getMediaColorSubmissionId(item)">
                         </div>
                     </template>
                 </section>
@@ -1055,7 +1074,7 @@
 
                             <template x-if="productSizes.length > 0 && colors.length > 0">
                                 <div class="rounded-md border border-neutral-200 overflow-hidden divide-y divide-neutral-200">
-                                    <template x-for="(color, cIdx) in colors" :key="color.id || cIdx">
+                                    <template x-for="(color, cIdx) in colors" :key="color._uid || color.id || cIdx">
                                         <div class="flex items-center gap-3 px-4 py-3 bg-white hover:bg-neutral-50/50 transition-colors">
                                             {{-- Color Swatch --}}
                                             <span class="h-5 w-5 rounded-full border border-neutral-300 shadow-2xs shrink-0" :style="`background-color: ${color.hex_code}`"></span>
@@ -1086,7 +1105,7 @@
                                     {{-- Modal Header --}}
                                     <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
                                         <h3 class="text-base font-bold text-neutral-900 flex items-center gap-2">
-                                            <template x-for="(color, cIdx) in colors" :key="color.id || cIdx">
+                                            <template x-for="(color, cIdx) in colors" :key="color._uid || color.id || cIdx">
                                                 <template x-if="(color.id || cIdx) == editingColorKey">
                                                     <span class="flex items-center gap-2">
                                                         <span class="h-4 w-4 rounded-full border shadow-2xs" :style="`background-color: ${color.hex_code}`"></span>
@@ -1136,7 +1155,7 @@
                         </template>
 
                         {{-- Hidden inputs for ratios not currently being edited --}}
-                        <template x-for="(color, cIdx) in colors" :key="color.id || cIdx">
+                        <template x-for="(color, cIdx) in colors" :key="color._uid || color.id || cIdx">
                             <template x-if="(color.id || cIdx) != editingColorKey">
                                 <div>
                                     <template x-for="sz in productSizes" :key="sz">

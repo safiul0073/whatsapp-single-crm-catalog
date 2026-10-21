@@ -12,9 +12,28 @@ class ProductGalleryRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         foreach (['media', 'colors'] as $field) {
-            if ($this->exists($field) && $this->input($field) === null) {
+            if ($this->exists($field) && ($this->input($field) === null || $this->input($field) === '')) {
                 $this->merge([$field => []]);
             }
+        }
+
+        if ($this->has('colors') && is_array($this->input('colors'))) {
+            $colors = $this->input('colors');
+            foreach ($colors as $idx => $color) {
+                if (isset($color['hex_code']) && is_string($color['hex_code'])) {
+                    $hex = trim($color['hex_code']);
+                    if ($hex !== '') {
+                        if (! str_starts_with($hex, '#')) {
+                            $hex = '#'.$hex;
+                        }
+                        if (preg_match('/^#[0-9a-fA-F]{3}$/', $hex)) {
+                            $hex = '#'.$hex[1].$hex[1].$hex[2].$hex[2].$hex[3].$hex[3];
+                        }
+                        $colors[$idx]['hex_code'] = strtoupper($hex);
+                    }
+                }
+            }
+            $this->merge(['colors' => $colors]);
         }
     }
 

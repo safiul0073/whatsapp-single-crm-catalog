@@ -5,7 +5,16 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   options: config.options || [],
   variants: config.variants || [],
   variantPresets: config.variantPresets || [],
-  colors: config.colors || [],
+  colors: (config.colors || []).map((col, idx) => ({
+    id: col.id || '',
+    name: col.name || '',
+    hex_code: col.hex_code || '#2563EB',
+    color_family: col.color_family || '',
+    swatch_media_id: col.swatch_media_id || '',
+    swatch_image_url: col.swatch_image_url || '',
+    display_name: col.display_name || col.name || '',
+    _uid: col._uid || (col.id ? `col_id_${col.id}` : `col_tmp_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`),
+  })),
   sizes: config.sizes || [],
   
   // Modal State
@@ -243,7 +252,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   addMediaToColor(colorIndex, items) {
     if (!items || !items.length || !this.colors[colorIndex]) return;
     const colorObj = this.colors[colorIndex];
-    const colorIdentifier = colorObj.id ? String(colorObj.id) : `idx_${colorIndex}`;
+    const colorIdentifier = colorObj.id ? String(colorObj.id) : String(colorObj._uid || `idx_${colorIndex}`);
     const colorHex = colorObj.hex_code || '';
     const colorName = colorObj.name || colorHex;
 
@@ -273,11 +282,14 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   getColorMediaList(colorIndex) {
     if (!this.colors[colorIndex]) return [];
     const colorObj = this.colors[colorIndex];
-    const colorIdentifier = colorObj.id ? String(colorObj.id) : `idx_${colorIndex}`;
+    const targetUid = String(colorObj._uid || '');
+    const targetId = colorObj.id ? String(colorObj.id) : null;
+    const legacyIdx = `idx_${colorIndex}`;
 
     return this.gallery.filter((item) => {
       if (!item.color_id) return false;
-      return String(item.color_id) === colorIdentifier || (colorObj.id && String(item.color_id) === String(colorObj.id));
+      const cId = String(item.color_id);
+      return (targetUid && cId === targetUid) || (targetId && cId === targetId) || cId === legacyIdx;
     });
   },
 
@@ -316,9 +328,14 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   removeMediaFromColor(mediaId, colorIndex) {
     const colorObj = this.colors[colorIndex];
     if (!colorObj) return;
-    const colorIdentifier = colorObj.id ? String(colorObj.id) : `idx_${colorIndex}`;
+    const targetUid = String(colorObj._uid || '');
+    const targetId = colorObj.id ? String(colorObj.id) : null;
+    const legacyIdx = `idx_${colorIndex}`;
 
-    const idx = this.gallery.findIndex((item) => String(item.id) === String(mediaId) && String(item.color_id || '') === String(colorIdentifier));
+    const idx = this.gallery.findIndex((item) => 
+      String(item.id) === String(mediaId) && 
+      ((targetUid && String(item.color_id || '') === targetUid) || (targetId && String(item.color_id || '') === targetId) || String(item.color_id || '') === legacyIdx)
+    );
     if (idx !== -1) {
       this.removeMedia(idx);
     }
@@ -336,7 +353,10 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
       this.colors.forEach((c) => {
         if (String(c.swatch_media_id) === String(removed.id)) {
           // Re-assign next image of this color if available
-          const remaining = this.gallery.find((g) => (c.id && String(g.color_id) === String(c.id)) && String(g.id) !== String(removed.id));
+          const remaining = this.gallery.find((g) => {
+            const matchesColor = (c.id && String(g.color_id) === String(c.id)) || (c._uid && String(g.color_id) === String(c._uid));
+            return matchesColor && String(g.id) !== String(removed.id);
+          });
           c.swatch_media_id = remaining ? remaining.id : '';
         }
       });
@@ -365,17 +385,51 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.dirty = true;
   },
 
+  generateColorUid() {
+    return 'col_tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  },
+
+  normalizeHex(value) {
+    if (!value || typeof value !== 'string') return '#2563EB';
+    let clean = value.trim();
+    if (!clean) return '#2563EB';
+    if (!clean.startsWith('#')) {
+      clean = '#' + clean;
+    }
+    if (/^#[0-9a-fA-F]{3}$/.test(clean)) {
+      clean = '#' + clean[1] + clean[1] + clean[2] + clean[2] + clean[3] + clean[3];
+    }
+    return clean.toUpperCase();
+  },
+
   addColor() {
-    this.colors.push({ id: '', name: '', hex_code: '#2563EB', color_family: '', swatch_media_id: '' });
+    this.colors.unshift({
+      id: '',
+      name: '',
+      hex_code: '#2563EB',
+      color_family: '',
+      swatch_media_id: '',
+      _uid: this.generateColorUid(),
+    });
     this.dirty = true;
+    if (typeof this.$nextTick === 'function') {
+      this.$nextTick(() => {
+        const firstInput = document.querySelector('tbody tr:first-child input[type="text"]');
+        if (firstInput) {
+          firstInput.focus();
+        }
+      });
+    }
   },
 
   removeColor(index) {
     const removed = this.colors[index];
-    // Remove color_id tag from gallery images belonging to this color
-    if (removed?.id) {
+    if (removed) {
+      const targetUid = String(removed._uid || '');
+      const targetId = removed.id ? String(removed.id) : null;
       this.gallery.forEach((g) => {
-        if (String(g.color_id) === String(removed.id)) {
+        const gColor = String(g.color_id || '');
+        if ((targetUid && gColor === targetUid) || (targetId && gColor === targetId)) {
           g.color_id = null;
         }
       });
@@ -383,8 +437,30 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     if (this.activeEyedropperRow === index) {
       this.cancelRowEyedropper();
     }
+    if (this.editingColorIndex === index) {
+      this.editingColorIndex = null;
+    } else if (this.editingColorIndex !== null && this.editingColorIndex > index) {
+      this.editingColorIndex--;
+    }
     this.colors.splice(index, 1);
     this.dirty = true;
+  },
+
+  getMediaColorSubmissionId(item) {
+    if (!item.color_id) return '';
+    const byId = this.colors.find((c) => c.id && String(c.id) === String(item.color_id));
+    if (byId) {
+      return String(byId.id);
+    }
+    const byUidIdx = this.colors.findIndex((c) => c._uid && String(c._uid) === String(item.color_id));
+    if (byUidIdx !== -1) {
+      return this.colors[byUidIdx].id ? String(this.colors[byUidIdx].id) : `idx_${byUidIdx}`;
+    }
+    const match = String(item.color_id).match(/^idx_(\d+)$/);
+    if (match && this.colors[parseInt(match[1], 10)]) {
+      return item.color_id;
+    }
+    return '';
   },
 
   getSelectedGalleryImage() {
@@ -433,20 +509,21 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   },
 
   applyPickedColor(hex, name = '') {
+    const formattedHex = this.normalizeHex(hex);
     if (this.activeEyedropperRow !== null && this.colors[this.activeEyedropperRow]) {
       const col = this.colors[this.activeEyedropperRow];
-      col.hex_code = hex;
+      col.hex_code = formattedHex;
       if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
         col.name = name;
       }
       this.dirty = true;
       if (window.showToast) {
-        window.showToast('Color Assigned', `Updated ${col.name || 'row'} to ${hex}!`, 'success');
+        window.showToast('Color Assigned', `Updated ${col.name || 'row'} to ${formattedHex}!`, 'success');
       }
       this.cancelRowEyedropper();
     } else if (this.editingColorIndex !== null && this.colors[this.editingColorIndex]) {
       const col = this.colors[this.editingColorIndex];
-      col.hex_code = hex;
+      col.hex_code = formattedHex;
       if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
         col.name = name;
       }
@@ -508,12 +585,13 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   },
 
   addColorFromExtracted(hex, name = '') {
-    this.colors.push({
+    this.colors.unshift({
       id: '',
       name: name || 'Extracted Shade',
-      hex_code: hex,
+      hex_code: this.normalizeHex(hex),
       color_family: '',
-      swatch_media_id: ''
+      swatch_media_id: '',
+      _uid: this.generateColorUid(),
     });
     this.dirty = true;
     if (window.showToast) {

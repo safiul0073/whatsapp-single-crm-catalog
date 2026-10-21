@@ -75,8 +75,10 @@ it('renders the improved storefront management dashboard with live preview and s
     $response->assertOk();
     $response->assertSee('Storefront Studio &amp; Settings', false);
     $response->assertSee('Storefront Theme &amp; Identity', false);
-    $response->assertSee('Live Interactive Preview', false);
+    $response->assertSee('Live Interactive Preview — Unsaved', false);
     $response->assertSee('Curated Theme Presets', false);
+    $response->assertSee('Save &amp; Apply Theme', false);
+    $response->assertSee('Save to apply them to the public storefront.');
     $response->assertSee('Domains &amp; DNS', false);
     $response->assertSee('Navigation Menus', false);
     $response->assertSee('Hero Sliders', false);
