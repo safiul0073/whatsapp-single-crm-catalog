@@ -595,12 +595,19 @@ class InboxService
                 : __('WhatsApp template message');
         }
 
-        $attachment = data_get($message->payload, 'attachment');
+        $attachment = $this->messageAttachment($message);
         if (is_array($attachment)) {
             return '';
         }
 
         return match ($message->type) {
+            'audio' => __('Voice message (media unavailable)'),
+            'video' => __('Video (media unavailable)'),
+            'image' => __('Image (media unavailable)'),
+            'document' => __('Document (media unavailable)'),
+            'sticker' => __('Sticker'),
+            'location' => __('Location shared'),
+            'contacts', 'contact' => __('Contact shared'),
             'system' => (string) data_get($message->payload, 'system.body', __('Account notice')),
             'unsupported' => __('Unsupported message type. Ask the customer to resend it as text, an image or a voice note.'),
             default => '',
@@ -669,7 +676,34 @@ class InboxService
     {
         $attachment = data_get($message->payload, 'attachment');
 
-        return is_array($attachment) ? $attachment : null;
+        if (is_array($attachment)) {
+            return $attachment;
+        }
+
+        if (in_array($message->type, ['audio', 'video', 'image', 'document'], true)) {
+            $rawMediaId = data_get($message->payload, $message->type.'.id')
+                ?: data_get($message->payload, 'media_id');
+
+            if (filled($rawMediaId) && $message->provider === 'whatsapp') {
+                $account = $message->channelAccount ?: $this->connectedAccount((int) $message->workspace_id, 'whatsapp');
+                if ($account) {
+                    try {
+                        $recovered = app(InboundMessageAttachmentService::class)->forWhatsApp($account, (array) $message->payload);
+                        if ($recovered) {
+                            $payload = (array) $message->payload;
+                            $payload['attachment'] = $recovered;
+                            $message->updateQuietly(['payload' => $payload]);
+
+                            return $recovered;
+                        }
+                    } catch (\Throwable) {
+                        // Media may have expired on Meta servers
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function recordFailedSend(
