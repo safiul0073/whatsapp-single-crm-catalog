@@ -26,10 +26,23 @@ class ProductResource extends JsonResource
             'ratio_multiplier' => (int) ($this->ws_ratio_multiplier ?: 1),
         ];
 
-        $storefrontSetting = StorefrontSetting::where('workspace_id', $this->workspace_id)->first();
-        $whatsappNumber = $storefrontSetting?->config['whatsapp_number']
-            ?? $storefrontSetting?->config['phone']
-            ?? '+1234567890';
+        $storefrontSetting = null;
+        if ($request) {
+            $cacheKey = 'storefront_setting_'.$this->workspace_id;
+            if (! $request->attributes->has($cacheKey)) {
+                $request->attributes->set($cacheKey, StorefrontSetting::where('workspace_id', $this->workspace_id)->first());
+            }
+            $storefrontSetting = $request->attributes->get($cacheKey);
+        } else {
+            $storefrontSetting = StorefrontSetting::where('workspace_id', $this->workspace_id)->first();
+        }
+
+        $whatsappNumber = collect([
+            $storefrontSetting?->config['contact_phone'] ?? null,
+            $storefrontSetting?->config['whatsapp_number'] ?? null,
+            $storefrontSetting?->config['phone'] ?? null,
+            data_get($storefrontSetting?->config, 'chat_channels.whatsapp.phone'),
+        ])->first(fn ($val) => filled($val) && is_string($val));
 
         return [
             'id' => $this->id,

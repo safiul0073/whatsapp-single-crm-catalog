@@ -17,17 +17,21 @@ class MobileInboxController extends Controller
         return response()->json($inbox->conversationsForUser($request->user(), $request->only('q', 'status', 'provider')));
     }
 
-    public function show(Request $request, InboxService $inbox, string $conversation): JsonResponse
+    public function show(Request $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse
     {
         abort_unless($request->user()->can('inbox.view') || $request->user()->can('inbox.assigned_only'), 403);
 
-        return response()->json($inbox->conversationForUser($request->user(), $conversation, $request->only('before_id')));
+        $conversationId = (string) ($request->route('conversation') ?? $conversation);
+
+        return response()->json($inbox->conversationForUser($request->user(), $conversationId, $request->only('before_id')));
     }
 
-    public function store(SendInboxMessageRequest $request, InboxService $inbox, string $conversation): JsonResponse
+    public function store(SendInboxMessageRequest $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse
     {
         abort_unless($request->user()->can('inbox.reply'), 403);
-        $result = $inbox->sendMessage($request->user(), $conversation, (string) $request->validated('body', ''), $request->file('attachment'));
+
+        $conversationId = (string) ($request->route('conversation') ?? $conversation);
+        $result = $inbox->sendMessage($request->user(), $conversationId, (string) $request->validated('body', ''), $request->file('attachment'));
 
         return response()->json($result, ($result['ok'] ?? false) ? 201 : 422);
     }
