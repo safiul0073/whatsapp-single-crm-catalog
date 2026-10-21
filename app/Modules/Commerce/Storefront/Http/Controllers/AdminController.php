@@ -397,8 +397,11 @@ class AdminController extends Controller
 
     public function renameDomain(AdminRequest $r, int $id): RedirectResponse
     {
-        $domain = StoreDomain::query()->where('workspace_id', $this->workspace($r))->where('type', 'system')->findOrFail($id);
-        $host = $r->validated('handle').'.'.config('storefront.root_domain');
+        $w = $this->workspace($r);
+        $domain = StoreDomain::query()->where('workspace_id', $w)->where('type', 'system')->findOrFail($id);
+        $creds = $this->cms->credentials($w);
+        $rootDomain = (string) ($creds['root_domain'] ?: config('storefront.root_domain', 'localhost'));
+        $host = DomainResolver::normalize($r->validated('handle').'.'.$rootDomain);
         abort_if(StoreDomain::query()->where('host', $host)->whereKeyNot($id)->exists(), 422, 'Handle is already in use.');
         $domain->update(['handle' => $r->validated('handle'), 'host' => $host]);
 
