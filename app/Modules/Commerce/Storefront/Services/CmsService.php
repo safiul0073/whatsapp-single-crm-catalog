@@ -57,6 +57,7 @@ class CmsService
                 'footer_color' => '#0A2540',
                 'canvas' => '#F0F2F5',
                 'logo' => null,
+                'favicon' => null,
                 'logo_height' => 68,
                 'logo_show_name' => false,
                 'announcement' => '',
@@ -75,6 +76,10 @@ class CmsService
         if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
             $settings['logo'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
+        }
+        if (! empty($settings['favicon']) && ! str_starts_with($settings['favicon'], 'http')) {
+            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['favicon'], '/'));
+            $settings['favicon'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
         }
         if (! empty($settings['app_ios_url']) && ! str_starts_with($settings['app_ios_url'], 'http') && ! str_starts_with($settings['app_ios_url'], '#')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['app_ios_url'], '/'));

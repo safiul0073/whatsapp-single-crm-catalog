@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/phosphor/fill/style.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/phosphor/bold/style.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('components.layouts.partials.branding')
 </head>
 
 <body class="min-h-screen flex antialiased bg-neutral-50 text-neutral-900">
