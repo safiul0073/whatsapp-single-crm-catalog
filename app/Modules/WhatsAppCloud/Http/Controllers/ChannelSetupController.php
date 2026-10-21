@@ -52,9 +52,9 @@ class ChannelSetupController extends Controller
     {
         $result = $service->sync($request->user());
 
-        return back()->with('status', $result['ok']
+        return back()->with($result['ok'] ? 'status' : 'error', $result['ok']
             ? "Synced {$result['phone_numbers']} phone number(s) and {$result['synced']} template(s) from Meta."
-            : 'Meta sync failed. Check credentials.');
+            : ($result['error'] ?? 'Meta sync failed. Check credentials.'));
     }
 
     public function test(Request $request, ChannelAccount $channel, WorkspaceResolver $workspaces, ChannelManager $channels): RedirectResponse
@@ -62,6 +62,10 @@ class ChannelSetupController extends Controller
         $workspace = $workspaces->current($request->user());
 
         abort_unless($channel->workspace_id === $workspace->id, 404);
+
+        if (blank($channel->credential('access_token')) || $channel->status?->value === 'disconnected') {
+            return back()->with('error', __('Channel is disconnected. Reconnect with Meta or update credentials first.'));
+        }
 
         $result = $channels->testConnection($channel);
 
@@ -75,5 +79,12 @@ class ChannelSetupController extends Controller
         $service->disconnect($request->user(), $channel);
 
         return back()->with('status', 'WhatsApp channel disconnected.');
+    }
+
+    public function destroy(Request $request, ChannelSetupService $service, ?ChannelAccount $channel = null): RedirectResponse
+    {
+        $service->destroy($request->user(), $channel);
+
+        return back()->with('status', 'WhatsApp channel removed.');
     }
 }

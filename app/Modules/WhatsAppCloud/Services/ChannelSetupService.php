@@ -355,6 +355,15 @@ class ChannelSetupService
 
         abort_unless($channel, 404);
 
+        if (blank($channel->credential('access_token')) || $channel->status === ChannelAccountStatus::Disconnected) {
+            return [
+                'ok' => false,
+                'synced' => 0,
+                'phone_numbers' => 0,
+                'error' => __('Channel is disconnected. Please reconnect with Meta or enter valid credentials before syncing.'),
+            ];
+        }
+
         $this->subscribeToWebhooks($channel);
 
         $phoneResult = $this->settings->enabled('whatsapp_auto_sync_phone_numbers')
@@ -364,10 +373,13 @@ class ChannelSetupService
             ? $this->channels->syncTemplates($channel)
             : ['ok' => true, 'synced' => 0];
 
+        $ok = ($phoneResult['ok'] ?? false) && ($templateResult['ok'] ?? false);
+
         return [
-            'ok' => ($phoneResult['ok'] ?? false) && ($templateResult['ok'] ?? false),
+            'ok' => $ok,
             'synced' => (int) ($templateResult['synced'] ?? 0),
             'phone_numbers' => (int) ($phoneResult['synced'] ?? 0),
+            'error' => ! $ok ? ($phoneResult['error'] ?? $templateResult['error'] ?? __('Meta sync failed. Check credentials.')) : null,
             'phone_response' => $phoneResult,
             'template_response' => $templateResult,
         ];
@@ -519,6 +531,24 @@ class ChannelSetupService
             ->update(['status' => ChannelAccountStatus::Disconnected->value, 'credentials' => null]);
     }
 
+    public function destroy(?User $user, ?ChannelAccount $channel = null): void
+    {
+        $workspace = $this->workspaces->current($user);
+
+        if ($channel) {
+            abort_unless($channel->workspace_id === $workspace->id, 404);
+
+            $channel->delete();
+
+            return;
+        }
+
+        ChannelAccount::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('provider', 'whatsapp')
+            ->delete();
+    }
+
     protected function whatsappChannel(int $workspaceId): ?ChannelAccount
     {
         return ChannelAccount::query()
@@ -530,7 +560,12 @@ class ChannelSetupService
 
     protected function syncPhoneNumbers(ChannelAccount $source): array
     {
-        $response = $this->client->phoneNumbers((string) $source->provider_account_id, (string) $source->credential('access_token'));
+        $token = (string) $source->credential('access_token');
+        if (blank($token)) {
+            return ['ok' => false, 'synced' => 0, 'error' => __('Access token is missing.')];
+        }
+
+        $response = $this->client->phoneNumbers((string) $source->provider_account_id, $token);
         $numbers = $response->json('data') ?? [];
         $synced = 0;
 
@@ -569,9 +604,25 @@ class ChannelSetupService
             $synced++;
         }
 
-        $source->update(['last_synced_at' => now(), 'status' => $response->successful() ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value]);
+        $settings = $source->settings ?? [];
+        if (! $response->successful()) {
+            $settings['last_error'] = $this->metaError($response->json());
+        } else {
+            unset($settings['last_error']);
+        }
 
-        return ['ok' => $response->successful(), 'synced' => $synced, 'response' => $response->json()];
+        $source->update([
+            'last_synced_at' => now(),
+            'status' => $response->successful() ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value,
+            'settings' => $settings,
+        ]);
+
+        return [
+            'ok' => $response->successful(),
+            'synced' => $synced,
+            'error' => ! $response->successful() ? $this->metaError($response->json()) : null,
+            'response' => $response->json(),
+        ];
     }
 
     protected function subscribeToWebhooks(ChannelAccount $channel): void
