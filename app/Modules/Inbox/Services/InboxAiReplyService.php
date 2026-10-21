@@ -18,7 +18,23 @@ class InboxAiReplyService
 
     public function isAvailable(): bool
     {
-        return $this->hasConfiguredTextProvider($this->platformTextProvider());
+        return $this->configuredProvider() !== null;
+    }
+
+    public function configuredProvider(): ?string
+    {
+        $default = $this->platformTextProvider();
+        if ($this->hasConfiguredTextProvider($default)) {
+            return $default;
+        }
+
+        foreach (['gemini', 'openai', 'anthropic', 'groq', 'deepseek', 'mistral', 'openrouter', 'ollama'] as $candidate) {
+            if ($this->hasConfiguredTextProvider($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -26,14 +42,15 @@ class InboxAiReplyService
      */
     public function draft(Conversation $conversation, ?string $instruction = null): array
     {
-        $provider = $this->platformTextProvider();
-        $model = $this->platformTextModel($provider);
+        $provider = $this->configuredProvider();
 
-        if (! $this->hasConfiguredTextProvider($provider)) {
+        if ($provider === null) {
             throw ValidationException::withMessages([
                 'ai' => __('Platform AI is not configured for text replies. Enable a text provider in AI Settings first.'),
             ]);
         }
+
+        $model = $this->platformTextModel($provider);
 
         if (app()->runningUnitTests()) {
             return [
