@@ -313,6 +313,13 @@ it('auto-provisions, rotates, and authenticates storefront env credentials from 
         ->getJson('/internal/stores/resolve?host=owner4.localhost')
         ->assertOk()
         ->assertJsonPath('data.store_id', $workspace->id);
+
+    // The storefront URL host is automatically registered and resolvable
+    $this->withHeaders(['X-Storefront-Secret' => $newPlatformSecret])
+        ->getJson('/internal/stores/resolve?host=shop.myshop.com')
+        ->assertOk()
+        ->assertJsonPath('data.store_id', $workspace->id)
+        ->assertJsonPath('data.primary_host', 'shop.myshop.com');
 });
 
 it('allows creating, updating, toggling status, and deleting coupons from the storefront dashboard', function (): void {

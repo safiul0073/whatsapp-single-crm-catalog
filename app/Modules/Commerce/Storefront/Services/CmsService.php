@@ -6,12 +6,14 @@ use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Storefront\Http\Resources\ProductResource;
+use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSection;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CmsService
 {
@@ -242,6 +244,52 @@ class CmsService
             ['workspace_id' => $workspace],
             ['config' => $config]
         );
+
+        // 1. Sync system domain host with root_domain if provided
+        if (! empty($deployment['root_domain'])) {
+            $sysDomain = StoreDomain::query()->where('workspace_id', $workspace)->where('type', 'system')->first();
+            if ($sysDomain) {
+                try {
+                    $newHost = DomainResolver::normalize($sysDomain->handle.'.'.$deployment['root_domain']);
+                    if ($newHost !== $sysDomain->host && ! StoreDomain::query()->where('host', $newHost)->whereKeyNot($sysDomain->id)->exists()) {
+                        $sysDomain->update(['host' => $newHost]);
+                    }
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        // 2. Automatically register storefront_url host as an active domain for this store
+        if (! empty($deployment['storefront_url'])) {
+            $parsedHost = parse_url($deployment['storefront_url'], PHP_URL_HOST);
+            if ($parsedHost && ! in_array(strtolower($parsedHost), ['localhost', '127.0.0.1'], true)) {
+                try {
+                    $sfHost = DomainResolver::normalize($parsedHost);
+                    $existing = StoreDomain::query()->where('host', $sfHost)->first();
+                    if ($existing && $existing->workspace_id === $workspace) {
+                        StoreDomain::query()->where('workspace_id', $workspace)->update(['is_primary' => false]);
+                        $existing->update([
+                            'status' => 'active',
+                            'is_primary' => true,
+                            'verified_at' => $existing->verified_at ?? now(),
+                        ]);
+                    } elseif (! $existing) {
+                        StoreDomain::query()->where('workspace_id', $workspace)->update(['is_primary' => false]);
+                        StoreDomain::query()->create([
+                            'workspace_id' => $workspace,
+                            'host' => $sfHost,
+                            'handle' => $sfHost,
+                            'type' => 'custom',
+                            'is_primary' => true,
+                            'status' => 'active',
+                            'verification_token' => Str::random(48),
+                            'verified_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable) {
+                }
+            }
+        }
 
         return $this->credentials($workspace, true);
     }

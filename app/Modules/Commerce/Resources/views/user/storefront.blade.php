@@ -3187,91 +3187,276 @@
 
         {{-- 2. Configure Storefront Connection URLs & DNS Target --}}
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div class="lg:col-span-7 rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-5">
-                <div class="flex items-center gap-2.5 border-b border-neutral-100 pb-4 dark:border-neutral-800">
-                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <i class="ph ph-plugs-connected text-lg"></i>
-                    </span>
-                    <div>
-                        <h2 class="heading-4 text-title text-base font-semibold">{{ __('Connection URLs & Server Endpoints') }}</h2>
-                        <p class="text-xs text-body">{{ __('Configure the URLs used inside your generated .env file and for instant cache revalidation webhooks.') }}</p>
+            <div class="lg:col-span-7 rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-6">
+                {{-- Header --}}
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                    <div class="flex items-center gap-3">
+                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0 shadow-2xs">
+                            <i class="ph ph-plugs-connected text-xl"></i>
+                        </span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="heading-4 text-title text-base font-bold">{{ __('Connection URLs & Server Endpoints') }}</h2>
+                                <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                                    <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {{ __('Live Endpoints') }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-body mt-0.5">{{ __('Configure the URLs used inside your generated .env file and for instant cache revalidation webhooks.') }}</p>
+                        </div>
                     </div>
                 </div>
 
-                <form method="POST" action="{{ route('user.commerce.storefront.credentials.update') }}" class="space-y-4">
+                <form method="POST" action="{{ route('user.commerce.storefront.credentials.update') }}" class="space-y-6">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="_tab" value="deployment">
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="form-label text-xs">{{ __('Backend API URL (MARKETING_API_URL)') }} *</label>
-                            <input
-                                type="url"
-                                name="marketing_api_url"
-                                required
-                                value="{{ $marketingApiUrl }}"
-                                placeholder="https://api.yourdomain.com"
-                                class="form-input text-xs font-mono"
-                            >
-                            <p class="form-hint">{{ __('URL where this WaPro dashboard is reachable by Next.js.') }}</p>
+                    {{-- Group 1: Backend API & Media Delivery --}}
+                    <div class="space-y-3.5 rounded-xl border border-neutral-150 bg-neutral-50/50 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/20">
+                        <div class="flex items-center justify-between border-b border-neutral-200/60 pb-2.5 dark:border-neutral-800">
+                            <div class="flex items-center gap-2">
+                                <span class="grid h-5 w-5 place-items-center rounded-md bg-neutral-200/70 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300 text-xs">
+                                    <i class="ph ph-database text-xs"></i>
+                                </span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">{{ __('Backend API & Media Service') }}</span>
+                            </div>
+                            <span class="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">{{ __('WaPro Laravel Core') }}</span>
                         </div>
 
-                        <div>
-                            <label class="form-label text-xs">{{ __('Media Origin URL (STOREFRONT_MEDIA_ORIGIN)') }} *</label>
-                            <input
-                                type="url"
-                                name="media_origin"
-                                required
-                                value="{{ $mediaOrigin }}"
-                                placeholder="https://api.yourdomain.com"
-                                class="form-input text-xs font-mono"
-                            >
-                            <p class="form-hint">{{ __('Usually identical to Backend API URL.') }}</p>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {{-- MARKETING_API_URL --}}
+                            <div class="space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <label for="marketing_api_url" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1">
+                                        <span>{{ __('Backend API URL') }}</span>
+                                        <span class="text-rose-500 font-bold">*</span>
+                                    </label>
+                                    <code class="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200/70 dark:border-neutral-700/70">
+                                        MARKETING_API_URL
+                                    </code>
+                                </div>
+                                <div class="relative flex items-center">
+                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                        <i class="ph ph-link-simple text-sm"></i>
+                                    </span>
+                                    <input
+                                        id="marketing_api_url"
+                                        type="url"
+                                        name="marketing_api_url"
+                                        required
+                                        value="{{ old('marketing_api_url', $marketingApiUrl) }}"
+                                        placeholder="https://app.yourdomain.com"
+                                        class="form-input w-full pl-9 @if(!empty($marketingApiUrl)) pr-8 @else pr-3 @endif text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        x-ref="marketingApiInput"
+                                    >
+                                    @if(!empty($marketingApiUrl))
+                                        <a
+                                            href="{{ $marketingApiUrl }}"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors"
+                                            title="{{ __('Test Backend URL in new tab') }}"
+                                        >
+                                            <i class="ph ph-arrow-square-out text-sm"></i>
+                                        </a>
+                                    @endif
+                                </div>
+                                @error('marketing_api_url')
+                                    <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                                @else
+                                    <p class="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                        <i class="ph ph-info text-xs shrink-0 text-neutral-400"></i>
+                                        <span>{{ __('URL where this dashboard is reachable by Next.js.') }}</span>
+                                    </p>
+                                @enderror
+                            </div>
+
+                            {{-- STOREFRONT_MEDIA_ORIGIN --}}
+                            <div class="space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <label for="media_origin" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1">
+                                        <span>{{ __('Media Origin URL') }}</span>
+                                        <span class="text-rose-500 font-bold">*</span>
+                                    </label>
+                                    <code class="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200/70 dark:border-neutral-700/70">
+                                        STOREFRONT_MEDIA_ORIGIN
+                                    </code>
+                                </div>
+                                <div class="relative flex items-center">
+                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                        <i class="ph ph-image text-sm"></i>
+                                    </span>
+                                    <input
+                                        id="media_origin"
+                                        type="url"
+                                        name="media_origin"
+                                        required
+                                        value="{{ old('media_origin', $mediaOrigin) }}"
+                                        placeholder="https://app.yourdomain.com"
+                                        class="form-input w-full pl-9 pr-14 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        x-ref="mediaOriginInput"
+                                    >
+                                    <button
+                                        type="button"
+                                        @click="$refs.mediaOriginInput.value = $refs.marketingApiInput.value; $refs.mediaOriginInput.dispatchEvent(new Event('input'))"
+                                        class="absolute right-1.5 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                                        title="{{ __('Sync with Backend API URL') }}"
+                                    >
+                                        <i class="ph ph-arrows-clockwise text-xs"></i>
+                                        <span>{{ __('Sync') }}</span>
+                                    </button>
+                                </div>
+                                @error('media_origin')
+                                    <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                                @else
+                                    <p class="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                        <i class="ph ph-info text-xs shrink-0 text-neutral-400"></i>
+                                        <span>{{ __('Usually identical to Backend API URL for image proxies.') }}</span>
+                                    </p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                            <label class="form-label text-xs">{{ __('Next.js Storefront URL (STOREFRONT_URL)') }} *</label>
-                            <input
-                                type="url"
-                                name="storefront_url"
-                                required
-                                value="{{ $storefrontAppUrl }}"
-                                placeholder="http://localhost:3000"
-                                class="form-input text-xs font-mono"
-                            >
-                            <p class="form-hint">{{ __('Used for ISR cache revalidation & live page preview.') }}</p>
+                    {{-- Group 2: Next.js Storefront & Custom Domains --}}
+                    <div class="space-y-3.5 rounded-xl border border-neutral-150 bg-neutral-50/50 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/20">
+                        <div class="flex items-center justify-between border-b border-neutral-200/60 pb-2.5 dark:border-neutral-800">
+                            <div class="flex items-center gap-2">
+                                <span class="grid h-5 w-5 place-items-center rounded-md bg-neutral-200/70 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300 text-xs">
+                                    <i class="ph ph-globe text-xs"></i>
+                                </span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">{{ __('Storefront App & Domain Infrastructure') }}</span>
+                            </div>
+                            <span class="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">{{ __('Headless Next.js & DNS') }}</span>
                         </div>
 
-                        <div>
-                            <label class="form-label text-xs">{{ __('Root Domain (STOREFRONT_ROOT_DOMAIN)') }}</label>
-                            <input
-                                type="text"
-                                name="root_domain"
-                                value="{{ $rootDomain }}"
-                                placeholder="localhost"
-                                class="form-input text-xs font-mono"
-                            >
-                            <p class="form-hint">{{ __('Base domain for [handle].[root_domain].') }}</p>
-                        </div>
+                        <div class="space-y-4">
+                            {{-- STOREFRONT_URL (Full Width to completely prevent truncation) --}}
+                            <div class="space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <label for="storefront_url" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1">
+                                        <span>{{ __('Next.js Storefront URL') }}</span>
+                                        <span class="text-rose-500 font-bold">*</span>
+                                    </label>
+                                    <code class="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200/70 dark:border-neutral-700/70">
+                                        STOREFRONT_URL
+                                    </code>
+                                </div>
+                                <div class="relative flex items-center">
+                                    <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                        <i class="ph ph-browsers text-sm"></i>
+                                    </span>
+                                    <input
+                                        id="storefront_url"
+                                        type="url"
+                                        name="storefront_url"
+                                        required
+                                        value="{{ old('storefront_url', $storefrontAppUrl) }}"
+                                        placeholder="https://store.yourdomain.com"
+                                        class="form-input w-full pl-9 @if(!empty($storefrontAppUrl)) pr-8 @else pr-3 @endif text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                    >
+                                    @if(!empty($storefrontAppUrl))
+                                        <a
+                                            href="{{ $storefrontAppUrl }}"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            class="absolute right-2 p-1 text-neutral-400 hover:text-primary transition-colors"
+                                            title="{{ __('Visit Storefront URL in new tab') }}"
+                                        >
+                                            <i class="ph ph-arrow-square-out text-sm"></i>
+                                        </a>
+                                    @endif
+                                </div>
+                                @error('storefront_url')
+                                    <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                                @else
+                                    <p class="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                        <i class="ph ph-info text-xs shrink-0 text-neutral-400"></i>
+                                        <span>{{ __('Target destination for on-demand ISR cache revalidation & live page previews.') }}</span>
+                                    </p>
+                                @enderror
+                            </div>
 
-                        <div>
-                            <label class="form-label text-xs">{{ __('CNAME Target (STOREFRONT_DNS_TARGET)') }}</label>
-                            <input
-                                type="text"
-                                name="dns_target"
-                                value="{{ $dnsTarget }}"
-                                placeholder="shops.yourdomain.com"
-                                class="form-input text-xs font-mono"
-                            >
-                            <p class="form-hint">{{ __('Shown in custom domain DNS instructions.') }}</p>
+                            {{-- STOREFRONT_ROOT_DOMAIN & STOREFRONT_DNS_TARGET (2 Columns: generous space to prevent truncation) --}}
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {{-- STOREFRONT_ROOT_DOMAIN --}}
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <label for="root_domain" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                                            {{ __('Root Domain') }}
+                                        </label>
+                                        <code class="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200/70 dark:border-neutral-700/70">
+                                            STOREFRONT_ROOT_DOMAIN
+                                        </code>
+                                    </div>
+                                    <div class="relative flex items-center">
+                                        <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                            <i class="ph ph-at text-sm"></i>
+                                        </span>
+                                        <input
+                                            id="root_domain"
+                                            type="text"
+                                            name="root_domain"
+                                            value="{{ old('root_domain', $rootDomain) }}"
+                                            placeholder="fashionfiest.com"
+                                            class="form-input w-full pl-9 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        >
+                                    </div>
+                                    @error('root_domain')
+                                        <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                                    @else
+                                        <p class="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                            <i class="ph ph-info text-xs shrink-0 text-neutral-400"></i>
+                                            <span>{{ __('Base tenant domain for [store_slug].[root_domain].') }}</span>
+                                        </p>
+                                    @enderror
+                                </div>
+
+                                {{-- STOREFRONT_DNS_TARGET --}}
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <label for="dns_target" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                                            {{ __('CNAME Target') }}
+                                        </label>
+                                        <code class="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200/70 dark:border-neutral-700/70">
+                                            STOREFRONT_DNS_TARGET
+                                        </code>
+                                    </div>
+                                    <div class="relative flex items-center">
+                                        <span class="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+                                            <i class="ph ph-share-network text-sm"></i>
+                                        </span>
+                                        <input
+                                            id="dns_target"
+                                            type="text"
+                                            name="dns_target"
+                                            value="{{ old('dns_target', $dnsTarget) }}"
+                                            placeholder="cname.vercel-dns.com"
+                                            class="form-input w-full pl-9 pr-3 text-xs font-mono tracking-tight rounded-lg border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        >
+                                    </div>
+                                    @error('dns_target')
+                                        <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                                    @else
+                                        <p class="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                            <i class="ph ph-info text-xs shrink-0 text-neutral-400"></i>
+                                            <span>{{ __('Shown in custom domain DNS setup instructions.') }}</span>
+                                        </p>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex justify-end pt-2">
-                        <button type="submit" class="btn btn-primary btn-sm rounded-lg px-5 py-2.5 text-xs font-semibold flex items-center gap-2">
+                    {{-- Footer & Action Button --}}
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                        <div class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                            <span class="size-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span>{{ __('Endpoints dynamically update your storefront/.env export above.') }}</span>
+                        </div>
+
+                        <button type="submit" class="w-full sm:w-auto btn btn-primary btn-sm rounded-xl px-6 py-2.5 text-xs font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer">
                             <i class="ph ph-floppy-disk text-base"></i>
                             <span>{{ __('Save Connection Endpoints') }}</span>
                         </button>
