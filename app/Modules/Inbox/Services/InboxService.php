@@ -53,7 +53,6 @@ class InboxService
             ->with(['contact.tags', 'channelAccount'])
             ->where('workspace_id', $workspace->id)
             ->whereIn('provider', $this->inboxProviders())
-            ->tap(fn (Builder $query) => $this->onlyConnectedInboxChannels($query))
             ->when($provider, fn (Builder $query) => $query->where('provider', $provider))
             ->when($this->shouldLimitToAssignedConversations($user), fn ($q) => $q->where('assigned_to', $user?->id))
             ->when(($filters['status'] ?? 'all') !== 'all', function ($query) use ($filters): void {
@@ -317,16 +316,7 @@ class InboxService
             ->with(['contact.tags', 'channelAccount'])
             ->where('workspace_id', $workspaceId)
             ->whereIn('provider', $this->inboxProviders())
-            ->tap(fn (Builder $query) => $this->onlyConnectedInboxChannels($query))
             ->when($this->shouldLimitToAssignedConversations($user), fn ($query) => $query->where('assigned_to', $user?->id));
-    }
-
-    protected function onlyConnectedInboxChannels(Builder $query): Builder
-    {
-        return $query->where(function (Builder $query): void {
-            $query->where('provider', 'website_widget')
-                ->orWhereHas('channelAccount', fn (Builder $accountQuery) => $accountQuery->where('status', ChannelAccountStatus::Connected->value));
-        });
     }
 
     protected function shouldLimitToAssignedConversations(?User $user): bool
@@ -442,7 +432,6 @@ class InboxService
         $query = fn (): Builder => Conversation::query()
             ->where('workspace_id', $workspaceId)
             ->whereIn('provider', $this->inboxProviders())
-            ->tap(fn (Builder $query) => $this->onlyConnectedInboxChannels($query))
             ->when($provider, fn (Builder $query) => $query->where('provider', $provider));
 
         return [
@@ -461,25 +450,28 @@ class InboxService
             ->selectRaw('provider, count(*) as aggregate')
             ->groupBy('provider')
             ->pluck('aggregate', 'provider');
-        $widgetConversationCount = Conversation::query()
+        $conversationCounts = Conversation::query()
             ->where('workspace_id', $workspaceId)
-            ->where('provider', 'website_widget')
-            ->count();
-        $connectedCount = (int) $connected->sum() + $widgetConversationCount;
+            ->whereIn('provider', $this->inboxProviders())
+            ->selectRaw('provider, count(*) as aggregate')
+            ->groupBy('provider')
+            ->pluck('aggregate', 'provider');
 
         $providers = collect($this->inboxProviders())
             ->map(fn (string $provider): array => [
                 'value' => $provider,
                 'label' => $this->providerLabel($provider),
                 'icon' => $this->providerIcon($provider),
-                'connected' => $provider === 'website_widget' ? $widgetConversationCount > 0 : ((int) ($connected[$provider] ?? 0)) > 0,
-                'count' => $provider === 'website_widget' ? $widgetConversationCount : (int) ($connected[$provider] ?? 0),
+                'connected' => $provider === 'website_widget'
+                    ? ((int) ($conversationCounts[$provider] ?? 0)) > 0
+                    : ((int) ($connected[$provider] ?? 0)) > 0,
+                'count' => (int) ($conversationCounts[$provider] ?? 0),
             ])
-            ->filter(fn (array $provider): bool => (bool) $provider['connected'])
+            ->filter(fn (array $provider): bool => $provider['connected'] || $provider['count'] > 0)
             ->values();
 
         return collect([
-            ['value' => 'all', 'label' => __('All channels'), 'icon' => 'ph-chats-circle', 'connected' => $connectedCount > 0, 'count' => $connectedCount],
+            ['value' => 'all', 'label' => __('All channels'), 'icon' => 'ph-chats-circle', 'connected' => $connected->isNotEmpty() || $conversationCounts->isNotEmpty(), 'count' => (int) $conversationCounts->sum()],
             ...$providers->all(),
         ])->values()->all();
     }

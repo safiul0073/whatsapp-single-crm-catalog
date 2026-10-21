@@ -748,8 +748,24 @@ select.form-input {
   border-radius: 4px !important;
 }
 
-.input-search {
-  padding-left: 2.75rem;
+.input-search,
+input[type="search"].form-input {
+  padding-left: 2.75rem !important;
+}
+
+.input-with-leading-icon,
+.has-leading-icon {
+  padding-left: 2.5rem !important;
+}
+
+.input-with-trailing-icon,
+.has-trailing-icon {
+  padding-right: 2.5rem !important;
+}
+
+.input-with-trailing-action,
+.has-trailing-action {
+  padding-right: 4.75rem !important;
 }
 
 .form-label {
