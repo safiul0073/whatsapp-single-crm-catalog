@@ -1,0 +1,9 @@
+# Laravel creates these public paths as symlinks to runtime storage. Exclude
+# both links so Vercel does not dereference them while assembling a build.
+public/storage
+public/support-attachments
+
+# Uploaded files are runtime data and must be provided by persistent object
+# storage in deployed environments, not bundled into an immutable build.
+storage/app/public/**
+storage/app/support-attachments/**
