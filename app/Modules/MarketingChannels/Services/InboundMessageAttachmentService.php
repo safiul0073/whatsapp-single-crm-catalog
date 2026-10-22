@@ -5,6 +5,7 @@ namespace App\Modules\MarketingChannels\Services;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,7 @@ class InboundMessageAttachmentService
     {
         $type = (string) ($message['type'] ?? '');
 
-        if (! in_array($type, ['image', 'document', 'video', 'audio'], true)) {
+        if (! in_array($type, ['image', 'document', 'video', 'audio', 'sticker'], true)) {
             return null;
         }
 
@@ -31,20 +32,34 @@ class InboundMessageAttachmentService
 
         try {
             $settings = app(WhatsAppSettingsService::class);
-            $mediaResponse = Http::withToken($token)->get(
-                'https://graph.facebook.com/'.$settings->graphApiVersion().'/'.$mediaId,
+            $endpoint = 'https://graph.facebook.com/'.$settings->graphApiVersion().'/'.$mediaId;
+            $mediaResponse = Http::withToken($token)->timeout(30)->get(
+                $endpoint,
                 array_filter(['phone_number_id' => $account->provider_phone_id])
             );
+
+            if (! $mediaResponse->successful()) {
+                // Retry without phone_number_id; it is rejected for media owned by a coexistence number.
+                $mediaResponse = Http::withToken($token)->timeout(30)->get($endpoint);
+            }
 
             $mediaUrl = (string) $mediaResponse->json('url');
 
             if (! $mediaResponse->successful() || blank($mediaUrl)) {
+                Log::warning('WhatsApp media lookup failed.', [
+                    'media_id' => $mediaId,
+                    'status' => $mediaResponse->status(),
+                    'error' => $mediaResponse->json('error.message'),
+                ]);
+
                 return null;
             }
 
-            $download = Http::withToken($token)->get($mediaUrl);
+            $download = Http::withToken($token)->timeout(60)->withHeaders(['User-Agent' => 'curl/8.0'])->get($mediaUrl);
 
             if (! $download->successful()) {
+                Log::warning('WhatsApp media download failed.', ['media_id' => $mediaId, 'status' => $download->status()]);
+
                 return null;
             }
 
@@ -52,7 +67,9 @@ class InboundMessageAttachmentService
             $name = (string) (data_get($media, 'filename') ?: $this->fallbackName($type, $mediaId, $mimeType));
 
             return $this->store($account, $type, $name, $mimeType, $download->body());
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            Log::warning('WhatsApp media handling threw.', ['media_id' => $mediaId, 'error' => $exception->getMessage()]);
+
             return null;
         }
     }
@@ -196,6 +213,10 @@ class InboundMessageAttachmentService
             'audio/mpeg' => 'mp3',
             'audio/mp4' => 'm4a',
             'audio/ogg' => 'ogg',
+            'audio/opus' => 'ogg',
+            'audio/aac' => 'aac',
+            'audio/amr' => 'amr',
+            'image/webp_sticker' => 'webp',
             'audio/wav' => 'wav',
             'application/pdf' => 'pdf',
             'text/plain' => 'txt',
@@ -205,6 +226,7 @@ class InboundMessageAttachmentService
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
             default => match ($type) {
                 'image' => 'jpg',
+                'sticker' => 'webp',
                 'video' => 'mp4',
                 'audio' => 'mp3',
                 default => 'bin',
@@ -215,6 +237,7 @@ class InboundMessageAttachmentService
     protected function messageType(string $type, string $mimeType): string
     {
         return match (true) {
+            $type === 'sticker' => 'image',
             in_array($type, ['image', 'video', 'audio', 'document'], true) => $type,
             str_starts_with($mimeType, 'image/') => 'image',
             str_starts_with($mimeType, 'video/') => 'video',

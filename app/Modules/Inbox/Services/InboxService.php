@@ -605,7 +605,7 @@ class InboxService
             'video' => __('Video (media unavailable)'),
             'image' => __('Image (media unavailable)'),
             'document' => __('Document (media unavailable)'),
-            'sticker' => __('Sticker'),
+            'sticker' => __('Sticker (media unavailable)'),
             'location' => __('Location shared'),
             'contacts', 'contact' => __('Contact shared'),
             'system' => (string) data_get($message->payload, 'system.body', __('Account notice')),
@@ -680,8 +680,9 @@ class InboxService
             return $attachment;
         }
 
-        if (in_array($message->type, ['audio', 'video', 'image', 'document'], true)) {
-            $rawMediaId = data_get($message->payload, $message->type.'.id')
+        if (in_array($message->type, ['audio', 'video', 'image', 'document', 'sticker'], true)) {
+            $rawMediaId = data_get($message->payload, (string) data_get($message->payload, 'type', $message->type).'.id')
+                ?: data_get($message->payload, $message->type.'.id')
                 ?: data_get($message->payload, 'media_id');
 
             if (filled($rawMediaId) && $message->provider === 'whatsapp') {
