@@ -950,7 +950,7 @@
                             </span>
                             <div>
                                 <h2 class="heading-4 text-title text-base font-semibold">{{ __('Color Theme & Styling') }}</h2>
-                                <p class="text-xs text-body">{{ __('Define brand colors. The live preview updates instantly on the right.') }}</p>
+                                <p class="text-xs text-body">{{ __('Preview changes appear instantly on the right. Save to apply them to the public storefront.') }}</p>
                             </div>
                         </div>
                     </div>
@@ -1397,14 +1397,14 @@
                 <div class="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                     <div class="text-xs text-neutral-500 flex items-center gap-2">
                         <i class="ph ph-info text-base text-primary"></i>
-                        <span>{{ __('Storefront cache auto-revalidates upon saving.') }}</span>
+                        <span>{{ __('The public storefront applies these saved colors on its next refresh.') }}</span>
                     </div>
                     <button
                         type="submit"
                         class="btn btn-primary rounded-xl px-6 py-2.5 text-sm font-semibold flex items-center gap-2 shadow-sm transition-all"
                     >
                         <i class="ph ph-check-circle text-lg"></i>
-                        <span>{{ __('Save Storefront Settings') }}</span>
+                        <span>{{ __('Save & Apply Theme') }}</span>
                     </button>
                 </div>
             </form>
@@ -1416,7 +1416,7 @@
             <div class="flex items-center justify-between px-1">
                 <div class="flex items-center gap-2">
                     <i class="ph ph-device-mobile-camera text-base text-primary"></i>
-                    <span class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{{ __('Live Interactive Preview') }}</span>
+                    <span class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{{ __('Live Interactive Preview — Unsaved') }}</span>
                 </div>
                 <div class="flex items-center rounded-lg border border-neutral-200 bg-white p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
                     <button
