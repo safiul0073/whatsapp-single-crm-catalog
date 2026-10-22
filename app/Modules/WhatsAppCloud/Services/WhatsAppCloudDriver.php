@@ -578,6 +578,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
         $context = $this->resolveContactContext($account, $counterpartId, (string) data_get($message, 'profile.name', ''));
         $timestamp = $this->messageTimestamp($message);
+        $normalized = $this->inboundMessagePayload($account, $message);
 
         Message::query()->updateOrCreate(
             ['provider_message_id' => $message['id'] ?? Str::uuid()->toString()],
@@ -588,9 +589,9 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 'channel_account_id' => $account->id,
                 'provider' => $this->provider(),
                 'direction' => $isOutbound ? 'outbound' : 'inbound',
-                'type' => $message['type'] ?? 'text',
+                'type' => $normalized['type'] ?? 'text',
                 'body' => $this->inboundMessageBody($message),
-                'payload' => $message,
+                'payload' => $normalized,
                 'status' => $isOutbound ? MessageStatus::Sent->value : MessageStatus::Received->value,
                 'whatsapp_message_id' => $message['id'] ?? null,
             ]
@@ -617,6 +618,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
         $context = $this->resolveContactContext($account, $recipient, '');
         $timestamp = $this->messageTimestamp($echo);
+        $normalizedEcho = $this->inboundMessagePayload($account, $echo);
 
         Message::query()->updateOrCreate(
             ['provider_message_id' => $echo['id'] ?? Str::uuid()->toString()],
@@ -627,9 +629,9 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
                 'channel_account_id' => $account->id,
                 'provider' => $this->provider(),
                 'direction' => 'outbound',
-                'type' => $echo['type'] ?? 'text',
+                'type' => $normalizedEcho['type'] ?? 'text',
                 'body' => $this->inboundMessageBody($echo),
-                'payload' => $echo,
+                'payload' => $normalizedEcho,
                 'status' => MessageStatus::Sent->value,
                 'whatsapp_message_id' => $echo['id'] ?? null,
             ]
@@ -952,9 +954,23 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             ?: data_get($message, 'interactive.list_reply.title')
             ?: data_get($message, 'edit.message.text.body')
             ?: data_get($message, 'system.body')
+            ?: $this->nonTextMessageLabel($message)
             ?: $this->unsupportedMessageLabel($message);
 
         return filled($body) ? (string) $body : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $message
+     */
+    protected function nonTextMessageLabel(array $message): ?string
+    {
+        return match ($message['type'] ?? null) {
+            'location' => trim('Location: '.(string) (data_get($message, 'location.name') ?: data_get($message, 'location.address') ?: data_get($message, 'location.latitude').','.data_get($message, 'location.longitude'))),
+            'contacts' => 'Contact: '.(string) (data_get($message, 'contacts.0.name.formatted_name') ?: 'shared'),
+            'reaction' => filled(data_get($message, 'reaction.emoji')) ? 'Reacted '.data_get($message, 'reaction.emoji') : null,
+            default => null,
+        };
     }
 
     /**

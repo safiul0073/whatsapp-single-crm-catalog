@@ -244,7 +244,18 @@
                             <video :src="message.attachment.url" controls preload="metadata" class="chat-attachment chat-attachment--image max-h-72 w-full"></video>
                           </template>
                           <template x-if="message.attachment.type === 'audio'">
-                            <audio :src="message.attachment.url" controls preload="metadata" class="w-full"></audio>
+                            <div class="min-w-[240px] max-w-full" x-data="{ audioFailed: false }">
+                              <audio x-show="!audioFailed" controls preload="metadata" class="w-full min-w-[240px]" @error.capture="audioFailed = true">
+                                <source :src="message.attachment.url" :type="message.attachment.mime_type || 'audio/ogg'">
+                              </audio>
+                              <a x-show="audioFailed" :href="message.attachment.url" target="_blank" download class="chat-attachment chat-attachment--file">
+                                <span class="chat-attachment__icon"><i class="ph ph-microphone text-lg"></i></span>
+                                <span class="min-w-0 flex-1">
+                                  <span class="block text-sm font-semibold">{{ __('Voice message') }}</span>
+                                  <span class="block text-xs opacity-75">{{ __('Tap to download or play') }}</span>
+                                </span>
+                              </a>
+                            </div>
                           </template>
                           <template x-if="!['image', 'video', 'audio'].includes(message.attachment.type)">
                             <a :href="message.attachment.url" target="_blank" class="chat-attachment chat-attachment--file">
