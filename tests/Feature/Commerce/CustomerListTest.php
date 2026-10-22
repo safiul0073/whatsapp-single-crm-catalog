@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
@@ -8,6 +9,7 @@ use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -158,4 +160,38 @@ it('shows customer details and isolation across workspaces', function () {
     $this->actingAs($otherStaff);
 
     $this->get(route('user.commerce.customers.show', $customer))->assertNotFound();
+});
+
+it('formats customer order lifetime spend with dollar sign instead of usd', function () {
+    $contact = Contact::query()->create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'Md Safiullah',
+        'phone' => '+8801876150613',
+        'email' => 'mdsafiul0073@gmail.com',
+    ]);
+    Customer::query()->create([
+        'workspace_id' => $this->workspace->id,
+        'contact_id' => $contact->id,
+        'verified_phone' => '+8801876150613',
+        'verified_at' => now(),
+        'registered_at' => now(),
+        'source' => 'storefront',
+    ]);
+
+    Order::query()->create([
+        'workspace_id' => $this->workspace->id,
+        'contact_id' => $contact->id,
+        'number' => 'ORD-1001',
+        'submission_reference' => (string) Str::uuid(),
+        'source' => 'storefront',
+        'status' => 'paid',
+        'currency' => 'USD',
+        'subtotal' => 1662.44,
+        'total' => 1662.44,
+    ]);
+
+    $response = $this->get(route('user.commerce.customers.index'))->assertOk();
+
+    $response->assertSee('$1,662.44');
+    $response->assertDontSee('USD 1,662.44');
 });

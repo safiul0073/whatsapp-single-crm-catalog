@@ -7,6 +7,8 @@ use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class Product extends Model
 {
@@ -84,6 +86,36 @@ class Product extends Model
             'ws_size_ratios' => 'array',
             'ws_ratio_multiplier' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Product $product): void {
+            // Remove dependent rows first to prevent MySQL foreign key cascade
+            // conflicts between commerce_product_colors (SET NULL) and commerce_product_media (CASCADE)
+            $product->gallery()->delete();
+
+            if (Schema::hasTable('commerce_cart_items')) {
+                DB::table('commerce_cart_items')->where('product_id', $product->id)->delete();
+            }
+
+            if (Schema::hasTable('commerce_wishlists')) {
+                DB::table('commerce_wishlists')->where('product_id', $product->id)->delete();
+            }
+
+            if (Schema::hasTable('commerce_product_reviews')) {
+                DB::table('commerce_product_reviews')->where('product_id', $product->id)->delete();
+            }
+
+            $product->variants()->delete();
+            $product->colors()->delete();
+            $product->tierPrices()->delete();
+
+            $product->options()->each(function (ProductOption $option): void {
+                $option->values()->delete();
+                $option->delete();
+            });
+        });
     }
 
     public function workspace(): BelongsTo

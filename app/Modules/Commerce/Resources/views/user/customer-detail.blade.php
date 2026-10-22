@@ -143,7 +143,7 @@
                                             </span>
                                         </td>
                                         <td class="py-3 px-4 text-right font-semibold text-title">
-                                            {{ $ord->currency }} {{ number_format((float) ($ord->total ?? $ord->subtotal ?? 0), 2) }}
+                                            {{ ($ord->currency === 'USD' || !$ord->currency) ? '$' : ($ord->currency . ' ') }}{{ number_format((float) ($ord->total ?? $ord->subtotal ?? 0), 2) }}
                                         </td>
                                         <td class="py-3 px-4 text-neutral-500">
                                             {{ $ord->created_at?->format('M j, Y') }}
