@@ -245,7 +245,7 @@
                           </template>
                           <template x-if="message.attachment.type === 'audio'">
                             <div class="min-w-[240px] max-w-full" x-data="{ audioFailed: false }">
-                              <audio x-show="!audioFailed" controls preload="metadata" class="w-full min-w-[240px]" @error.capture="audioFailed = true">
+                              <audio x-show="!audioFailed" controls preload="metadata" class="w-full min-w-[240px]" @@error.capture="audioFailed = true">
                                 <source :src="message.attachment.url" :type="message.attachment.mime_type || 'audio/ogg'">
                               </audio>
                               <a x-show="audioFailed" :href="message.attachment.url" target="_blank" download class="chat-attachment chat-attachment--file">
