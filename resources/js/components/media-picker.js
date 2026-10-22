@@ -189,6 +189,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Auto load more when scrolling near bottom of gallery
+  const modalBody = modal.querySelector('.media-modal-body');
+  if (modalBody) {
+    modalBody.addEventListener('scroll', function () {
+      if (hasMore && !isLoading) {
+        if (modalBody.scrollTop + modalBody.clientHeight >= modalBody.scrollHeight - 120) {
+          currentPage++;
+          loadMedia(true);
+        }
+      }
+    });
+  }
+
   // ── Hover Color Inspection on Grid Images ──
   grid.addEventListener('mousemove', function (e) {
     if (!galleryColorPickerActive) return;

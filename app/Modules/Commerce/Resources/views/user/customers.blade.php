@@ -146,7 +146,16 @@
                                 $ordersCount = $customer->orders_count ?? 0;
                                 $contactSpend = $spending->get($customer->contact_id, collect());
                                 $spendSummary = $contactSpend->map(function ($row) {
-                                    return $row->currency . ' ' . number_format((float) $row->total_spent, 2);
+                                    $currency = strtoupper((string) ($row->currency ?? 'USD'));
+                                    $symbol = match ($currency) {
+                                        'USD' => '$',
+                                        'BDT' => '৳',
+                                        'EUR' => '€',
+                                        'GBP' => '£',
+                                        'INR' => '₹',
+                                        default => $currency . ' ',
+                                    };
+                                    return $symbol . number_format((float) $row->total_spent, 2);
                                 })->implode(', ');
                             @endphp
                             <tr class="hover:bg-neutral-50/70 transition-colors">
@@ -450,7 +459,7 @@
                                         <a :href="'{{ url('dashboard/commerce/orders') }}/' + ord.id" class="block rounded-lg border border-border-soft p-3 hover:border-primary transition bg-neutral-0">
                                             <div class="flex items-center justify-between text-xs">
                                                 <span class="font-mono font-semibold text-primary" x-text="ord.number"></span>
-                                                <span class="font-bold text-title" x-text="ord.currency + ' ' + Number(ord.total || ord.subtotal || 0).toFixed(2)"></span>
+                                                <span class="font-bold text-title" x-text="((ord.currency === 'USD' || !ord.currency) ? '$' : ord.currency + ' ') + Number(ord.total || ord.subtotal || 0).toFixed(2)"></span>
                                             </div>
                                             <div class="mt-1 flex items-center justify-between text-[11px] text-neutral-400">
                                                 <span class="capitalize" x-text="(ord.status || '').replace('_', ' ')"></span>

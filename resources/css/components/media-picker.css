@@ -5,20 +5,43 @@
 
 .media-modal {
   @apply flex flex-col;
-  max-height: calc(100vh - 3rem);
+  height: min(850px, calc(100dvh - 3rem));
+  max-height: calc(100dvh - 3rem);
 }
 
-.media-modal .modal-body {
-  @apply flex-1 p-0;
-  overflow: hidden;
-  min-height: 0;
+.media-modal .modal-header,
+.media-modal-toolbar,
+.media-modal .modal-footer {
+  @apply shrink-0;
 }
 
+.media-modal .modal-body,
 .media-modal-body {
-  @apply relative flex flex-col;
-  height: 100%;
-  overflow-y: auto;
-  min-height: 300px;
+  @apply relative flex-1 flex flex-col p-0 min-h-0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-300, #cbd5e1) var(--color-neutral-100, #f1f5f9);
+}
+
+/* ── Custom Visible Scrollbar for Media Gallery ── */
+.media-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.media-modal-body::-webkit-scrollbar-track {
+  background: var(--color-neutral-100, #f1f5f9);
+  border-radius: 4px;
+}
+
+.media-modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300, #cbd5e1);
+  border-radius: 4px;
+}
+
+.media-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400, #94a3b8);
 }
 
 /* ── Toolbar (tabs + search) ── */

@@ -211,7 +211,9 @@ class CommerceController extends Controller implements HasMiddleware
         $workspace = $this->workspaces->current($request->user());
         $products = $this->bulkRecords(Product::class, $workspace->id, $request->validated('ids'));
 
-        Product::query()->whereKey($products->modelKeys())->delete();
+        foreach ($products as $product) {
+            $product->delete();
+        }
 
         return back()->with('success', trans_choice(':count product deleted.|:count products deleted.', $products->count(), ['count' => $products->count()]));
     }
