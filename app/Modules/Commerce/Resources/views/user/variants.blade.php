@@ -46,8 +46,6 @@
             <p class="mt-1 text-sm text-body">{{ __('Create reusable options like Size M or Color Blue, then select them on product create/edit pages.') }}</p>
         </div>
 
-        @include('commerce::user.partials.help', ['helpKey' => 'categories'])
-
         {{-- Toast / Feedback Alerts --}}
         <template x-if="successMsg">
             <div class="rounded-md border border-success/30 bg-success/10 p-3.5 text-sm font-medium text-success flex items-center justify-between transition-all" role="alert">

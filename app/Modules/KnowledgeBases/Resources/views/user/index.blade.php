@@ -6,13 +6,22 @@
             </a>
             <div>
                 <h2 class="heading-2">{{ __('Knowledge Bases') }}</h2>
-                <p class="m-text mt-1">{{ __('Sources your AI chatbots use to answer questions.') }}</p>
+                <p class="m-text mt-1">{{ __('What your chatbot knows. Add text, questions and answers, web pages or files.') }}</p>
             </div>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="POST" action="{{ route('user.knowledge-bases.refresh-defaults') }}">
+                @csrf
+                <button type="submit" class="btn-sm btn-outline">
+                    <i class="ph ph-arrows-clockwise text-base"></i>
+                    {{ __('Refresh from store data') }}
+                </button>
+            </form>
         <button type="button" class="btn-sm btn-primary" data-modal-open="createKnowledgeBase">
             <i class="ph ph-plus text-base"></i>
             {{ __('New Knowledge Base') }}
         </button>
+        </div>
     </div>
 
     @if (session('status'))
@@ -21,56 +30,9 @@
         </div>
     @endif
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div class="stat-card">
-            <div class="f-between">
-                <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Knowledge bases') }}</p>
-                <span class="stat-card__icon"><i class="ph ph-books text-lg"></i></span>
-            </div>
-            <p class="mt-3 font-title text-3xl font-extrabold text-title">{{ $stats['total'] }}</p>
-            <p class="mt-1 text-xs text-neutral-400">{{ __('in this workspace') }}</p>
-        </div>
-        <div class="stat-card">
-            <div class="f-between">
-                <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Sources') }}</p>
-                <span class="stat-card__icon"><i class="ph ph-file-text text-lg"></i></span>
-            </div>
-            <p class="mt-3 font-title text-3xl font-extrabold text-title">{{ $stats['sources'] }}</p>
-            <p class="mt-1 text-xs text-neutral-400">{{ __('URLs, files, text, and Q&A') }}</p>
-        </div>
-        <div class="stat-card">
-            <div class="f-between">
-                <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Chunks') }}</p>
-                <span class="stat-card__icon"><i class="ph ph-stack text-lg"></i></span>
-            </div>
-            <p class="mt-3 font-title text-3xl font-extrabold text-title">{{ $stats['chunks'] }}</p>
-            <p class="mt-1 text-xs text-neutral-400">{{ __('searchable sections') }}</p>
-        </div>
-        <div class="stat-card">
-            <div class="f-between">
-                <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Indexing') }}</p>
-                <span class="stat-card__icon"><i class="ph ph-spinner text-lg"></i></span>
-            </div>
-            <p class="mt-3 font-title text-3xl font-extrabold text-title">{{ $stats['indexing'] }}</p>
-            <p class="mt-1 text-xs text-warning">{{ __('in progress') }}</p>
-        </div>
-        <div class="stat-card">
-            <div class="f-between">
-                <p class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Search mode') }}</p>
-                <span class="stat-card__icon"><i class="ph ph-database text-lg"></i></span>
-            </div>
-            <p class="mt-3 font-title text-lg font-extrabold {{ $vectorSearchEnabled ? 'text-success' : 'text-warning' }}">{{ $vectorSearchEnabled ? __('Vector') : __('Fallback') }}</p>
-            <p class="mt-1 text-xs text-neutral-400">{{ $vectorSearchEnabled ? __('Qdrant active') : __('database search active') }}</p>
-        </div>
-    </div>
-
-    <div class="mt-4 rounded-md border {{ $vectorSearchEnabled ? 'border-success/20 bg-success/5 text-success' : 'border-warning/20 bg-warning/5 text-warning' }} px-4 py-3 text-sm font-semibold">
-        {{ $vectorSearchEnabled ? __('Qdrant vector search is active for knowledge base retrieval.') : __('Qdrant is not active. Chatbots will use the built-in database fallback search.') }}
-    </div>
-
     <form method="GET" action="{{ route('user.knowledge-bases.index') }}" class="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div class="inline-flex rounded-sm border border-neutral-200 bg-neutral-0 p-1">
-            @foreach (['all' => __('All'), 'ready' => __('Ready'), 'indexing' => __('Indexing'), 'error' => __('Error')] as $value => $label)
+            @foreach (['all' => __('All'), 'ready' => __('Ready'), 'indexing' => __('Learning'), 'error' => __('Needs attention')] as $value => $label)
                 <button type="submit" name="status" value="{{ $value }}" class="range-btn {{ ($filters['status'] ?? 'all') === $value ? 'is-active' : '' }}">
                     {{ $label }}
                 </button>
@@ -89,7 +51,7 @@
                 <i class="ph ph-books text-2xl"></i>
             </span>
             <h3 class="heading-4 mt-4">{{ __('No knowledge bases yet') }}</h3>
-            <p class="m-text mt-1 max-w-sm">{{ __('Create a knowledge base, add sources, and connect it to a chatbot.') }}</p>
+            <p class="m-text mt-1 max-w-sm">{{ __('Create one, add what your bot should know, then pick it in your chatbot.') }}</p>
             <button type="button" class="btn btn-primary mt-5" data-modal-open="createKnowledgeBase">
                 <i class="ph ph-plus text-base"></i>
                 {{ __('Create knowledge base') }}
@@ -107,25 +69,15 @@
                             <h3 class="truncate font-title text-lg font-bold text-title">{{ $knowledgeBase->name }}</h3>
                             <p class="flex items-center gap-1.5 text-xs font-semibold {{ match ($knowledgeBase->status) { 'ready' => 'text-success', 'error' => 'text-error', default => 'text-warning' } }}">
                                 <span class="status-dot {{ match ($knowledgeBase->status) { 'ready' => 'bg-success', 'error' => 'bg-error', default => 'bg-warning' } }}"></span>
-                                {{ ucfirst($knowledgeBase->status) }}
+                                {{ ['ready' => __('Ready'), 'error' => __('Needs attention')][$knowledgeBase->status] ?? __('Learning') }}
+                                @if (data_get($knowledgeBase->settings, 'managed')) · <span class="badge badge-success">{{ __('Default') }}</span> @endif
                             </p>
                         </div>
                     </div>
                     <p class="m-text mt-3 line-clamp-2">{{ $knowledgeBase->description ?: __('No description') }}</p>
-                    <dl class="mt-4 grid grid-cols-3 gap-3 border-t border-neutral-100 pt-4 text-sm">
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('Sources') }}</dt>
-                            <dd class="font-semibold text-title">{{ $knowledgeBase->sources_count }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('Chunks') }}</dt>
-                            <dd class="font-semibold text-title">{{ $knowledgeBase->chunks_count }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('Bots') }}</dt>
-                            <dd class="font-semibold text-title">{{ $knowledgeBase->chatbots_count }}</dd>
-                        </div>
-                    </dl>
+                    <p class="mt-4 border-t border-neutral-100 pt-4 text-sm text-neutral-500">
+                        {{ trans_choice(':count item|:count items', $knowledgeBase->sources_count) }} · {{ trans_choice('used by :count bot|used by :count bots', $knowledgeBase->chatbots_count) }}
+                    </p>
                     <div class="mt-4 flex items-center gap-2">
                         <a href="{{ route('user.knowledge-bases.show', $knowledgeBase) }}" class="btn-sm btn-primary flex-1">{{ __('Manage') }}</a>
                         <button type="button" class="btn-sm btn-outline flex-1" data-modal-open="editKnowledgeBase{{ $knowledgeBase->id }}">{{ __('Edit') }}</button>
@@ -153,7 +105,7 @@
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <h3 id="createKnowledgeBaseTitle" class="heading-4">{{ __('New Knowledge Base') }}</h3>
-                        <p class="m-text mt-1">{{ __('Create the container first, then add files, URLs, sitemap pages, text, or FAQ sources.') }}</p>
+                        <p class="m-text mt-1">{{ __('Create it, then add text, questions and answers, a web page or a file.') }}</p>
                     </div>
                     <button type="button" class="row-action" data-modal-close aria-label="{{ __('Close') }}">
                         <i class="ph ph-x text-base"></i>
@@ -173,12 +125,8 @@
                         @error('description')<p class="form-hint text-error">{{ $message }}</p>@enderror
                     </div>
                     <input type="hidden" name="visibility" value="workspace">
-                    <div class="rounded-md bg-section p-4 text-sm text-neutral-500">
-                        <p class="font-semibold text-title">{{ __('Sources are added after creation') }}</p>
-                        <p class="mt-1">{{ __('PDF, DOCX, URL, sitemap, text, and FAQ inputs live on the Manage page because they belong to an existing knowledge base.') }}</p>
-                    </div>
                     <div class="flex items-center gap-3 pt-1">
-                        <button type="submit" class="btn btn-primary flex-1">{{ __('Create & add sources') }}</button>
+                        <button type="submit" class="btn btn-primary flex-1">{{ __('Create') }}</button>
                         <button type="button" class="btn btn-outline" data-modal-close>{{ __('Cancel') }}</button>
                     </div>
                 </form>

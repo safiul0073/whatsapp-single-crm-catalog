@@ -3,14 +3,14 @@
 
         {{-- Top Navigation & Header --}}
         <div>
-            <a href="{{ route('user.commerce.pack-templates.index') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 mb-3 transition">
+            <a href="{{ route('user.commerce.pack-templates.index') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 mb-3 transition">
                 <i class="ph ph-arrow-left text-sm"></i>
                 <span>{{ __('Back to Custom Pack Templates') }}</span>
             </a>
 
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <span class="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+                    <span class="grid size-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
                         <i class="ph {{ $template ? 'ph-pencil-simple' : 'ph-plus-circle' }} text-2xl"></i>
                     </span>
                     <div>
@@ -65,7 +65,7 @@
                 {{-- Step 1: Basic Information --}}
                 <div class="space-y-4">
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <span class="grid size-5 place-items-center rounded-full bg-indigo-600 text-white text-[10px] font-bold">1</span>
+                        <span class="grid size-5 place-items-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">1</span>
                         <span>{{ __('Template Details') }}</span>
                     </h3>
 
@@ -73,7 +73,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Template Name') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 name="name"
                                 x-model="name"
                                 required
@@ -85,7 +85,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Status') }} *
                             <select
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 name="published"
                                 x-model="published">
                                 <option value="1">{{ __('Published (Visible on Storefront)') }}</option>
@@ -97,7 +97,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Display Order') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="position"
                                 x-model="position"
@@ -110,7 +110,7 @@
                     <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                         {{ __('Guidelines & Customer Instructions (Optional)') }}
                         <textarea
-                            class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                            class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                             name="description"
                             x-model="description"
                             rows="2"
@@ -122,7 +122,7 @@
                 {{-- Step 2: Pack Rules & Real-time Variety Calculation --}}
                 <div class="space-y-4">
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <span class="grid size-5 place-items-center rounded-full bg-indigo-600 text-white text-[10px] font-bold">2</span>
+                        <span class="grid size-5 place-items-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">2</span>
                         <span>{{ __('Pack Rules & Variety Limits') }}</span>
                     </h3>
 
@@ -130,7 +130,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Min Total Pieces per Pack') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="min_pieces"
                                 x-model="minPieces"
@@ -142,7 +142,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Max Total Pieces (Optional)') }}
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="max_pieces"
                                 x-model="maxPieces"
@@ -154,7 +154,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Min Distinct Products') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="min_products"
                                 x-model="minProducts"
@@ -166,7 +166,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Min Colors per Selected Product') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="min_colors"
                                 x-model="minColors"
@@ -178,7 +178,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Min Sizes per Product/Color') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="min_sizes"
                                 x-model="minSizes"
@@ -190,7 +190,7 @@
                         <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             {{ __('Min Pieces per Selected Variant') }} *
                             <input
-                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                                class="mt-1.5 block w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
                                 type="number"
                                 name="min_variant_quantity"
                                 x-model="minVariantQty"
@@ -201,10 +201,10 @@
                     </div>
 
                     {{-- Live Math Rule Preview Card (Soft Tint, Borderless) --}}
-                    <div class="rounded-2xl bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-purple-50/40 dark:from-indigo-950/40 dark:via-slate-900 dark:to-purple-950/20 p-5 space-y-3.5">
+                    <div class="rounded-2xl bg-gradient-to-br from-emerald-50/70 via-emerald-50/30 to-teal-50/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/20 p-5 space-y-3.5">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2.5">
-                                <span class="grid size-7 place-items-center rounded-lg bg-indigo-600 text-white text-xs shadow-xs">
+                                <span class="grid size-7 place-items-center rounded-lg bg-emerald-600 text-white text-xs shadow-xs">
                                     <i class="ph ph-calculator"></i>
                                 </span>
                                 <div>
@@ -212,7 +212,7 @@
                                     <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ __('Real-time calculation of minimum pieces required by your diversity rules') }}</p>
                                 </div>
                             </div>
-                            <span class="inline-flex items-center rounded-full bg-white dark:bg-slate-800 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-2xs">
+                            <span class="inline-flex items-center rounded-full bg-white dark:bg-slate-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-2xs">
                                 {{ __('Variety Floor: ') }} <span class="ml-1 text-slate-900 dark:text-white" x-text="calculatedVarietyMin + ' pcs'"></span>
                             </span>
                         </div>
@@ -226,7 +226,7 @@
                             <span class="text-slate-400">×</span>
                             <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold" x-text="minVariantQty + ' Pcs/Variant'"></span>
                             <span class="text-slate-400">=</span>
-                            <span class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold" x-text="calculatedVarietyMin + ' Minimum Pieces'"></span>
+                            <span class="px-3 py-1 rounded-lg bg-emerald-600 text-white font-bold" x-text="calculatedVarietyMin + ' Minimum Pieces'"></span>
                         </div>
 
                         {{-- Contradiction Alert --}}
@@ -262,7 +262,7 @@
                 <div class="space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                            <span class="grid size-5 place-items-center rounded-full bg-indigo-600 text-white text-[10px] font-bold">3</span>
+                            <span class="grid size-5 place-items-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">3</span>
                             <span>{{ __('Assign Eligible Wholesale Products') }}</span>
                         </h3>
 
@@ -270,7 +270,7 @@
                             <button
                                 type="button"
                                 @click="selectAll({{ json_encode($products->pluck('id')) }})"
-                                class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline px-2 py-1">
+                                class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline px-2 py-1">
                                 {{ __('Select All') }}
                             </button>
                             <span class="text-slate-300 dark:text-slate-700">|</span>
@@ -291,13 +291,13 @@
                                 type="text"
                                 x-model="searchQuery"
                                 placeholder="{{ __('Filter products by name...') }}"
-                                class="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                                class="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
                         </div>
 
                         <button
                             type="button"
                             @click="filterMode = filterMode === 'all' ? 'selected' : 'all'"
-                            :class="filterMode === 'selected' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'"
+                            :class="filterMode === 'selected' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'"
                             class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition">
                             <i class="ph ph-funnel text-xs"></i>
                             <span x-text="filterMode === 'selected' ? '{{ __('Showing Selected') }}' : '{{ __('Show Selected Only') }}'"></span>
@@ -316,7 +316,7 @@
                             <div
                                 x-show="isProductVisible('{{ addslashes(strtolower($product->name)) }}', {{ $product->id }})"
                                 @click="toggleProduct({{ $product->id }})"
-                                :class="isProductSelected({{ $product->id }}) ? 'bg-indigo-50/80 dark:bg-indigo-950/40 shadow-xs' : 'bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100/80 dark:hover:bg-slate-800/80'"
+                                :class="isProductSelected({{ $product->id }}) ? 'bg-emerald-50/80 dark:bg-emerald-950/40 shadow-xs' : 'bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100/80 dark:hover:bg-slate-800/80'"
                                 class="flex items-center justify-between gap-3.5 p-3 rounded-2xl transition cursor-pointer select-none">
                                 
                                 <div class="flex items-center gap-3.5 min-w-0">
@@ -326,7 +326,7 @@
                                         value="{{ $product->id }}"
                                         :checked="isProductSelected({{ $product->id }})"
                                         @click.stop="toggleProduct({{ $product->id }})"
-                                        class="size-4.5 rounded-md border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 shrink-0">
+                                        class="size-4.5 rounded-md border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 shrink-0">
 
                                     @if($product->primaryMedia?->url)
                                         <img src="{{ $product->primaryMedia->url }}" alt="{{ $product->name }}"
@@ -379,7 +379,7 @@
                     <button
                         type="submit"
                         :disabled="isMaxContradiction || isProductSelectionInsufficient"
-                        :class="(isMaxContradiction || isProductSelectionInsufficient) ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20'"
+                        :class="(isMaxContradiction || isProductSelectionInsufficient) ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20'"
                         class="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-xs font-semibold text-white transition">
                         <i class="ph ph-floppy-disk text-base"></i>
                         <span>{{ $template ? __('Update Pack Template') : __('Create Pack Template') }}</span>

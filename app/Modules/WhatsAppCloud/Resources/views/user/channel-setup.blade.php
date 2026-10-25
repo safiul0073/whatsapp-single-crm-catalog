@@ -270,7 +270,6 @@
                 :hint="__($provider['webhook_hint'] ?? 'Use this provider webhook URL in Meta app webhook settings.')"
             />
 
-            @include('commerce::user.partials.help', ['helpKey' => 'channel'])
         </x-slot:aside>
     </x-marketing-channels::setup-layout>
 

@@ -12,6 +12,7 @@ use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\Inbox\Enums\ConversationStatus;
 use App\Modules\Inbox\Enums\MessageStatus;
 use App\Modules\Inbox\Models\Conversation;
+use App\Modules\Inbox\Models\ConversationRead;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -23,6 +24,7 @@ use App\Modules\Telegram\Services\TelegramOptInService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +32,8 @@ use Illuminate\Validation\ValidationException;
 class InboxService
 {
     protected const MESSAGE_PAGE_SIZE = 50;
+
+    protected const CONVERSATION_PAGE_SIZE = 50;
 
     /**
      * Provider events that modify an earlier message and never get a bubble of their own.
@@ -48,6 +52,9 @@ class InboxService
     {
         $workspace = $this->workspaces->current($user);
         $provider = $this->providerFilter($filters['provider'] ?? null);
+        $userId = (int) ($user?->id ?? 0);
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = min(100, max(10, (int) ($filters['per_page'] ?? self::CONVERSATION_PAGE_SIZE)));
 
         $query = Conversation::query()
             ->with(['contact.tags', 'channelAccount'])
@@ -55,9 +62,9 @@ class InboxService
             ->whereIn('provider', $this->inboxProviders())
             ->when($provider, fn (Builder $query) => $query->where('provider', $provider))
             ->when($this->shouldLimitToAssignedConversations($user), fn ($q) => $q->where('assigned_to', $user?->id))
-            ->when(($filters['status'] ?? 'all') !== 'all', function ($query) use ($filters): void {
+            ->when(($filters['status'] ?? 'all') !== 'all', function ($query) use ($filters, $userId): void {
                 if ($filters['status'] === 'unread') {
-                    $query->whereHas('messages', fn ($messageQuery) => $messageQuery->where('direction', 'inbound'));
+                    $this->constrainUnread($query, $userId);
 
                     return;
                 }
@@ -76,17 +83,29 @@ class InboxService
             })
             ->orderByDesc('last_message_at')
             ->orderByDesc('id')
-            ->limit(50);
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage + 1);
 
         $conversations = $query->get();
+        $hasMore = $conversations->count() > $perPage;
+        $conversations = $conversations->take($perPage)->values();
         $latestMessages = $this->latestMessagesFor($conversations);
+        $unreadCounts = $this->unreadCountsFor($conversations, $userId);
 
         return [
             'conversations' => $conversations
-                ->map(fn (Conversation $conversation): array => $this->formatConversation($conversation, $latestMessages->get($conversation->id)))
+                ->map(function (Conversation $conversation) use ($latestMessages, $unreadCounts): array {
+                    $unread = (int) ($unreadCounts[$conversation->id] ?? 0);
+
+                    return array_merge(
+                        $this->formatConversation($conversation, $latestMessages->get($conversation->id)),
+                        ['unread_count' => $unread, 'is_unread' => $unread > 0],
+                    );
+                })
                 ->values()
                 ->all(),
-            'counts' => $this->counts($workspace->id, $provider),
+            'meta' => ['page' => $page, 'per_page' => $perPage, 'has_more' => $hasMore],
+            'counts' => $this->counts($workspace->id, $provider, $userId),
             'channels' => $this->channelOptions($workspace->id),
             'has_channel' => $provider
                 ? $this->hasReplyChannel($workspace->id, $provider)
@@ -99,6 +118,94 @@ class InboxService
         $conversation = $this->conversationModelForUser($user, $conversationId);
 
         return $this->threadPayload($conversation, $filters);
+    }
+
+    /**
+     * Marks a conversation as read for the user: everything inbound up to now.
+     *
+     * @return array{ok: bool, unread_count: int}
+     */
+    public function markRead(?User $user, string|int $conversationId): array
+    {
+        $conversation = $this->conversationModelForUser($user, $conversationId);
+
+        if ($user === null) {
+            return ['ok' => true, 'unread_count' => 0];
+        }
+
+        $latestInboundId = (int) Message::query()
+            ->where('workspace_id', $conversation->workspace_id)
+            ->where('conversation_id', $conversation->id)
+            ->where('direction', 'inbound')
+            ->tap(fn (Builder $query) => $this->excludeEventMessages($query))
+            ->max('id');
+
+        ConversationRead::query()->updateOrCreate(
+            ['user_id' => $user->id, 'conversation_id' => $conversation->id],
+            ['workspace_id' => $conversation->workspace_id, 'last_read_message_id' => $latestInboundId],
+        );
+
+        return ['ok' => true, 'unread_count' => 0];
+    }
+
+    /**
+     * Limits a conversation query to those with an inbound message newer than the user's read marker.
+     */
+    protected function constrainUnread(Builder $query, int $userId): Builder
+    {
+        return $query->whereExists(function ($exists) use ($userId): void {
+            $exists->selectRaw('1')
+                ->from('messages as unread_messages')
+                ->whereColumn('unread_messages.conversation_id', 'conversations.id')
+                ->where('unread_messages.direction', 'inbound')
+                ->whereNotIn('unread_messages.type', self::EVENT_MESSAGE_TYPES)
+                ->whereRaw(
+                    'unread_messages.id > COALESCE((select r.last_read_message_id from inbox_conversation_reads as r where r.conversation_id = conversations.id and r.user_id = ? limit 1), 0)',
+                    [$userId],
+                );
+        });
+    }
+
+    /**
+     * Number of unread inbound messages per conversation id for the user.
+     *
+     * @return array<int, int>
+     */
+    protected function unreadCountsFor(Collection $conversations, int $userId): array
+    {
+        if ($conversations->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('messages as m')
+            ->leftJoin('inbox_conversation_reads as r', function ($join) use ($userId): void {
+                $join->on('r.conversation_id', '=', 'm.conversation_id')
+                    ->where('r.user_id', '=', $userId);
+            })
+            ->whereIn('m.conversation_id', $conversations->pluck('id'))
+            ->where('m.direction', 'inbound')
+            ->whereNotIn('m.type', self::EVENT_MESSAGE_TYPES)
+            ->whereRaw('m.id > COALESCE(r.last_read_message_id, 0)')
+            ->groupBy('m.conversation_id')
+            ->selectRaw('m.conversation_id, COUNT(*) as unread')
+            ->pluck('unread', 'conversation_id')
+            ->map(fn ($count): int => (int) $count)
+            ->all();
+    }
+
+    /**
+     * WhatsApp only allows free-form replies for 24 hours after the customer's last message.
+     *
+     * @return array{window_expired: bool, window_expires_at: ?string}
+     */
+    protected function replyWindow(Conversation $conversation): array
+    {
+        $expiresAt = $conversation->provider === 'whatsapp' ? $conversation->session_expires_at : null;
+
+        return [
+            'window_expired' => $expiresAt !== null && $expiresAt->isPast(),
+            'window_expires_at' => $expiresAt?->toIso8601String(),
+        ];
     }
 
     public function conversationModelForUser(?User $user, string|int $conversationId): Conversation
@@ -432,7 +539,7 @@ class InboxService
                 ->exists();
     }
 
-    protected function counts(int $workspaceId, ?string $provider = null): array
+    protected function counts(int $workspaceId, ?string $provider = null, int $userId = 0): array
     {
         $query = fn (): Builder => Conversation::query()
             ->where('workspace_id', $workspaceId)
@@ -443,6 +550,7 @@ class InboxService
             'all' => $query()->count(),
             'open' => $query()->where('status', ConversationStatus::Open->value)->count(),
             'resolved' => $query()->where('status', ConversationStatus::Resolved->value)->count(),
+            'unread' => $this->constrainUnread($query(), $userId)->count(),
         ];
     }
 
@@ -517,6 +625,9 @@ class InboxService
             'last_message_status' => $latestMessage?->status?->value ?? $latestMessage?->status,
             'last_message_at' => optional($conversation->last_message_at ?: $latestMessage?->created_at)->toIso8601String(),
             'last_message_time' => $this->shortTime($conversation->last_message_at ?: $latestMessage?->created_at),
+            'unread_count' => 0,
+            'is_unread' => false,
+            ...$this->replyWindow($conversation),
         ];
     }
 

@@ -484,31 +484,6 @@ it('shows seeded demo products in product management', function (): void {
         ->assertSeeText('Essential 180 GSM Heavyweight Combed Cotton Crewneck T-Shirt');
 });
 
-it('shows feature-specific help across commerce management pages', function (): void {
-    Permission::findOrCreate('commerce.view', 'web');
-    Permission::findOrCreate('commerce.manage', 'web');
-    $context = commerceContext();
-    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
-    $this->actingAs($context['user']);
-
-    $pages = [
-        route('user.commerce.products.create') => 'product_form',
-        route('user.commerce.categories.index') => 'categories',
-        route('user.commerce.brands.index') => 'brands',
-        route('user.commerce.audiences.index') => 'audiences',
-        route('user.commerce.variants.index') => 'categories',
-        route('user.commerce.catalog') => 'catalog',
-        route('user.commerce.orders.index') => 'orders',
-    ];
-
-    foreach ($pages as $url => $helpKey) {
-        $this->get($url)
-            ->assertOk()
-            ->assertSee('data-commerce-help="'.$helpKey.'"', false)
-            ->assertSeeText('Complete WhatsApp selling workflow');
-    }
-});
-
 it('stores arbitrary apparel options and variants inside a workspace', function (): void {
     $context = commerceContext();
     $product = commerceProduct($context['workspace']->id);
@@ -1397,7 +1372,7 @@ it('rejects a product catalog upload without management permission', function ()
     $catalog = readyApiCatalog($context);
     $product = Product::query()->where('workspace_id', $context['workspace']->id)->firstOrFail();
     $this->mock(WorkspacePermissionResolver::class)
-        ->shouldReceive('can')->andReturnUsing(fn ($user, $ability) => $ability !== 'commerce.manage');
+        ->shouldReceive('can')->andReturnUsing(fn ($user, $ability) => $ability !== 'commerce.catalog.manage');
     $this->actingAs($context['user'])
         ->withSession(['active_workspace_id' => $context['workspace']->id])
         ->post(route('user.commerce.products.catalog.sync', $product), ['catalog_id' => $catalog->id])

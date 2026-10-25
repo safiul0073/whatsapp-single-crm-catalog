@@ -9,26 +9,26 @@ class CommercePolicy
 {
     public function viewAny(Authenticatable $user): bool
     {
-        return $user->can('commerce.view');
+        return $user->can('commerce.products.view');
     }
 
     public function view(Authenticatable $user, Product $product): bool
     {
-        return $user->can('commerce.view');
+        return $user->can('commerce.products.view');
     }
 
     public function create(Authenticatable $user): bool
     {
-        return $user->can('commerce.manage');
+        return $user->can('commerce.products.manage');
     }
 
     public function update(Authenticatable $user, Product $product): bool
     {
-        return $user->can('commerce.manage');
+        return $user->can('commerce.products.manage');
     }
 
     public function delete(Authenticatable $user, Product $product): bool
     {
-        return $user->can('commerce.manage');
+        return $user->can('commerce.products.manage');
     }
 }

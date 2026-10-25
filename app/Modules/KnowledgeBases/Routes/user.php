@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['can:chatbots.manage'])->group(function () {
     Route::get('knowledge-bases', [KnowledgeBaseController::class, 'index'])->name('knowledge-bases.index');
     Route::post('knowledge-bases', [KnowledgeBaseController::class, 'store'])->name('knowledge-bases.store');
+    Route::post('knowledge-bases/refresh-defaults', [KnowledgeBaseController::class, 'refreshDefaults'])->name('knowledge-bases.refresh-defaults');
     Route::get('knowledge-bases/{knowledgeBase}', [KnowledgeBaseController::class, 'show'])->name('knowledge-bases.show');
     Route::put('knowledge-bases/{knowledgeBase}', [KnowledgeBaseController::class, 'update'])->name('knowledge-bases.update');
     Route::delete('knowledge-bases/{knowledgeBase}', [KnowledgeBaseController::class, 'destroy'])->name('knowledge-bases.destroy');

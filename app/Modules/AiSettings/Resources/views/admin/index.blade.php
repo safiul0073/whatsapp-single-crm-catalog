@@ -156,7 +156,8 @@
                                                 <div class="settings-section-body">
                                                     @foreach ($mainSettings as $key => $setting)
                                                         <div class="setting-row"
-                                                            data-setting-label="{{ strtolower(__($setting['label'])) }}">
+                                                            data-setting-label="{{ strtolower(__($setting['label'])) }}"
+                                                            @if (!empty($setting['show_when'])) data-show-when='@json($setting['show_when'])' @endif>
                                                             <div class="setting-label">
                                                                 <span class="label">{{ __($setting['label']) }}</span>
                                                                 @if (!empty($setting['hint']))
@@ -260,7 +261,7 @@
                 <div class="settings-footer">
                     <x-forms.submit :label="__('Save Changes')" />
                     <button type="submit" formaction="{{ route('admin.ai-settings.vector-database.test') }}" formmethod="POST" onclick="document.getElementById('activeTab').value = 'vector-database'" class="btn btn-outline">
-                        <i class="ph ph-plugs-connected"></i> {{ __('Test Qdrant') }}
+                        <i class="ph ph-plugs-connected"></i> {{ __('Test Vector Store') }}
                     </button>
                     <x-ui.button type="button" variant="ghost" onclick="window.location.reload()">
                         <i class="ph ph-arrow-counter-clockwise"></i> {{ __('Reset') }}
@@ -269,6 +270,26 @@
             </div>
         </div>
     </form>
+
+    <script>
+        // Show settings only when their "show_when" conditions match (e.g. Qdrant-only fields).
+        (() => {
+            const rows = document.querySelectorAll('[data-show-when]');
+            if (!rows.length) return;
+
+            const valueOf = (key) => document.querySelector(`[name="settings[${key}]"]`)?.value;
+            const apply = () => rows.forEach((row) => {
+                const rules = JSON.parse(row.dataset.showWhen);
+                const visible = Object.entries(rules).every(([key, expected]) => valueOf(key) === expected);
+                row.style.display = visible ? '' : 'none';
+            });
+
+            document.addEventListener('change', (event) => {
+                if (event.target.name?.startsWith('settings[')) apply();
+            });
+            apply();
+        })();
+    </script>
 
     {{-- ── Mobile Bottom Sheet ── --}}
     <div class="settings-sheet-overlay" id="settingsSheetOverlay"></div>

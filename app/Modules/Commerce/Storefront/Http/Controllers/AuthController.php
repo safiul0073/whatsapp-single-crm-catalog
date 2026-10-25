@@ -9,6 +9,7 @@ use App\Modules\Commerce\Storefront\Http\Requests\AuthRequest;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
+use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\Contacts\Models\Contact;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function __construct(private WhatsAppCustomerAuthService $whatsapp, private CustomerService $customers) {}
+    public function __construct(private WhatsAppCustomerAuthService $whatsapp, private CustomerService $customers, private ReferralService $referrals) {}
 
     public function status(Request $r): JsonResponse
     {
@@ -56,7 +57,7 @@ class AuthController extends Controller
         return response()->json(['data' => DB::transaction(function () use ($workspace, $id, $r, $result, $contact): array {
             $this->consume($workspace, $id, $r->input('session_binding'), $result['grant']);
 
-            return $this->customers->session($this->customers->enroll($contact, true), true);
+            return $this->customers->session($this->enroll($contact, $r->input('referral_code')), true);
         })]);
     }
 
@@ -68,7 +69,7 @@ class AuthController extends Controller
         $contact = Contact::query()->where('workspace_id', $workspace)->findOrFail($result['contact_id']);
         abort_if($contact->blocked_at, 403);
 
-        return response()->json(['data' => $this->customers->session($this->customers->enroll($contact, true), true)], 201);
+        return response()->json(['data' => $this->customers->session($this->enroll($contact, $data['referral_code'] ?? null), true)], 201);
     }
 
     public function passwordLogin(AuthRequest $r): JsonResponse
@@ -103,6 +104,20 @@ class AuthController extends Controller
         $r->attributes->get('store_customer')->currentAccessToken()->delete();
 
         return response()->json(['data' => ['success' => true]]);
+    }
+
+    /**
+     * Enroll the contact and attach a referral only when this is the customer's first registration in the store.
+     */
+    private function enroll(Contact $contact, ?string $referralCode): Customer
+    {
+        $isNew = ! Customer::query()->where('workspace_id', $contact->workspace_id)->where('contact_id', $contact->id)->whereNotNull('registered_at')->exists();
+        $customer = $this->customers->enroll($contact, true);
+        if ($isNew && $referralCode) {
+            $this->referrals->attach($customer, $referralCode);
+        }
+
+        return $customer;
     }
 
     private function passwordEnabled(int $workspace): bool

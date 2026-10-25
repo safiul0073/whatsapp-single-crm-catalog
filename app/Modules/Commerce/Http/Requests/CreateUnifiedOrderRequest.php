@@ -8,7 +8,7 @@ class CreateUnifiedOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->attributes->has('store_workspace') || ($this->user()?->can('commerce.manage') ?? false);
+        return $this->attributes->has('store_workspace') || ($this->user()?->can('commerce.orders.create') ?? false);
     }
 
     protected function prepareForValidation(): void

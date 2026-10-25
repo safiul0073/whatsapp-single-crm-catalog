@@ -97,20 +97,9 @@
                         </div>
                     </div>
                     <p class="m-text mt-3 line-clamp-2">{{ $chatbot->persona }}</p>
-                    <dl class="mt-4 grid grid-cols-3 gap-3 border-t border-neutral-100 pt-4 text-sm">
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('Provider') }}</dt>
-                            <dd class="truncate font-semibold text-title">{{ __('Platform AI') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('Model') }}</dt>
-                            <dd class="truncate font-semibold text-title">{{ ai_setting('ai_default_text_model') ?: __('Admin default') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-neutral-400">{{ __('KB') }}</dt>
-                            <dd class="font-semibold text-title">{{ $chatbot->knowledge_bases_count }}</dd>
-                        </div>
-                    </dl>
+                    <p class="mt-4 border-t border-neutral-100 pt-4 text-sm text-neutral-500">
+                        {{ $chatbot->knowledge_bases_count > 0 ? trans_choice('Knows :count topic set|Knows :count topic sets', $chatbot->knowledge_bases_count) : __('No knowledge added yet') }}
+                    </p>
                     <div class="mt-4 flex items-center gap-2">
                         <a href="{{ route('user.chatbots.config', $chatbot) }}" class="btn-sm btn-primary flex-1">{{ __('Configure') }}</a>
                         <form method="POST" action="{{ route('user.chatbots.toggle', $chatbot) }}" class="flex-1">

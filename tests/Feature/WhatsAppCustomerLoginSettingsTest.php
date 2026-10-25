@@ -17,8 +17,8 @@ uses(DatabaseTransactions::class);
 
 beforeEach(function (): void {
     $this->withoutMiddleware([EnsureOnboardingComplete::class, EnsureSubscriptionUsable::class, EnsureTwoFactorAuthenticated::class, PanelAccess::class]);
-    $this->allowedPermissions = ['channels.manage', 'commerce.manage', 'commerce.view'];
-    Gate::before(fn ($user, $ability) => in_array($ability, ['channels.manage', 'commerce.manage', 'commerce.view']) ? in_array($ability, $this->allowedPermissions) : null);
+    $this->allowedPermissions = ['channels.manage', 'commerce.orders.settings', 'commerce.orders.view'];
+    Gate::before(fn ($user, $ability) => in_array($ability, ['channels.manage', 'commerce.orders.settings', 'commerce.orders.view']) ? in_array($ability, $this->allowedPermissions) : null);
     $this->user = User::factory()->create();
     $this->workspace = Workspace::query()->create(['name' => 'Login settings', 'slug' => 'login-settings-'.Str::uuid(), 'owner_id' => $this->user->id, 'status' => 'active']);
     $this->withSession(['active_workspace_id' => $this->workspace->id]);
@@ -60,7 +60,7 @@ it('requires both channel and commerce management access', function (array $perm
     $this->mock(WorkspacePermissionResolver::class)
         ->shouldReceive('can')->andReturnUsing(fn ($user, $ability) => in_array($ability, $permissions));
     $this->actingAs($this->user)->get(route('user.whatsapp-cloud.customer-login'))->assertForbidden();
-})->with([[['channels.manage']], [['commerce.manage']]]);
+})->with([[['channels.manage']], [['commerce.orders.settings']]]);
 
 it('saves customer login settings and returns to the new tab', function (): void {
     $url = route('user.whatsapp-cloud.customer-login');

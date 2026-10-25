@@ -2,16 +2,20 @@
 
 use App\Models\User;
 use App\Modules\AuditLog\Services\AuditLogService;
+use App\Modules\Commerce\Database\Seeders\StorefrontBlogSeeder;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
+use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Models\LegacyMapping;
+use App\Modules\Commerce\Storefront\Models\ReferralSetting;
+use App\Modules\Commerce\Storefront\Models\ReferralTransaction;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontPage;
@@ -19,6 +23,8 @@ use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\LegacyImportService;
+use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\Commerce\Storefront\Services\RewardWalletService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingRate;
@@ -31,6 +37,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\StorefrontDatabase;
 
 beforeEach(function (): void {
@@ -320,4 +327,85 @@ it('allows tracking an order using only the tracking reference or number without
     // 4. Return 404 for unknown tracking code
     $this->getJson('/api/storefront/v1/orders/track?ref=UNKNOWN-12345', $headers)
         ->assertNotFound();
+});
+
+it('rewards the referrer after delivery, gives the friend a welcome discount and lets rewards pay for orders', function (): void {
+    ReferralSetting::query()->create(['workspace_id' => $this->store->id, 'enabled' => true, 'reward_type' => 'fixed', 'reward_value' => 10, 'referee_discount_type' => 'fixed', 'referee_discount_value' => 5, 'max_redeem_percent' => 100]);
+    $referrer = $this->customer;
+    $referrerAuth = $this->auth;
+    $code = app(ReferralService::class)->codeFor($referrer)->code;
+    expect(app(ReferralService::class)->attach($referrer, $code))->toBeNull();
+
+    $friendContact = Contact::withoutEvents(fn () => Contact::query()->create(['workspace_id' => $this->store->id, 'name' => 'Friend', 'phone' => '+8801700000009', 'source' => 'website', 'opt_in_status' => 'unknown']));
+    $friend = app(CustomerService::class)->enroll($friendContact, true);
+    expect(app(ReferralService::class)->attach($friend, strtolower($code)))->not->toBeNull();
+    expect(app(ReferralService::class)->attach($friend, $code))->toBeNull();
+
+    $this->customer = $friend;
+    $this->auth = [...$this->headers, 'Authorization' => 'Bearer '.$friend->createToken('test', ['storefront'], now()->addDay())->plainTextToken];
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    $this->postJson('/api/storefront/v1/checkout/preview', $data, $headers)->assertOk()->assertJsonPath('data.total', '40.00');
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    expect(ReferralTransaction::query()->where('order_id', $order->id)->value('status'))->toBe('pending');
+
+    $order->update(['status' => 'shipped']);
+    app(OrderWorkflowService::class)->transition($order, 'completed');
+    expect(ReferralTransaction::query()->where('order_id', $order->id)->value('status'))->toBe('credited');
+    expect(app(RewardWalletService::class)->balance($this->store->id, $referrer->id))->toBe(1000);
+    $this->getJson('/api/storefront/v1/me/referral', $referrerAuth)->assertOk()->assertJsonPath('data.stats.credited', 1)->assertJsonPath('data.code', $code);
+
+    $address = CustomerAddress::query()->create(['workspace_id' => $this->store->id, 'customer_id' => $referrer->id, 'label' => 'Home', 'address' => ['name' => 'Customer', 'phone' => '+8801700000000', 'line1' => '1 Road', 'city' => 'Dhaka', 'country' => 'BD']]);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $referrerAuth)->assertCreated()->json('data.cart_token');
+    $h = [...$referrerAuth, 'X-Cart-Token' => $token, 'Idempotency-Key' => (string) Str::uuid()];
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 2], $h)->assertOk();
+    $own = [...$data, 'address_id' => $address->id, 'use_rewards' => true];
+    $this->postJson('/api/storefront/v1/checkout/preview', $own, $h)->assertOk()->assertJsonPath('data.total', '35.00')->assertJsonPath('data.rewards.applied', '10.00');
+    $paid = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $own, $h)->assertCreated()->json('data.id'));
+    expect(app(RewardWalletService::class)->balance($this->store->id, $referrer->id))->toBe(0);
+    app(OrderWorkflowService::class)->transition($paid, 'cancelled');
+    expect(app(RewardWalletService::class)->balance($this->store->id, $referrer->id))->toBe(1000);
+});
+
+it('caps reward use at the owner-set share of the order total', function (): void {
+    ReferralSetting::query()->create(['workspace_id' => $this->store->id, 'enabled' => true, 'max_redeem_percent' => 50, 'min_spend_balance' => 1]);
+    $this->getJson('/api/storefront/v1/referral/program', $this->headers)->assertOk()
+        ->assertJsonPath('data.max_redeem_percent', 50);
+
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    app(RewardWalletService::class)->post($this->store->id, $this->customer->id, 10000, 'adjustment');
+    $this->postJson('/api/storefront/v1/checkout/preview', [...$data, 'use_rewards' => true], $headers)->assertOk()
+        ->assertJsonPath('data.rewards.max_percent', 50)
+        // 50% of the 40.00 product total (shipping is not payable by rewards)
+        ->assertJsonPath('data.rewards.available', '20.00')
+        ->assertJsonPath('data.rewards.applied', '20.00')
+        ->assertJsonPath('data.total', '25.00');
+
+    app(RewardWalletService::class)->post($this->store->id, $this->customer->id, -9000, 'adjustment');
+    $this->postJson('/api/storefront/v1/checkout/preview', [...$data, 'use_rewards' => true], $headers)->assertOk()
+        ->assertJsonPath('data.rewards.available', '10.00')
+        ->assertJsonPath('data.total', '35.00');
+});
+
+it('does not let customers withdraw their reward balance', function (): void {
+    ReferralSetting::query()->create(['workspace_id' => $this->store->id, 'enabled' => true]);
+    app(RewardWalletService::class)->post($this->store->id, $this->customer->id, 800, 'adjustment');
+    expect($this->postJson('/api/storefront/v1/me/cashin-requests', ['amount' => 5, 'method' => 'bKash', 'account_details' => '017'], $this->auth)->status())->toBeIn([404, 405]);
+    $this->getJson('/api/storefront/v1/me/rewards', $this->auth)->assertOk()->assertJsonPath('data.balance', '8.00')->assertJsonMissingPath('data.cashin');
+    $this->getJson('/api/storefront/v1/referral/program', $this->headers)->assertOk()->assertJsonMissingPath('data.cashin_enabled');
+    expect(app(RewardWalletService::class)->balance($this->store->id, $this->customer->id))->toBe(800);
+    expect(fn () => app(RewardWalletService::class)->post($this->store->id, $this->customer->id, -900, 'redeem'))->toThrow(HttpException::class);
+});
+
+it('seeds full demo journal articles with covers for a single store', function (): void {
+    app(StorefrontBlogSeeder::class)->seedWorkspace($this->store->id);
+    app(StorefrontBlogSeeder::class)->seedWorkspace($this->store->id);
+
+    $list = $this->getJson('/api/storefront/v1/blogs', $this->headers)->assertOk()->assertJsonCount(6, 'data.data');
+    expect($list->json('data.data.0.slug'))->toBe('guide-to-heavyweight-streetwear')
+        ->and(collect($list->json('data.data'))->every(fn (array $post): bool => str_starts_with($post['data']['cover_image'], '/storage/') && filled($post['data']['category'])))->toBeTrue();
+
+    $post = $this->getJson('/api/storefront/v1/blogs/denim-guide-raw-rinsed-washed', $this->headers)->assertOk();
+    expect(str_word_count(strip_tags($post->json('data.data.content'))))->toBeGreaterThan(350);
+
+    $this->getJson('/api/storefront/v1/blogs', [...$this->headers, 'X-Store-Host' => 'two.localhost'])->assertOk()->assertJsonCount(0, 'data.data');
 });

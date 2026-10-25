@@ -8,6 +8,7 @@ use App\Modules\KnowledgeBases\Http\Requests\StoreKnowledgeBaseRequest;
 use App\Modules\KnowledgeBases\Http\Requests\StoreKnowledgeBaseSourceRequest;
 use App\Modules\KnowledgeBases\Models\KnowledgeBase;
 use App\Modules\KnowledgeBases\Models\KnowledgeBaseSource;
+use App\Modules\KnowledgeBases\Services\JsonFileVectorStoreService;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class KnowledgeBaseController extends Controller
             'knowledgeBases' => $knowledgeBases->listForUser($request->user(), $request->only(['status', 'q'])),
             'stats' => $knowledgeBases->statsForUser($request->user()),
             'vectorSearchEnabled' => $vectors->enabled(),
+            'vectorProvider' => $vectors->providerLabel(),
             'filters' => [
                 'status' => $request->query('status', 'all'),
                 'q' => $request->query('q', ''),
@@ -45,6 +47,10 @@ class KnowledgeBaseController extends Controller
             'sources' => $knowledgeBase->sources()->withCount('chunks')->latest()->paginate(10),
             'chunks' => $knowledgeBase->chunks()->with('source')->latest()->limit(20)->get(),
             'vectorSearchEnabled' => $vectors->enabled(),
+            'vectorProvider' => $vectors->providerLabel(),
+            'vectorSizeWarning' => $vectors instanceof JsonFileVectorStoreService
+                && $vectors->enabled()
+                && $knowledgeBase->chunks()->count() > JsonFileVectorStoreService::RECOMMENDED_MAX_CHUNKS,
         ]);
     }
 
@@ -67,6 +73,13 @@ class KnowledgeBaseController extends Controller
         $knowledgeBases->addSource($request->user(), $knowledgeBase, $request->validated(), $request->file('file'));
 
         return redirect()->route('user.knowledge-bases.show', $knowledgeBase)->with('status', 'Source queued for indexing.');
+    }
+
+    public function refreshDefaults(Request $request, KnowledgeBaseService $knowledgeBases): RedirectResponse
+    {
+        $knowledgeBases->refreshDefaults($request->user());
+
+        return back()->with('status', 'Store information is being refreshed.');
     }
 
     public function reindexSource(Request $request, KnowledgeBaseSource $source, KnowledgeBaseService $knowledgeBases): RedirectResponse

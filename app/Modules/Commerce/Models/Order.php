@@ -48,38 +48,73 @@ class Order extends Model
         return OrderMoney::decimal(max(0, OrderMoney::minor($this->total, $this->moneyPrecision()) - OrderMoney::minor($this->paidAmount(), $this->moneyPrecision())), $this->moneyPrecision());
     }
 
+    /**
+     * Customer-facing progress steps. The shipped step carries courier details when available.
+     *
+     * @return list<array{key: string, label: string, date: ?string, state: string, shipment?: array{carrier: ?string, tracking_number: ?string, tracking_url: ?string, proof_image_url: ?string}}>
+     */
     public function trackingTimeline(): array
     {
         if ($this->events()->exists()) {
-            return $this->events->map(fn ($event) => ['label' => $event->label, 'date' => $event->occurred_at->toIso8601String(), 'state' => 'complete'])->all();
+            $steps = $this->events->map(fn ($event): array => ['key' => (string) $event->key, 'label' => $event->label, 'date' => $event->occurred_at->toIso8601String(), 'state' => 'complete'])->all();
+        } else {
+            $current = match ($this->status) {
+                'paid' => 1,
+                'processing' => 2,
+                'shipped' => 3,
+                'completed' => 4,
+                default => 0,
+            };
+
+            $steps = [
+                ['key' => 'placed', 'label' => 'Order placed', 'date' => $this->created_at?->toIso8601String()],
+                ['key' => 'paid', 'label' => 'Payment confirmed', 'date' => $this->paid_at?->toIso8601String()],
+                ['key' => 'processing', 'label' => 'Preparing your order', 'date' => null],
+                ['key' => 'shipped', 'label' => 'Shipped / in transit', 'date' => $this->shipped_at?->toIso8601String()],
+                ['key' => 'completed', 'label' => 'Delivered', 'date' => null],
+            ];
+
+            foreach ($steps as $index => &$step) {
+                if ($this->status === 'cancelled') {
+                    $step['state'] = $index === 0 || filled($step['date']) ? 'complete' : 'stopped';
+                } else {
+                    $step['state'] = $index < $current || $this->status === 'completed'
+                        ? 'complete' : ($index === $current ? 'current' : 'upcoming');
+                }
+            }
+            unset($step);
         }
 
-        $current = match ($this->status) {
-            'paid' => 1,
-            'processing' => 2,
-            'shipped' => 3,
-            'completed' => 4,
-            default => 0,
-        };
-
-        $steps = [
-            ['label' => 'Order placed', 'date' => $this->created_at?->toIso8601String()],
-            ['label' => 'Payment confirmed', 'date' => $this->paid_at?->toIso8601String()],
-            ['label' => 'Preparing your order', 'date' => null],
-            ['label' => 'Shipped / in transit', 'date' => $this->shipped_at?->toIso8601String()],
-            ['label' => 'Delivered', 'date' => null],
-        ];
-
-        foreach ($steps as $index => &$step) {
-            if ($this->status === 'cancelled') {
-                $step['state'] = $index === 0 || filled($step['date']) ? 'complete' : 'stopped';
-            } else {
-                $step['state'] = $index < $current || $this->status === 'completed'
-                    ? 'complete' : ($index === $current ? 'current' : 'upcoming');
+        $shipment = $this->courierDetails();
+        if ($shipment !== null) {
+            $shippedIndex = null;
+            foreach ($steps as $index => $step) {
+                if ($step['key'] === 'shipped' && $step['state'] !== 'upcoming' && $step['state'] !== 'stopped') {
+                    $shippedIndex = $index;
+                }
+            }
+            if ($shippedIndex !== null) {
+                $steps[$shippedIndex]['shipment'] = $shipment;
             }
         }
 
         return $steps;
+    }
+
+    /**
+     * @return array{carrier: ?string, tracking_number: ?string, tracking_url: ?string, proof_image_url: ?string}|null
+     */
+    public function courierDetails(): ?array
+    {
+        $shipment = $this->shipment;
+        $details = [
+            'carrier' => $shipment?->carrier && $shipment->carrier !== 'Carrier' ? $shipment->carrier : null,
+            'tracking_number' => $shipment?->tracking_number ?: $this->tracking_number,
+            'tracking_url' => $shipment?->tracking_url ?: $this->tracking_url,
+            'proof_image_url' => $shipment?->proofImageUrl(),
+        ];
+
+        return array_filter($details) === [] ? null : $details;
     }
 
     public function groups(): HasMany

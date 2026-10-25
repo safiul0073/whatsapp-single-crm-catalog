@@ -63,7 +63,7 @@ class KnowledgeBaseIndexingService
 
             if ($this->vectors->enabled()) {
                 $vectorStatus = $this->vectors->upsert($source->chunks) ? 'synced' : 'failed';
-                $vectorError = $vectorStatus === 'failed' ? 'Qdrant vector sync failed; database fallback remains active.' : null;
+                $vectorError = $vectorStatus === 'failed' ? $this->vectors->providerLabel().' vector sync failed; database fallback remains active.' : null;
             }
 
             $source->update([

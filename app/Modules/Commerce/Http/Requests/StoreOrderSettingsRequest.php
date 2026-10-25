@@ -8,7 +8,7 @@ class StoreOrderSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.orders.settings') ?? false;
     }
 
     protected function prepareForValidation(): void

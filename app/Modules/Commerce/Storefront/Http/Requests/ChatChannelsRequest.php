@@ -10,7 +10,7 @@ class ChatChannelsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.storefront.settings') ?? false;
     }
 
     protected function prepareForValidation(): void

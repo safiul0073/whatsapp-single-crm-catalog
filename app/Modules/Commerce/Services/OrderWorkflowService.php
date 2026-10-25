@@ -6,9 +6,13 @@ use App\Modules\AuditLog\Services\AuditLogService;
 use App\Modules\Commerce\Mail\OrderShippedMail;
 use App\Modules\Commerce\Models\InventoryMovement;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderShipment;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Storefront\Services\ReferralService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class OrderWorkflowService
@@ -28,6 +32,54 @@ class OrderWorkflowService
     ];
 
     public function __construct(protected AuditLogService $audit) {}
+
+    /**
+     * Update carrier, tracking details and the courier image after dispatch.
+     *
+     * @param  array{carrier?: ?string, tracking_number: string, tracking_url?: ?string, proof_image?: ?UploadedFile, remove_proof_image?: bool}  $data
+     */
+    public function updateShipment(Order $order, array $data): Order
+    {
+        return DB::transaction(function () use ($order, $data): Order {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, ['shipped', 'completed'], true)) {
+                throw ValidationException::withMessages(['shipment' => 'Shipment details can be edited after the order is shipped.']);
+            }
+            $locked->forceFill([
+                'tracking_number' => $data['tracking_number'],
+                'tracking_url' => $data['tracking_url'] ?? null,
+            ])->save();
+            $shipment = $locked->shipment()->firstOrCreate([], ['carrier' => 'Carrier', 'tracking_number' => $locked->tracking_number, 'tracking_url' => $locked->tracking_url, 'shipped_at' => $locked->shipped_at ?? now()]);
+            $this->fillShipment($shipment, $locked, $data);
+            $this->audit->logCustom('commerce.order.shipment_updated', ['order_id' => $locked->id, 'number' => $locked->number]);
+
+            return $locked->fresh(['items', 'shipment']);
+        });
+    }
+
+    /**
+     * Sync tracking fields onto the shipment and store, replace or remove its courier image.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function fillShipment(OrderShipment $shipment, Order $order, array $data): void
+    {
+        $previousImage = $shipment->proof_image;
+        $shipment->fill([
+            'carrier' => filled($data['carrier'] ?? null) ? $data['carrier'] : $shipment->carrier,
+            'tracking_number' => $order->tracking_number,
+            'tracking_url' => $order->tracking_url,
+        ]);
+        if (($data['proof_image'] ?? null) instanceof UploadedFile) {
+            $shipment->proof_image = $data['proof_image']->store("commerce/shipments/{$order->id}", 'public');
+        } elseif (! empty($data['remove_proof_image'])) {
+            $shipment->proof_image = null;
+        }
+        $shipment->save();
+        if ($previousImage && $previousImage !== $shipment->proof_image) {
+            Storage::disk('public')->delete($previousImage);
+        }
+    }
 
     public function quote(Order $order, array $data): Order
     {
@@ -125,7 +177,8 @@ class OrderWorkflowService
             $locked->status = $to;
             $locked->save();
             if ($unified && $to === 'shipped') {
-                $locked->shipment()->firstOrCreate([], ['carrier' => $data['carrier'] ?? 'Carrier', 'tracking_number' => $locked->tracking_number, 'tracking_url' => $locked->tracking_url, 'shipped_at' => $locked->shipped_at]);
+                $shipment = $locked->shipment()->firstOrCreate([], ['carrier' => $data['carrier'] ?? 'Carrier', 'tracking_number' => $locked->tracking_number, 'tracking_url' => $locked->tracking_url, 'shipped_at' => $locked->shipped_at]);
+                $this->fillShipment($shipment, $locked, $data);
             }
             if ($to === 'completed') {
                 $locked->shipment()->update(['delivered_at' => $locked->delivered_at]);
@@ -134,6 +187,9 @@ class OrderWorkflowService
                 'paid' => 'Payment confirmed', 'processing' => 'Preparing your order', 'shipped' => 'Shipped / in transit', 'completed' => 'Delivered', 'cancelled' => 'Order cancelled', default => ucfirst(str_replace('_', ' ', $to))
             });
             $this->audit->logCustom('commerce.order.status_changed', ['order_id' => $locked->id, 'status' => $to]);
+            if (in_array($to, ['completed', 'cancelled'], true)) {
+                app(ReferralService::class)->orderStatusChanged($locked);
+            }
 
             if (! $unified && $to === 'shipped' && $locked->contact && $locked->contact->email) {
                 Mail::to($locked->contact->email)

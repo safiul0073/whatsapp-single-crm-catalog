@@ -4,7 +4,8 @@ namespace App\Modules\AiSettings\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Modules\AiSettings\Services\AiSettingsService;
-use App\Modules\KnowledgeBases\Services\QdrantVectorStoreService;
+use App\Modules\KnowledgeBases\Jobs\ReindexKnowledgeBaseVectorsJob;
+use App\Modules\KnowledgeBases\Services\VectorStoreResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -58,7 +59,12 @@ class AiSettingsController extends Controller implements HasMiddleware
 
         $request->validate($rules, [], $attributes);
 
+        $previousProvider = $this->service->get('vector_database_provider');
+        $previouslyEnabled = (bool) $this->service->get('vector_database_enabled', false);
+        $provider = $settings['vector_database_provider'] ?? $previousProvider;
+
         if (($settings['vector_database_enabled'] ?? false)
+            && $provider === 'qdrant'
             && ($settings['vector_database_mode'] ?? null) === 'cloud'
             && blank($settings['qdrant_api_key'] ?? null)
             && blank($this->service->get('qdrant_api_key'))
@@ -73,14 +79,28 @@ class AiSettingsController extends Controller implements HasMiddleware
         }
 
         $tab = $request->input('_active_tab', array_key_first(config('ai-settings', [])));
+        $message = __('AI settings updated successfully.');
+
+        // Copy existing embeddings into the newly selected store so search keeps working.
+        if (array_key_exists('vector_database_provider', $settings)
+            && (bool) $this->service->get('vector_database_enabled', false)
+            && ($previousProvider !== $provider || ! $previouslyEnabled)
+        ) {
+            ReindexKnowledgeBaseVectorsJob::dispatch();
+            $message .= ' '.__('Knowledge bases are being re-indexed into the :provider vector store in the background.', [
+                'provider' => app(VectorStoreResolver::class)->current()->providerLabel(),
+            ]);
+        }
 
         return redirect()->to($tab === 'vector-database' ? route('admin.ai-settings.vector-database.index') : route('admin.ai-settings.index').'#'.$tab)
-            ->with('success', __('AI settings updated successfully.'));
+            ->with('success', $message);
     }
 
-    public function testVectorDatabase(Request $request, QdrantVectorStoreService $qdrant): RedirectResponse
+    public function testVectorDatabase(Request $request, VectorStoreResolver $resolver): RedirectResponse
     {
-        $result = $qdrant->testConnection($request->input('settings', []));
+        $settings = (array) $request->input('settings', []);
+        $provider = $settings['vector_database_provider'] ?? $resolver->currentProvider();
+        $result = $resolver->for($provider)->testConnection($settings);
 
         return redirect()->route('admin.ai-settings.vector-database.index')
             ->with($result['ok'] ? 'success' : 'error', $result['message']);

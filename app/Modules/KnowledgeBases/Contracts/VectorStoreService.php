@@ -10,6 +10,11 @@ interface VectorStoreService
     public function enabled(): bool;
 
     /**
+     * Human readable name of the store, e.g. "Qdrant" or "JSON file".
+     */
+    public function providerLabel(): string;
+
+    /**
      * @return array{ok: bool, message: string}
      */
     public function testConnection(array $settings = []): array;

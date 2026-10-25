@@ -16,7 +16,7 @@ class MobileInboxController extends Controller
     {
         abort_unless($request->user()->can('inbox.view') || $request->user()->can('inbox.assigned_only'), 403);
 
-        return response()->json($inbox->conversationsForUser($request->user(), $request->only('q', 'status', 'provider')));
+        return response()->json($inbox->conversationsForUser($request->user(), $request->only('q', 'status', 'provider', 'page', 'per_page')));
     }
 
     public function show(
@@ -34,6 +34,15 @@ class MobileInboxController extends Controller
         $payload['ai_available'] = $aiReplies->isAvailable();
 
         return response()->json($payload);
+    }
+
+    public function markRead(Request $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse
+    {
+        abort_unless($request->user()->can('inbox.view') || $request->user()->can('inbox.assigned_only'), 403);
+
+        $conversationId = (string) ($request->route('conversation') ?? $conversation);
+
+        return response()->json($inbox->markRead($request->user(), $conversationId));
     }
 
     public function store(SendInboxMessageRequest $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse

@@ -413,63 +413,60 @@
     }"
 >
     {{-- Page Header --}}
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200/80 pb-5 dark:border-neutral-800">
-        <div class="space-y-1">
-            <div class="flex items-center gap-2.5">
-                <span class="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20">
-                    <i class="ph ph-storefront text-2xl"></i>
-                </span>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h1 class="heading-3 text-title text-xl font-bold sm:text-2xl">{{ __('Storefront Studio & Settings') }}</h1>
-                        @if($primaryDomain)
-                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                {{ __('Live') }}
-                            </span>
-                        @endif
-                    </div>
-                    <p class="text-xs text-body sm:text-sm">
-                        {{ __('Manage store branding, theme colors, domain mapping, navigation menus, and marketing.') }}
-                    </p>
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex min-w-0 items-start gap-3">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20">
+                <i class="ph ph-storefront text-2xl"></i>
+            </span>
+            <div class="min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="heading-3 text-title text-xl font-bold sm:text-2xl">{{ __('Storefront Studio') }}</h1>
+                    @if($primaryDomain)
+                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            {{ __('Live') }}
+                        </span>
+                    @endif
                 </div>
+                <p class="text-xs text-body sm:text-sm">{{ __('Branding, domains, menus, content and marketing for your store.') }}</p>
+                @if($primaryDomain)
+                    <div x-data="{ copied: false }" class="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2 py-1 font-mono text-[11px] text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+                        <i class="ph ph-globe-simple text-sm text-neutral-400"></i>
+                        <span class="truncate">{{ $primaryDomain->host }}</span>
+                        <button type="button" @click="navigator.clipboard.writeText('{{ $storeUrl }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-neutral-400 hover:text-primary" title="{{ __('Copy store URL') }}">
+                            <i class="ph text-sm" :class="copied ? 'ph-check text-primary' : 'ph-copy'"></i>
+                        </button>
+                    </div>
+                @endif
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
-            <button
-                type="button"
-                @click="switchTab('deployment')"
-                class="btn btn-outline btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
-            >
-                <i class="ph ph-key text-base"></i>
-                <span>{{ __('API & .env Setup') }}</span>
-            </button>
+        <div class="flex shrink-0 items-center gap-2">
             @if($storeUrl)
-                <a
-                    href="{{ $storeUrl }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn btn-outline btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
-                >
+                <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold">
                     <i class="ph ph-arrow-square-out text-base"></i>
                     <span>{{ __('Visit Storefront') }}</span>
                 </a>
             @endif
-            <a
-                href="{{ route('user.commerce.pack-templates.index') }}"
-                class="btn btn-outline btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
-            >
-                <i class="ph ph-package text-base"></i>
-                <span>{{ __('Custom Pack Templates') }}</span>
-            </a>
-            <a
-                href="{{ route('user.commerce.products.index') }}"
-                class="btn btn-ghost btn-sm rounded-lg flex items-center gap-1.5 text-xs text-body hover:text-title"
-            >
-                <i class="ph ph-tag text-base"></i>
-                <span>{{ __('Manage Catalog') }}</span>
-            </a>
+            <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false" class="relative">
+                <button type="button" @click="open = !open" :aria-expanded="open" class="btn btn-outline btn-sm rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition-colors">
+                    <i class="ph ph-dots-three-circle text-base"></i>
+                    <span>{{ __('More') }}</span>
+                    <i class="ph ph-caret-down text-xs transition-transform" :class="open && 'rotate-180'"></i>
+                </button>
+                <div x-show="open" x-transition.origin.top.right x-cloak class="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+                    <a href="{{ route('user.commerce.pack-templates.index') }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">
+                        <i class="ph ph-package text-base text-neutral-400"></i>{{ __('Custom Pack Templates') }}
+                    </a>
+                    <a href="{{ route('user.commerce.products.index') }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">
+                        <i class="ph ph-tag text-base text-neutral-400"></i>{{ __('Manage Catalog') }}
+                    </a>
+                    <div class="my-1 border-t border-neutral-100 dark:border-neutral-800"></div>
+                    <button type="button" @click="open = false; switchTab('deployment')" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">
+                        <i class="ph ph-key text-base text-neutral-400"></i>{{ __('API & .env Setup') }}
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -510,157 +507,55 @@
     @endif
 
     {{-- Main Tab Navigation Strip --}}
-    <nav class="flex items-center gap-1 overflow-x-auto border-b border-neutral-200/80 pb-px scrollbar-none dark:border-neutral-800">
-        <button
-            type="button"
-            @click="switchTab('settings')"
-            :class="activeTab === 'settings'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-palette text-lg"></i>
-            <span>{{ __('Storefront Theme & Identity') }}</span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('domains')"
-            :class="activeTab === 'domains'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-globe text-lg"></i>
-            <span>{{ __('Domains & DNS') }}</span>
-            @if($customDomains->count())
-                <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                    {{ $customDomains->count() }}
-                </span>
+    {{-- Main Tab Navigation --}}
+    @php
+        $studioTabGroups = [
+            [
+                ['settings', 'ph-palette', __('Theme'), null, false],
+                ['domains', 'ph-globe', __('Domains'), $customDomains->count() ?: null, false],
+                ['menus', 'ph-list-dashes', __('Menus'), null, false],
+            ],
+            [
+                ['sliders', 'ph-slideshow', __('Sliders'), $sliders->count() ?: null, false],
+                ['pages', 'ph-browsers', __('Pages'), $pages->count() ?: null, false],
+                ['content', 'ph-article', __('Blog & FAQs'), (($blogs->count() ?? 0) + ($faqs->count() ?? 0)) ?: null, false],
+            ],
+            [
+                ['coupons', 'ph-ticket', __('Coupons'), $coupons->count() ?: null, false],
+                ['reviews', 'ph-star', __('Reviews'), $pendingReviewsCount ?: null, true],
+                ['inquiries', 'ph-chats-circle', __('Inquiries'), ($inquiries->count() ?? 0) ?: null, false],
+            ],
+            [
+                ['chat-channels', 'ph-chat-circle-dots', __('Chat & Contact'), null, false],
+                ['deployment', 'ph-key', __('API & Deploy'), null, false],
+            ],
+        ];
+    @endphp
+    <nav class="flex flex-wrap items-center gap-1 rounded-xl border border-neutral-200/80 bg-white p-1.5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+        @foreach($studioTabGroups as $group)
+            @if(! $loop->first)
+                <span class="mx-0.5 hidden h-5 w-px bg-neutral-200 sm:block dark:bg-neutral-700"></span>
             @endif
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('menus')"
-            :class="activeTab === 'menus'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-list-dashes text-lg"></i>
-            <span>{{ __('Navigation Menus') }}</span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('sliders')"
-            :class="activeTab === 'sliders'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-slideshow text-lg"></i>
-            <span>{{ __('Hero Sliders') }}</span>
-            <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {{ $sliders->count() }}
-            </span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('pages')"
-            :class="activeTab === 'pages'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-browsers text-lg"></i>
-            <span>{{ __('Pages & CMS') }}</span>
-            <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {{ $pages->count() }}
-            </span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('coupons')"
-            :class="activeTab === 'coupons'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-ticket text-lg"></i>
-            <span>{{ __('Coupons & Promo') }}</span>
-            <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {{ $coupons->count() }}
-            </span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('reviews')"
-            :class="activeTab === 'reviews'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-star text-lg"></i>
-            <span>{{ __('Review Moderation') }}</span>
-            @if($pendingReviewsCount > 0)
-                <span class="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-white animate-pulse">
-                    {{ $pendingReviewsCount }}
-                </span>
-            @endif
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('content')"
-            :class="activeTab === 'content'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-article text-lg"></i>
-            <span>{{ __('Journal & FAQs') }}</span>
-            <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {{ ($blogs->count() ?? 0) + ($faqs->count() ?? 0) }}
-            </span>
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('inquiries')"
-            :class="activeTab === 'inquiries'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-chats-circle text-lg"></i>
-            <span>{{ __('Customer Inquiries') }}</span>
-            @if(($inquiries->count() ?? 0) > 0)
-                <span class="rounded-full bg-primary/10 text-primary dark:bg-primary/20 px-2 py-0.5 text-[11px] font-bold">
-                    {{ $inquiries->count() }}
-                </span>
-            @endif
-        </button>
-
-        <button
-            type="button"
-            @click="switchTab('deployment')"
-            :class="activeTab === 'deployment'
-                ? 'border-primary text-primary font-semibold bg-primary/5 dark:bg-primary/10'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50'"
-            class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm rounded-t-lg transition-all"
-        >
-            <i class="ph ph-key text-lg"></i>
-            <span>{{ __('API & Deployment (.env)') }}</span>
-        </button>
-        <button type="button" @click="switchTab('chat-channels')" :class="activeTab === 'chat-channels' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-neutral-600 dark:text-neutral-400'" class="flex items-center gap-2 whitespace-nowrap rounded-t-lg border-b-2 px-4 py-2.5 text-sm">
-            <i class="ph ph-chat-circle-dots text-lg"></i>
-            <span>{{ __('Channel Chatbot & Contact') }}</span>
-        </button>
+            @foreach($group as [$tabKey, $tabIcon, $tabLabel, $tabCount, $tabAlert])
+                <button
+                    type="button"
+                    @click="switchTab('{{ $tabKey }}')"
+                    :class="activeTab === '{{ $tabKey }}'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white'"
+                    class="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors"
+                >
+                    <i class="ph {{ $tabIcon }} text-base"></i>
+                    <span>{{ $tabLabel }}</span>
+                    @if($tabCount)
+                        <span
+                            :class="activeTab === '{{ $tabKey }}' ? 'bg-white/20 text-white' : '{{ $tabAlert ? 'bg-amber-500 text-white' : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}'"
+                            class="rounded-full px-1.5 py-px text-[10px] font-semibold"
+                        >{{ $tabCount }}</span>
+                    @endif
+                </button>
+            @endforeach
+        @endforeach
     </nav>
 
     {{-- =====================================================================

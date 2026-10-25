@@ -425,8 +425,6 @@
       </header>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-        @include('commerce::user.partials.help', ['helpKey' => 'inbox', 'compact' => true, 'minimal' => true])
-
         <p role="alert" class="mb-3 text-sm font-medium text-error" x-show="crmError" x-text="crmError" x-cloak></p>
         <p class="text-sm text-body" x-show="crmLoading">{{ __('Loading CRM details...') }}</p>
         <template x-if="crm?.contact">

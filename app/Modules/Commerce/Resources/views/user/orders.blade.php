@@ -24,11 +24,13 @@
                 <p class="mt-1 text-sm text-body">{{ __('Review cart requests, prepare shipping quotes, track fulfillment, and manage sales.') }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2.5">
-                @can('commerce.manage')
+                @can('commerce.pos.use')
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.pos.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                         <i class="ph ph-cash-register text-base"></i>
                         <span>{{ __('POS') }}</span>
                     </x-ui.button>
+                @endcan
+                @can('commerce.orders.settings')
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.payment-services.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                         <i class="ph ph-credit-card text-base"></i>
                         <span>{{ __('Payment Services') }}</span>
@@ -42,7 +44,7 @@
                     <i class="ph ph-t-shirt text-base"></i>
                     <span>{{ __('Products') }}</span>
                 </x-ui.button>
-                @can('commerce.manage')
+                @can('commerce.orders.create')
                     <x-ui.button variant="primary" size="sm" href="{{ route('user.commerce.orders.create') }}" class="shadow-xs">
                         <i class="ph ph-plus-circle text-base"></i>
                         <span>{{ __('Create order') }}</span>

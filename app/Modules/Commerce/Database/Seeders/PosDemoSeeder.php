@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Module;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
@@ -29,7 +30,7 @@ class PosDemoSeeder extends Seeder
             $workspace = app(WorkspaceResolver::class)->current($user);
             $workspace->update(['settings' => array_replace($workspace->settings ?? [], ['onboarding_completed_at' => now()->toIso8601String()])]);
             $role = Role::findOrCreate('POS demo manager', 'web');
-            $role->givePermissionTo([Permission::findOrCreate('commerce.view', 'web'), Permission::findOrCreate('commerce.manage', 'web')]);
+            $role->givePermissionTo(collect((new Module)->permissions()['web'])->keys()->map(fn (string $name) => Permission::findOrCreate($name, 'web'))->all());
             $user->assignRole($role);
         } elseif ($workspaceId) {
             $workspace = Workspace::query()->with('owner')->find($workspaceId) ?? Workspace::query()->with('owner')->first();

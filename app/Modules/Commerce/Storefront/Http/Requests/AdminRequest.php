@@ -8,7 +8,7 @@ class AdminRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->canAny(['commerce.storefront.settings', 'commerce.storefront.pages', 'commerce.storefront.marketing', 'commerce.storefront.domains', 'commerce.storefront.reviews', 'commerce.storefront.credentials']) ?? false;
     }
 
     protected function prepareForValidation(): void

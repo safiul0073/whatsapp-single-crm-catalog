@@ -8,7 +8,7 @@ class UploadCommerceMediaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.products.manage') ?? false;
     }
 
     public function rules(): array

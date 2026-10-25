@@ -100,7 +100,7 @@ it('filters top-level modules and contextual sidebar links by workspace role per
         'is_system' => false,
     ]);
 
-    foreach (['workspace.view', 'inbox.assigned_only', 'contacts.assigned_only', 'commerce.view'] as $perm) {
+    foreach (['workspace.view', 'inbox.assigned_only', 'contacts.assigned_only', 'commerce.orders.view'] as $perm) {
         WorkspaceRolePermission::query()->create([
             'workspace_id' => $workspace->id,
             'workspace_role_id' => $staffRole->id,
@@ -124,7 +124,7 @@ it('filters top-level modules and contextual sidebar links by workspace role per
     $navigation = app(WorkspaceNavigationRegistry::class)->forUser($staff);
     $moduleIds = array_column($navigation['modules'], 'id');
 
-    // Staff has workspace.view, inbox.assigned_only, contacts.assigned_only, commerce.view
+    // Staff has workspace.view, inbox.assigned_only, contacts.assigned_only, commerce.orders.view
     // Staff does NOT have campaigns.view, templates.manage, automations.manage, chatbots.manage
     expect($moduleIds)
         ->toContain('dashboard', 'inbox', 'crm', 'commerce')

@@ -10,6 +10,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\EngagementController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
+use App\Modules\Commerce\Storefront\Http\Controllers\ReferralController;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticateCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticatePlatform;
 use App\Modules\Commerce\Storefront\Http\Middleware\OptionalCustomer;
@@ -32,6 +33,7 @@ $storefrontRoutes = function (): void {
     Route::get('cms/menus/{slot}', [CmsController::class, 'menu']);
     Route::get('cms/pages/{slug}', [CmsController::class, 'page']);
     Route::get('auth/status', [AuthController::class, 'status']);
+    Route::get('referral/program', [ReferralController::class, 'program']);
     Route::middleware('throttle:storefront-auth')->group(function (): void {
         Route::post('auth/whatsapp/challenges', [AuthController::class, 'challenge']);
         Route::post('auth/whatsapp/challenges/{id}/resend', [AuthController::class, 'resend']);
@@ -85,6 +87,8 @@ $storefrontRoutes = function (): void {
         Route::post('me/wishlist/{id}', [EngagementController::class, 'saveWishlist']);
         Route::delete('me/wishlist/{id}', [EngagementController::class, 'deleteWishlist']);
         Route::post('catalog/products/{slug}/reviews', [EngagementController::class, 'review']);
+        Route::get('me/referral', [ReferralController::class, 'show']);
+        Route::get('me/rewards', [ReferralController::class, 'rewards']);
     });
 };
 

@@ -8,7 +8,7 @@ class StoreCustomerAuthSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.orders.settings') ?? false;
     }
 
     public function rules(): array

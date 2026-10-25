@@ -22,6 +22,11 @@ class QdrantVectorStoreService implements VectorStoreService
             && filled($this->url());
     }
 
+    public function providerLabel(): string
+    {
+        return 'Qdrant';
+    }
+
     /**
      * @return array{ok: bool, message: string}
      */
