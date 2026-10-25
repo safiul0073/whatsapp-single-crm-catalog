@@ -359,8 +359,6 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('toggleAutomatedReply', false)
         ->assertSee('automation', false)
         ->assertSee('syncCrmStageForPipeline($event.target.value)', false)
-        ->assertSee('data-commerce-help="inbox"', false)
-        ->assertSee('Send catalog or products from WhatsApp.')
         ->assertSee('Share complete catalog')
         ->assertSee('Opens the synchronized Meta catalog in WhatsApp')
         ->assertSee('commerceNotice', false)
@@ -371,12 +369,6 @@ it('renders failed outbound message status in the error color', function (): voi
         ->assertSee('Hide CRM profile')
         ->assertSee('Open CRM profile')
         ->assertSee('crmPanelOpen && activeConversation?.contact_id && routes.crm', false);
-
-    $content = $response->getContent();
-
-    expect(strpos($content, 'data-commerce-help="inbox"'))
-        ->toBeGreaterThan(strpos($content, 'class="inbox__crm"'))
-        ->toBeLessThan(strpos($content, 'id="commerceHelpInbox"'));
 });
 
 it('generates an ai reply draft from platform ai without sending a message', function (): void {

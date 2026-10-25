@@ -1,6 +1,6 @@
 @php
     $isEditing = $chatbot !== null;
-    $selectedKnowledgeBases = collect(old('knowledge_bases', $chatbot?->knowledgeBases?->pluck('id')->all() ?? []))->map(fn ($id) => (int) $id)->all();
+    $selectedKnowledgeBases = collect(old('knowledge_bases', $chatbot?->knowledgeBases?->pluck('id')->all() ?? $knowledgeBases->filter(fn ($kb) => data_get($kb->settings, 'managed'))->pluck('id')->all()))->map(fn ($id) => (int) $id)->all();
     $handoffRules = $chatbot?->handoff_rules ?? [];
 @endphp
 
@@ -29,6 +29,12 @@
         </div>
     @endif
 
+    @if ($knowledgeBases->isEmpty())
+        <div class="mt-4 rounded-md border border-warning/20 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning">
+            {{ __('This bot has no knowledge yet. Add a knowledge base so it can answer questions.') }}
+        </div>
+    @endif
+
     <form id="chatbot-config-form" method="POST" action="{{ $isEditing ? route('user.chatbots.update', $chatbot) : route('user.chatbots.store') }}" class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         @csrf
         @if ($isEditing)
@@ -37,7 +43,7 @@
 
         <div class="space-y-6">
             <section class="app-card p-5 sm:p-6">
-                <h3 class="heading-4">{{ __('Identity') }}</h3>
+                <h3 class="heading-4">{{ __('Basics') }}</h3>
 
                 <div class="mt-4">
                     <div>
@@ -49,17 +55,13 @@
 
                 <div class="mt-4">
                     <div class="flex items-center justify-between gap-3">
-                        <label for="persona" class="form-label mb-0">{{ __('Persona & instructions') }} <span class="text-error">*</span></label>
-                        @unless ($isEditing)
-                            <button type="button" id="generate_persona_button" class="row-action" aria-label="{{ __('Generate persona with AI') }}" title="{{ __('Generate persona with AI') }}">
+                        <label for="persona" class="form-label mb-0">{{ __('What should this bot do?') }} <span class="text-error">*</span></label>
+                        <button type="button" id="generate_persona_button" class="row-action" aria-label="{{ __('Generate persona with AI') }}" title="{{ __('Generate persona with AI') }}">
                                 <i id="generate_persona_icon" class="ph ph-sparkle text-base"></i>
                             </button>
-                        @endunless
                     </div>
                     <textarea id="persona" name="persona" rows="6" required class="form-input">{{ old('persona', $chatbot?->persona) }}</textarea>
-                    @unless ($isEditing)
-                        <p id="persona_ai_error" class="form-hint text-error hidden"></p>
-                    @endunless
+                    <p id="persona_ai_error" class="form-hint text-error hidden"></p>
                     @error('persona')<p class="form-hint text-error">{{ $message }}</p>@enderror
                 </div>
 
@@ -71,47 +73,24 @@
             </section>
 
             <section class="app-card p-5 sm:p-6">
-                <h3 class="heading-4">{{ __('Model & Behavior') }}</h3>
-
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label for="max_tokens" class="form-label">{{ __('Max reply tokens') }}</label>
-                        <input id="max_tokens" name="max_tokens" type="number" min="64" max="8192" value="{{ old('max_tokens', $chatbot?->max_tokens ?? 512) }}" class="form-input">
-                        @error('max_tokens')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                    </div>
-                </div>
-
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label for="temperature" class="form-label">{{ __('Creativity') }}</label>
-                        <input id="temperature" name="temperature" type="number" min="0" max="2" step="0.1" value="{{ old('temperature', $chatbot?->temperature ?? 0.4) }}" class="form-input">
-                        @error('temperature')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
-                        <label for="confidence_threshold" class="form-label">{{ __('Handoff threshold') }}</label>
-                        <input id="confidence_threshold" name="confidence_threshold" type="number" min="0" max="1" step="0.05" value="{{ old('confidence_threshold', $chatbot?->confidence_threshold ?? 0.7) }}" class="form-input">
-                        @error('confidence_threshold')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                    </div>
-                </div>
-
-                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="grid gap-3 sm:grid-cols-2">
                     <label class="flex items-center gap-2.5">
-                        <input type="checkbox" name="fallback_only_knowledge_base" value="1" class="app-checkbox" @checked(old('fallback_only_knowledge_base', $chatbot?->fallback_only_knowledge_base ?? true))>
-                        <span class="text-sm text-body">{{ __('Only answer from selected knowledge bases') }}</span>
+                        <input type="checkbox" name="is_active" value="1" class="app-checkbox" @checked(old('is_active', $chatbot?->is_active ?? true))>
+                        <span class="text-sm text-body">{{ __('Bot is on') }}</span>
                     </label>
                     <label class="flex items-center gap-2.5">
-                        <input type="checkbox" name="is_active" value="1" class="app-checkbox" @checked(old('is_active', $chatbot?->is_active ?? false))>
-                        <span class="text-sm text-body">{{ __('Active') }}</span>
+                        <input type="checkbox" name="fallback_only_knowledge_base" value="1" class="app-checkbox" @checked(old('fallback_only_knowledge_base', $chatbot?->fallback_only_knowledge_base ?? true))>
+                        <span class="text-sm text-body">{{ __('Only answer from my knowledge') }}</span>
                     </label>
                 </div>
             </section>
 
             <section class="app-card p-5 sm:p-6">
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <h3 class="heading-4">{{ __('Knowledge Bases') }}</h3>
+                    <h3 class="heading-4">{{ __('What it knows') }}</h3>
                     <a href="{{ route('user.knowledge-bases.index') }}" class="btn-sm btn-outline">
                         <i class="ph ph-books text-base"></i>
-                        {{ __('Manage') }}
+                        {{ __('Edit knowledge') }}
                     </a>
                 </div>
 
@@ -122,10 +101,10 @@
                             <span class="min-w-0">
                                 <span class="flex flex-wrap items-center gap-2">
                                     <span class="font-semibold text-title">{{ $knowledgeBase->name }}</span>
-                                    <span class="badge badge-{{ $knowledgeBase->status === 'ready' ? 'success' : ($knowledgeBase->status === 'error' ? 'error' : 'warning') }}">{{ ucfirst($knowledgeBase->status) }}</span>
+                                    <span class="badge badge-{{ $knowledgeBase->status === 'ready' ? 'success' : ($knowledgeBase->status === 'error' ? 'error' : 'warning') }}">{{ ['ready' => __('Ready'), 'error' => __('Needs attention')][$knowledgeBase->status] ?? __('Learning') }}</span>
                                 </span>
                                 <span class="block text-xs text-neutral-400">{{ $knowledgeBase->description ?: __('No description') }}</span>
-                                <span class="block text-xs text-neutral-400">{{ trans_choice(':count chunk|:count chunks', $knowledgeBase->chunks_count, ['count' => $knowledgeBase->chunks_count]) }}</span>
+                                <span class="block text-xs text-neutral-400">{{ trans_choice(':count item|:count items', $knowledgeBase->sources_count) }}</span>
                             </span>
                         </label>
                     @empty
@@ -136,25 +115,24 @@
             </section>
 
             <section class="app-card p-5 sm:p-6">
-                <h3 class="heading-4">{{ __('Human Handoff') }}</h3>
-                <div class="mt-4 space-y-3">
-                    <label class="flex items-center gap-2.5">
-                        <input type="checkbox" name="handoff_on_request" value="1" class="app-checkbox" @checked(old('handoff_on_request', data_get($handoffRules, 'on_request', true)))>
-                        <span class="text-sm text-body">{{ __('When the customer asks for a human') }}</span>
-                    </label>
-                    <label class="flex items-center gap-2.5">
-                        <input type="checkbox" name="handoff_on_unsure" value="1" class="app-checkbox" @checked(old('handoff_on_unsure', data_get($handoffRules, 'on_unsure', true)))>
-                        <span class="text-sm text-body">{{ __('When confidence is below the threshold') }}</span>
-                    </label>
-                    <label class="flex items-center gap-2.5">
-                        <input type="checkbox" name="handoff_off_hours" value="1" class="app-checkbox" @checked(old('handoff_off_hours', data_get($handoffRules, 'off_hours', false)))>
-                        <span class="text-sm text-body">{{ __('Outside business hours') }}</span>
-                    </label>
-                </div>
-                <div class="mt-4">
-                    <label for="handoff_message" class="form-label">{{ __('Handoff message') }}</label>
-                    <input id="handoff_message" name="handoff_message" type="text" value="{{ old('handoff_message', data_get($handoffRules, 'message')) }}" class="form-input">
-                </div>
+                <label for="handoff_message" class="form-label">{{ __("Message when the bot can't answer") }}</label>
+                <input id="handoff_message" name="handoff_message" type="text" value="{{ old('handoff_message', data_get($handoffRules, 'message')) }}" class="form-input" placeholder="{{ __('I am not sure. A team member will reply soon.') }}">
+
+                <details class="mt-5">
+                    <summary class="cursor-pointer text-sm font-semibold text-neutral-500">{{ __('Advanced settings') }}</summary>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="max_tokens" class="form-label">{{ __('Maximum reply length') }}</label>
+                            <input id="max_tokens" name="max_tokens" type="number" min="64" max="8192" value="{{ old('max_tokens', $chatbot?->max_tokens ?? 512) }}" class="form-input">
+                            @error('max_tokens')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="temperature" class="form-label">{{ __('Creativity (0 = strict, 2 = creative)') }}</label>
+                            <input id="temperature" name="temperature" type="number" min="0" max="2" step="0.1" value="{{ old('temperature', $chatbot?->temperature ?? 0.4) }}" class="form-input">
+                            @error('temperature')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </details>
             </section>
 
             <div class="flex flex-wrap items-center gap-3">
@@ -180,9 +158,7 @@
                                 <p class="max-w-[85%] rounded-md rounded-tl-sm bg-neutral-0 px-3 py-2 text-sm text-title shadow-sm">{{ $chatbot->greeting }}</p>
                             </div>
                         @endif
-                        <div class="flex justify-end">
-                            <p class="max-w-[85%] rounded-md rounded-tr-sm bg-primary px-3 py-2 text-sm text-neutral-0">{{ __('Can you help me with pricing?') }}</p>
-                        </div>
+                        <div id="test_log" class="space-y-3"></div>
                     </div>
 
                     <div class="mt-4 flex items-center gap-2">
@@ -191,7 +167,7 @@
                             <i class="ph ph-paper-plane-tilt text-base"></i>
                         </button>
                     </div>
-                    <p id="test_reply" class="form-hint mt-2">{{ __("Test messages use your saved settings and don't reach real contacts.") }}</p>
+                    <p id="test_reply" class="form-hint mt-2">{{ __("Test messages use your saved settings. Save changes first. They don't reach real customers.") }}</p>
                 @else
                     <p class="m-text mt-4">{{ __('Save this chatbot before running a test message.') }}</p>
                 @endif
@@ -199,8 +175,7 @@
         </aside>
     </form>
 
-    @unless ($isEditing)
-        @push('scripts')
+    @push('scripts')
             <script>
                 document.addEventListener('DOMContentLoaded', () => {
                     'use strict';
@@ -260,8 +235,7 @@
                     });
                 });
             </script>
-        @endpush
-    @endunless
+    @endpush
 
     @if ($isEditing)
         @push('scripts')
@@ -269,7 +243,25 @@
                 async function testChatbot() {
                     const input = document.getElementById('test_message');
                     const output = document.getElementById('test_reply');
-                    output.textContent = '{{ __('Testing...') }}';
+                    const log = document.getElementById('test_log');
+                    const bubble = (text, mine) => {
+                        const row = document.createElement('div');
+                        row.className = mine ? 'flex justify-end' : 'flex justify-start';
+                        const p = document.createElement('p');
+                        p.className = mine
+                            ? 'max-w-[85%] rounded-md rounded-tr-sm bg-primary px-3 py-2 text-sm text-neutral-0'
+                            : 'max-w-[85%] rounded-md rounded-tl-sm bg-neutral-0 px-3 py-2 text-sm text-title shadow-sm';
+                        p.textContent = text;
+                        row.appendChild(p);
+                        log.appendChild(row);
+                    };
+                    const message = input.value.trim();
+                    if (!message) {
+                        return;
+                    }
+                    bubble(message, true);
+                    input.value = '';
+                    output.textContent = '{{ __('Thinking...') }}';
 
                     const response = await fetch('{{ route('user.chatbots.test', $chatbot) }}', {
                         method: 'POST',
@@ -278,11 +270,12 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         },
-                        body: JSON.stringify({ message: input.value }),
+                        body: JSON.stringify({ message }),
                     });
 
                     const data = await response.json();
-                    output.textContent = data.reply || data.message || '{{ __('Unable to test this chatbot.') }}';
+                    output.textContent = '';
+                    bubble(data.reply || data.message || '{{ __('Unable to test this chatbot.') }}', false);
                 }
             </script>
         @endpush

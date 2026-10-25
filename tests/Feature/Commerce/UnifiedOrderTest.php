@@ -23,6 +23,9 @@ use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingZone;
 use App\Modules\SystemNotifications\Models\SystemNotification;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
+use App\Modules\Workspaces\Models\WorkspaceRole;
+use App\Modules\Workspaces\Models\WorkspaceRolePermission;
+use App\Modules\Workspaces\Services\TeamManagementService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -171,6 +174,66 @@ it('renders manual order management with appropriate permissions', function () {
     $role->givePermissionTo(Permission::findOrCreate('commerce.manage', 'web'));
     $c['user']->assignRole($role);
     $this->actingAs($c['user'])->get(route('user.commerce.orders.create'))->assertOk()->assertSee('Create Order');
+});
+
+function workspaceMemberWith(array $context, array $permissions): User
+{
+    $role = WorkspaceRole::query()->create(['workspace_id' => $context['workspace']->id, 'name' => 'Role '.Str::random(6), 'is_system' => false]);
+    foreach (['workspace.view', ...$permissions] as $permission) {
+        WorkspaceRolePermission::query()->create(['workspace_id' => $context['workspace']->id, 'workspace_role_id' => $role->id, 'permission_name' => $permission]);
+    }
+    $member = User::factory()->create();
+    $context['workspace']->members()->attach($member, ['workspace_role_id' => $role->id, 'status' => 'active', 'joined_at' => now()]);
+
+    return $member;
+}
+
+it('gates order summary customer and payment cards by their own permissions', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $show = route('user.commerce.orders.show', $order);
+
+    $this->actingAs($c['user'])->get($show)
+        ->assertOk()->assertSee('Order summary')->assertSee('Edit Customer Contact')->assertSee('No payment proof submitted yet.');
+
+    $this->actingAs(workspaceMemberWith($c, ['commerce.orders.view']))->get($show)
+        ->assertOk()->assertDontSee('Order summary')->assertDontSee('Edit Customer Contact')->assertDontSee('No payment proof submitted yet.')->assertDontSee('Buyer');
+
+    $this->actingAs(workspaceMemberWith($c, ['commerce.orders.view', 'commerce.orders.summary.view']))->get($show)
+        ->assertOk()->assertSee('Order summary')->assertDontSee('Edit Customer Contact')->assertDontSee('No payment proof submitted yet.');
+
+    $this->actingAs(workspaceMemberWith($c, ['commerce.orders.view', 'commerce.orders.customer.view', 'commerce.orders.customer.edit']))->get($show)
+        ->assertOk()->assertDontSee('Order summary')->assertSee('Edit Customer Contact')->assertSee('Buyer');
+
+    $this->actingAs(workspaceMemberWith($c, ['commerce.orders.view', 'commerce.orders.payments.view']))->get($show)
+        ->assertOk()->assertDontSee('Order summary')->assertSee('No payment proof submitted yet.');
+});
+
+it('limits commerce areas to the permissions granted to a role', function () {
+    $c = unifiedContext();
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $ordersOnly = workspaceMemberWith($c, ['commerce.orders.view']);
+
+    $this->actingAs($ordersOnly)->get(route('user.commerce.orders.index'))->assertOk();
+    $this->actingAs($ordersOnly)->get(route('user.commerce.products.index'))->assertForbidden();
+    $this->actingAs($ordersOnly)->get(route('user.commerce.storefront.index'))->assertForbidden();
+    $this->actingAs($ordersOnly)->get(route('user.commerce.referrals.index'))->assertForbidden();
+    $this->actingAs($ordersOnly)->get(route('user.commerce.orders.create'))->assertForbidden();
+    $this->actingAs($ordersOnly)->get(route('user.commerce.orders.settings'))->assertForbidden();
+
+    $storefront = workspaceMemberWith($c, ['commerce.storefront.pages']);
+    $this->actingAs($storefront)->get(route('user.commerce.storefront.index'))->assertOk();
+    $this->actingAs($storefront)->get(route('user.commerce.orders.index'))->assertForbidden();
+});
+
+it('lists the granular commerce permissions and no legacy ones in the role catalog', function () {
+    $names = collect(app(TeamManagementService::class)->rolePermissionDetails(
+        WorkspaceRole::query()->create(['workspace_id' => unifiedContext()['workspace']->id, 'name' => 'Probe', 'is_system' => false])
+    )['groups'])->pluck('permissions')->flatten(1)->pluck('name');
+
+    expect($names)->toContain('commerce.orders.summary.view', 'commerce.orders.payments.view', 'commerce.storefront.domains', 'commerce.referrals.manage')
+        ->not->toContain('commerce.view', 'commerce.manage');
 });
 
 it('aggregates wholesale tiers across colors without changing each box ratio', function () {

@@ -13,6 +13,6 @@ class CheckoutRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['address_id' => ['required', 'integer'], 'shipping_method_id' => ['nullable', 'integer'], 'payment_method_id' => [$this->route()->getActionMethod() === 'store' ? 'required' : 'nullable', 'string', 'max:60']];
+        return ['address_id' => ['required', 'integer'], 'shipping_method_id' => ['nullable', 'integer'], 'payment_method_id' => [$this->route()->getActionMethod() === 'store' ? 'required' : 'nullable', 'string', 'max:60'], 'use_rewards' => ['sometimes', 'boolean']];
     }
 }

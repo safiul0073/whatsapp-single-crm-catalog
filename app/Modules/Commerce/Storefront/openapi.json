@@ -3292,6 +3292,141 @@
           }
         ]
       }
+    },
+    "/referral/program": {
+      "get": {
+        "operationId": "get_referral_program",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me/referral": {
+      "get": {
+        "operationId": "get_me_referral",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me/rewards": {
+      "get": {
+        "operationId": "get_me_rewards",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3541,6 +3676,9 @@
           },
           "payment_method_id": {
             "type": "string"
+          },
+          "use_rewards": {
+            "type": "boolean"
           }
         }
       }

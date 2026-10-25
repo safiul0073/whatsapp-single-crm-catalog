@@ -38,11 +38,13 @@
                     <i class="ph ph-t-shirt text-base"></i>
                     <span>{{ __('Products') }}</span>
                 </x-ui.button>
-                @can('commerce.manage')
+                @can('commerce.pos.use')
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.pos.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                         <i class="ph ph-cash-register text-base"></i>
                         <span>{{ __('POS') }}</span>
                     </x-ui.button>
+                @endcan
+                @can('commerce.storefront.settings')
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.storefront.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                         <i class="ph ph-browser text-base"></i>
                         <span>{{ __('Storefront Studio') }}</span>

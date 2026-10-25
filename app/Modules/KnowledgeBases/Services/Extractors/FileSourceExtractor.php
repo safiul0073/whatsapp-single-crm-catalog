@@ -23,6 +23,7 @@ class FileSourceExtractor implements KnowledgeBaseExtractor
         $text = match ($extension) {
             'pdf' => $this->extractPdf($absolutePath),
             'docx' => $this->extractDocx($absolutePath),
+            'html', 'htm' => HtmlText::clean((string) Storage::disk('local')->get($path)),
             default => (string) Storage::disk('local')->get($path),
         };
 

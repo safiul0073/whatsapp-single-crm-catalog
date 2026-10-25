@@ -8,7 +8,7 @@
         {{-- Page Header --}}
         <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-3">
-                <span class="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+                <span class="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20">
                     <i class="ph ph-package text-2xl"></i>
                 </span>
                 <div>
@@ -24,31 +24,32 @@
                     <i class="ph ph-arrow-left text-base"></i>
                     <span>{{ __('Storefront Settings') }}</span>
                 </a>
-                <a href="{{ route('user.commerce.pack-templates.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-500 transition">
+                <a href="{{ route('user.commerce.pack-templates.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500 transition">
                     <i class="ph ph-plus-circle text-base"></i>
                     <span>{{ __('Create Template') }}</span>
                 </a>
             </div>
         </header>
 
-        {{-- Summary Stats Bar (Borderless, Soft Shadow) --}}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-xs">
-                <span class="text-xs text-slate-400 font-medium">{{ __('Total Templates') }}</span>
-                <span class="text-2xl font-bold text-slate-900 dark:text-white mt-1 block">{{ $templates->count() }}</span>
-            </div>
-            <div class="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-xs">
-                <span class="text-xs text-slate-400 font-medium">{{ __('Published on Store') }}</span>
-                <span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">{{ $templates->where('published', true)->count() }}</span>
-            </div>
-            <div class="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-xs">
-                <span class="text-xs text-slate-400 font-medium">{{ __('Drafts (Hidden)') }}</span>
-                <span class="text-2xl font-bold text-slate-600 dark:text-slate-300 mt-1 block">{{ $templates->where('published', false)->count() }}</span>
-            </div>
-            <div class="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-xs">
-                <span class="text-xs text-slate-400 font-medium">{{ __('Wholesale Products') }}</span>
-                <span class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">{{ $products->count() }}</span>
-            </div>
+        {{-- Summary Stats --}}
+        @php
+            $packStats = [
+                [__('Total Templates'), $templates->count(), 'ph-stack', 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'],
+                [__('Published'), $templates->where('published', true)->count(), 'ph-check-circle', 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'],
+                [__('Drafts'), $templates->where('published', false)->count(), 'ph-eye-slash', 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'],
+                [__('Wholesale Products'), $products->count(), 'ph-t-shirt', 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400'],
+            ];
+        @endphp
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            @foreach($packStats as [$statLabel, $statValue, $statIcon, $statTone])
+                <div class="flex items-center gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl {{ $statTone }}"><i class="ph {{ $statIcon }} text-xl"></i></span>
+                    <div class="min-w-0">
+                        <span class="block truncate text-xs font-medium text-slate-500 dark:text-slate-400">{{ $statLabel }}</span>
+                        <span class="block text-xl font-bold text-slate-900 dark:text-white">{{ $statValue }}</span>
+                    </div>
+                </div>
+            @endforeach
         </div>
 
         {{-- Alerts --}}
@@ -83,8 +84,8 @@
         {{-- Configured Templates Section --}}
         <section class="space-y-4">
             <div class="flex items-center justify-between">
-                <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                    <i class="ph ph-stack text-indigo-600 dark:text-indigo-400 text-lg"></i>
+                <h2 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="ph ph-stack text-emerald-600 dark:text-emerald-400 text-lg"></i>
                     <span>{{ __('Configured Templates') }}</span>
                     <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {{ $templates->count() }}
@@ -93,11 +94,11 @@
             </div>
 
             @forelse($templates as $template)
-                <article class="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5 transition">
+                <article class="rounded-2xl border border-black/5 bg-white p-5 shadow-2xs space-y-5 transition hover:shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
                     {{-- Template Header --}}
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div class="flex items-start gap-3">
-                            <span class="grid size-11 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/70 dark:text-indigo-400 shrink-0 mt-0.5">
+                            <span class="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-400 shrink-0 mt-0.5">
                                 <i class="ph ph-package text-2xl"></i>
                             </span>
                             <div>
@@ -113,7 +114,7 @@
                                         </span>
                                     @endif
                                     <span class="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg">Order #{{ $template->position }}</span>
-                                    <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-lg">
+                                    <span class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg">
                                         {{ $template->min_pieces }}{{ $template->max_pieces ? ' - ' . $template->max_pieces : '+' }} {{ __('Pieces') }}
                                     </span>
                                 </div>
@@ -142,28 +143,28 @@
 
                     {{-- Rule Metrics Tiles (Borderless, Soft Tint) --}}
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-package text-indigo-500"></i> {{ __('Pack MOQ') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-package text-emerald-600 dark:text-emerald-400"></i> {{ __('Pack MOQ') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">≥ {{ $template->min_pieces }} pcs</span>
                         </div>
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-prohibit text-slate-400"></i> {{ __('Pack Cap') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-prohibit text-emerald-600 dark:text-emerald-400"></i> {{ __('Pack Cap') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{{ $template->max_pieces ? 'Max ' . $template->max_pieces . ' pcs' : __('No limit') }}</span>
                         </div>
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-t-shirt text-blue-500"></i> {{ __('Min Products') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-t-shirt text-emerald-600 dark:text-emerald-400"></i> {{ __('Min Products') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">≥ {{ $template->min_products }} styles</span>
                         </div>
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-palette text-amber-500"></i> {{ __('Colors / Prod') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-palette text-emerald-600 dark:text-emerald-400"></i> {{ __('Colors / Prod') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">≥ {{ $template->min_colors }} colors</span>
                         </div>
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-ruler text-emerald-500"></i> {{ __('Sizes / Color') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-ruler text-emerald-600 dark:text-emerald-400"></i> {{ __('Sizes / Color') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">≥ {{ $template->min_sizes }} sizes</span>
                         </div>
-                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
-                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-stack text-purple-500"></i> {{ __('Per Variant') }}</span>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1"><i class="ph ph-stack text-emerald-600 dark:text-emerald-400"></i> {{ __('Per Variant') }}</span>
                             <span class="text-sm font-bold text-slate-900 dark:text-white mt-1 block">≥ {{ $template->min_variant_quantity }} pcs</span>
                         </div>
                     </div>
@@ -175,7 +176,7 @@
                     <div class="pt-2">
                         <div class="flex items-center justify-between text-xs text-slate-500 mb-2.5">
                             <span class="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                <i class="ph ph-check-square-offset text-indigo-600"></i>
+                                <i class="ph ph-check-square-offset text-emerald-600"></i>
                                 {{ __('Eligible Wholesale Products') }} ({{ $assignedProducts->count() }})
                             </span>
                         </div>
@@ -185,12 +186,11 @@
                                     $availCols = $assigned->variants->where('status', 'active')->filter(fn ($v) => $v->color_id && $v->size)->groupBy('color_id')->count();
                                     $isLow = $availCols < $template->min_colors;
                                 @endphp
-                                <div class="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/70 py-1.5 px-3 text-xs">
+                                <div class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1 pl-1 pr-3 text-xs dark:border-slate-700 dark:bg-slate-800/70">
                                     @if($assigned->primaryMedia?->url)
                                         <img src="{{ $assigned->primaryMedia->url }}" alt="{{ $assigned->name }}"
                                              width="24" height="24"
-                                             style="width: 24px; height: 24px; min-width: 24px; max-width: 24px; object-fit: cover;"
-                                             class="rounded-lg object-cover">
+                                             class="size-6 min-w-6 rounded-md object-cover">
                                     @else
                                         <i class="ph ph-t-shirt text-slate-400"></i>
                                     @endif
@@ -208,7 +208,7 @@
             @empty
                 {{-- Clean Empty State --}}
                 <div class="rounded-2xl bg-white dark:bg-slate-900 p-10 text-center shadow-xs space-y-4">
-                    <span class="mx-auto grid size-16 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                    <span class="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                         <i class="ph ph-package text-3xl"></i>
                     </span>
                     <div class="max-w-md mx-auto space-y-1.5">
@@ -217,7 +217,7 @@
                             {{ __('Custom pack templates allow wholesale buyers to create their own mixed-product bundles with real-time color and size variety enforcement.') }}
                         </p>
                     </div>
-                    <a href="{{ route('user.commerce.pack-templates.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-500 transition">
+                    <a href="{{ route('user.commerce.pack-templates.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500 transition">
                         <i class="ph ph-plus-circle text-base"></i>
                         <span>{{ __('Create Your First Pack Template') }}</span>
                     </a>

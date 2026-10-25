@@ -8,7 +8,7 @@ class RecordOrderPaymentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.orders.payments.manage') ?? false;
     }
 
     public static function paymentRules(): array

@@ -88,6 +88,7 @@ it('tests qdrant connection from admin settings', function (): void {
         ->actingAs($admin, 'admin')
         ->put(route('admin.ai-settings.vector-database.test'), [
             'settings' => [
+                'vector_database_provider' => 'qdrant',
                 'vector_database_mode' => 'local',
                 'qdrant_url' => 'http://localhost:6333',
             ],

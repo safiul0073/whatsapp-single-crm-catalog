@@ -12,12 +12,13 @@ use App\Modules\Commerce\Services\UnifiedOrderService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class MobileOrderController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        abort_unless($request->user()->can('commerce.view'), 403);
+        abort_unless($request->user()->can('commerce.orders.view'), 403);
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $status = trim((string) $request->query('status', ''));
         $search = trim((string) $request->query('q', ''));
@@ -66,6 +67,7 @@ class MobileOrderController extends Controller
             ->sum(static fn (string $key): int => (int) ($rawCounts[$key] ?? 0));
 
         $payload = $orders->toArray();
+        $payload['data'] = array_map(fn (array $row): array => $this->redact($request, $row), $payload['data']);
         $payload['counts'] = [
             'all' => (int) $rawCounts->sum(),
             'new' => $countFor(['requested', 'needs_details', 'quoted', 'awaiting_payment']),
@@ -84,11 +86,11 @@ class MobileOrderController extends Controller
 
     public function show(Request $request, string $workspace, string $order, UnifiedOrderService $orders): JsonResponse
     {
-        abort_unless($request->user()->can('commerce.view'), 403);
+        abort_unless($request->user()->can('commerce.orders.view'), 403);
         $orderId = (string) ($request->route('order') ?? $order);
         $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($orderId);
 
-        return response()->json(['data' => $orders->payload($model)]);
+        return response()->json(['data' => $this->redact($request, $orders->payload($model))]);
     }
 
     public function transition(
@@ -111,6 +113,30 @@ class MobileOrderController extends Controller
         $updated = $workflow->transition($model, $targetStatus, $request->safe()->except('status'));
 
         return response()->json(['data' => $orders->payload($updated)]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $order
+     * @return array<string, mixed>
+     */
+    private function redact(Request $request, array $order): array
+    {
+        $user = $request->user();
+        $hidden = [];
+
+        if (! $user->can('commerce.orders.customer.view')) {
+            $hidden = [...$hidden, 'contact', 'customer_snapshot', 'shipping_address', 'customer'];
+        }
+
+        if (! $user->can('commerce.orders.summary.view')) {
+            $hidden = [...$hidden, 'subtotal', 'shipping_amount', 'discount_amount', 'total'];
+        }
+
+        if (! $user->can('commerce.orders.payments.view')) {
+            $hidden = [...$hidden, 'payment_evidence', 'payment_url', 'payment_instructions', 'payment_state'];
+        }
+
+        return Arr::except($order, $hidden);
     }
 
     private function autoPackOrderForMobile(Order $order, OrderPackingService $packing): void

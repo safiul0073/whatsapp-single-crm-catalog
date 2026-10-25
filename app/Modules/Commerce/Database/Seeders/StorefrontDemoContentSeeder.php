@@ -97,44 +97,7 @@ class StorefrontDemoContentSeeder extends Seeder
             }
 
             // 3. Seed Demo Blog Posts (The Journal)
-            $blogs = [
-                [
-                    'slug' => 'guide-to-heavyweight-streetwear',
-                    'title' => 'The Ultimate Guide to Heavyweight Streetwear: Why Fabric GSM Matters',
-                    'excerpt' => 'From 180 GSM combed cotton to 450 GSM French terry fleece: explore how fabric density, combed yarn count, and loopback knitting define luxury streetwear essentials.',
-                    'content' => '<h2>What Does GSM Really Mean in Streetwear?</h2><p>In textile manufacturing, GSM stands for Grams per Square Meter. It is the international standard metric for fabric density and weight. While fast-fashion t-shirts measure between 120 and 150 GSM, luxury streetwear relies on dense, heavyweight fabrics ranging from 220 to 260 GSM for t-shirts and 400 to 480 GSM for hoodies.</p><h3>Why Heavyweight Cotton Holds Its Silhouette</h3><p>Heavyweight cotton maintains its structured boxy drape, eliminates collar baconing, and resists transparency even under harsh sunlight.</p>',
-                ],
-                [
-                    'slug' => 'factory-to-retail-wholesale-model',
-                    'title' => 'Direct From Factory: How Custom Garment Packs Empower Modern Brands',
-                    'excerpt' => 'Discover how cutting out middleman distributors and offering flexible 12-to-100 unit custom packs is rewriting the playbook for independent clothing labels.',
-                    'content' => '<h2>The Traditional Wholesale Bottleneck</h2><p>For decades, independent designers were trapped between paying retail prices for blanks or committing to 500-unit minimums. Our custom packs model starts at just 12 units with full size and color mixing flexibility.</p>',
-                ],
-                [
-                    'slug' => 'garment-care-washing-guide',
-                    'title' => 'Streetwear Care Guide: How to Wash, Dry, and Preserve Premium Cotton',
-                    'excerpt' => 'Master the essential laundry protocols to prevent shrinkage, maintain fleece fluffiness, and preserve deep garment dyes wash after wash.',
-                    'content' => '<h2>The Science of Preserving Heavyweight Cotton</h2><p>Always wash inside-out in cold water (maximum 30°C / 86°F) on gentle cycle, and lay flat to air dry. Avoid high mechanical heat in residential tumble dryers to maintain fleece softness.</p>',
-                ],
-            ];
-
-            foreach ($blogs as $blog) {
-                StorefrontContent::query()->updateOrCreate(
-                    [
-                        'workspace_id' => $workspace->id,
-                        'type' => 'blog',
-                        'slug' => $blog['slug'],
-                    ],
-                    [
-                        'data' => [
-                            'title' => $blog['title'],
-                            'excerpt' => $blog['excerpt'],
-                            'content' => $blog['content'],
-                        ],
-                        'published_at' => now(),
-                    ]
-                );
-            }
+            app(StorefrontBlogSeeder::class)->seedWorkspace($workspace->id);
         }
     }
 }

@@ -7,7 +7,7 @@
             <div>
                 <div class="flex flex-wrap items-center gap-2.5">
                     <h2 class="heading-2">{{ $knowledgeBase->name }}</h2>
-                    <span class="badge badge-{{ $knowledgeBase->status === 'ready' ? 'success' : ($knowledgeBase->status === 'error' ? 'error' : 'warning') }}">{{ ucfirst($knowledgeBase->status) }}</span>
+                    <span class="badge badge-{{ $knowledgeBase->status === 'ready' ? 'success' : ($knowledgeBase->status === 'error' ? 'error' : 'warning') }}">{{ ['ready' => __('Ready'), 'error' => __('Needs attention')][$knowledgeBase->status] ?? __('Learning') }}</span>
                 </div>
                 <p class="m-text mt-1">{{ $knowledgeBase->description ?: __('No description') }}</p>
             </div>
@@ -26,13 +26,25 @@
 
     @if ($errors->any())
         <div class="mt-4 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
-            {{ __('Please fix the highlighted source fields.') }}
+            <ul class="list-inside list-disc">
+                @foreach ($errors->all() as $message)
+                    <li>{{ $message }}</li>
+                @endforeach
+            </ul>
         </div>
     @endif
 
-    <div class="mt-4 rounded-md border {{ $vectorSearchEnabled ? 'border-success/20 bg-success/5 text-success' : 'border-warning/20 bg-warning/5 text-warning' }} px-4 py-3 text-sm font-semibold">
-        {{ $vectorSearchEnabled ? __('Qdrant vector search is active. Indexed chunks will sync to the vector database.') : __('Database fallback is active. Configure Qdrant in Admin AI Settings for semantic vector search.') }}
-    </div>
+    @if (! $vectorSearchEnabled)
+        <div class="mt-4 rounded-md border border-neutral-100 bg-section px-4 py-3 text-sm text-neutral-500">
+            {{ __('Answers use simple word matching. This works well for most stores.') }}
+        </div>
+    @endif
+
+    @if ($knowledgeBase->status !== 'ready' && $knowledgeBase->status !== 'error')
+        <div x-data x-init="setTimeout(() => window.location.reload(), 6000)" class="mt-4 rounded-md border border-warning/20 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning">
+            {{ __('Your bot is learning this. This page refreshes by itself.') }}
+        </div>
+    @endif
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div class="space-y-6">
@@ -55,28 +67,28 @@
             </section>
 
             <section class="app-card p-5 sm:p-6">
-                <h3 class="heading-4">{{ __('Sources') }}</h3>
+                <h3 class="heading-4">{{ __('What your bot knows') }}</h3>
                 <div class="mt-4 space-y-3">
                     @forelse ($sources as $source)
                         <div class="rounded-md border border-neutral-100 p-4">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="truncate font-semibold text-title">{{ $source->title }}</p>
-                                    <p class="text-xs text-neutral-400">{{ strtoupper($source->type) }} · {{ $source->chunks_count }} {{ __('chunks') }} · {{ $source->token_count }} {{ __('tokens') }}</p>
-                                    <p class="mt-1 text-xs text-neutral-400">{{ __('Vector') }}: {{ ucfirst(str_replace('_', ' ', $source->vector_status ?? 'pending')) }} @if ($source->last_indexed_at) · {{ $source->last_indexed_at->diffForHumans() }} @endif</p>
+                                    <p class="text-xs text-neutral-400">
+                                        {{ ['text' => __('Text'), 'url' => __('Web page'), 'file' => __('File')][$source->type] ?? __('Text') }}
+                                        @if ($source->last_indexed_at) · {{ __('Learned :time', ['time' => $source->last_indexed_at->diffForHumans()]) }} @endif
+                                        @if (data_get($source->metadata, 'managed')) · {{ __('Updated automatically from your store') }} @endif
+                                    </p>
                                     @if ($source->error)
                                         <p class="mt-1 text-xs font-semibold text-error">{{ $source->error }}</p>
                                     @endif
-                                    @if ($source->vector_error)
-                                        <p class="mt-1 text-xs font-semibold text-warning">{{ $source->vector_error }}</p>
-                                    @endif
                                 </div>
-                                <span class="badge badge-{{ $source->status === 'ready' ? 'success' : ($source->status === 'error' ? 'error' : 'warning') }}">{{ ucfirst($source->status) }}</span>
+                                <span class="badge badge-{{ $source->status === 'ready' ? 'success' : ($source->status === 'error' ? 'error' : 'warning') }}">{{ ['ready' => __('Ready'), 'error' => __('Needs attention'), 'pending' => __('Learning'), 'indexing' => __('Learning')][$source->status] ?? $source->status }}</span>
                             </div>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
                                 <form method="POST" action="{{ route('user.knowledge-bases.sources.reindex', $source) }}">
                                     @csrf
-                                    <button type="submit" class="btn-sm btn-outline">{{ __('Re-index') }}</button>
+                                    <button type="submit" class="btn-sm btn-outline">{{ $source->status === 'error' ? __('Try again') : __('Learn again') }}</button>
                                 </form>
                                 <form method="POST" action="{{ route('user.knowledge-bases.sources.destroy', $source) }}">
                                     @csrf
@@ -86,67 +98,58 @@
                             </div>
                         </div>
                     @empty
-                        <p class="m-text">{{ __('No sources yet. Add one to create searchable chunks.') }}</p>
+                        <p class="m-text">{{ __('Nothing here yet. Add some text, questions, a web page or a file.') }}</p>
                     @endforelse
                 </div>
                 <div class="mt-5">{{ $sources->links() }}</div>
             </section>
-
-            <section class="app-card p-5 sm:p-6">
-                <h3 class="heading-4">{{ __('Recent Chunks') }}</h3>
-                <div class="mt-4 space-y-3">
-                    @forelse ($chunks as $chunk)
-                        <div class="rounded-md bg-section p-4">
-                            <p class="text-xs font-semibold text-neutral-400">{{ $chunk->source?->title }}</p>
-                            <p class="m-text mt-1 line-clamp-3">{{ $chunk->content }}</p>
-                        </div>
-                    @empty
-                        <p class="m-text">{{ __('Chunks will appear after sources are indexed.') }}</p>
-                    @endforelse
-                </div>
-            </section>
         </div>
 
         <aside class="lg:sticky lg:top-24 lg:self-start">
-            <form method="POST" action="{{ route('user.knowledge-bases.sources.store', $knowledgeBase) }}" enctype="multipart/form-data" class="app-card p-5">
+            <form method="POST" action="{{ route('user.knowledge-bases.sources.store', $knowledgeBase) }}" enctype="multipart/form-data" class="app-card p-5" x-data="{ type: '{{ old('type', 'text') }}', pairs: [{}] }">
                 @csrf
-                <h3 class="heading-4">{{ __('Add Source') }}</h3>
+                <input type="hidden" name="type" x-model="type">
+                <h3 class="heading-4">{{ __('Add knowledge') }}</h3>
 
-                <div class="mt-4">
-                    <label for="type" class="form-label">{{ __('Source type') }}</label>
-                    <select id="type" name="type" class="form-input">
-                        @foreach (['text' => __('Text'), 'url' => __('Website URL'), 'file' => __('File')] as $value => $label)
-                            <option value="{{ $value }}" @selected(old('type', 'text') === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('type')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    @foreach (['text' => __('Write text'), 'faq' => __('Q & A'), 'url' => __('Web page'), 'file' => __('File')] as $value => $label)
+                        <button type="button" x-on:click="type = '{{ $value }}'" x-bind:class="type === '{{ $value }}' ? 'btn-primary' : 'btn-outline'" class="btn-sm">{{ $label }}</button>
+                    @endforeach
+                </div>
+
+                <div class="mt-4" x-show="type === 'text'">
+                    <label for="content" class="form-label">{{ __('Write anything your bot should know') }}</label>
+                    <textarea id="content" name="content" rows="6" class="form-input" x-bind:disabled="type !== 'text'">{{ old('content') }}</textarea>
+                </div>
+
+                <div class="mt-4 space-y-3" x-show="type === 'faq'">
+                    <template x-for="(pair, index) in pairs" x-bind:key="index">
+                        <div class="rounded-md border border-neutral-100 p-3">
+                            <input type="text" x-bind:name="'faq[' + index + '][question]'" x-bind:disabled="type !== 'faq'" placeholder="{{ __('Question') }}" class="form-input">
+                            <textarea x-bind:name="'faq[' + index + '][answer]'" x-bind:disabled="type !== 'faq'" rows="2" placeholder="{{ __('Answer') }}" class="form-input mt-2"></textarea>
+                        </div>
+                    </template>
+                    <button type="button" class="btn-sm btn-outline" x-on:click="pairs.push({})">{{ __('Add another question') }}</button>
+                </div>
+
+                <div class="mt-4" x-show="type === 'url'">
+                    <label for="url" class="form-label">{{ __('Web page address') }}</label>
+                    <input id="url" name="url" type="url" value="{{ old('url') }}" placeholder="https://" class="form-input" x-bind:disabled="type !== 'url'">
+                    <p class="form-hint">{{ __('Only this one page is read.') }}</p>
+                </div>
+
+                <div class="mt-4" x-show="type === 'file'">
+                    <label for="file" class="form-label">{{ __('Choose a file') }}</label>
+                    <input id="file" name="file" type="file" class="form-input" accept=".pdf,.docx,.txt,.md,.csv,.json,.html,.htm" x-bind:disabled="type !== 'file'">
+                    <p class="form-hint">{{ __('PDF, Word, text or CSV, up to 20 MB.') }}</p>
                 </div>
 
                 <div class="mt-4">
-                    <label for="title" class="form-label">{{ __('Title') }}</label>
-                    <input id="title" name="title" type="text" value="{{ old('title') }}" required class="form-input">
-                    @error('title')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                    <label for="title" class="form-label">{{ __('Name (optional)') }}</label>
+                    <input id="title" name="title" type="text" value="{{ old('title') }}" class="form-input">
                 </div>
 
-                <div class="mt-4">
-                    <label for="url" class="form-label">{{ __('URL') }}</label>
-                    <input id="url" name="url" type="url" value="{{ old('url') }}" class="form-input">
-                    @error('url')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="mt-4">
-                    <label for="content" class="form-label">{{ __('Text content') }}</label>
-                    <textarea id="content" name="content" rows="5" class="form-input">{{ old('content') }}</textarea>
-                    @error('content')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="mt-4">
-                    <label for="file" class="form-label">{{ __('File') }}</label>
-                    <input id="file" name="file" type="file" class="form-input" accept=".pdf,.docx,.txt,.md,.csv,.json,.html,.htm">
-                    @error('file')<p class="form-hint text-error">{{ $message }}</p>@enderror
-                </div>
-
-                <button type="submit" class="btn btn-primary mt-5 w-full">{{ __('Add & Index') }}</button>
+                <button type="submit" class="btn btn-primary mt-5 w-full">{{ __('Add') }}</button>
             </form>
         </aside>
     </div>

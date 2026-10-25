@@ -4,6 +4,9 @@
         $isAddressLocked = $order->hasCompleteShippingAddress();
         $precision = (new \App\Modules\Commerce\Models\StoreOrderSetting(['currency' => $order->currency]))->precision();
         $money = fn ($amount) => $order->currency.' '.number_format((float) $amount, $precision);
+        $canViewSummary = auth()->user()->can('commerce.orders.summary.view');
+        $canViewCustomer = auth()->user()->can('commerce.orders.customer.view');
+        $canViewPayments = auth()->user()->can('commerce.orders.payments.view');
         $progressSteps = $order->source === 'pos' ? ($order->fulfillment_type === 'pickup' ? ['processing', 'completed'] : ['requested', 'processing', 'packed', 'shipped', 'completed']) : ['requested', 'quoted', 'awaiting_payment', 'paid', 'processing', 'packed', 'shipped', 'completed'];
         $currentStepIndex = array_search($order->status, $progressSteps, true);
         $packedPieces = $order->boxes->flatMap->contents->sum('quantity');
@@ -20,12 +23,12 @@
         <header class="section-card flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="space-y-1">
                 <p class="text-sm font-semibold text-primary">{{ $order->number }}</p>
-                <h1 class="heading-3 text-title">{{ $order->contact?->name ?? ($order->customer_snapshot['name'] ?? $address['name'] ?? __('Customer')) }}</h1>
+                <h1 class="heading-3 text-title">{{ $canViewCustomer ? ($order->contact?->name ?? ($order->customer_snapshot['name'] ?? $address['name'] ?? __('Customer'))) : __('Order') }}</h1>
                 <p class="text-sm text-body">{{ __('Placed') }} {{ $order->created_at?->format('M j, Y · g:i A') }} · {{ __('Source') }}: {{ str($order->source ?? 'manual')->replace('_', ' ')->title() }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <span class="badge badge-soft">{{ str($order->status)->replace('_', ' ')->title() }}</span>
-                <span class="badge badge-soft">{{ __('Payment') }}: {{ str($order->payment_state)->replace('_', ' ')->title() }}</span>
+                @if($canViewPayments)<span class="badge badge-soft">{{ __('Payment') }}: {{ str($order->payment_state)->replace('_', ' ')->title() }}</span>@endif
                 <x-ui.button href="{{ route('user.commerce.orders.packing-slip', $order) }}" variant="outline" class="rounded-sm text-xs py-1.5">
                     <i class="ph ph-printer mr-1"></i>{{ __('Packing slip') }}
                 </x-ui.button>
@@ -46,7 +49,7 @@
         @endif
 
         @if($order->status === 'needs_details' && ! $order->groups()->exists())
-            @can('commerce.manage')
+            @can('commerce.orders.create')
                 <a href="{{ route('user.commerce.orders.complete.form', $order) }}" class="block rounded-md border border-warning/30 bg-warning/10 p-4 text-sm font-semibold text-title">{{ __('Confirm retail selections or wholesale box counts') }} →</a>
             @endcan
         @endif
@@ -120,7 +123,7 @@
                                             @if($box->packed_at)
                                                 <p class="border-t border-border-soft pt-3 text-xs font-semibold text-primary"><i class="ph ph-check-circle" aria-hidden="true"></i> {{ __('Packed') }} · {{ $box->packed_at->format('M j, Y') }}</p>
                                             @elseif(in_array($order->status, ['paid', 'processing']) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery'))
-                                                @can('commerce.manage')
+                                                @can('commerce.orders.update')
                                                     <form method="POST" action="{{ route('user.commerce.orders.boxes.packed', [$order, $box]) }}" class="border-t border-border-soft pt-3">
                                                         @csrf @method('PUT')
                                                         <x-forms.submit :label="__('Mark box packed')" />
@@ -173,19 +176,58 @@
                 <section class="section-card">
                     <h2 class="heading-5 text-title">{{ __('Update status and tracking') }}</h2>
                     <p class="mt-1 text-sm text-body">{{ __('Customers use the tracking number on the storefront Order Tracking page. Mark the order completed after delivery.') }}</p>
-                    <form method="POST" action="{{ route('user.commerce.orders.transition', $order) }}" class="mt-4 grid gap-4 md:grid-cols-2">
+                    <form method="POST" action="{{ route('user.commerce.orders.transition', $order) }}" enctype="multipart/form-data" class="mt-4 grid gap-4 md:grid-cols-2">
                         @csrf @method('PUT')
                         <div><label class="form-label" for="status">{{ __('Next status') }}</label><select id="status" class="form-input" name="status" required>@foreach($order->source === 'pos' ? array_merge([$order->status], ($order->fulfillment_type === 'delivery' ? match ($order->status) { 'processing' => ['packed'], 'packed' => ['shipped'], 'shipped' => ['completed'], default => [] } : []), (! $order->inventory_adjusted_at && $order->payments->isEmpty() && ! in_array($order->status, ['completed', 'cancelled']) ? ['cancelled'] : [])) : ['requested','needs_details','quoted','awaiting_payment','paid','processing','packed','shipped','completed','cancelled'] as $status)<option value="{{ $status }}" @selected($status === $order->status)>{{ str($status)->replace('_',' ')->title() }}</option>@endforeach</select></div>
-                        <div><label class="form-label" for="carrier">{{ __('Carrier') }}</label><input id="carrier" class="form-input" name="carrier" maxlength="150"></div>
+                        <div><label class="form-label" for="carrier">{{ __('Carrier') }}</label><input id="carrier" class="form-input" name="carrier" maxlength="150" value="{{ old('carrier', $order->shipment?->carrier !== 'Carrier' ? $order->shipment?->carrier : '') }}" placeholder="{{ __('e.g. DHL, FedEx, Pathao') }}"></div>
                         <div><label class="form-label" for="tracking_number">{{ __('Tracking number') }}</label><input id="tracking_number" class="form-input" name="tracking_number" maxlength="150" value="{{ old('tracking_number', $order->tracking_number) }}"></div>
                         <div><label class="form-label" for="tracking_url">{{ __('Carrier tracking URL') }}</label><input id="tracking_url" class="form-input" type="url" name="tracking_url" maxlength="2048" value="{{ old('tracking_url', $order->tracking_url) }}" placeholder="https://..."></div>
+                        <div class="md:col-span-2">
+                            <label class="form-label" for="proof_image">{{ __('Courier image (optional)') }}</label>
+                            <input id="proof_image" class="form-input" type="file" name="proof_image" accept="image/png,image/jpeg,image/webp">
+                            <p class="mt-1 text-xs text-body">{{ __('Courier receipt, parcel label or handover photo. Customers see it on the Shipped step. JPG, PNG or WebP up to 5 MB.') }}</p>
+                            @error('proof_image')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                        </div>
                         <div class="md:col-span-2"><x-forms.submit :label="__('Update status')" /></div>
+                    </form>
+                </section>
+                @endif
+
+                @if(in_array($order->status, ['shipped', 'completed'], true))
+                <section class="section-card">
+                    <h2 class="heading-5 text-title">{{ __('Shipment details') }}</h2>
+                    <p class="mt-1 text-sm text-body">{{ __('Shown to the customer on the Shipped step of order tracking. Update the courier link or image at any time.') }}</p>
+                    <form method="POST" action="{{ route('user.commerce.orders.shipment', $order) }}" enctype="multipart/form-data" class="mt-4 grid gap-4 md:grid-cols-2">
+                        @csrf @method('PUT')
+                        <div><label class="form-label" for="shipment_carrier">{{ __('Carrier') }}</label><input id="shipment_carrier" class="form-input" name="carrier" maxlength="150" value="{{ old('carrier', $order->shipment?->carrier !== 'Carrier' ? $order->shipment?->carrier : '') }}" placeholder="{{ __('e.g. DHL, FedEx, Pathao') }}"></div>
+                        <div><label class="form-label" for="shipment_tracking_number">{{ __('Tracking number') }}</label><input id="shipment_tracking_number" class="form-input" name="tracking_number" maxlength="150" required value="{{ old('tracking_number', $order->shipment?->tracking_number ?? $order->tracking_number) }}"></div>
+                        <div class="md:col-span-2"><label class="form-label" for="shipment_tracking_url">{{ __('Carrier tracking URL') }}</label><input id="shipment_tracking_url" class="form-input" type="url" name="tracking_url" maxlength="2048" value="{{ old('tracking_url', $order->shipment?->tracking_url ?? $order->tracking_url) }}" placeholder="https://..."></div>
+                        <div class="md:col-span-2">
+                            <span class="form-label">{{ __('Courier image') }}</span>
+                            @if($order->shipment?->proofImageUrl())
+                                <div class="mb-3 flex items-center gap-4">
+                                    <a href="{{ $order->shipment->proofImageUrl() }}" target="_blank" rel="noopener" class="block size-24 shrink-0 overflow-hidden rounded-lg border border-border">
+                                        <img src="{{ $order->shipment->proofImageUrl() }}" alt="{{ __('Courier image') }}" class="size-full object-cover">
+                                    </a>
+                                    <label class="inline-label flex items-center gap-2 text-sm text-body">
+                                        <input type="checkbox" name="remove_proof_image" value="1">
+                                        {{ __('Remove current image') }}
+                                    </label>
+                                </div>
+                            @endif
+                            <input id="shipment_proof_image" class="form-input" type="file" name="proof_image" accept="image/png,image/jpeg,image/webp" aria-label="{{ __('Upload courier image') }}">
+                            <p class="mt-1 text-xs text-body">{{ $order->shipment?->proof_image ? __('Uploading a new image replaces the current one.') : __('JPG, PNG or WebP up to 5 MB.') }}</p>
+                            @error('proof_image')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                            @error('shipment')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div class="md:col-span-2"><x-forms.submit :label="__('Save shipment details')" /></div>
                     </form>
                 </section>
                 @endif
             </div>
 
             <aside class="space-y-6">
+                @if($canViewSummary)
                 <section class="section-card space-y-2">
                     <h2 class="heading-5 text-title">{{ __('Order summary') }}</h2>
                     <dl class="space-y-2 text-sm">
@@ -196,6 +238,7 @@
                         <div class="flex justify-between"><dt class="text-body">{{ __('Pieces') }}</dt><dd>{{ $orderedPieces }}</dd></div>
                     </dl>
                 </section>
+                @endif
 
                 @php
                     $contactPerson = $order->contact;
@@ -208,10 +251,11 @@
                     $customerPhone = $contactPerson?->phone ?? ($order->customer_snapshot['phone'] ?? ($address['phone'] ?? ''));
                     $customerEmail = $contactPerson?->email ?? ($order->customer_snapshot['email'] ?? ($address['email'] ?? ''));
                 @endphp
+                @if($canViewCustomer)
                 <section class="section-card space-y-3 text-sm">
                     <div class="flex items-center justify-between">
                         <h2 class="heading-5 text-title">{{ __('Customer') }}</h2>
-                        @can('commerce.manage')
+                        @can('commerce.orders.customer.edit')
                         <button type="button" class="btn btn-outline btn-sm rounded-sm text-xs py-1 px-2.5" data-modal-open="editCustomerModal">
                             <i class="ph ph-pencil-simple"></i> {{ __('Edit Contact') }}
                         </button>
@@ -241,6 +285,7 @@
                         </div>
                     @endif
                 </section>
+                @endif
 
                 @if($order->source !== 'pos' || $order->fulfillment_type === 'delivery')
                 <section class="section-card space-y-1 text-sm">
@@ -249,8 +294,10 @@
                         @if($isAddressLocked)<span class="text-xs text-body"><i class="ph ph-lock-simple"></i> {{ __('From customer') }}</span>@endif
                     </div>
                     @if($address)
-                        <p class="text-title">{{ $address['name'] ?? '' }}</p>
-                        <p class="text-body">{{ $address['phone'] ?? '' }}</p>
+                        @if($canViewCustomer)
+                            <p class="text-title">{{ $address['name'] ?? '' }}</p>
+                            <p class="text-body">{{ $address['phone'] ?? '' }}</p>
+                        @endif
                         <p class="text-body">{{ $address['line1'] ?? '' }}@if(filled($address['line2'] ?? null)), {{ $address['line2'] }}@endif</p>
                         <p class="text-body">{{ collect([$address['city'] ?? null, $address['state'] ?? null, $address['postal_code'] ?? null])->filter()->implode(', ') }}</p>
                         <p class="text-body">{{ $address['country'] ?? '' }}</p>
@@ -263,7 +310,7 @@
                 </section>
                 @endif
 
-                @if($order->source !== 'pos')
+                @if($canViewPayments && $order->source !== 'pos')
                 <section class="section-card space-y-2 text-sm">
                     <h2 class="heading-5 text-title">{{ __('Payment') }}</h2>
                     <p><span class="badge badge-soft">{{ str($order->payment_state)->replace('_', ' ')->title() }}</span></p>
@@ -296,7 +343,8 @@
         </div>
         @include('commerce::user.partials.order-product-gallery')
 
-        @can('commerce.manage')
+        @if($canViewCustomer)
+        @can('commerce.orders.customer.edit')
         <x-ui.modal id="editCustomerModal" :title="__('Edit Customer Contact & Address')">
             <form method="POST" action="{{ route('user.commerce.orders.customer.update', $order) }}" class="space-y-4">
                 @csrf
@@ -355,5 +403,6 @@
             </form>
         </x-ui.modal>
         @endcan
+        @endif
     </div>
 </x-layouts.user>

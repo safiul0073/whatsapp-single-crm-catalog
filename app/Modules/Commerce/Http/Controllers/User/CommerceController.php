@@ -21,6 +21,7 @@ use App\Modules\Commerce\Http\Requests\SendProductMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductVideoRequest;
 use App\Modules\Commerce\Http\Requests\SyncProductCatalogRequest;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
+use App\Modules\Commerce\Http\Requests\UpdateShipmentRequest;
 use App\Modules\Commerce\Http\Requests\UploadCommerceMediaRequest;
 use App\Modules\Commerce\Http\Requests\VariantPresetRequest;
 use App\Modules\Commerce\Models\Audience;
@@ -52,23 +53,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
-class CommerceController extends Controller implements HasMiddleware
+class CommerceController extends Controller
 {
     public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders, protected CatalogDiagnosticsService $catalogDiagnostics) {}
-
-    public static function middleware(): array
-    {
-        return [
-            new Middleware('permission:commerce.view', only: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'customers', 'customer', 'conversationProducts']),
-            new Middleware('permission:commerce.manage', except: ['index', 'show', 'categories', 'brands', 'audiences', 'variants', 'orders', 'order', 'customers', 'customer', 'conversationProducts']),
-        ];
-    }
 
     public function index(Request $request): View
     {
@@ -315,7 +306,6 @@ class CommerceController extends Controller implements HasMiddleware
             'bulkDestroyRoute' => route('user.commerce.brands.bulk-destroy'),
             'routeParameter' => 'brand',
             'maxLength' => 120,
-            'helpKey' => 'brands',
         ]);
     }
 
@@ -379,7 +369,6 @@ class CommerceController extends Controller implements HasMiddleware
             'bulkDestroyRoute' => route('user.commerce.audiences.bulk-destroy'),
             'routeParameter' => 'audience',
             'maxLength' => 80,
-            'helpKey' => 'audiences',
         ]);
     }
 
@@ -823,6 +812,14 @@ class CommerceController extends Controller implements HasMiddleware
         $this->orders->transition($order, $request->string('status')->toString(), $request->validated());
 
         return back()->with('success', __('Order status updated.'));
+    }
+
+    public function updateShipment(UpdateShipmentRequest $request, Order $order): RedirectResponse
+    {
+        $this->assertWorkspace($request, $order->workspace_id);
+        $this->orders->updateShipment($order, $request->validated());
+
+        return back()->with('success', __('Shipment details updated.'));
     }
 
     public function sendCatalog(Request $request, Conversation $conversation, CatalogMessageService $messages): JsonResponse

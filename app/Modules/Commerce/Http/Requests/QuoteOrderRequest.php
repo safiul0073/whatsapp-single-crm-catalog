@@ -9,7 +9,7 @@ class QuoteOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.orders.update') ?? false;
     }
 
     /**

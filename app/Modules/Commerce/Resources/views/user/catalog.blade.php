@@ -2,8 +2,6 @@
     <div class="space-y-6">
         <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p class="text-sm font-semibold text-primary">{{ __('WhatsApp commerce') }}</p><h1 class="heading-3 text-title">{{ __('Store setup and catalog health') }}</h1><p class="mt-1 max-w-3xl text-sm text-body">{{ __('Connect an existing Meta catalog, choose scheduled feed or direct API synchronization, then verify every production requirement.') }}</p></div><x-ui.button variant="outline" href="{{ route('user.whatsapp-cloud.channel-setup') }}"><i class="ph ph-whatsapp-logo"></i> {{ __('Manage WhatsApp channel') }}</x-ui.button></header>
 
-        @include('commerce::user.partials.help', ['helpKey' => 'catalog'])
-
         @if($errors->any())
             <x-ui.alert type="error">
                 <p class="font-semibold">{{ __('Catalog synchronization could not start') }}</p>

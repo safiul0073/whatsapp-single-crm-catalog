@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Storefront\Http\Requests\CheckoutRequest;
 use App\Modules\Commerce\Storefront\Models\CheckoutSubmission;
@@ -12,6 +13,8 @@ use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\CouponUsage;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Services\CartService;
+use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\Commerce\Storefront\Services\RewardWalletService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +23,7 @@ use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private CartService $carts, private UnifiedOrderService $orders) {}
+    public function __construct(private CartService $carts, private UnifiedOrderService $orders, private ReferralService $referrals, private RewardWalletService $wallet) {}
 
     public function methods(Request $r): JsonResponse
     {
@@ -36,19 +39,36 @@ class CheckoutController extends Controller
         abort_unless(count($s['items']) > 0 && ! $s['warnings'], 422, 'Review unavailable items in your cart.');
         $a = CustomerAddress::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->findOrFail($r->integer('address_id'));
         $data = ['source' => 'storefront_checkout', 'draft' => false, 'contact_id' => $c->contact_id, 'customer_reference' => 'storefront:'.$c->id, 'shipping_address' => $a->address, 'shipping_method_id' => $r->input('shipping_method_id'), 'groups' => $this->carts->checkoutGroups($cart)];
+        $data['adjustments'] = [];
         if ($cart->coupon_code) {
-            $data['adjustments'] = [['type' => 'coupon', 'amount' => $s['discount'], 'currency' => $s['currency'], 'reference' => $cart->coupon_code]];
+            $data['adjustments'][] = ['type' => 'coupon', 'amount' => $s['discount'], 'currency' => $s['currency'], 'reference' => $cart->coupon_code];
+        }
+        $payable = OrderMoney::minor($s['total'], $s['precision']);
+        $welcome = $this->referrals->welcomeDiscount($c, $payable, $s['precision']);
+        if ($welcome > 0) {
+            $data['adjustments'][] = ['type' => 'referral_welcome', 'amount' => OrderMoney::decimal($welcome, $s['precision']), 'currency' => $s['currency'], 'reference' => 'referral'];
+            $payable -= $welcome;
+        }
+        $available = $this->wallet->redeemable($c->workspace_id, $c->id, $payable, $s['precision']);
+        $rewards = ['balance' => OrderMoney::decimal($this->wallet->balance($c->workspace_id, $c->id), $s['precision']), 'available' => OrderMoney::decimal($available, $s['precision']), 'max_percent' => $this->referrals->settings($c->workspace_id)->max_redeem_percent, 'applied' => '0', 'applied_minor' => 0];
+        if ($r->boolean('use_rewards') && $available > 0) {
+            $data['adjustments'][] = ['type' => 'reward_wallet', 'amount' => OrderMoney::decimal($available, $s['precision']), 'currency' => $s['currency'], 'reference' => 'wallet'];
+            $rewards = [...$rewards, 'applied' => OrderMoney::decimal($available, $s['precision']), 'applied_minor' => $available];
+        }
+        if ($data['adjustments'] === []) {
+            unset($data['adjustments']);
         }
 
-        return [$cart, $data];
+        return [$cart, $data, $rewards];
     }
 
     public function preview(CheckoutRequest $r): JsonResponse
     {
         return DB::transaction(function () use ($r): JsonResponse {
-            [, $data] = $this->data($r);
+            [, $data, $rewards] = $this->data($r);
+            unset($rewards['applied_minor']);
 
-            return response()->json(['data' => $this->orders->preview($r->attributes->get('store_workspace'), $data)]);
+            return response()->json(['data' => [...$this->orders->preview($r->attributes->get('store_workspace'), $data), 'rewards' => $rewards]]);
         });
     }
 
@@ -78,7 +98,7 @@ class CheckoutController extends Controller
             }
             $method = collect(StoreOrderSetting::paymentMethods($w->id, true))->firstWhere('id', $r->input('payment_method_id'));
             abort_unless($method, 422, 'Choose an available manual payment method.');
-            [$cart,$data] = $this->data($r);
+            [$cart, $data, $rewards] = $this->data($r);
             $data['submission_reference'] = $key;
             $preview = $this->orders->preview($w, $data);
             abort_if($preview['shipping_quote_required'], 422, 'No shipping rate covers this address.');
@@ -89,6 +109,10 @@ class CheckoutController extends Controller
                 $coupon = Coupon::query()->where('workspace_id', $w->id)->where('code', $cart->coupon_code)->firstOrFail();
                 CouponUsage::query()->create(['workspace_id' => $w->id, 'coupon_id' => $coupon->id, 'customer_id' => $c->id, 'order_id' => $order->id]);
             }
+            if ($rewards['applied_minor'] > 0) {
+                $this->wallet->post($w->id, $c->id, -$rewards['applied_minor'], 'redeem', 'redeem:order:'.$order->id, $order, 'Used on order '.$order->number);
+            }
+            $this->referrals->orderPlaced($order, $c);
             $cart->update(['completed_at' => now()]);
 
             return response()->json(['data' => $this->orders->payload($order)], 201);

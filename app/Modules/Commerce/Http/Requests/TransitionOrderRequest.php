@@ -8,11 +8,11 @@ class TransitionOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.orders.update') ?? false;
     }
 
     public function rules(): array
     {
-        return ['status' => ['required', 'in:requested,needs_details,quoted,awaiting_payment,paid,processing,packed,shipped,completed,cancelled'], 'carrier' => ['nullable', 'string', 'max:150'], 'tracking_number' => ['nullable', 'string', 'max:150'], 'tracking_url' => ['nullable', 'url:https', 'max:2048']];
+        return ['status' => ['required', 'in:requested,needs_details,quoted,awaiting_payment,paid,processing,packed,shipped,completed,cancelled'], 'carrier' => ['nullable', 'string', 'max:150'], 'tracking_number' => ['nullable', 'string', 'max:150'], 'tracking_url' => ['nullable', 'url:https', 'max:2048'], 'proof_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120']];
     }
 }

@@ -7,7 +7,7 @@
     @if($order->payments->isNotEmpty())
         <div class="overflow-x-auto"><table class="w-full min-w-[540px] text-left text-sm"><thead><tr class="border-b border-border text-body"><th class="p-2">{{ __('Recorded') }}</th><th class="p-2">{{ __('Method / reference') }}</th><th class="p-2">{{ __('Amount') }}</th><th class="p-2">{{ __('Staff') }}</th></tr></thead><tbody>@foreach($order->payments as $payment)<tr class="border-b border-border-soft text-title"><td class="p-2">{{ $payment->recorded_at->format('M j, Y · g:i A') }}</td><td class="p-2">{{ $payment->method }}<span class="block text-xs text-body">{{ $payment->reference }}</span>@if($payment->tendered_amount !== null)<span class="block text-xs text-body">{{ __('Cash received') }}: {{ $money($payment->tendered_amount) }} · {{ __('Change') }}: {{ $money($payment->change_amount) }}</span>@endif</td><td class="p-2">{{ $money($payment->amount) }}</td><td class="p-2">{{ $payment->staff?->name ?? __('Staff') }}</td></tr>@endforeach</tbody></table></div>
     @endif
-    @can('commerce.manage')
+    @can('commerce.orders.payments.manage')
         @if($order->total !== null && (float) $order->balanceDue() > 0 && $order->status !== 'cancelled')
             <form method="POST" action="{{ route('user.commerce.pos.payment', $order) }}" class="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2">
                 @csrf

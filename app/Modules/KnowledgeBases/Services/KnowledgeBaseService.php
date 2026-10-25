@@ -33,6 +33,7 @@ class KnowledgeBaseService
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             }))
+            ->orderByRaw("JSON_EXTRACT(settings, '$.managed') IS NULL")
             ->latest()
             ->paginate(12)
             ->withQueryString();
@@ -97,11 +98,16 @@ class KnowledgeBaseService
         $type = (string) $data['type'];
         $metadata = [];
         $filePath = null;
-        $content = $data['content'] ?? null;
+        $content = $type === 'faq' ? $this->faqContent((array) ($data['faq'] ?? [])) : ($data['content'] ?? null);
+
+        if ($type === 'faq') {
+            $type = 'text';
+            $metadata['kind'] = 'faq';
+        }
 
         if ($type === 'file' && $file) {
             $filePath = $file->store('knowledge-bases/'.$knowledgeBase->id, 'local');
-            $metadata = [
+            $metadata += [
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
@@ -110,7 +116,7 @@ class KnowledgeBaseService
 
         $source = $knowledgeBase->sources()->create([
             'type' => $type,
-            'title' => $data['title'],
+            'title' => $this->titleFor($data, $type, $content, $file),
             'url' => $data['url'] ?? null,
             'file_path' => $filePath,
             'content' => $content,
@@ -172,5 +178,38 @@ class KnowledgeBaseService
             'status' => $hasIndexing ? 'indexing' : ($hasError ? 'error' : 'ready'),
             'last_indexed_at' => $knowledgeBase->sources()->max('last_indexed_at'),
         ]);
+    }
+
+    /**
+     * @param  array<int, array{question?: ?string, answer?: ?string}>  $pairs
+     */
+    protected function faqContent(array $pairs): string
+    {
+        return collect($pairs)
+            ->filter(fn ($pair): bool => filled($pair['question'] ?? null) && filled($pair['answer'] ?? null))
+            ->map(fn ($pair): string => 'Q: '.trim($pair['question'])."\nA: ".trim($pair['answer']))
+            ->implode("\n\n");
+    }
+
+    protected function titleFor(array $data, string $type, ?string $content, ?UploadedFile $file): string
+    {
+        if (filled($data['title'] ?? null)) {
+            return $data['title'];
+        }
+
+        $title = match (true) {
+            $type === 'file' && $file !== null => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            $type === 'url' => parse_url((string) ($data['url'] ?? ''), PHP_URL_HOST).parse_url((string) ($data['url'] ?? ''), PHP_URL_PATH),
+            ($data['type'] ?? null) === 'faq' => 'Questions and answers',
+            default => str((string) $content)->squish()->limit(60, '')->toString(),
+        };
+
+        return filled($title) ? $title : 'Untitled';
+    }
+
+    public function refreshDefaults(?User $user): void
+    {
+        $workspace = $this->workspaces->current($user);
+        app(DefaultKnowledgeBaseService::class)->refresh($workspace);
     }
 }

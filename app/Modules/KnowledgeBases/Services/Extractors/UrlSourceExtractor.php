@@ -15,7 +15,7 @@ class UrlSourceExtractor implements KnowledgeBaseExtractor
             throw new \RuntimeException('URL returned HTTP '.$response->status().'.');
         }
 
-        $text = trim(html_entity_decode(strip_tags((string) $response->body())));
+        $text = HtmlText::clean((string) $response->body());
 
         return new KnowledgeBaseExtractionResult($text, [
             'url' => $source->url,

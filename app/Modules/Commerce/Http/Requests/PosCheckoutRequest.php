@@ -6,7 +6,7 @@ class PosCheckoutRequest extends CreateUnifiedOrderRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('commerce.manage') ?? false;
+        return $this->user()?->can('commerce.pos.use') ?? false;
     }
 
     protected function prepareForValidation(): void

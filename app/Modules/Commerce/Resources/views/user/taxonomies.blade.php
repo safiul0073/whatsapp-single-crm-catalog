@@ -19,8 +19,6 @@
             </x-ui.button>
         </header>
 
-        @include('commerce::user.partials.help', ['helpKey' => $helpKey])
-
         @if ($errors->any())
             <div class="rounded-md border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
                 <p class="font-semibold">{{ __('The :item could not be saved.', ['item' => $singular]) }}</p>

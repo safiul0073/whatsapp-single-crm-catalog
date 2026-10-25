@@ -5,6 +5,7 @@ use App\Modules\Commerce\Jobs\SendCustomerWhatsAppWelcome;
 use App\Modules\Commerce\Models\OrderEvent;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
 use Illuminate\Support\Facades\Schedule;
 
@@ -24,3 +25,5 @@ Schedule::call(function (): void {
     WhatsAppCustomerRegistration::query()->where('welcome_status', 'processing')->where('updated_at', '<', now()->subMinutes(10))->update(['welcome_status' => 'uncertain']);
     WhatsAppCustomerRegistration::query()->whereIn('welcome_status', ['pending', 'failed'])->where('welcome_attempts', '<', 3)->each(fn ($registration) => SendCustomerWhatsAppWelcome::dispatch($registration->id));
 })->name('commerce-recover-customer-welcome')->everyFiveMinutes()->withoutOverlapping();
+
+Schedule::call(fn () => app(ReferralService::class)->awardTargetSlabs())->name('commerce-referral-target-bonuses')->dailyAt('00:30')->withoutOverlapping();

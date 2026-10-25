@@ -506,7 +506,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.pos.index',
                                 'active' => 'user.commerce.pos.*',
                                 'icon' => 'ph-cash-register',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.pos.use',
                                 'keywords' => 'point of sale register checkout retail',
                             ],
                             [
@@ -521,7 +521,7 @@ class WorkspaceNavigationRegistry
                                     'user.commerce.orders.receipt',
                                 ],
                                 'icon' => 'ph-package',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.orders.view',
                                 'keywords' => 'orders fulfillment packing slip invoices',
                             ],
                             [
@@ -529,7 +529,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.products.index',
                                 'active' => 'user.commerce.products.*',
                                 'icon' => 'ph-t-shirt',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.products.view',
                                 'keywords' => 'products inventory catalog items',
                             ],
                             [
@@ -537,7 +537,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.customers.index',
                                 'active' => 'user.commerce.customers.*',
                                 'icon' => 'ph-users',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.customers.view',
                                 'keywords' => 'customers buyers accounts storefront mobile app',
                             ],
                             [
@@ -545,7 +545,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.storefront.index',
                                 'active' => 'user.commerce.storefront.*',
                                 'icon' => 'ph-browser',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.storefront.settings|commerce.storefront.pages|commerce.storefront.marketing|commerce.storefront.domains|commerce.storefront.reviews|commerce.storefront.credentials',
                                 'keywords' => 'storefront theme colors domains pages sliders menus coupons reviews cms',
                             ],
                             [
@@ -553,15 +553,23 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.pack-templates.index',
                                 'active' => 'user.commerce.pack-templates.*',
                                 'icon' => 'ph-package',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.pack-templates.manage',
                                 'keywords' => 'custom pack templates mixed wholesale bundles',
+                            ],
+                            [
+                                'label' => __('Referrals'),
+                                'route' => 'user.commerce.referrals.index',
+                                'active' => 'user.commerce.referrals.*',
+                                'icon' => 'ph-gift',
+                                'permission' => 'commerce.referrals.view',
+                                'keywords' => 'referral refer earn rewards wallet cash-in cashin target slabs',
                             ],
                             [
                                 'label' => __('Meta Catalog'),
                                 'route' => 'user.commerce.catalog',
                                 'active' => 'user.commerce.catalog*',
                                 'icon' => 'ph-storefront',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.catalog.manage',
                                 'keywords' => 'meta facebook whatsapp catalog feed sync',
                             ],
                             [
@@ -569,7 +577,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.categories.index',
                                 'active' => 'user.commerce.categories.*',
                                 'icon' => 'ph-tree-structure',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.products.view',
                                 'keywords' => 'product categories taxonomy',
                             ],
                             [
@@ -577,7 +585,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.brands.index',
                                 'active' => 'user.commerce.brands.*',
                                 'icon' => 'ph-seal-check',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.products.view',
                                 'keywords' => 'product brands manufacturers',
                             ],
                             [
@@ -585,7 +593,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.audiences.index',
                                 'active' => 'user.commerce.audiences.*',
                                 'icon' => 'ph-users-three',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.products.view',
                                 'keywords' => 'product audiences target',
                             ],
                             [
@@ -593,7 +601,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.variants.index',
                                 'active' => 'user.commerce.variants.*',
                                 'icon' => 'ph-squares-four',
-                                'permission' => 'commerce.view',
+                                'permission' => 'commerce.products.view',
                                 'keywords' => 'variants sizes colors options presets',
                             ],
                             [
@@ -601,7 +609,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.payment-services.index',
                                 'active' => 'user.commerce.payment-services.*',
                                 'icon' => 'ph-credit-card',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.orders.settings',
                                 'keywords' => 'payments methods bank mobile money',
                             ],
                             [
@@ -609,7 +617,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.commerce.orders.settings',
                                 'active' => 'user.commerce.orders.settings*',
                                 'icon' => 'ph-gear',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'commerce.orders.settings',
                                 'keywords' => 'order settings rules reservation',
                             ],
                         ],
@@ -622,7 +630,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.shipping.index',
                                 'active' => ['user.shipping.index', 'user.shipping.zones.*', 'user.shipping.rates.*'],
                                 'icon' => 'ph-globe-hemisphere-west',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'shipping.manage',
                                 'keywords' => 'shipping zones rates delivery regions',
                             ],
                             [
@@ -630,7 +638,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.shipping.methods.index',
                                 'active' => 'user.shipping.methods.*',
                                 'icon' => 'ph-truck',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'shipping.manage',
                                 'keywords' => 'shipping methods carriers couriers',
                             ],
                             [
@@ -638,7 +646,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.shipping.settings',
                                 'active' => 'user.shipping.settings.*',
                                 'icon' => 'ph-gear',
-                                'permission' => 'commerce.manage',
+                                'permission' => 'shipping.manage',
                                 'keywords' => 'shipping configuration settings',
                             ],
                         ],
@@ -684,7 +692,7 @@ class WorkspaceNavigationRegistry
                                 'route' => 'user.whatsapp-cloud.customer-login',
                                 'active' => 'user.whatsapp-cloud.customer-login*',
                                 'icon' => 'ph-key',
-                                'permission' => 'channels.manage&commerce.manage',
+                                'permission' => 'channels.manage&commerce.orders.settings',
                                 'keywords' => 'whatsapp otp customer login auth storefront',
                             ],
                             [

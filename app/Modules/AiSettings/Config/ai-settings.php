@@ -166,10 +166,22 @@ return [
             'vector_database_enabled' => [
                 'type' => 'feature',
                 'label' => 'Enable Vector Database',
-                'hint' => 'Use Qdrant for semantic knowledge base search when available',
+                'hint' => 'Use semantic vector search for knowledge bases when available',
                 'default' => false,
             ],
+            'vector_database_provider' => [
+                'type' => 'select',
+                'label' => 'Provider',
+                'hint' => 'JSON File is free and needs no extra server. Qdrant is recommended for very large knowledge bases',
+                'default' => 'json_file',
+                'rules' => 'nullable|in:qdrant,json_file',
+                'options' => [
+                    'json_file' => 'JSON File (free, no server needed)',
+                    'qdrant' => 'Qdrant (scalable)',
+                ],
+            ],
             'vector_database_mode' => [
+                'show_when' => ['vector_database_provider' => 'qdrant'],
                 'type' => 'select',
                 'label' => 'Environment Mode',
                 'hint' => 'Local mode does not require an API key; Cloud mode requires Qdrant credentials',
@@ -180,18 +192,8 @@ return [
                     'cloud' => 'Cloud',
                 ],
             ],
-            'vector_database_provider' => [
-                'type' => 'select',
-                'label' => 'Provider',
-                'hint' => 'Vector database provider',
-                'default' => 'qdrant',
-                'rules' => 'nullable|in:qdrant,json_file',
-                'options' => [
-                    'qdrant' => 'Qdrant',
-                    'json_file' => 'JSON File (Local Storage)',
-                ],
-            ],
             'qdrant_url' => [
+                'show_when' => ['vector_database_provider' => 'qdrant'],
                 'type' => 'text',
                 'label' => 'Qdrant URL',
                 'hint' => 'Local: http://localhost:6333. Cloud: your Qdrant Cloud cluster URL',
@@ -199,6 +201,7 @@ return [
                 'rules' => 'nullable|url|max:500',
             ],
             'qdrant_api_key' => [
+                'show_when' => ['vector_database_provider' => 'qdrant'],
                 'type' => 'password',
                 'label' => 'Qdrant API Key',
                 'hint' => 'Required for Qdrant Cloud; optional for local development',
@@ -207,6 +210,7 @@ return [
                 'encrypted' => true,
             ],
             'qdrant_collection' => [
+                'show_when' => ['vector_database_provider' => 'qdrant'],
                 'type' => 'text',
                 'label' => 'Collection Name',
                 'hint' => 'Collection used for knowledge base vectors',
@@ -216,7 +220,7 @@ return [
             'qdrant_vector_dimension' => [
                 'type' => 'integer',
                 'label' => 'Vector Dimension',
-                'hint' => 'Use 1536 for OpenAI text-embedding-3-small',
+                'hint' => 'Embedding size. Use 1536 for OpenAI text-embedding-3-small',
                 'default' => 1536,
                 'rules' => 'nullable|integer|min:1|max:8192',
             ],
@@ -230,11 +234,12 @@ return [
             'qdrant_score_threshold' => [
                 'type' => 'float',
                 'label' => 'Score Threshold',
-                'hint' => 'Minimum similarity score required from Qdrant',
+                'hint' => 'Minimum similarity score (0-1) a chunk needs to be used',
                 'default' => 0.2,
                 'rules' => 'nullable|numeric|min:0|max:1',
             ],
             'qdrant_timeout' => [
+                'show_when' => ['vector_database_provider' => 'qdrant'],
                 'type' => 'integer',
                 'label' => 'Request Timeout',
                 'hint' => 'Timeout in seconds for Qdrant requests',
