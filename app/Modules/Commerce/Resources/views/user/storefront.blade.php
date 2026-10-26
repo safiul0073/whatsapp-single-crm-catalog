@@ -517,6 +517,7 @@
             ],
             [
                 ['sliders', 'ph-slideshow', __('Sliders'), $sliders->count() ?: null, false],
+                ['live', 'ph-broadcast', __('Live & Videos'), isset($liveStreams) && $liveStreams->count() ? $liveStreams->count() : null, false],
                 ['pages', 'ph-browsers', __('Pages'), $pages->count() ?: null, false],
                 ['content', 'ph-article', __('Blog & FAQs'), (($blogs->count() ?? 0) + ($faqs->count() ?? 0)) ?: null, false],
             ],
@@ -3539,6 +3540,412 @@ npm run start</pre>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- TAB: Live Shopping, Facebook Simulcast & Public Storage Videos --}}
+    @php
+        $liveCfg = (array) ($liveSettings ?? []);
+        $fbCfg = (array) ($liveCfg['facebook'] ?? []);
+        $fbReadiness = (array) ($fbCfg['readiness'] ?? ['ready' => false, 'status' => 'unconfigured', 'message' => 'Not configured']);
+        $defaultPlatforms = (array) ($liveCfg['default_platforms'] ?? ['storefront', 'facebook']);
+        $allLiveStreams = $liveStreams ?? collect();
+    @endphp
+    <div x-show="activeTab === 'live'" x-cloak class="space-y-6">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {{-- Left Column: Live Settings + Facebook Live Config --}}
+            <div class="lg:col-span-7 space-y-6">
+                <form method="POST" action="{{ route('user.commerce.storefront.live.settings') }}" class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-6">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="_tab" value="live">
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                        <div class="flex items-center gap-3">
+                            <span class="grid h-10 w-10 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                <i class="ph ph-broadcast text-xl"></i>
+                            </span>
+                            <div>
+                                <h2 class="heading-4 text-title text-base font-semibold">{{ __('Live Shopping, WebRTC & Slider Settings') }}</h2>
+                                <p class="text-xs text-body">{{ __('Control mobile-to-storefront WebRTC streaming, Laravel Reverb real-time chat, and public storage video sliders.') }}</p>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold {{ ($liveCfg['enabled'] ?? true) ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400' }}">
+                            <span class="size-2 rounded-full {{ ($liveCfg['enabled'] ?? true) ? 'bg-emerald-500' : 'bg-neutral-400' }}"></span>
+                            {{ ($liveCfg['enabled'] ?? true) ? __('Live System Active') : __('Disabled') }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <label class="flex items-start gap-3 rounded-xl border border-neutral-200 p-3.5 cursor-pointer hover:border-primary/40 dark:border-neutral-800">
+                            <input type="hidden" name="enabled" value="0">
+                            <input type="checkbox" name="enabled" value="1" class="form-checkbox mt-0.5 rounded text-primary" @checked($liveCfg['enabled'] ?? true)>
+                            <span class="space-y-0.5">
+                                <span class="block text-xs font-semibold text-title">{{ __('Enable Live Shopping & Video Hub') }}</span>
+                                <span class="block text-[11px] text-body">{{ __('Activates /live page on Storefront and Customer Mobile App.') }}</span>
+                            </span>
+                        </label>
+
+                        <label class="flex items-start gap-3 rounded-xl border border-neutral-200 p-3.5 cursor-pointer hover:border-primary/40 dark:border-neutral-800">
+                            <input type="hidden" name="show_header_live_badge" value="0">
+                            <input type="checkbox" name="show_header_live_badge" value="1" class="form-checkbox mt-0.5 rounded text-primary" @checked($liveCfg['show_header_live_badge'] ?? true)>
+                            <span class="space-y-0.5">
+                                <span class="block text-xs font-semibold text-title">{{ __('Show Header "LIVE NOW" Indicator') }}</span>
+                                <span class="block text-[11px] text-body">{{ __('Displays a pulsing live badge in Storefront navigation during broadcasts.') }}</span>
+                            </span>
+                        </label>
+
+                        <label class="flex items-start gap-3 rounded-xl border border-neutral-200 p-3.5 cursor-pointer hover:border-primary/40 dark:border-neutral-800">
+                            <input type="hidden" name="auto_save_recording" value="0">
+                            <input type="checkbox" name="auto_save_recording" value="1" class="form-checkbox mt-0.5 rounded text-primary" @checked($liveCfg['auto_save_recording'] ?? true)>
+                            <span class="space-y-0.5">
+                                <span class="block text-xs font-semibold text-title">{{ __('Save Full Live to Public Storage') }}</span>
+                                <span class="block text-[11px] text-body">{{ __('Stores recorded MP4 files in public/storage/commerce/lives for VOD & sliders.') }}</span>
+                            </span>
+                        </label>
+
+                        <label class="flex items-start gap-3 rounded-xl border border-neutral-200 p-3.5 cursor-pointer hover:border-primary/40 dark:border-neutral-800">
+                            <input type="hidden" name="auto_publish_to_slider" value="0">
+                            <input type="checkbox" name="auto_publish_to_slider" value="1" class="form-checkbox mt-0.5 rounded text-primary" @checked($liveCfg['auto_publish_to_slider'] ?? false)>
+                            <span class="space-y-0.5">
+                                <span class="block text-xs font-semibold text-title">{{ __('Auto-Add Recorded Video to Hero Slider') }}</span>
+                                <span class="block text-[11px] text-body">{{ __('Automatically promotes completed live recordings into the Storefront Hero Slider.') }}</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="form-label text-xs font-semibold">{{ __('Default Broadcast Targets (Owner Mobile App)') }}</label>
+                            <div class="mt-1.5 flex flex-wrap gap-3">
+                                <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium dark:border-neutral-700">
+                                    <input type="checkbox" name="default_platforms[]" value="storefront" class="form-checkbox rounded text-primary" @checked(in_array('storefront', $defaultPlatforms, true))>
+                                    <span>{{ __('Storefront & Customer App') }}</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium dark:border-neutral-700">
+                                    <input type="checkbox" name="default_platforms[]" value="facebook" class="form-checkbox rounded text-primary" @checked(in_array('facebook', $defaultPlatforms, true))>
+                                    <span>{{ __('Facebook Live (Simulcast)') }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="live_default_slider_id" class="form-label text-xs font-semibold">{{ __('Target Hero Slider for Saved Videos') }}</label>
+                            <select id="live_default_slider_id" name="default_slider_id" class="form-select mt-1 w-full rounded-xl text-xs">
+                                <option value="">{{ __('First Available Storefront Hero Slider') }}</option>
+                                @foreach($sliders as $sl)
+                                    <option value="{{ $sl->id }}" @selected(($liveCfg['default_slider_id'] ?? null) == $sl->id)>{{ $sl->name }} (#{{ $sl->id }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                        <div>
+                            <label for="live_stun_url" class="form-label text-xs font-semibold">{{ __('WebRTC STUN Server URL') }}</label>
+                            <input id="live_stun_url" type="text" name="stun_url" value="{{ $liveCfg['stun_url'] ?? 'stun:stun.l.google.com:19302' }}" class="form-input mt-1 w-full rounded-xl text-xs font-mono" placeholder="stun:stun.l.google.com:19302">
+                        </div>
+                        <div>
+                            <label for="live_turn_url" class="form-label text-xs font-semibold">{{ __('Optional TURN Relay Server URL') }}</label>
+                            <input id="live_turn_url" type="text" name="turn_url" value="{{ $liveCfg['turn_url'] ?? '' }}" class="form-input mt-1 w-full rounded-xl text-xs font-mono" placeholder="turn:turn.example.com:3478">
+                        </div>
+                        <div>
+                            <label for="live_turn_username" class="form-label text-xs font-semibold">{{ __('TURN Username') }}</label>
+                            <input id="live_turn_username" type="text" name="turn_username" value="{{ $liveCfg['turn_username'] ?? '' }}" class="form-input mt-1 w-full rounded-xl text-xs">
+                        </div>
+                        <div>
+                            <label for="live_turn_credential" class="form-label text-xs font-semibold">{{ __('TURN Credential / Password') }}</label>
+                            <input id="live_turn_credential" type="password" name="turn_credential" value="{{ $liveCfg['turn_credential'] ?? '' }}" class="form-input mt-1 w-full rounded-xl text-xs">
+                        </div>
+                    </div>
+
+                    {{-- Facebook Live Simultaneous Streaming Configuration --}}
+                    <div class="rounded-xl border border-blue-200/70 bg-blue-50/40 p-4 space-y-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <i class="ph ph-facebook-logo text-xl text-blue-600 dark:text-blue-400"></i>
+                                <div>
+                                    <h3 class="text-xs font-bold text-title">{{ __('Facebook Live Simultaneous Broadcast (Simulcast)') }}</h3>
+                                    <p class="text-[11px] text-body">{{ __('Stream to Facebook Live and Storefront simultaneously from a single mobile camera when Facebook settings are up to date.') }}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold {{ ($fbReadiness['ready'] ?? false) ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' }}">
+                                <span class="size-1.5 rounded-full {{ ($fbReadiness['ready'] ?? false) ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+                                {{ ($fbReadiness['ready'] ?? false) ? __('Ready: ') . ($fbReadiness['page_name'] ?? 'Connected') : ($fbReadiness['message'] ?? __('Needs Setup')) }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
+                                <input type="hidden" name="facebook[enabled]" value="0">
+                                <input type="checkbox" name="facebook[enabled]" value="1" class="form-checkbox rounded text-blue-600" @checked($fbCfg['enabled'] ?? false)>
+                                <span>{{ __('Enable Facebook Live Integration') }}</span>
+                            </label>
+
+                            <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
+                                <input type="hidden" name="facebook[use_connected_messenger_page]" value="0">
+                                <input type="checkbox" name="facebook[use_connected_messenger_page]" value="1" class="form-checkbox rounded text-blue-600" @checked($fbCfg['use_connected_messenger_page'] ?? true)>
+                                <span>{{ __('Use Connected Messenger Facebook Page Automatically') }}</span>
+                            </label>
+
+                            <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
+                                <input type="hidden" name="facebook[sync_facebook_comments]" value="0">
+                                <input type="checkbox" name="facebook[sync_facebook_comments]" value="1" class="form-checkbox rounded text-blue-600" @checked($fbCfg['sync_facebook_comments'] ?? true)>
+                                <span>{{ __('Sync Facebook Live Comments into Unified Reverb Chat') }}</span>
+                            </label>
+
+                            <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
+                                <input type="hidden" name="allow_guest_chat" value="0">
+                                <input type="checkbox" name="allow_guest_chat" value="1" class="form-checkbox rounded text-primary" @checked($liveCfg['allow_guest_chat'] ?? true)>
+                                <span>{{ __('Allow Guest Viewers to Comment on Storefront Live') }}</span>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div>
+                                <label for="fb_page_id" class="form-label text-[11px] font-semibold">{{ __('Facebook Page ID') }}</label>
+                                <input id="fb_page_id" type="text" name="facebook[page_id]" value="{{ $fbCfg['page_id'] ?? '' }}" placeholder="1029384756..." class="form-input mt-1 w-full rounded-lg text-xs font-mono">
+                            </div>
+                            <div>
+                                <label for="fb_page_name" class="form-label text-[11px] font-semibold">{{ __('Facebook Page Name') }}</label>
+                                <input id="fb_page_name" type="text" name="facebook[page_name]" value="{{ $fbCfg['page_name'] ?? '' }}" placeholder="My Brand Page" class="form-input mt-1 w-full rounded-lg text-xs">
+                            </div>
+                            <div>
+                                <label for="fb_page_token" class="form-label text-[11px] font-semibold">{{ __('Page Access Token (publish_video)') }}</label>
+                                <input id="fb_page_token" type="password" name="facebook[page_access_token]" value="" placeholder="{{ ($fbCfg['has_access_token'] ?? false) ? '•••••••••••••••• (Saved)' : 'EAAB...' }}" class="form-input mt-1 w-full rounded-lg text-xs font-mono">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                        <span class="text-xs text-body">
+                            {{ __('Reverb App Key:') }} <code class="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[11px] dark:bg-neutral-800">{{ $liveCfg['reverb']['app_key'] ?? 'fashionfiest-live-key' }}</code>
+                        </span>
+                        <button type="submit" class="btn btn-primary btn-sm rounded-xl px-5 py-2.5 text-xs font-semibold flex items-center gap-2">
+                            <i class="ph ph-floppy-disk text-base"></i>
+                            <span>{{ __('Save Live & Facebook Settings') }}</span>
+                        </button>
+                    </div>
+                </form>
+
+                <form method="POST" action="{{ route('user.commerce.storefront.live.verify-facebook') }}" class="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-5 py-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                    @csrf
+                    <input type="hidden" name="_tab" value="live">
+                    <div class="space-y-0.5">
+                        <p class="text-xs font-semibold text-title">{{ __('Test & Verify Facebook Live Connection') }}</p>
+                        <p class="text-[11px] text-body">{{ __('Checks with Meta Graph API that your Page Access Token is valid and up to date before the owner goes live from the mobile app.') }}</p>
+                    </div>
+                    <button type="submit" class="btn btn-outline btn-sm rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-1.5 shrink-0">
+                        <i class="ph ph-check-circle text-base"></i>
+                        <span>{{ __('Verify Facebook Now') }}</span>
+                    </button>
+                </form>
+            </div>
+
+            {{-- Right Column: Upload / Schedule Live Stream or Video --}}
+            <div class="lg:col-span-5">
+                <form method="POST" action="{{ route('user.commerce.storefront.lives.store') }}" enctype="multipart/form-data" class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-4">
+                    @csrf
+                    <input type="hidden" name="_tab" value="live">
+
+                    <div class="flex items-center gap-3 border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                        <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                            <i class="ph ph-video-camera text-lg"></i>
+                        </span>
+                        <div>
+                            <h3 class="text-sm font-semibold text-title">{{ __('Schedule Live or Upload Recorded Video') }}</h3>
+                            <p class="text-xs text-body">{{ __('Videos uploaded here or recorded from the Mobile App are saved in public storage.') }}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="new_live_title" class="form-label text-xs font-semibold">{{ __('Stream / Video Title') }}</label>
+                        <input id="new_live_title" type="text" name="title" required maxlength="200" placeholder="Winter Heavyweight Hoodie Drop Live" class="form-input mt-1 w-full rounded-xl text-xs">
+                    </div>
+
+                    <div>
+                        <label for="new_live_description" class="form-label text-xs font-semibold">{{ __('Description') }}</label>
+                        <textarea id="new_live_description" name="description" rows="2" placeholder="Exclusive live showcase and Q&A..." class="form-textarea mt-1 w-full rounded-xl text-xs"></textarea>
+                    </div>
+
+                    <div>
+                        <span class="form-label text-xs font-semibold block">{{ __('Broadcast Platforms') }}</span>
+                        <div class="mt-1.5 flex flex-wrap gap-3">
+                            <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium dark:border-neutral-700">
+                                <input type="checkbox" name="broadcast_platforms[]" value="storefront" class="form-checkbox rounded text-primary" checked>
+                                <span>{{ __('Storefront & App') }}</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium dark:border-neutral-700">
+                                <input type="checkbox" name="broadcast_platforms[]" value="facebook" class="form-checkbox rounded text-primary" @checked($fbReadiness['ready'] ?? false)>
+                                <span>{{ __('Facebook Live') }}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label for="new_live_thumbnail" class="form-label text-xs font-semibold">{{ __('Cover Poster Image') }}</label>
+                            <input id="new_live_thumbnail" type="file" name="thumbnail" accept="image/*" class="form-input mt-1 w-full rounded-xl text-xs">
+                        </div>
+                        <div>
+                            <label for="new_live_video" class="form-label text-xs font-semibold">{{ __('Recorded Video (.mp4 / Public Storage)') }}</label>
+                            <input id="new_live_video" type="file" name="video" accept="video/mp4,video/webm,video/quicktime" class="form-input mt-1 w-full rounded-xl text-xs">
+                        </div>
+                    </div>
+
+                    @if(isset($products) && $products->count())
+                        <div>
+                            <label for="new_live_products" class="form-label text-xs font-semibold">{{ __('Featured Catalog Products (Shop in Live)') }}</label>
+                            <select id="new_live_products" name="product_ids[]" multiple class="form-select mt-1 w-full rounded-xl text-xs h-28">
+                                @foreach($products as $prod)
+                                    <option value="{{ $prod->id }}">{{ $prod->name }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-[11px] text-body">{{ __('Hold Cmd/Ctrl to select multiple products customers can buy during the stream.') }}</p>
+                        </div>
+                    @endif
+
+                    <label class="flex items-center gap-2.5 rounded-xl border border-neutral-200 p-3 text-xs font-medium text-title cursor-pointer dark:border-neutral-800">
+                        <input type="hidden" name="add_to_slider" value="0">
+                        <input type="checkbox" name="add_to_slider" value="1" class="form-checkbox rounded text-primary" @checked($liveCfg['auto_publish_to_slider'] ?? false)>
+                        <span>{{ __('Promote video directly into Storefront Hero Slider') }}</span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary btn-sm w-full rounded-xl py-2.5 text-xs font-semibold flex items-center justify-center gap-2">
+                        <i class="ph ph-plus-circle text-base"></i>
+                        <span>{{ __('Save Live Stream / Video') }}</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Live Streams & Public Storage Recordings Table --}}
+        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-base font-semibold text-title">{{ __('All Live Broadcasts & Public Storage Recordings') }}</h3>
+                    <p class="text-xs text-body">{{ __('All live sessions started from the Mobile App or uploaded here are saved in database and public storage. Toggle any recorded video into your Homepage Hero Slider.') }}</p>
+                </div>
+                @if($storeUrl)
+                    <a href="{{ rtrim($storeUrl, '/') }}/live" target="_blank" rel="noopener" class="btn btn-outline btn-sm rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-1.5">
+                        <i class="ph ph-arrow-square-out text-base"></i>
+                        <span>{{ __('View Storefront /live Page') }}</span>
+                    </a>
+                @endif
+            </div>
+
+            @if($allLiveStreams->isEmpty())
+                <div class="rounded-xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
+                    <i class="ph ph-video-camera text-3xl text-neutral-400"></i>
+                    <p class="mt-2 text-sm font-semibold text-title">{{ __('No live broadcasts or recorded videos yet') }}</p>
+                    <p class="mt-1 text-xs text-body">{{ __('Go live from the Store Owner Mobile App or upload a video above to populate your Storefront Live Hub and Hero Slider.') }}</p>
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-neutral-200 text-[11px] font-semibold uppercase text-neutral-500 dark:border-neutral-800">
+                                <th class="pb-3 pr-4">{{ __('Stream / Video') }}</th>
+                                <th class="pb-3 px-3">{{ __('Status & Platforms') }}</th>
+                                <th class="pb-3 px-3">{{ __('Public Storage Video') }}</th>
+                                <th class="pb-3 px-3">{{ __('Products & Views') }}</th>
+                                <th class="pb-3 px-3">{{ __('Hero Slider') }}</th>
+                                <th class="pb-3 pl-3 text-right">{{ __('Actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                            @foreach($allLiveStreams as $stream)
+                                <tr>
+                                    <td class="py-3.5 pr-4">
+                                        <div class="font-semibold text-title">{{ $stream->title }}</div>
+                                        <div class="text-[11px] text-body">/live/{{ $stream->slug }}</div>
+                                        @if($stream->started_at)
+                                            <div class="text-[11px] text-neutral-400">{{ $stream->started_at->format('M d, Y H:i') }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-3 space-y-1">
+                                        <div>
+                                            @if($stream->status === 'live')
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                                                    <span class="size-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                                                    {{ __('LIVE NOW') }}
+                                                </span>
+                                            @elseif($stream->status === 'ended')
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                                    {{ __('Recorded (VOD)') }}
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                    {{ ucfirst($stream->status) }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            @foreach(($stream->broadcast_platforms ?? ['storefront']) as $plat)
+                                                <span class="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                                                    {{ ucfirst($plat) }}
+                                                </span>
+                                            @endforeach
+                                            @if($stream->facebook_permalink_url)
+                                                <a href="{{ $stream->facebook_permalink_url }}" target="_blank" rel="noopener" class="text-[10px] font-semibold text-blue-600 hover:underline">
+                                                    {{ __('FB Link') }}
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 px-3">
+                                        @if($stream->videoUrl())
+                                            <a href="{{ $stream->videoUrl() }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline">
+                                                <i class="ph ph-play-circle text-base"></i>
+                                                <span>{{ __('Play MP4') }}</span>
+                                            </a>
+                                            <div class="text-[10px] text-neutral-400 font-mono truncate max-w-44">{{ $stream->video_path }}</div>
+                                        @else
+                                            <span class="text-neutral-400">{{ __('No recording file yet') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-3">
+                                        <div>{{ $stream->products->count() }} {{ __('products') }}</div>
+                                        <div class="text-[11px] text-body">{{ $stream->total_views }} {{ __('views') }} · {{ $stream->likes_count }} {{ __('likes') }}</div>
+                                    </td>
+                                    <td class="py-3.5 px-3">
+                                        <form method="POST" action="{{ route('user.commerce.storefront.lives.toggle-slider', $stream->id) }}">
+                                            @csrf
+                                            <input type="hidden" name="_tab" value="live">
+                                            <input type="hidden" name="enable" value="{{ $stream->is_in_slider ? '0' : '1' }}">
+                                            <button type="submit" class="btn btn-sm rounded-lg px-3 py-1.5 text-[11px] font-semibold {{ $stream->is_in_slider ? 'bg-primary text-white' : 'btn-outline' }}">
+                                                <i class="ph {{ $stream->is_in_slider ? 'ph-check-circle' : 'ph-slideshow' }} mr-1"></i>
+                                                {{ $stream->is_in_slider ? __('In Hero Slider') : __('Add to Slider') }}
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td class="py-3.5 pl-3 text-right">
+                                        <div class="inline-flex items-center gap-2">
+                                            @if($stream->status === 'live')
+                                                <form method="POST" action="{{ route('user.commerce.storefront.lives.stop', $stream->id) }}">
+                                                    @csrf
+                                                    <input type="hidden" name="_tab" value="live">
+                                                    <button type="submit" class="btn btn-outline btn-sm rounded-lg px-2.5 py-1 text-[11px] text-amber-600 border-amber-300">
+                                                        {{ __('End Live') }}
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <form method="POST" action="{{ route('user.commerce.storefront.lives.destroy', $stream->id) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="_tab" value="live">
+                                                <button type="submit" class="btn btn-outline btn-sm rounded-lg px-2.5 py-1 text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50">
+                                                    <i class="ph ph-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
     </div>
 </div>

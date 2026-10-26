@@ -757,6 +757,15 @@ it('creates one immutable order for duplicate WhatsApp cart webhooks', function 
         ->and((float) $first->subtotal)->toBe(99.90);
 });
 
+it('ignores WhatsApp order messages that contain no known catalog items', function (): void {
+    $context = commerceContext();
+    $message = ['id' => 'wamid-order-junk', 'type' => 'order', 'order' => ['product_items' => [['product_retailer_id' => 'unknown-sku', 'quantity' => 1, 'item_price' => '3000000', 'currency' => 'USD']]]];
+
+    $order = app(OrderIntakeService::class)->intake($context['channel'], $context['contact'], $context['conversation'], $message);
+
+    expect($order)->toBeNull()->and(Order::query()->count())->toBe(0);
+});
+
 it('deducts inventory once when paid and restores it once on cancellation', function (): void {
     $context = commerceContext();
     $variant = commerceProduct($context['workspace']->id)->variants->first();

@@ -7,6 +7,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\CheckoutController;
 use App\Modules\Commerce\Storefront\Http\Controllers\CmsController;
 use App\Modules\Commerce\Storefront\Http\Controllers\DomainController;
 use App\Modules\Commerce\Storefront\Http\Controllers\EngagementController;
+use App\Modules\Commerce\Storefront\Http\Controllers\LiveController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
@@ -32,6 +33,11 @@ $storefrontRoutes = function (): void {
     Route::get('cms/settings', [CmsController::class, 'settings']);
     Route::get('cms/menus/{slot}', [CmsController::class, 'menu']);
     Route::get('cms/pages/{slug}', [CmsController::class, 'page']);
+    Route::get('lives', [LiveController::class, 'index']);
+    Route::get('lives/active', [LiveController::class, 'active']);
+    Route::get('lives/{slug}', [LiveController::class, 'show']);
+    Route::post('lives/{slug}/signal', [LiveController::class, 'signal']);
+    Route::post('lives/{slug}/react', [LiveController::class, 'react']);
     Route::get('auth/status', [AuthController::class, 'status']);
     Route::get('referral/program', [ReferralController::class, 'program']);
     Route::middleware('throttle:storefront-auth')->group(function (): void {
@@ -58,6 +64,7 @@ $storefrontRoutes = function (): void {
         Route::delete('cart/clear', [CartController::class, 'clear']);
         Route::post('cart/coupon', [CartController::class, 'coupon']);
         Route::delete('cart/coupon', [CartController::class, 'removeCoupon']);
+        Route::post('lives/{slug}/comments', [LiveController::class, 'comment']);
     });
     Route::get('blogs', [EngagementController::class, 'blogs']);
     Route::get('blogs/{slug}', [EngagementController::class, 'blog']);

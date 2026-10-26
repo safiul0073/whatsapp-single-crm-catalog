@@ -110,6 +110,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
 Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(function (): void {
     $c = AdminController::class;
     Route::get('/', [$c, 'index'])->middleware('permission:commerce.storefront.settings|commerce.storefront.pages|commerce.storefront.marketing|commerce.storefront.domains|commerce.storefront.reviews|commerce.storefront.credentials')->name('index');
+    Route::get('live', [$c, 'liveStudio'])->middleware('permission:commerce.storefront.settings|commerce.storefront.marketing')->name('live');
     Route::put('settings', [$c, 'settings'])->middleware('permission:commerce.storefront.settings')->name('settings');
     Route::post('upload-app', [$c, 'uploadApp'])->middleware('permission:commerce.storefront.settings')->name('upload-app');
     Route::put('chat-channels', [$c, 'chatChannels'])->middleware('permission:commerce.storefront.settings')->name('chat-channels');
@@ -141,6 +142,12 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     Route::put('domains/{id}/handle', [$c, 'renameDomain'])->middleware('permission:commerce.storefront.domains')->name('domains.rename');
     Route::post('credentials/generate', [$c, 'generateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.generate');
     Route::put('credentials', [$c, 'updateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.update');
+    Route::put('live-settings', [$c, 'liveSettings'])->middleware('permission:commerce.storefront.settings')->name('live.settings');
+    Route::post('live-settings/verify-facebook', [$c, 'verifyFacebookLive'])->middleware('permission:commerce.storefront.settings')->name('live.verify-facebook');
+    Route::post('lives', [$c, 'storeLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.store');
+    Route::post('lives/{id}/toggle-slider', [$c, 'toggleLiveSlider'])->middleware('permission:commerce.storefront.marketing')->name('lives.toggle-slider');
+    Route::post('lives/{id}/stop', [$c, 'stopLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.stop');
+    Route::delete('lives/{id}', [$c, 'deleteLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.destroy');
 });
 
 Route::prefix('commerce/referrals')->name('commerce.referrals.')->group(function (): void {
