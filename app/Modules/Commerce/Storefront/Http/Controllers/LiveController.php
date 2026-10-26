@@ -109,6 +109,7 @@ class LiveController extends Controller
     public function show(Request $request, string $slug): JsonResponse
     {
         $workspaceId = (int) $request->attributes->get('store_workspace')->id;
+        $this->ensureEnabled($workspaceId);
         $stream = LiveStream::query()
             ->where('workspace_id', $workspaceId)
             ->where('slug', $slug)
@@ -122,6 +123,7 @@ class LiveController extends Controller
     public function signal(LiveStreamRequest $request, string $slug): JsonResponse
     {
         $workspaceId = (int) $request->attributes->get('store_workspace')->id;
+        $this->ensureEnabled($workspaceId);
         $stream = LiveStream::query()
             ->where('workspace_id', $workspaceId)
             ->where('slug', $slug)
@@ -143,6 +145,7 @@ class LiveController extends Controller
     public function comment(LiveStreamRequest $request, string $slug): JsonResponse
     {
         $workspaceId = (int) $request->attributes->get('store_workspace')->id;
+        $this->ensureEnabled($workspaceId);
         $stream = LiveStream::query()
             ->where('workspace_id', $workspaceId)
             ->where('slug', $slug)
@@ -177,6 +180,7 @@ class LiveController extends Controller
     public function react(LiveStreamRequest $request, string $slug): JsonResponse
     {
         $workspaceId = (int) $request->attributes->get('store_workspace')->id;
+        $this->ensureEnabled($workspaceId);
         $stream = LiveStream::query()
             ->where('workspace_id', $workspaceId)
             ->where('slug', $slug)
@@ -194,5 +198,10 @@ class LiveController extends Controller
                 'total_views' => (int) $updated->total_views,
             ],
         ]);
+    }
+
+    protected function ensureEnabled(int $workspaceId): void
+    {
+        abort_unless($this->lives->settings($workspaceId)['enabled'], 404);
     }
 }
