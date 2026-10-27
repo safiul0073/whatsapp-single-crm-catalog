@@ -50,6 +50,16 @@ class CatalogService
         if (! empty($filters['size'])) {
             $q->whereHas('variants', fn ($v) => $v->where('status', 'active')->where('size', $filters['size']));
         }
+        foreach ((array) ($filters['attr'] ?? []) as $key => $value) {
+            if (is_string($key) && preg_match('/^[a-z0-9_]{1,60}$/', $key) && filled($value)) {
+                $q->where('attribute_values->'.$key, $value);
+            }
+        }
+        foreach ((array) ($filters['option'] ?? []) as $code => $value) {
+            if (is_string($code) && preg_match('/^[a-z0-9_]{1,60}$/', $code) && filled($value)) {
+                $q->whereHas('options', fn ($o) => $o->where('code', $code)->whereHas('values', fn ($v) => $v->where('value', $value)));
+            }
+        }
         if (! empty($filters['in_stock'])) {
             $q->whereHas('variants', fn ($v) => $v->where('status', 'active')->where('stock_quantity', '>', 0));
         }

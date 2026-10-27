@@ -22,6 +22,7 @@ class ProductService
     public function __construct(
         protected ProductReadinessService $readiness,
         protected AuditLogService $audit,
+        protected ProductTypeService $productTypes,
     ) {}
 
     public function create(int $workspaceId, array $data): Product
@@ -503,6 +504,14 @@ class ProductService
             'status' => array_key_exists('status', $data) ? $data['status'] : ($product?->status ?? 'draft'),
         ];
 
+        if (array_key_exists('attribute_values', $data) || array_key_exists('category_id', $data)) {
+            $category = $categoryId ? Category::query()->where('workspace_id', $workspaceId)->find($categoryId) : null;
+            $type = $this->productTypes->forCategory($category, $workspaceId);
+            $values['attribute_values'] = $this->productTypes->sanitizeValues($type, (array) ($data['attribute_values'] ?? $product?->attribute_values ?? []));
+            $retailOnly = $type->layout !== 'apparel';
+        }
+        $retailOnly ??= false;
+
         foreach (['short_description', 'description', 'care_information', 'features', 'feature_highlights', 'shipping_countries', 'specifications', 'fit', 'set_includes', 'gender', 'season', 'shipping_info', 'delivery_time', 'fabric_gsm', 'material', 'single_piece_price', 'wholesale_price', 'ws_min_sizes', 'ws_size_ratios'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === null) {
                 $values[$field] = null;
@@ -517,6 +526,11 @@ class ProductService
             if (array_key_exists('audience_id', $data)) {
                 $values['audience'] = $audienceName;
             }
+        }
+
+        if ($retailOnly) {
+            $values['ws_enabled'] = false;
+            $values['selling_mode'] = 'retail';
         }
 
         return $values;

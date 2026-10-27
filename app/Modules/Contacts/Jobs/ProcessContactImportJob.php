@@ -25,7 +25,7 @@ class ProcessContactImportJob implements ShouldQueue
     public function handle(ContactService $contacts): void
     {
         $import = ContactImport::query()->findOrFail($this->importId);
-        $path = Storage::path($import->file_path);
+        $path = Storage::disk('local')->path($import->file_path);
 
         if (! file_exists($path)) {
             $import->update([

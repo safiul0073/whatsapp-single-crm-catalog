@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('commerce_categories') && !Schema::hasColumn('commerce_categories', 'image')) {
+        if (Schema::hasTable('commerce_categories') && ! Schema::hasColumn('commerce_categories', 'image')) {
             Schema::table('commerce_categories', function (Blueprint $table) {
                 $table->string('image')->nullable()->after('slug');
             });

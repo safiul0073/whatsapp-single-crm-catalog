@@ -13,6 +13,7 @@ use App\Modules\Commerce\Http\Requests\ProductDetailsRequest;
 use App\Modules\Commerce\Http\Requests\ProductGalleryRequest;
 use App\Modules\Commerce\Http\Requests\ProductOptionsRequest;
 use App\Modules\Commerce\Http\Requests\ProductRequest;
+use App\Modules\Commerce\Http\Requests\ProductTypeRequest;
 use App\Modules\Commerce\Http\Requests\ProductVariantsRequest;
 use App\Modules\Commerce\Http\Requests\PublishProductRequest;
 use App\Modules\Commerce\Http\Requests\QuoteOrderRequest;
@@ -30,6 +31,7 @@ use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\VariantPreset;
@@ -41,6 +43,7 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Inbox\Models\Conversation;
@@ -59,7 +62,7 @@ use Illuminate\View\View;
 
 class CommerceController extends Controller
 {
-    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders, protected CatalogDiagnosticsService $catalogDiagnostics) {}
+    public function __construct(protected WorkspaceResolver $workspaces, protected ProductService $products, protected OrderWorkflowService $orders, protected CatalogDiagnosticsService $catalogDiagnostics, protected ProductTypeService $productTypes) {}
 
     public function index(Request $request): View
     {
@@ -215,6 +218,7 @@ class CommerceController extends Controller
         Category::query()->create([
             'workspace_id' => $workspace->id,
             'parent_id' => $request->integer('parent_id') ?: null,
+            'product_type_id' => $request->integer('product_type_id') ?: null,
             'name' => $request->string('name'),
             'slug' => Str::slug($request->string('name')),
             'image' => $request->input('image'),
@@ -244,6 +248,7 @@ class CommerceController extends Controller
         }
 
         return view('commerce::user.categories', [
+            'productTypes' => $this->productTypes->ensureDefaults($workspace->id),
             'categories' => $categories->sortBy('name'),
         ]);
     }
@@ -253,6 +258,7 @@ class CommerceController extends Controller
         $this->assertWorkspace($request, $category->workspace_id);
         $data = [
             'parent_id' => $request->integer('parent_id') ?: null,
+            'product_type_id' => $request->integer('product_type_id') ?: null,
             'name' => $request->string('name')->toString(),
             'slug' => Str::slug($request->string('name')->toString()),
             'is_active' => $request->boolean('is_active'),
@@ -288,6 +294,48 @@ class CommerceController extends Controller
         Category::query()->whereKey($categories->modelKeys())->delete();
 
         return back()->with('success', trans_choice(':count category deleted.|:count categories deleted.', $categories->count(), ['count' => $categories->count()]));
+    }
+
+    public function productTypes(Request $request): View
+    {
+        $workspace = $this->workspaces->current($request->user());
+
+        return view('commerce::user.product-types', [
+            'types' => $this->productTypes->ensureDefaults($workspace->id)->loadCount('categories'),
+            'layouts' => ProductType::LAYOUTS,
+            'axes' => ProductType::VARIANT_AXES,
+        ]);
+    }
+
+    public function storeProductType(ProductTypeRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        ProductType::query()->create([
+            ...$request->typeData(),
+            'workspace_id' => $workspace->id,
+            'slug' => $this->taxonomySlug(ProductType::class, $workspace->id, $request->string('name')->toString()),
+        ]);
+
+        return back()->with('success', __('Product type created.'));
+    }
+
+    public function updateProductType(ProductTypeRequest $request, ProductType $productType): RedirectResponse
+    {
+        $this->assertWorkspace($request, $productType->workspace_id);
+        $productType->update($request->typeData());
+
+        return back()->with('success', __('Product type updated.'));
+    }
+
+    public function destroyProductType(Request $request, ProductType $productType): RedirectResponse
+    {
+        $this->assertWorkspace($request, $productType->workspace_id);
+        if ($productType->categories()->exists()) {
+            throw ValidationException::withMessages(['product_type' => __('Move its categories to another type before deleting this one.')]);
+        }
+        $productType->delete();
+
+        return back()->with('success', __('Product type deleted.'));
     }
 
     public function brands(Request $request): View
@@ -498,7 +546,7 @@ class CommerceController extends Controller
         $catalogs = Catalog::query()->with(['channelAccount', 'itemSyncs', 'syncRuns' => fn ($query) => $query->latest()->limit(5)])->where('workspace_id', $workspace->id)->get();
         $diagnostics = $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->diagnose($catalog, true)])->all();
 
-        return view('commerce::user.catalog', ['currency' => StoreOrderSetting::catalogCurrency($workspace->id), 'catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
+        return view('commerce::user.catalog', ['currency' => StoreOrderSetting::catalogCurrency($workspace->id), 'catalogs' => $catalogs, 'diagnostics' => $diagnostics, 'salesChannels' => $catalogs->mapWithKeys(fn (Catalog $catalog): array => [$catalog->id => $this->catalogDiagnostics->salesChannelStatus($catalog)])->all(), 'channels' => ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->get()]);
     }
 
     public function storeCatalog(CatalogRequest $request): RedirectResponse
@@ -538,6 +586,22 @@ class CommerceController extends Controller
         }
 
         return back()->with($access['passed'] ? 'success' : 'error', $access['message']);
+    }
+
+    public function verifySalesChannels(Request $request, Catalog $catalog): RedirectResponse
+    {
+        $this->assertWorkspace($request, $catalog->workspace_id);
+        $results = $this->catalogDiagnostics->probeSalesChannels($catalog);
+
+        if ($results === []) {
+            return back()->with('warning', __('Connect a Messenger or Instagram channel before checking Facebook and Instagram Shop.'));
+        }
+
+        $failed = collect($results)->where('passed', false)->count();
+
+        return back()->with($failed === 0 ? 'success' : 'warning', $failed === 0
+            ? __('Facebook and Instagram Shop use this catalog.')
+            : trans_choice(':count channel is not connected to this catalog.|:count channels are not connected to this catalog.', $failed, ['count' => $failed]));
     }
 
     public function updateCommerceSettings(CommerceSettingsRequest $request, Catalog $catalog, MetaCatalogClient $meta): RedirectResponse
@@ -902,7 +966,14 @@ class CommerceController extends Controller
             $category->path = implode(' > ', $path);
         }
 
+        $typeMap = [];
+        foreach ($categories as $category) {
+            $type = $this->productTypes->forCategory($category, $workspace->id);
+            $typeMap[$category->id] = ['name' => $type->name, 'layout' => $type->layout, 'attributes' => $type->attributes ?? []];
+        }
+
         return view('commerce::user.form', [
+            'typeMap' => $typeMap,
             'product' => $product,
             'metaCatalogs' => Catalog::query()->with('channelAccount')->where('workspace_id', $workspace->id)->where('is_active', true)->where('sync_mode', 'api')->get(),
             'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,

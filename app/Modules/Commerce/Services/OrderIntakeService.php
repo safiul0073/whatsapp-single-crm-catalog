@@ -10,14 +10,15 @@ use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderIntakeService
 {
-    public function intake(ChannelAccount $account, Contact $contact, Conversation $conversation, array $message): Order
+    public function intake(ChannelAccount $account, Contact $contact, Conversation $conversation, array $message): ?Order
     {
-        return DB::transaction(function () use ($account, $contact, $conversation, $message): Order {
+        return DB::transaction(function () use ($account, $contact, $conversation, $message): ?Order {
             ChannelAccount::query()->whereKey($account->id)->lockForUpdate()->firstOrFail();
             $providerMessageId = (string) ($message['id'] ?? 'order-'.Str::uuid());
             $existing = Order::query()->where('channel_account_id', $account->id)->where('provider_message_id', $providerMessageId)->first();
@@ -79,13 +80,20 @@ class OrderIntakeService
                 if ($providerCurrency !== $currency) {
                     $issues[] = "Unsupported currency for {$retailerId}: {$providerCurrency}";
                 }
-                $unitPrice = $variant ? (float) $variant->price : $providerPrice;
+                $unitPrice = $variant ? (float) $variant->price : 0.0;
                 if ($variant && abs($unitPrice - $providerPrice) > 0.009) {
                     $issues[] = "Price mismatch for {$retailerId}";
                 }
                 $lineTotal = $unitPrice * $quantity;
                 $subtotal += $lineTotal;
                 $items[] = compact('variant', 'retailerId', 'quantity', 'providerPrice', 'unitPrice', 'lineTotal');
+            }
+
+            if (! collect($items)->contains(fn (array $item): bool => $item['variant'] !== null)) {
+                // Nothing in the message maps to our catalog; never mint an order from sender-supplied prices.
+                Log::warning('WhatsApp order ignored: no known catalog items.', ['channel_account_id' => $account->id, 'provider_message_id' => $providerMessageId]);
+
+                return null;
             }
 
             $order = Order::query()->create([

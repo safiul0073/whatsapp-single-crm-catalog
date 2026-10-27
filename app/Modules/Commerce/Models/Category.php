@@ -11,7 +11,7 @@ class Category extends Model
 {
     protected $table = 'commerce_categories';
 
-    protected $fillable = ['workspace_id', 'parent_id', 'name', 'slug', 'image', 'is_active'];
+    protected $fillable = ['workspace_id', 'parent_id', 'product_type_id', 'name', 'slug', 'image', 'is_active'];
 
     protected $appends = ['image_url'];
 
@@ -22,7 +22,7 @@ class Category extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        if (!$this->image) {
+        if (! $this->image) {
             return null;
         }
 
@@ -30,7 +30,7 @@ class Category extends Model
             return $this->image;
         }
 
-        return asset('storage/' . ltrim($this->image, '/'));
+        return asset('storage/'.ltrim($this->image, '/'));
     }
 
     public function workspace(): BelongsTo
@@ -41,6 +41,11 @@ class Category extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class, 'product_type_id');
     }
 
     public function children(): HasMany

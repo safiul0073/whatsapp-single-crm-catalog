@@ -22,6 +22,7 @@ class CategoryRequest extends FormRequest
             'name' => ['required', 'string', 'max:120'],
             'image' => ['nullable', 'string', 'max:255'],
             'parent_id' => ['nullable', 'integer', Rule::exists('commerce_categories', 'id')->where('workspace_id', $workspaceId), Rule::notIn(array_filter([$categoryId]))],
+            'product_type_id' => ['nullable', 'integer', Rule::exists('commerce_product_types', 'id')->where('workspace_id', $workspaceId)],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

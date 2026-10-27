@@ -543,10 +543,18 @@ class WorkspaceNavigationRegistry
                             [
                                 'label' => __('Storefront'),
                                 'route' => 'user.commerce.storefront.index',
-                                'active' => 'user.commerce.storefront.*',
+                                'active' => 'user.commerce.storefront.index',
                                 'icon' => 'ph-browser',
                                 'permission' => 'commerce.storefront.settings|commerce.storefront.pages|commerce.storefront.marketing|commerce.storefront.domains|commerce.storefront.reviews|commerce.storefront.credentials',
                                 'keywords' => 'storefront theme colors domains pages sliders menus coupons reviews cms',
+                            ],
+                            [
+                                'label' => __('Live Shopping'),
+                                'route' => 'user.commerce.storefront.live',
+                                'active' => 'user.commerce.storefront.live*',
+                                'icon' => 'ph-broadcast',
+                                'permission' => 'commerce.storefront.settings|commerce.storefront.marketing',
+                                'keywords' => 'live stream broadcast webrtc reverb facebook simulcast video slider',
                             ],
                             [
                                 'label' => __('Pack Templates'),
@@ -710,6 +718,14 @@ class WorkspaceNavigationRegistry
                                 'icon' => 'ph-telegram-logo',
                                 'permission' => 'telegram.manage',
                                 'keywords' => 'telegram bot channel connect',
+                            ],
+                            [
+                                'label' => __('TikTok'),
+                                'route' => 'user.tiktok.index',
+                                'active' => 'user.tiktok.*',
+                                'icon' => 'ph-tiktok-logo',
+                                'permission' => 'tiktok.manage',
+                                'keywords' => 'tiktok shop account connect',
                             ],
                             [
                                 'label' => __('Email'),

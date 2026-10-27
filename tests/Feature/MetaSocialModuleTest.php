@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
+use App\Modules\Inbox\Services\InboxService;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MetaSocial\Services\MetaSocialSettingsService;
 use App\Modules\Workspaces\Models\Workspace;
@@ -97,6 +98,7 @@ it('connects Messenger from embedded signup code exchange', function (): void {
 
     Http::fake([
         'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::response(['access_token' => 'page-token']),
+        'https://graph.facebook.com/v20.0/me/accounts*' => Http::response([], 500),
         'https://graph.facebook.com/v20.0/page-123*' => Http::response(['id' => 'page-123', 'name' => 'WaPro Support']),
     ]);
 
@@ -484,4 +486,124 @@ it('persists inbound Instagram webhook messages into shared inbox tables', funct
     expect(ContactProviderIdentity::query()->where('provider_contact_id', 'ig-user-123')->exists())->toBeTrue()
         ->and(Conversation::query()->where('provider', 'instagram')->exists())->toBeTrue()
         ->and(Message::query()->where('provider_message_id', 'ig-mid-123')->where('body', 'Need price')->exists())->toBeTrue();
+});
+
+it('persists inbound Instagram comments and replies to them publicly', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'reply-1'])]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $workspace = metaSocialWorkspace($user);
+
+    $account = ChannelAccount::query()->create([
+        'workspace_id' => $workspace->id,
+        'provider' => 'instagram',
+        'name' => 'WaPro Instagram',
+        'status' => 'connected',
+        'credentials' => ['access_token' => 'ig-token'],
+        'webhook_verify_token' => 'ig-token',
+        'provider_account_id' => 'ig-123',
+    ]);
+
+    $comment = fn (string $id, string $fromId): array => [
+        'object' => 'instagram',
+        'entry' => [[
+            'id' => 'ig-123',
+            'time' => 1710000000,
+            'changes' => [[
+                'field' => 'comments',
+                'value' => [
+                    'id' => $id,
+                    'text' => 'How much?',
+                    'from' => ['id' => $fromId, 'username' => 'buyer'],
+                    'media' => ['id' => 'media-1'],
+                ],
+            ]],
+        ]],
+    ];
+
+    $this->postJson('/webhooks/meta/ig-token', $comment('comment-1', 'ig-user-9'))->assertOk();
+    $this->postJson('/webhooks/meta/ig-token', $comment('comment-2', 'ig-123'))->assertOk();
+
+    expect(Message::query()->where('provider_message_id', 'comment-1')->where('type', 'comment')->where('body', 'How much?')->exists())->toBeTrue()
+        ->and(Message::query()->where('provider_message_id', 'comment-2')->exists())->toBeFalse();
+
+    $result = app(InboxService::class)->sendMessage(
+        $user,
+        Conversation::query()->where('provider', 'instagram')->value('id'),
+        'Check your DMs!'
+    );
+
+    expect($result['ok'])->toBeTrue();
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/comment-1/replies') && $request['message'] === 'Check your DMs!');
+});
+
+it('stores a never-expiring page token after the long-lived token exchange', function (string $provider, string $accountId, array $page): void {
+    app(MetaSocialSettingsService::class)->update([
+        'meta_social_embedded_signup_enabled' => true,
+        'meta_social_app_id' => 'meta-app-id',
+        'meta_social_app_secret' => 'meta-secret',
+        'meta_social_messenger_config_id' => 'messenger-config',
+        'meta_social_instagram_config_id' => 'instagram-config',
+    ]);
+
+    Http::fake([
+        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::sequence()
+            ->push(['access_token' => 'short-user-token'])
+            ->push(['access_token' => 'long-user-token']),
+        'https://graph.facebook.com/v20.0/me/accounts*' => Http::response(['data' => [
+            ['id' => 'other-page', 'access_token' => 'other-page-token'],
+            $page,
+        ]]),
+        'https://graph.facebook.com/v20.0/'.$accountId.'*' => Http::response(['id' => $accountId, 'name' => 'Shop', 'username' => 'shop']),
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.meta-social.setup.embedded', $provider), [
+            'code' => 'embedded-code',
+            ($provider === 'instagram' ? 'instagram_account_id' : 'page_id') => $accountId,
+        ])
+        ->assertRedirect();
+
+    $channel = ChannelAccount::query()->where('provider', $provider)->firstOrFail();
+
+    expect($channel->credential('access_token'))->toBe('page-access-token')
+        ->and($channel->status->value)->toBe('connected');
+
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'oauth/access_token')
+        && ($request['grant_type'] ?? null) === 'fb_exchange_token'
+        && $request['fb_exchange_token'] === 'short-user-token');
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'me/accounts')
+        && $request->hasHeader('Authorization', 'Bearer long-user-token'));
+})->with([
+    'messenger' => ['messenger', 'page-123', ['id' => 'page-123', 'access_token' => 'page-access-token']],
+    'instagram' => ['instagram', 'ig-123', ['id' => 'page-9', 'access_token' => 'page-access-token', 'instagram_business_account' => ['id' => 'ig-123']]],
+]);
+
+it('falls back to the long-lived user token when the page is not listed', function (): void {
+    app(MetaSocialSettingsService::class)->update([
+        'meta_social_embedded_signup_enabled' => true,
+        'meta_social_app_id' => 'meta-app-id',
+        'meta_social_app_secret' => 'meta-secret',
+        'meta_social_messenger_config_id' => 'messenger-config',
+    ]);
+
+    Http::fake([
+        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::sequence()
+            ->push(['access_token' => 'short-user-token'])
+            ->push(['error' => ['message' => 'nope']], 400),
+        'https://graph.facebook.com/v20.0/me/accounts*' => Http::response(['data' => []]),
+        'https://graph.facebook.com/v20.0/page-123*' => Http::response(['id' => 'page-123', 'name' => 'Shop']),
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    $this->withoutMiddleware()
+        ->actingAs($user)
+        ->post(route('user.meta-social.setup.embedded', 'messenger'), ['code' => 'embedded-code', 'page_id' => 'page-123'])
+        ->assertRedirect();
+
+    expect(ChannelAccount::query()->where('provider', 'messenger')->firstOrFail()->credential('access_token'))->toBe('short-user-token');
 });

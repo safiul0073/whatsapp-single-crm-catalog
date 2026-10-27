@@ -123,6 +123,10 @@ class MetaSocialSetupService
             ]);
         }
 
+        if (blank($data['access_token'] ?? null) && filled($data['code'] ?? null)) {
+            $token = $this->pageAccessToken($provider, $providerAccountId, $this->longLivedToken($token));
+        }
+
         $validation = $this->validateAccount($provider, $providerAccountId, $token);
         $status = ($validation['ok'] ?? false) ? ChannelAccountStatus::Connected : ChannelAccountStatus::Error;
         $displayId = $this->firstFilled(
@@ -212,6 +216,44 @@ class MetaSocialSetupService
         }
 
         return (string) $response->json('access_token');
+    }
+
+    /**
+     * Swaps the short-lived user token from the signup code for a long-lived one, keeping the original if Meta refuses.
+     */
+    protected function longLivedToken(string $token): string
+    {
+        try {
+            $response = $this->client->exchangeLongLivedToken($token);
+        } catch (\Throwable) {
+            return $token;
+        }
+
+        return $response->successful() && filled($response->json('access_token'))
+            ? (string) $response->json('access_token')
+            : $token;
+    }
+
+    /**
+     * Page tokens made from a long-lived user token do not expire, so prefer the connected Page's own token.
+     */
+    protected function pageAccessToken(string $provider, string $accountId, string $userToken): string
+    {
+        try {
+            $response = $this->client->pageAccounts($userToken);
+        } catch (\Throwable) {
+            return $userToken;
+        }
+
+        if (! $response->successful()) {
+            return $userToken;
+        }
+
+        $page = collect($response->json('data', []))->first(fn (array $page): bool => $provider === 'instagram'
+            ? (string) data_get($page, 'instagram_business_account.id') === $accountId
+            : (string) data_get($page, 'id') === $accountId);
+
+        return filled(data_get($page, 'access_token')) ? (string) $page['access_token'] : $userToken;
     }
 
     protected function providerAccountId(string $provider, array $data): ?string

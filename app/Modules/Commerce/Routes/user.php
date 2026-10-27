@@ -45,6 +45,10 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('products/media', [CommerceController::class, 'uploadMedia'])->middleware('permission:commerce.products.manage')->name('products.media.upload');
     Route::delete('products/bulk', [CommerceController::class, 'bulkDestroyProducts'])->middleware('permission:commerce.products.manage')->name('products.bulk-destroy');
     Route::delete('products/{product}', [CommerceController::class, 'destroy'])->middleware('permission:commerce.products.manage')->name('products.destroy');
+    Route::get('product-types', [CommerceController::class, 'productTypes'])->middleware('permission:commerce.products.view')->name('product-types.index');
+    Route::post('product-types', [CommerceController::class, 'storeProductType'])->middleware('permission:commerce.products.manage')->name('product-types.store');
+    Route::put('product-types/{productType}', [CommerceController::class, 'updateProductType'])->middleware('permission:commerce.products.manage')->name('product-types.update');
+    Route::delete('product-types/{productType}', [CommerceController::class, 'destroyProductType'])->middleware('permission:commerce.products.manage')->name('product-types.destroy');
     Route::get('categories', [CommerceController::class, 'categories'])->middleware('permission:commerce.products.view')->name('categories.index');
     Route::post('categories', [CommerceController::class, 'storeCategory'])->middleware('permission:commerce.products.manage')->name('categories.store');
     Route::put('categories/{category}', [CommerceController::class, 'updateCategory'])->middleware('permission:commerce.products.manage')->name('categories.update');
@@ -70,6 +74,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog/{catalog}/token', [CommerceController::class, 'rotateFeedToken'])->middleware('permission:commerce.catalog.manage')->name('catalog.token.rotate');
     Route::post('catalog/{catalog}/sync', [CommerceController::class, 'syncCatalog'])->middleware('permission:commerce.catalog.manage')->name('catalog.sync');
     Route::post('catalog/{catalog}/verify-access', [CommerceController::class, 'verifyCatalogAccess'])->middleware('permission:commerce.catalog.manage')->name('catalog.verify-access');
+    Route::post('catalog/{catalog}/verify-sales-channels', [CommerceController::class, 'verifySalesChannels'])->middleware('permission:commerce.catalog.manage')->name('catalog.verify-sales-channels');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->middleware('permission:commerce.catalog.manage')->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->middleware('permission:commerce.orders.view')->name('orders.index');
     Route::get('customers', [CommerceController::class, 'customers'])->middleware('permission:commerce.customers.view')->name('customers.index');
@@ -110,8 +115,10 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
 Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(function (): void {
     $c = AdminController::class;
     Route::get('/', [$c, 'index'])->middleware('permission:commerce.storefront.settings|commerce.storefront.pages|commerce.storefront.marketing|commerce.storefront.domains|commerce.storefront.reviews|commerce.storefront.credentials')->name('index');
+    Route::get('live', [$c, 'liveStudio'])->middleware('permission:commerce.storefront.settings|commerce.storefront.marketing')->name('live');
     Route::put('settings', [$c, 'settings'])->middleware('permission:commerce.storefront.settings')->name('settings');
     Route::post('upload-app', [$c, 'uploadApp'])->middleware('permission:commerce.storefront.settings')->name('upload-app');
+    Route::put('tracking', [$c, 'tracking'])->middleware('permission:commerce.storefront.settings')->name('tracking');
     Route::put('chat-channels', [$c, 'chatChannels'])->middleware('permission:commerce.storefront.settings')->name('chat-channels');
     Route::post('pages', [$c, 'savePage'])->middleware('permission:commerce.storefront.pages')->name('pages.store');
     Route::get('pages/{id}', [$c, 'editor'])->middleware('permission:commerce.storefront.pages')->name('pages.edit');
@@ -141,6 +148,12 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     Route::put('domains/{id}/handle', [$c, 'renameDomain'])->middleware('permission:commerce.storefront.domains')->name('domains.rename');
     Route::post('credentials/generate', [$c, 'generateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.generate');
     Route::put('credentials', [$c, 'updateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.update');
+    Route::put('live-settings', [$c, 'liveSettings'])->middleware('permission:commerce.storefront.settings')->name('live.settings');
+    Route::post('live-settings/verify-facebook', [$c, 'verifyFacebookLive'])->middleware('permission:commerce.storefront.settings')->name('live.verify-facebook');
+    Route::post('lives', [$c, 'storeLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.store');
+    Route::post('lives/{id}/toggle-slider', [$c, 'toggleLiveSlider'])->middleware('permission:commerce.storefront.marketing')->name('lives.toggle-slider');
+    Route::post('lives/{id}/stop', [$c, 'stopLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.stop');
+    Route::delete('lives/{id}', [$c, 'deleteLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.destroy');
 });
 
 Route::prefix('commerce/referrals')->name('commerce.referrals.')->group(function (): void {

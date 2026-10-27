@@ -24,6 +24,22 @@ class MetaCatalogClient
         return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($wabaId.'/product_catalogs'), ['fields' => 'id,name']);
     }
 
+    /**
+     * Lists catalogs owned by a Facebook Page, which is how a Page Shop shows its catalog.
+     */
+    public function pageCatalogs(string $pageId, string $token): Response
+    {
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($pageId.'/product_catalogs'), ['fields' => 'id,name']);
+    }
+
+    /**
+     * Read-only: Meta connects the Instagram Shop to a catalog in Commerce Manager, not through the API.
+     */
+    public function instagramAvailableCatalogs(string $igUserId, string $token): Response
+    {
+        return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($igUserId.'/available_catalogs'));
+    }
+
     public function commerceSettings(string $phoneNumberId, string $token): Response
     {
         return Http::withToken($token)->connectTimeout(5)->timeout(20)->get($this->url($phoneNumberId.'/whatsapp_commerce_settings'));

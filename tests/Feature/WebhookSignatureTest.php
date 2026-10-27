@@ -110,3 +110,26 @@ it('ignores template updates that name a different WhatsApp Business Account', f
 
     expect($submission->fresh()->status->value)->toBe('submitted');
 });
+
+it('enforces the Meta signature on the Messenger and Instagram webhook route', function (?string $signature, int $status, int $events) {
+    config(['services.meta.webhook_signature' => 'enforce']);
+    app(MetaSocialSettingsService::class)->update(['meta_social_app_secret' => 'social-secret']);
+
+    $workspace = app(WorkspaceResolver::class)->current(User::factory()->create(['email_verified_at' => now()]));
+    ChannelAccount::query()->create(['workspace_id' => $workspace->id, 'provider' => 'messenger', 'name' => 'Page', 'status' => ChannelAccountStatus::Connected,
+        'credentials' => ['access_token' => 'x'], 'webhook_verify_token' => 'page-token', 'provider_account_id' => 'page-1', 'connected_at' => now()]);
+
+    $body = json_encode(['object' => 'page', 'entry' => [['id' => 'page-1', 'time' => 1, 'messaging' => [[
+        'sender' => ['id' => 'psid-1'], 'recipient' => ['id' => 'page-1'], 'message' => ['mid' => 'm-1', 'text' => 'hi'],
+    ]]]]]);
+    $signature = $signature === 'valid' ? signed($body, 'social-secret') : $signature;
+    $server = ['CONTENT_TYPE' => 'application/json'] + ($signature ? ['HTTP_X_HUB_SIGNATURE_256' => $signature] : []);
+
+    $this->call('POST', '/webhooks/meta/page-token', [], [], [], $server, $body)->assertStatus($status);
+
+    expect(ChannelWebhookEvent::query()->where('provider', 'messenger')->count())->toBe($events);
+})->with([
+    'valid' => ['valid', 200, 1],
+    'missing' => [null, 403, 0],
+    'wrong' => ['sha256=deadbeef', 403, 0],
+]);

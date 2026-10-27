@@ -4,11 +4,11 @@ use App\Modules\Commerce\Http\Controllers\Api\MenuApiController;
 use App\Modules\Commerce\Http\Controllers\Api\OrderApiController;
 use App\Modules\Commerce\Http\Controllers\Api\ProductApiController;
 use App\Modules\Commerce\Http\Controllers\Api\ProductShowcaseController;
-use App\Modules\Commerce\Http\Controllers\Api\StoreOrderController;
 use App\Modules\Commerce\Http\Controllers\Api\StoreDeviceController;
+use App\Modules\Commerce\Http\Controllers\Api\StoreOrderController;
 use App\Modules\Commerce\Http\Controllers\Api\WhatsAppCustomerAuthController;
-use App\Modules\Commerce\Http\Middleware\ResolveStoreWorkspace;
 use App\Modules\Commerce\Http\Middleware\RequireStoreKey;
+use App\Modules\Commerce\Http\Middleware\ResolveStoreWorkspace;
 use Illuminate\Support\Facades\Route;
 
 Route::get('commerce/menu', [MenuApiController::class, 'index'])

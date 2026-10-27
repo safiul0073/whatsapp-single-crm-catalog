@@ -1,0 +1,1 @@
+{"name":"TikTok","alias":"tiktok","description":"TikTok account connection through Login Kit, with token refresh","version":"1.0.0","priority":35,"providers":["App\\Modules\\TikTok\\Providers\\TikTokServiceProvider"],"requires":["marketing-channels"],"packages":{"require":{},"require-dev":{}},"active":true}

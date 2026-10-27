@@ -6,6 +6,7 @@ use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Storefront\Http\Resources\ProductResource;
+use App\Modules\Commerce\Storefront\Models\LiveStream;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontPage;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 
 class CmsService
 {
-    public const TYPES = ['hero_slider', 'category_grid', 'category_carousel', 'product_carousel', 'promo_banner', 'cta', 'content_grid', 'brand_strip', 'testimonials', 'rich_text', 'newsletter', 'countdown_deal', 'benefit_banner'];
+    public const TYPES = ['hero_slider', 'category_grid', 'category_carousel', 'product_carousel', 'promo_banner', 'cta', 'content_grid', 'brand_strip', 'testimonials', 'rich_text', 'newsletter', 'countdown_deal', 'benefit_banner', 'live_videos'];
 
     public const SECRET_KEYS = ['platform_secret', 'session_secret', 'revalidation_secret', 'preview_secret'];
 
@@ -28,6 +29,7 @@ class CmsService
         $rules = match ($section['type']) {
             'hero_slider' => ['slider_id' => 'required|integer'],
             'product_carousel' => ['source' => 'required|in:featured,new-arrivals,deals,category,brand,manual', 'category' => 'nullable|string|max:150', 'brand' => 'nullable|string|max:150', 'product_ids' => 'nullable|array|max:24', 'product_ids.*' => 'integer', 'limit' => 'nullable|integer|min:1|max:24'],
+            'live_videos' => ['limit' => 'nullable|integer|min:1|max:24'],
             'promo_banner','content_grid','testimonials' => ['items' => 'nullable|array|max:12', 'items.*.title' => 'nullable|string|max:200', 'items.*.text' => 'nullable|string|max:2000', 'items.*.image' => ['nullable', 'string', 'max:2048', 'regex:#^(?:/(?!/)|https?://)#'], 'items.*.link' => ['nullable', 'string', 'max:2048', 'regex:#^(?:/(?!/)|https?://|#)#']],
             'benefit_banner' => ['items' => 'nullable|array|max:12', 'items.*.title' => 'nullable|string|max:200', 'items.*.text' => 'nullable|string|max:2000'],
             'rich_text' => ['text' => 'required|string|max:30000'],
@@ -71,7 +73,7 @@ class CmsService
                 'app_ios_url' => '',
                 'app_android_url' => '',
             ],
-            array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment']))
+            array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
         );
         if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
@@ -93,6 +95,7 @@ class CmsService
         $settings['logo_height'] = max(32, min(120, (int) ($settings['logo_height'] ?? 68)));
         $settings['logo_show_name'] = (bool) ($settings['logo_show_name'] ?? false);
 
+        $settings['tracking'] = app(TrackingSettingsService::class)->public($workspace);
         $settings['chat_channels'] = array_replace_recursive(self::CHAT_CHANNEL_DEFAULTS, $settings['chat_channels'] ?? []);
         $bot = &$settings['chat_channels']['custom_chatbot'];
         if ($bot['enabled'] && $bot['source'] === 'marketing_chatbot') {
@@ -100,6 +103,45 @@ class CmsService
                 ->where('workspace_id', $workspace)->where('public_token', $bot['widget_token'])->where('is_active', true)->first();
             $bot['enabled'] = $widget !== null;
             $bot['script_url'] = $widget ? route('widgets.chatbot.loader', $widget->public_token) : '';
+        }
+
+        unset($settings['live']);
+        try {
+            $liveService = app(LiveStreamService::class);
+            $liveConfig = $liveService->settings($workspace);
+            $activeLive = null;
+            if ($liveConfig['enabled']) {
+                $activeModel = LiveStream::query()
+                    ->where('workspace_id', $workspace)
+                    ->where('status', 'live')
+                    ->latest('started_at')
+                    ->get()
+                    ->first(fn (LiveStream $s): bool => $s->hasPlatform('storefront'));
+
+                if ($activeModel) {
+                    $activeLive = [
+                        'id' => $activeModel->id,
+                        'title' => $activeModel->title,
+                        'slug' => $activeModel->slug,
+                        'viewer_count' => (int) $activeModel->viewer_count + (int) $activeModel->facebook_viewer_count,
+                        'thumbnail_url' => $activeModel->thumbnailUrl(),
+                    ];
+                }
+            }
+            $settings['live_shopping'] = [
+                'enabled' => (bool) $liveConfig['enabled'],
+                'show_header_live_badge' => (bool) $liveConfig['show_header_live_badge'],
+                'is_live_now' => $activeLive !== null,
+                'reverb' => $liveConfig['reverb'],
+                'active_live' => $activeLive,
+            ];
+        } catch (\Throwable) {
+            $settings['live_shopping'] = [
+                'enabled' => true,
+                'show_header_live_badge' => true,
+                'is_live_now' => false,
+                'active_live' => null,
+            ];
         }
 
         return $settings;
@@ -120,6 +162,7 @@ class CmsService
                 ['label' => 'Woman', 'href' => '/category/women', 'mega' => 'woman', 'badge' => '', 'children' => []],
                 ['label' => 'Accessories', 'href' => '/category/accessories', 'mega' => 'accessories', 'badge' => '', 'children' => []],
                 ['label' => 'New Arrivals', 'href' => '/collections/new-arrivals', 'mega' => 'none', 'badge' => '', 'children' => []],
+                ['label' => 'Live & Videos', 'href' => '/live', 'mega' => 'none', 'badge' => 'LIVE', 'children' => []],
                 ['label' => 'Order Tracking', 'href' => '/track-order', 'mega' => 'none', 'badge' => '', 'children' => []],
             ],
             'footer' => [
@@ -127,6 +170,7 @@ class CmsService
                 ['label' => 'New Arrivals', 'href' => '/collections/new-arrivals', 'mega' => 'none', 'badge' => '', 'children' => []],
                 ['label' => 'Special Deals', 'href' => '/collections/deals', 'mega' => 'none', 'badge' => '', 'children' => []],
                 ['label' => 'Custom Packs', 'href' => '/packs', 'mega' => 'none', 'badge' => 'MIX', 'children' => []],
+                ['label' => 'Live & Videos', 'href' => '/live', 'mega' => 'none', 'badge' => 'LIVE', 'children' => []],
                 ['label' => 'Journal', 'href' => '/blog', 'mega' => 'none', 'badge' => '', 'children' => []],
             ],
             default => [],
@@ -312,6 +356,7 @@ class CmsService
                 'product_carousel' => $this->products($workspace, $config),
                 'category_grid' => Category::query()->where('workspace_id', $workspace)->where('is_active', true)->whereNull('parent_id')->get()->toArray(),
                 'brand_strip' => Brand::query()->where('workspace_id', $workspace)->where('is_active', true)->get()->toArray(),
+                'live_videos' => $this->liveVideos($workspace, $config),
                 default => [],
             };
         }
@@ -346,6 +391,32 @@ class CmsService
         }
 
         return ProductResource::collection($q->latest('id')->limit($config['limit'] ?? 8)->get())->resolve();
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array<int, array<string, mixed>>
+     */
+    private function liveVideos(int $workspace, array $config): array
+    {
+        try {
+            $limit = max(1, min(24, (int) ($config['limit'] ?? 6)));
+            $liveService = app(LiveStreamService::class);
+
+            return LiveStream::query()
+                ->where('workspace_id', $workspace)
+                ->whereIn('status', ['live', 'ended'])
+                ->orderByRaw("CASE WHEN status = 'live' THEN 0 ELSE 1 END")
+                ->latest('id')
+                ->limit($limit)
+                ->get()
+                ->filter(fn (LiveStream $s): bool => $s->status === 'live' ? $s->hasPlatform('storefront') : filled($s->video_path))
+                ->values()
+                ->map(fn (LiveStream $s): array => $liveService->formatStream($s, false, false))
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public function previewToken(int $workspace, string $slug): string

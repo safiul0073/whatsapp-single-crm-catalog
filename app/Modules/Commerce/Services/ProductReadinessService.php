@@ -46,13 +46,13 @@ class ProductReadinessService
                 $issues[] = ['code' => 'ws_main_moq_invalid', 'message' => 'Wholesale main MOQ must be at least 1.'];
             }
 
-            if (!empty($product->ws_size_ratios) && $sizeOption) {
+            if (! empty($product->ws_size_ratios) && $sizeOption) {
                 $sizeValues = $sizeOption->values->pluck('value')->all();
                 foreach ($product->ws_size_ratios as $colorId => $ratios) {
                     $ratioKeys = array_keys($ratios);
                     $mismatched = array_diff($ratioKeys, $sizeValues);
-                    if (!empty($mismatched)) {
-                        $issues[] = ['code' => 'ws_ratios_mismatch', 'message' => "Wholesale size ratios for color '{$colorId}' contain sizes not defined in the product: " . implode(', ', $mismatched)];
+                    if (! empty($mismatched)) {
+                        $issues[] = ['code' => 'ws_ratios_mismatch', 'message' => "Wholesale size ratios for color '{$colorId}' contain sizes not defined in the product: ".implode(', ', $mismatched)];
                     }
                 }
             }

@@ -9,10 +9,13 @@ use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\LiveAdminRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\TrackingSettingsRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\CouponUsage;
+use App\Modules\Commerce\Storefront\Models\LiveStream;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
@@ -23,6 +26,9 @@ use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\DomainResolver;
+use App\Modules\Commerce\Storefront\Services\FacebookLiveService;
+use App\Modules\Commerce\Storefront\Services\LiveStreamService;
+use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -35,7 +41,12 @@ use Illuminate\View\View;
 
 class AdminController extends Controller
 {
-    public function __construct(private WorkspaceResolver $workspaces, private CmsService $cms) {}
+    public function __construct(
+        private WorkspaceResolver $workspaces,
+        private CmsService $cms,
+        private LiveStreamService $lives,
+        private FacebookLiveService $facebook,
+    ) {}
 
     private function workspace(Request $r): int
     {
@@ -50,6 +61,10 @@ class AdminController extends Controller
 
         return view('commerce::user.storefront', [
             'settings' => $settings,
+            'tracking' => app(TrackingSettingsService::class)->admin($w),
+            'liveSettings' => $this->lives->settings($w),
+            'liveStreams' => LiveStream::query()->where('workspace_id', $w)->with('products')->latest('id')->get(),
+            'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
             'chatWidgets' => ChatbotWidget::query()->where('workspace_id', $w)->where('is_active', true)->orderBy('name')->get(['name', 'public_token']),
             'credentials' => $credentials,
             'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(),
@@ -72,6 +87,14 @@ class AdminController extends Controller
             'collections' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'collection')->latest()->get(),
             'types' => CmsService::TYPES,
         ]);
+    }
+
+    public function liveStudio(Request $r): View
+    {
+        $r->merge(['tab' => 'live']);
+        session()->flash('storefront_tab', 'live');
+
+        return $this->index($r);
     }
 
     private function redirectTab(Request $request, string $defaultTab, ?string $message = null, string $level = 'success'): RedirectResponse
@@ -97,8 +120,14 @@ class AdminController extends Controller
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
         }
+        if (isset($existing['tracking'])) {
+            $newConfig['tracking'] = $existing['tracking'];
+        }
         if (isset($existing['deployment'])) {
             $newConfig['deployment'] = $existing['deployment'];
+        }
+        if (isset($existing['live'])) {
+            $newConfig['live'] = $existing['live'];
         }
 
         if ($r->hasFile('android_app_file')) {
@@ -157,6 +186,15 @@ class AdminController extends Controller
         $this->invalidate($w);
 
         return $this->redirectTab($r, 'chat-channels', 'Contact channels saved.');
+    }
+
+    public function tracking(TrackingSettingsRequest $r, TrackingSettingsService $tracking): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $tracking->save($w, $r->validated());
+        $this->invalidate($w);
+
+        return $this->redirectTab($r, 'tracking', 'Tracking settings saved.');
     }
 
     public function generateCredentials(AdminRequest $r): RedirectResponse
@@ -406,6 +444,101 @@ class AdminController extends Controller
         $domain->update(['handle' => $r->validated('handle'), 'host' => $host]);
 
         return $this->redirectTab($r, 'domains', 'Store handle updated.');
+    }
+
+    public function liveSettings(LiveAdminRequest $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $this->lives->saveSettings($w, $r->validated());
+
+        return $this->redirectTab($r, 'live', 'Live streaming and Facebook Live settings saved.');
+    }
+
+    public function verifyFacebookLive(Request $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $result = $this->facebook->verifyConnection($w);
+
+        return $this->redirectTab(
+            $r,
+            'live',
+            $result['message'],
+            $result['ready'] ? 'success' : 'error'
+        );
+    }
+
+    public function storeLive(LiveAdminRequest $r): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $this->lives->createStream(
+            $w,
+            $r->user()?->id,
+            $r->validated(),
+            $r->file('thumbnail'),
+            $r->file('video'),
+        );
+
+        return $this->redirectTab($r, 'live', 'Live stream / recorded video saved to public storage.');
+    }
+
+    public function toggleLiveSlider(LiveAdminRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $stream = LiveStream::query()->where('workspace_id', $w)->findOrFail($id);
+        $validated = $r->validated();
+        $enable = array_key_exists('enable', $validated)
+            ? (bool) $validated['enable']
+            : ! $stream->is_in_slider;
+
+        $this->lives->syncToSlider(
+            $stream,
+            $enable,
+            ! empty($validated['slider_id']) ? (int) $validated['slider_id'] : null
+        );
+
+        return $this->redirectTab(
+            $r,
+            'live',
+            $enable ? 'Recorded live video added to Storefront Hero Slider.' : 'Recorded live video removed from Storefront Hero Slider.'
+        );
+    }
+
+    public function stopLive(LiveAdminRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $stream = LiveStream::query()->where('workspace_id', $w)->findOrFail($id);
+        $validated = $r->validated();
+
+        $this->lives->stopStream(
+            $stream,
+            $r->file('video'),
+            $r->file('thumbnail'),
+            array_key_exists('add_to_slider', $validated) ? (bool) $validated['add_to_slider'] : null,
+            ! empty($validated['slider_id']) ? (int) $validated['slider_id'] : null,
+            ! empty($validated['duration_seconds']) ? (int) $validated['duration_seconds'] : null,
+        );
+
+        return $this->redirectTab($r, 'live', 'Live broadcast ended and recording updated.');
+    }
+
+    public function deleteLive(Request $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $stream = LiveStream::query()->where('workspace_id', $w)->findOrFail($id);
+
+        if ($stream->is_in_slider) {
+            $this->lives->syncToSlider($stream, false);
+        }
+        if (filled($stream->video_path) && Storage::disk('public')->exists($stream->video_path)) {
+            Storage::disk('public')->delete($stream->video_path);
+        }
+        if (filled($stream->thumbnail_path) && Storage::disk('public')->exists($stream->thumbnail_path)) {
+            Storage::disk('public')->delete($stream->thumbnail_path);
+        }
+
+        $stream->delete();
+
+        return $this->redirectTab($r, 'live', 'Live stream and stored video deleted.');
     }
 
     private function invalidate(int $w): void
