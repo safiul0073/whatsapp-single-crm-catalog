@@ -353,6 +353,14 @@ class InboxService
             $payload['reply_to_id'] = $replyToId;
         }
 
+        if ($provider === 'instagram' && ! $attachmentMeta) {
+            $commentId = $this->instagramCommentReplyTarget($conversation);
+
+            if (filled($commentId)) {
+                $payload['reply_to_comment_id'] = $commentId;
+            }
+        }
+
         try {
             $result = $this->channels->sendMessage($account, ['to' => $recipient, 'provider_contact_id' => $recipient], $payload);
         } catch (\Throwable $exception) {
@@ -754,6 +762,22 @@ class InboxService
             ->whereNotNull('provider_message_id')
             ->latest('id')
             ->value('provider_message_id');
+    }
+
+    /**
+     * A reply goes to the comment only while the customer's latest inbound item is a comment; a newer DM wins.
+     */
+    protected function instagramCommentReplyTarget(Conversation $conversation): ?string
+    {
+        $latest = Message::query()
+            ->where('workspace_id', $conversation->workspace_id)
+            ->where('conversation_id', $conversation->id)
+            ->where('provider', 'instagram')
+            ->where('direction', 'inbound')
+            ->latest('id')
+            ->first(['type', 'provider_message_id']);
+
+        return $latest?->type === 'comment' ? $latest->provider_message_id : null;
     }
 
     protected function storeAttachment(int $workspaceId, UploadedFile $attachment): array

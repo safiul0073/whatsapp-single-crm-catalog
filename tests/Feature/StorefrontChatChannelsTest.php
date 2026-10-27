@@ -98,3 +98,19 @@ it('keeps the selected widget when temporarily disabling contact channels', func
     $this->put('/dashboard/commerce/storefront/chat-channels', ['chat_channels' => $this->channels])->assertSessionHasNoErrors();
     expect(StorefrontSetting::query()->first()->config['chat_channels']['custom_chatbot']['widget_token'])->toBe('saved-token');
 });
+
+it('saves tracking settings, keeps them across general settings saves and rejects bad pixel ids', function (): void {
+    $this->put('/dashboard/commerce/storefront/tracking', ['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456', 'meta_capi_enabled' => '1', 'meta_capi_token' => 'EAAB-secret'])->assertRedirect()->assertSessionHasNoErrors();
+    Queue::assertPushed(RevalidateStorefront::class, fn ($job) => $job->workspace === $this->workspace->id);
+
+    $this->put('/dashboard/commerce/storefront/settings', ['config' => ['name' => 'Changed', 'primary' => '#123456', 'hover' => '#123456', 'footer_color' => '#123456']])->assertSessionHasNoErrors();
+
+    $public = app(CmsService::class)->settings($this->workspace->id);
+    expect($public['tracking'])->toBe(['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456'])
+        ->and(json_encode($public))->not->toContain('EAAB-secret')
+        ->and(StorefrontSetting::query()->first()->config['tracking']['meta_capi_token'])->not->toBe('EAAB-secret');
+
+    $this->putJson('/dashboard/commerce/storefront/tracking', ['meta_pixel_id' => 'abc', 'tiktok_pixel_id' => 'lower', 'meta_capi_enabled' => '0'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['meta_pixel_id', 'tiktok_pixel_id']);
+});

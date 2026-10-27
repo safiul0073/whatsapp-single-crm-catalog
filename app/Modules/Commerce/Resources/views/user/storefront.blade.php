@@ -528,6 +528,7 @@
             ],
             [
                 ['chat-channels', 'ph-chat-circle-dots', __('Chat & Contact'), null, false],
+                ['tracking', 'ph-chart-line-up', __('Ads & Tracking'), null, false],
                 ['deployment', 'ph-key', __('API & Deploy'), null, false],
             ],
         ];
@@ -3043,6 +3044,7 @@
          TAB 9: API & DEPLOYMENT (.ENV) CREDENTIALS
          ===================================================================== --}}
     @include('commerce::user.storefront-chat-channels')
+    @include('commerce::user.storefront-tracking')
 
     <div x-show="activeTab === 'deployment'" x-cloak class="space-y-6">
         {{-- 1. Ready-to-Use Next.js Storefront .env Block --}}

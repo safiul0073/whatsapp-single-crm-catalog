@@ -2,7 +2,9 @@
 
 namespace App\Modules\Commerce\Storefront\Http\Resources;
 
+use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -44,6 +46,14 @@ class ProductResource extends JsonResource
             data_get($storefrontSetting?->config, 'chat_channels.whatsapp.phone'),
         ])->first(fn ($val) => filled($val) && is_string($val));
 
+        $typeKey = 'product_type_'.$this->workspace_id.'_'.($this->category_id ?? 0);
+        if (! $request->attributes->has($typeKey)) {
+            $request->attributes->set($typeKey, app(ProductTypeService::class)->forCategory($this->category, $this->workspace_id));
+        }
+        /** @var ProductType $type */
+        $type = $request->attributes->get($typeKey);
+        $values = $this->attribute_values ?? [];
+
         return [
             'id' => $this->id,
             'slug' => $this->slug,
@@ -64,6 +74,11 @@ class ProductResource extends JsonResource
             'image' => $this->primaryMedia?->url,
             'primary_image' => $this->primaryMedia?->url,
             'category' => $this->category?->only(['id', 'name', 'slug']),
+            'product_type' => ['slug' => $type->slug, 'name' => $type->name, 'layout' => $type->layout, 'variant_axes' => $type->variant_axes ?? []],
+            'attributes' => collect($type->attributes ?? [])
+                ->filter(fn ($a) => array_key_exists($a['key'], $values))
+                ->map(fn ($a) => ['key' => $a['key'], 'label' => $a['label'], 'value' => $values[$a['key']], 'show_on_card' => (bool) ($a['show_on_card'] ?? false)])
+                ->values(),
             'brand' => $this->brandRecord?->only(['id', 'name', 'slug']),
             'gallery' => $this->whenLoaded('gallery', fn () => $this->gallery->map(fn ($g) => [
                 'url' => $g->media?->url,
@@ -75,6 +90,7 @@ class ProductResource extends JsonResource
                 'sku' => $v->sku,
                 'size' => $v->size,
                 'color_id' => $v->color_id,
+                'attributes' => (object) ($v->attributes ?? []),
                 'price' => (string) ($this->single_piece_price ?? $v->price),
                 'stock' => $v->status === 'active' ? $v->stock_quantity : 0,
                 'image' => $v->image,

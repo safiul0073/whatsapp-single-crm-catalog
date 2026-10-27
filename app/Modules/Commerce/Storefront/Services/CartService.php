@@ -141,6 +141,7 @@ class CartService
                 'color_hex' => $variant?->color?->hex_code,
                 'color_image' => $colorImage,
                 'size' => $variant?->size,
+                'sku' => $variant?->sku,
                 'quantity' => $line->quantity,
                 'price' => OrderMoney::decimal($price, $precision),
                 'minor_total' => $price * $line->quantity,

@@ -35,6 +35,7 @@ class ContactImportService
         $path = $file->storeAs(
             'imports/'.$workspace->id,
             time().'_'.$file->getClientOriginalName(),
+            'local',
         );
 
         $fullPath = Storage::disk('local')->path($path);
@@ -114,7 +115,11 @@ class ContactImportService
 
         $import->update($updates);
 
-        ProcessContactImportJob::dispatch($importId);
+        // Runs inside the request so the UI loader covers it; no queue worker needed.
+        set_time_limit(0);
+        ignore_user_abort(true);
+
+        ProcessContactImportJob::dispatchSync($importId);
     }
 
     public function show(int $importId, ?User $user = null): ContactImport

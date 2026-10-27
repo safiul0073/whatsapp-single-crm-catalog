@@ -24,6 +24,10 @@ class ProductDetailsRequest extends FormRequest
             }
         }
 
+        if ($this->exists('category_id') && ! $this->exists('attribute_values')) {
+            $merges['attribute_values'] = [];
+        }
+
         if ($this->exists('features')) {
             $features = $this->input('features');
             if (is_string($features)) {
@@ -104,6 +108,8 @@ class ProductDetailsRequest extends FormRequest
             'feature_highlights' => ['nullable', 'array'],
             'shipping_countries' => ['nullable', 'array'],
             'specifications' => ['nullable', 'array'],
+            'attribute_values' => ['nullable', 'array'],
+            'attribute_values.*' => ['nullable'],
             'fit' => ['nullable', 'string', 'max:120'],
             'set_includes' => ['nullable', 'string', 'max:200'],
             'gender' => ['nullable', 'string', 'max:100'],

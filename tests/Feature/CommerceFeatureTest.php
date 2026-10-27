@@ -1122,6 +1122,50 @@ it('busts the cached probe when access is verified on demand', function (): void
     Http::assertSentCount(2);
 });
 
+it('checks whether Facebook Page and Instagram shops use the catalog and shows the result', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake([
+        'graph.facebook.com/*/page-1/product_catalogs*' => Http::response(['data' => [['id' => 'catalog-access', 'name' => 'US Store']]]),
+        'graph.facebook.com/*/ig-1/available_catalogs*' => Http::response(['data' => [['catalog_id' => 'other-catalog', 'catalog_name' => 'Old']]]),
+    ]);
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    foreach ([['messenger', 'page-1'], ['instagram', 'ig-1']] as [$provider, $accountId]) {
+        ChannelAccount::query()->create(['workspace_id' => $context['workspace']->id, 'provider' => $provider, 'name' => ucfirst($provider), 'status' => 'connected', 'credentials' => ['access_token' => $provider.'-token'], 'provider_account_id' => $accountId]);
+    }
+
+    $this->actingAs($context['user'])
+        ->post(route('user.commerce.catalog.verify-sales-channels', $catalog))
+        ->assertRedirect()
+        ->assertSessionHas('warning');
+
+    $status = collect(app(CatalogDiagnosticsService::class)->salesChannelStatus($catalog))->keyBy('provider');
+
+    expect($status['messenger']['passed'])->toBeTrue()
+        ->and($status['instagram']['passed'])->toBeFalse()
+        ->and($status['instagram']['message'])->toContain('other-catalog');
+
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'page-1/product_catalogs') && $request->hasHeader('Authorization', 'Bearer messenger-token'));
+});
+
+it('warns when there is no Messenger or Instagram channel to check', function (): void {
+    Permission::findOrCreate('commerce.view', 'web');
+    Permission::findOrCreate('commerce.manage', 'web');
+    Http::fake();
+    $context = commerceContext();
+    $context['user']->givePermissionTo(['commerce.view', 'commerce.manage']);
+    $catalog = readyApiCatalog($context);
+
+    $this->actingAs($context['user'])
+        ->post(route('user.commerce.catalog.verify-sales-channels', $catalog))
+        ->assertSessionHas('warning');
+
+    Http::assertNothingSent();
+});
+
 it('continues reconciling remaining catalogs when one catalog is not ready', function (): void {
     Queue::fake();
     Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'catalog-access'], 200)]);

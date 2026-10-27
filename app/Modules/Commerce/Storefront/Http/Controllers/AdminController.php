@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\LiveAdminRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\TrackingSettingsRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\Coupon;
@@ -27,6 +28,7 @@ use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\DomainResolver;
 use App\Modules\Commerce\Storefront\Services\FacebookLiveService;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
+use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -59,6 +61,7 @@ class AdminController extends Controller
 
         return view('commerce::user.storefront', [
             'settings' => $settings,
+            'tracking' => app(TrackingSettingsService::class)->admin($w),
             'liveSettings' => $this->lives->settings($w),
             'liveStreams' => LiveStream::query()->where('workspace_id', $w)->with('products')->latest('id')->get(),
             'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
@@ -116,6 +119,9 @@ class AdminController extends Controller
         unset($newConfig['chat_channels']);
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
+        }
+        if (isset($existing['tracking'])) {
+            $newConfig['tracking'] = $existing['tracking'];
         }
         if (isset($existing['deployment'])) {
             $newConfig['deployment'] = $existing['deployment'];
@@ -180,6 +186,15 @@ class AdminController extends Controller
         $this->invalidate($w);
 
         return $this->redirectTab($r, 'chat-channels', 'Contact channels saved.');
+    }
+
+    public function tracking(TrackingSettingsRequest $r, TrackingSettingsService $tracking): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $tracking->save($w, $r->validated());
+        $this->invalidate($w);
+
+        return $this->redirectTab($r, 'tracking', 'Tracking settings saved.');
     }
 
     public function generateCredentials(AdminRequest $r): RedirectResponse

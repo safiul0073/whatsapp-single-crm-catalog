@@ -3,12 +3,19 @@
 use App\Models\User;
 use App\Modules\AuditLog\Services\AuditLogService;
 use App\Modules\Commerce\Database\Seeders\StorefrontBlogSeeder;
+use App\Modules\Commerce\Jobs\SendMetaPurchaseEvent;
+use App\Modules\Commerce\Jobs\SendTikTokPurchaseEvent;
+use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\ProductOption;
+use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
 use App\Modules\Commerce\Services\OrderWorkflowService;
+use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\Customer;
@@ -37,6 +44,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\StorefrontDatabase;
 
@@ -408,4 +416,89 @@ it('seeds full demo journal articles with covers for a single store', function (
     expect(str_word_count(strip_tags($post->json('data.data.content'))))->toBeGreaterThan(350);
 
     $this->getJson('/api/storefront/v1/blogs', [...$this->headers, 'X-Store-Host' => 'two.localhost'])->assertOk()->assertJsonCount(0, 'data.data');
+});
+
+it('serves category-specific attributes, filters and facets for non-apparel products', function (): void {
+    $service = app(ProductTypeService::class);
+    $service->ensureDefaults($this->store->id);
+    $jewelryType = ProductType::query()->where('workspace_id', $this->store->id)->where('slug', 'jewelry')->firstOrFail();
+    $parent = Category::query()->create(['workspace_id' => $this->store->id, 'name' => 'Jewelry', 'slug' => 'jewelry', 'product_type_id' => $jewelryType->id, 'is_active' => true]);
+    $child = Category::query()->create(['workspace_id' => $this->store->id, 'parent_id' => $parent->id, 'name' => 'Rings', 'slug' => 'rings', 'is_active' => true]);
+
+    $values = $service->sanitizeValues($jewelryType, ['metal' => 'Gold', 'weight_g' => '4.5', 'bogus' => 'x']);
+    expect($values)->toBe(['metal' => 'Gold', 'weight_g' => 4.5]);
+
+    $ring = Product::query()->create(['workspace_id' => $this->store->id, 'category_id' => $child->id, 'name' => 'Gold Ring', 'slug' => 'gold-ring', 'sku' => 'gold-ring', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'retail', 'single_piece_price' => 500, 'attribute_values' => $values]);
+    Product::query()->create(['workspace_id' => $this->store->id, 'category_id' => $child->id, 'name' => 'Silver Ring', 'slug' => 'silver-ring', 'sku' => 'silver-ring', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'retail', 'single_piece_price' => 90, 'attribute_values' => ['metal' => 'Silver']]);
+
+    $this->getJson('/api/storefront/v1/catalog/products/gold-ring', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.product_type.layout', 'jewelry')
+        ->assertJsonPath('data.attributes.0.key', 'metal')
+        ->assertJsonPath('data.attributes.0.value', 'Gold');
+
+    $this->getJson('/api/storefront/v1/catalog/products?category=jewelry&attr[metal]=Gold', $this->headers)
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.slug', 'gold-ring');
+
+    $facets = $this->getJson('/api/storefront/v1/catalog/products/filters?category=rings', $this->headers)->assertOk()->json('data');
+    expect($facets['product_type']['layout'])->toBe('jewelry');
+    $metal = collect($facets['attributes'])->firstWhere('key', 'metal');
+    expect(collect($metal['values'])->pluck('count', 'value')->all())->toBe(['Gold' => 1, 'Silver' => 1]);
+
+    $categories = $this->getJson('/api/storefront/v1/catalog/categories', $this->headers)->assertOk()->json('data');
+    expect(collect($categories)->firstWhere('slug', 'rings')['product_type']['slug'])->toBe('jewelry');
+    expect($ring->fresh()->attribute_values['metal'])->toBe('Gold');
+});
+
+it('rejects invalid attribute values and treats untyped categories as apparel', function (): void {
+    $service = app(ProductTypeService::class);
+    $service->ensureDefaults($this->store->id);
+    $food = ProductType::query()->where('workspace_id', $this->store->id)->where('slug', 'food')->firstOrFail();
+
+    expect(fn () => $service->sanitizeValues($food, ['diet' => 'Pizza']))->toThrow(ValidationException::class);
+
+    $plain = Category::query()->create(['workspace_id' => $this->store->id, 'name' => 'Shirts', 'slug' => 'shirts', 'is_active' => true]);
+    expect($service->forCategory($plain, $this->store->id)->slug)->toBe('apparel');
+});
+
+it('filters products by option value and exposes option facets', function (): void {
+    $shade = fn (Product $product, string $value) => ProductOption::query()->create(['workspace_id' => $this->store->id, 'product_id' => $product->id, 'name' => 'Shade', 'code' => 'shade', 'position' => 0])
+        ->values()->create(['workspace_id' => $this->store->id, 'value' => $value, 'position' => 0]);
+    $make = fn (string $slug) => Product::query()->create(['workspace_id' => $this->store->id, 'name' => $slug, 'slug' => $slug, 'sku' => $slug, 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'retail', 'single_piece_price' => 10]);
+    $shade($make('lip-red'), 'Red');
+    $shade($make('lip-nude'), 'Nude');
+
+    $this->getJson('/api/storefront/v1/catalog/products?option[shade]=Red', $this->headers)->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.slug', 'lip-red');
+    $options = $this->getJson('/api/storefront/v1/catalog/products/filters', $this->headers)->assertOk()->json('data.options');
+    expect(collect($options)->firstWhere('code', 'shade')['values'])->toHaveCount(2);
+});
+
+it('keeps non-apparel products retail-only', function (): void {
+    $service = app(ProductService::class);
+    app(ProductTypeService::class)->ensureDefaults($this->store->id);
+    $food = ProductType::query()->where('workspace_id', $this->store->id)->where('slug', 'food')->firstOrFail();
+    $category = Category::query()->create(['workspace_id' => $this->store->id, 'name' => 'Snacks', 'slug' => 'snacks', 'product_type_id' => $food->id, 'is_active' => true]);
+
+    $product = $service->createDraft($this->store->id, ['name' => 'Chips', 'category_id' => $category->id, 'selling_mode' => 'both', 'ws_enabled' => true]);
+
+    expect($product->selling_mode)->toBe('retail')->and($product->ws_enabled)->toBeFalse();
+});
+
+it('queues one Meta purchase event per new order with validated browser details', function (): void {
+    Queue::fake();
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    $headers = [...$headers, 'X-Client-Ip' => '203.0.113.9', 'X-Client-User-Agent' => 'Mozilla/5.0', 'X-Meta-Fbp' => 'fb.1.1710000000.123', 'X-Meta-Fbc' => 'not valid'];
+
+    $order = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
+    $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertOk();
+
+    Queue::assertPushed(SendMetaPurchaseEvent::class, 1);
+    Queue::assertPushed(SendTikTokPurchaseEvent::class, 1);
+    Queue::assertPushed(SendMetaPurchaseEvent::class, fn (SendMetaPurchaseEvent $job): bool => $job->orderId === $order['id']
+        && $job->client['ip'] === '203.0.113.9'
+        && $job->client['user_agent'] === 'Mozilla/5.0'
+        && $job->client['fbp'] === 'fb.1.1710000000.123'
+        && $job->client['fbc'] === null);
 });

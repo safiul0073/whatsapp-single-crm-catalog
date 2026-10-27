@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\MarketingChannels\Models\ChannelAccount;
 use Illuminate\Support\Facades\Cache;
 
 class CatalogDiagnosticsService
@@ -74,6 +75,82 @@ class CatalogDiagnosticsService
                 return $this->check('catalog_access', false, 'Meta catalog access failed: '.$exception->getMessage());
             }
         });
+    }
+
+    /**
+     * Last Facebook/Instagram Shop link results for this catalog; reads the cache only, so page renders never call Graph.
+     *
+     * @return array<int, array{channel_account_id: int, provider: string, name: string, passed: bool, message: string}>
+     */
+    public function salesChannelStatus(Catalog $catalog): array
+    {
+        return Cache::get($this->salesChannelsKey($catalog), []);
+    }
+
+    /**
+     * Checks whether the catalog is the one connected to each Messenger Page and Instagram account of the workspace.
+     * Linking happens in Meta Commerce Manager: Meta exposes no API to attach a catalog to a Page or Instagram Shop.
+     *
+     * @return array<int, array{channel_account_id: int, provider: string, name: string, passed: bool, message: string}>
+     */
+    public function probeSalesChannels(Catalog $catalog): array
+    {
+        $accounts = ChannelAccount::query()
+            ->where('workspace_id', $catalog->workspace_id)
+            ->whereIn('provider', ['messenger', 'instagram'])
+            ->where('status', 'connected')
+            ->orderBy('id')
+            ->get();
+
+        $results = $accounts->map(fn (ChannelAccount $account): array => $this->probeSalesChannel($catalog, $account))->all();
+        Cache::put($this->salesChannelsKey($catalog), $results, now()->addDay());
+
+        return $results;
+    }
+
+    /**
+     * @return array{channel_account_id: int, provider: string, name: string, passed: bool, message: string}
+     */
+    protected function probeSalesChannel(Catalog $catalog, ChannelAccount $account): array
+    {
+        $result = ['channel_account_id' => $account->id, 'provider' => $account->provider, 'name' => (string) $account->name];
+        $label = $account->provider === 'instagram' ? 'Instagram Shop' : 'Facebook Page Shop';
+        $token = (string) $account->credential('access_token');
+
+        if (blank($catalog->meta_catalog_id) || blank($token) || blank($account->provider_account_id)) {
+            return $result + ['passed' => false, 'message' => 'Configure the Meta catalog ID and reconnect this channel before checking.'];
+        }
+
+        try {
+            $response = $account->provider === 'instagram'
+                ? $this->meta->instagramAvailableCatalogs((string) $account->provider_account_id, $token)
+                : $this->meta->pageCatalogs((string) $account->provider_account_id, $token);
+        } catch (\Throwable $exception) {
+            return $result + ['passed' => false, 'message' => $label.' check failed: '.$exception->getMessage()];
+        }
+
+        if (! $response->successful()) {
+            return $result + ['passed' => false, 'message' => (string) ($response->json('error.message') ?: $label.' check failed.')];
+        }
+
+        $linked = collect($response->json('data') ?: [])
+            ->map(fn (array $item): string => (string) ($item['catalog_id'] ?? $item['id'] ?? ''))
+            ->filter();
+
+        if ($linked->contains((string) $catalog->meta_catalog_id)) {
+            return $result + ['passed' => true, 'message' => $label.' uses this catalog.'];
+        }
+
+        if ($linked->isEmpty()) {
+            return $result + ['passed' => false, 'message' => 'No catalog is connected to this '.$label.'. Connect catalog '.$catalog->meta_catalog_id.' in Meta Commerce Manager.'];
+        }
+
+        return $result + ['passed' => false, 'message' => $label.' uses catalog '.$linked->implode(', ').', not '.$catalog->meta_catalog_id.'.'];
+    }
+
+    protected function salesChannelsKey(Catalog $catalog): string
+    {
+        return "commerce.catalog.{$catalog->id}.sales_channels";
     }
 
     /**

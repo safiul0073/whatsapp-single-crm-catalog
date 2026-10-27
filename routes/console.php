@@ -7,6 +7,7 @@ use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
+use App\Modules\TikTok\Services\TikTokTokenService;
 use Illuminate\Support\Facades\Schedule;
 
 if (config('services.order_scheduler_scope') !== 'commerce') {
@@ -27,3 +28,5 @@ Schedule::call(function (): void {
 })->name('commerce-recover-customer-welcome')->everyFiveMinutes()->withoutOverlapping();
 
 Schedule::call(fn () => app(ReferralService::class)->awardTargetSlabs())->name('commerce-referral-target-bonuses')->dailyAt('00:30')->withoutOverlapping();
+
+Schedule::call(fn () => app(TikTokTokenService::class)->refreshDue())->name('tiktok-refresh-tokens')->hourly()->withoutOverlapping();
