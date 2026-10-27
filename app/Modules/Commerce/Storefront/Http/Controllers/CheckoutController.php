@@ -3,6 +3,8 @@
 namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Jobs\SendMetaPurchaseEvent;
+use App\Modules\Commerce\Jobs\SendTikTokPurchaseEvent;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderMoney;
@@ -18,6 +20,7 @@ use App\Modules\Commerce\Storefront\Services\RewardWalletService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -114,8 +117,32 @@ class CheckoutController extends Controller
             }
             $this->referrals->orderPlaced($order, $c);
             $cart->update(['completed_at' => now()]);
+            $client = $this->clientContext($r);
+            DB::afterCommit(function () use ($order, $client): void {
+                rescue(fn () => SendMetaPurchaseEvent::dispatch($order->id, $client), report: true);
+                rescue(fn () => SendTikTokPurchaseEvent::dispatch($order->id, Arr::only($client, ['ip', 'user_agent', 'ttp', 'host'])), report: true);
+            });
 
             return response()->json(['data' => $this->orders->payload($order)], 201);
         }, 3);
+    }
+
+    /**
+     * Browser details the storefront forwards so Meta can match the server event to the pixel event.
+     *
+     * @return array{ip: ?string, user_agent: ?string, fbp: ?string, fbc: ?string, ttp: ?string, host: ?string}
+     */
+    private function clientContext(CheckoutRequest $r): array
+    {
+        $ip = (string) $r->header('X-Client-Ip');
+
+        return [
+            'ip' => filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null,
+            'user_agent' => Str::limit((string) $r->header('X-Client-User-Agent'), 500, '') ?: null,
+            'fbp' => preg_match('/^fb\.\d\.\d+\.\d+$/', (string) $r->header('X-Meta-Fbp')) === 1 ? (string) $r->header('X-Meta-Fbp') : null,
+            'fbc' => preg_match('/^fb\.\d\.\d+\.[\w-]+$/', (string) $r->header('X-Meta-Fbc')) === 1 ? (string) $r->header('X-Meta-Fbc') : null,
+            'ttp' => preg_match('/^[\w.-]{10,200}$/', (string) $r->header('X-Tiktok-Ttp')) === 1 ? (string) $r->header('X-Tiktok-Ttp') : null,
+            'host' => $r->header('X-Store-Host') ?: null,
+        ];
     }
 }

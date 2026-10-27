@@ -12,12 +12,13 @@
     >
         <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <p class="text-sm font-semibold text-primary">{{ __('Apparel commerce') }}</p>
+                <p class="text-sm font-semibold text-primary">{{ __('Store commerce') }}</p>
                 <h1 class="heading-3 text-title">{{ __('Products and inventory') }}</h1>
-                <p class="mt-1 text-sm text-body">{{ __('Manage any garment category, option, and sellable variant.') }}</p>
+                <p class="mt-1 text-sm text-body">{{ __('Manage any product category, option, and sellable variant.') }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <x-ui.button variant="outline" href="{{ route('user.commerce.categories.index') }}"><i class="ph ph-tree-structure"></i> {{ __('Categories') }}</x-ui.button>
+                <x-ui.button variant="outline" href="{{ route('user.commerce.product-types.index') }}"><i class="ph ph-shapes"></i> {{ __('Product types') }}</x-ui.button>
                 <x-ui.button variant="outline" href="{{ route('user.commerce.catalog') }}">{{ __('Meta catalog') }}</x-ui.button>
                 <x-ui.button variant="outline" href="{{ route('user.commerce.orders.index') }}">{{ __('Orders') }}</x-ui.button>
                 <x-ui.button variant="primary" href="{{ route('user.commerce.products.create') }}"><i class="ph ph-plus"></i> {{ __('Add product') }}</x-ui.button>

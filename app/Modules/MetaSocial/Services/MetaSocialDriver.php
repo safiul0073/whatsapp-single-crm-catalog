@@ -38,6 +38,19 @@ class MetaSocialDriver implements MarketingChannelDriver
         $token = (string) $account->credential('access_token');
         $body = (string) ($payload['body'] ?? $payload['text'] ?? '');
 
+        if ($this->provider === 'instagram' && filled($payload['reply_to_comment_id'] ?? null)) {
+            $response = $this->client->replyToInstagramComment((string) $payload['reply_to_comment_id'], $token, $body);
+            $json = $response->json() ?? [];
+
+            return [
+                'ok' => $response->successful(),
+                'provider' => $this->provider(),
+                'provider_message_id' => data_get($json, 'id'),
+                'status' => $response->successful() ? MessageStatus::Sent->value : MessageStatus::Failed->value,
+                'response' => $json,
+            ];
+        }
+
         $metaPayload = $payload['meta_payload'] ?? $this->messagePayload($recipientId, $body, $payload);
 
         $response = $this->provider === 'instagram'
@@ -125,6 +138,10 @@ class MetaSocialDriver implements MarketingChannelDriver
                 $this->persistDeliveryStatus($account, $delivery);
             }
 
+            foreach ($this->commentEvents($payload) as $comment) {
+                $this->persistInboundComment($account, $comment);
+            }
+
             $event->update(['status' => ChannelWebhookEventStatus::Processed->value, 'processed_at' => now()]);
 
             return ['ok' => true, 'event_id' => $event->id, 'type' => $eventType];
@@ -156,7 +173,7 @@ class MetaSocialDriver implements MarketingChannelDriver
     protected function messagingEvents(array $payload): array
     {
         return collect(Arr::flatten(data_get($payload, 'entry.*.messaging', []), 1))
-            ->filter(fn (array $event): bool => filled(data_get($event, 'message.text')) || filled(data_get($event, 'message.attachments')))
+            ->filter(fn (mixed $event): bool => is_array($event) && (filled(data_get($event, 'message.text')) || filled(data_get($event, 'message.attachments'))))
             ->values()
             ->all();
     }
@@ -164,7 +181,29 @@ class MetaSocialDriver implements MarketingChannelDriver
     protected function deliveryEvents(array $payload): array
     {
         return collect(Arr::flatten(data_get($payload, 'entry.*.messaging', []), 1))
-            ->filter(fn (array $event): bool => filled(data_get($event, 'delivery.mids')) || filled(data_get($event, 'read.watermark')))
+            ->filter(fn (mixed $event): bool => is_array($event) && (filled(data_get($event, 'delivery.mids')) || filled(data_get($event, 'read.watermark'))))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Instagram comment webhooks arrive as entry.*.changes with field "comments".
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function commentEvents(array $payload): array
+    {
+        if ($this->provider() !== 'instagram') {
+            return [];
+        }
+
+        return collect(Arr::flatten(data_get($payload, 'entry.*.changes', []), 1))
+            ->filter(fn (mixed $change): bool => is_array($change)
+                && data_get($change, 'field') === 'comments'
+                && filled(data_get($change, 'value.id'))
+                && filled(data_get($change, 'value.from.id'))
+                && filled(data_get($change, 'value.text')))
+            ->pluck('value')
             ->values()
             ->all();
     }
@@ -173,6 +212,10 @@ class MetaSocialDriver implements MarketingChannelDriver
     {
         if ($this->messagingEvents($payload) !== []) {
             return 'message.received';
+        }
+
+        if ($this->commentEvents($payload) !== []) {
+            return 'comment.received';
         }
 
         if ($this->deliveryEvents($payload) !== []) {
@@ -250,6 +293,78 @@ class MetaSocialDriver implements MarketingChannelDriver
                 'type' => filled(data_get($event, 'message.attachments')) ? 'media' : 'text',
                 'body' => data_get($event, 'message.text'),
                 'payload' => $event,
+                'status' => MessageStatus::Received->value,
+            ]
+        );
+
+        $conversation->update(['last_message_at' => now()]);
+    }
+
+    /**
+     * Stores an Instagram comment as an inbound inbox message; replying to it posts a public comment reply.
+     */
+    protected function persistInboundComment(ChannelAccount $account, array $comment): void
+    {
+        $senderId = (string) data_get($comment, 'from.id');
+
+        if ($senderId === '' || $senderId === (string) $account->provider_account_id) {
+            return;
+        }
+
+        $identity = ContactProviderIdentity::query()
+            ->where('workspace_id', $account->workspace_id)
+            ->where('provider', $this->provider())
+            ->where('provider_contact_id', $senderId)
+            ->first();
+
+        $contact = $identity?->contact ?: Contact::query()->create([
+            'workspace_id' => $account->workspace_id,
+            'name' => (string) (data_get($comment, 'from.username') ?: $this->providerLabel().' '.$senderId),
+            'phone' => null,
+            'opt_in_status' => ContactOptInStatus::Subscribed->value,
+            'opted_in_at' => now(),
+        ]);
+
+        ContactProviderIdentity::query()->updateOrCreate(
+            [
+                'workspace_id' => $account->workspace_id,
+                'provider' => $this->provider(),
+                'provider_contact_id' => $senderId,
+            ],
+            [
+                'contact_id' => $contact->id,
+                'channel_account_id' => $account->id,
+                'identity_type' => 'instagram_user_id',
+                'metadata' => array_filter(['username' => data_get($comment, 'from.username')]),
+            ]
+        );
+
+        $conversation = Conversation::query()->firstOrCreate(
+            [
+                'workspace_id' => $account->workspace_id,
+                'contact_id' => $contact->id,
+                'channel_account_id' => $account->id,
+            ],
+            [
+                'provider' => $this->provider(),
+                'provider_conversation_id' => $senderId,
+                'status' => ConversationStatus::Open->value,
+                'labels' => [],
+            ]
+        );
+
+        Message::query()->updateOrCreate(
+            ['provider_message_id' => (string) data_get($comment, 'id')],
+            [
+                'workspace_id' => $account->workspace_id,
+                'conversation_id' => $conversation->id,
+                'contact_id' => $contact->id,
+                'channel_account_id' => $account->id,
+                'provider' => $this->provider(),
+                'direction' => 'inbound',
+                'type' => 'comment',
+                'body' => data_get($comment, 'text'),
+                'payload' => ['comment' => $comment],
                 'status' => MessageStatus::Received->value,
             ]
         );

@@ -720,6 +720,14 @@ class WorkspaceNavigationRegistry
                                 'keywords' => 'telegram bot channel connect',
                             ],
                             [
+                                'label' => __('TikTok'),
+                                'route' => 'user.tiktok.index',
+                                'active' => 'user.tiktok.*',
+                                'icon' => 'ph-tiktok-logo',
+                                'permission' => 'tiktok.manage',
+                                'keywords' => 'tiktok shop account connect',
+                            ],
+                            [
                                 'label' => __('Email'),
                                 'route' => 'user.email.index',
                                 'active' => 'user.email.*',

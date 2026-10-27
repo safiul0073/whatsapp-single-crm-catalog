@@ -7,6 +7,7 @@ use App\Modules\Commerce\Http\Resources\ProductDetailResource;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -143,7 +144,7 @@ it('rolls back related option and color changes when a step fails after saving',
     $this->productService->updateOptions($product, [['name' => 'Size', 'code' => 'size', 'values' => ['M']]]);
     $audit = Mockery::mock(AuditLogService::class);
     $audit->shouldReceive('logCustom')->once()->andThrow(new RuntimeException('Audit unavailable'));
-    $service = new ProductService(app(ProductReadinessService::class), $audit);
+    $service = new ProductService(app(ProductReadinessService::class), $audit, app(ProductTypeService::class));
     expect(fn () => $service->updateOptions($product, [['name' => 'Size', 'code' => 'size', 'values' => ['L']]], [['name' => 'White']]))->toThrow(RuntimeException::class);
     $product = $product->fresh();
     expect($product->colors->sole()->name)->toBe('Black')

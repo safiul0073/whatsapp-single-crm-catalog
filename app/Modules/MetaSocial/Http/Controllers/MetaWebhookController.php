@@ -5,6 +5,7 @@ namespace App\Modules\MetaSocial\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\WebhookSignatureVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -29,6 +30,11 @@ class MetaWebhookController extends Controller
         abort_if($accounts->isEmpty(), 404);
 
         $account = $this->channelForPayload($request->all(), $accounts) ?? $accounts->first();
+
+        if ($rejection = app(WebhookSignatureVerifier::class)->rejection($request, $account->provider, $account)) {
+            return $rejection;
+        }
+
         $channels->handleWebhook($request, $account);
 
         return response('', 200);

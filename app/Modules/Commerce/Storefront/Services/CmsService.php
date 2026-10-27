@@ -73,7 +73,7 @@ class CmsService
                 'app_ios_url' => '',
                 'app_android_url' => '',
             ],
-            array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment']))
+            array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
         );
         if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
@@ -95,6 +95,7 @@ class CmsService
         $settings['logo_height'] = max(32, min(120, (int) ($settings['logo_height'] ?? 68)));
         $settings['logo_show_name'] = (bool) ($settings['logo_show_name'] ?? false);
 
+        $settings['tracking'] = app(TrackingSettingsService::class)->public($workspace);
         $settings['chat_channels'] = array_replace_recursive(self::CHAT_CHANNEL_DEFAULTS, $settings['chat_channels'] ?? []);
         $bot = &$settings['chat_channels']['custom_chatbot'];
         if ($bot['enabled'] && $bot['source'] === 'marketing_chatbot') {

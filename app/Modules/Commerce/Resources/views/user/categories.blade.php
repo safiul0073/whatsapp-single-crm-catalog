@@ -12,7 +12,7 @@
             <div>
                 <p class="text-sm font-semibold text-primary">{{ __('Store organization') }}</p>
                 <h1 class="heading-3 text-title">{{ __('Product categories') }}</h1>
-                <p class="mt-1 text-sm text-body">{{ __('Organize garments into clear parent and child categories for easier product management.') }}</p>
+                <p class="mt-1 text-sm text-body">{{ __('Organize products into clear parent and child categories for easier product management.') }}</p>
             </div>
             <x-ui.button variant="primary" href="{{ route('user.commerce.products.create') }}">
                 <i class="ph ph-plus"></i> {{ __('Add product') }}
@@ -54,6 +54,15 @@
                             <option value="">{{ __('No parent — main category') }}</option>
                             @foreach ($categories as $category)
                                 <option value="{{ $category->id }}" @selected(old('parent_id') == $category->id)>{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="category_product_type">{{ __('Product type') }}</label>
+                        <select id="category_product_type" class="form-input rounded-sm!" name="product_type_id">
+                            <option value="">{{ __('Inherit from parent / Apparel') }}</option>
+                            @foreach ($productTypes as $type)
+                                <option value="{{ $type->id }}" @selected(old('product_type_id') == $type->id)>{{ $type->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -101,7 +110,7 @@
                                 <span class="hidden pr-[4.75rem] sm:block">{{ __('Products · Sub · Status') }}</span>
                             </div>
                             <ul class="-mb-px">
-                                @include('commerce::user.partials.category-tree', ['categories' => $categories->whereNull('parent_id'), 'allCategories' => $categories])
+                                @include('commerce::user.partials.category-tree', ['categories' => $categories->whereNull('parent_id'), 'allCategories' => $categories, 'productTypes' => $productTypes])
                             </ul>
                         </div>
                     @endif

@@ -67,7 +67,7 @@
         </div>
 
         <form method="POST" action="{{ route('user.commerce.categories.update', $category) }}" @class([
-            'grid gap-3 border-b border-neutral-100 bg-section/50 py-3 pr-3 md:grid-cols-[1fr_1fr_auto]',
+            'grid gap-3 border-b border-neutral-100 bg-section/50 py-3 pr-3 md:grid-cols-[1fr_1fr_1fr_auto]',
             'pl-12' => $depth === 0,
             'pl-[4.75rem]' => $depth === 1,
             'pl-[6.25rem]' => $depth >= 2,
@@ -87,6 +87,15 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label class="form-label" for="category_type_{{ $category->id }}">{{ __('Product type') }}</label>
+                <select id="category_type_{{ $category->id }}" class="form-input rounded-md!" name="product_type_id">
+                    <option value="">{{ __('Inherit') }}</option>
+                    @foreach ($productTypes as $type)
+                        <option value="{{ $type->id }}" @selected($category->product_type_id === $type->id)>{{ $type->name }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="flex items-end gap-2">
                 <input type="hidden" name="is_active" value="0">
                 <label class="flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3">
@@ -100,7 +109,7 @@
 
         @if($category->children_count > 0)
             <ul x-show="expanded" x-cloak>
-                @include('commerce::user.partials.category-tree', ['categories' => $allCategories->where('parent_id', $category->id), 'allCategories' => $allCategories, 'depth' => $depth + 1])
+                @include('commerce::user.partials.category-tree', ['categories' => $allCategories->where('parent_id', $category->id), 'allCategories' => $allCategories, 'productTypes' => $productTypes, 'depth' => $depth + 1])
             </ul>
         @endif
     </li>

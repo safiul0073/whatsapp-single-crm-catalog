@@ -22,6 +22,7 @@ class ChannelHubService
         'messenger' => 'user.meta-social.setup',
         'instagram' => 'user.meta-social.setup',
         'threads' => 'user.meta-social.setup',
+        'tiktok' => 'user.tiktok.index',
     ];
 
     public const PERMISSIONS = [
@@ -32,6 +33,7 @@ class ChannelHubService
         'messenger' => 'meta-social.manage',
         'instagram' => 'meta-social.manage',
         'threads' => 'threads.manage',
+        'tiktok' => 'tiktok.manage',
     ];
 
     public const WIDGET_ROUTES = [

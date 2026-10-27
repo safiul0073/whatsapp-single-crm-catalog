@@ -55,9 +55,13 @@
         ? $product->shipping_countries
         : ['USA', 'Canada'];
 
+    $productLayout = $typeMap[$product?->category_id ?? $categories->first()?->id]['layout'] ?? 'apparel';
     $specificationsState = is_array($product?->specifications)
         ? $product->specifications
-        : [
+        : ($productLayout !== 'apparel' ? [
+            ['attribute' => 'Material', 'value' => $product?->material ?: ''],
+            ['attribute' => 'Shipping', 'value' => $product?->shipping_info ?: ''],
+        ] : [
             ['attribute' => 'Material', 'value' => $product?->material ?: 'Tech Fleece (Premium Quality)'],
             ['attribute' => 'Fit', 'value' => $product?->fit ?: 'USA True-to-Size'],
             ['attribute' => 'Set Includes', 'value' => $product?->set_includes ?: 'Hoodie + Jogger Pants'],
@@ -65,7 +69,7 @@
             ['attribute' => 'Season', 'value' => $product?->season ?: 'All Season'],
             ['attribute' => 'MOQ', 'value' => ($product?->moq ?: '40').' Set'],
             ['attribute' => 'Shipping', 'value' => $product?->shipping_info ?: 'USA & Canada (6-10 Working Days)'],
-        ];
+        ]);
 
     $currentStep = (int) ($step ?? 1);
     $colorState = old('colors', $colorState) ?: [];
@@ -269,6 +273,45 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        {{-- Category type attributes --}}
+                        <div
+                            class="col-span-full"
+                            x-data="{
+                                map: @js($typeMap),
+                                values: @js(old('attribute_values', $product?->attribute_values ?? [])),
+                                categoryId: @js((string) $selectedCategoryId),
+                                get type() { return this.map[this.categoryId] ?? null },
+                            }"
+                            x-init="document.getElementById('category_id').addEventListener('change', (event) => { categoryId = event.target.value })"
+                            x-show="type && type.attributes.length > 0"
+                            x-cloak
+                        >
+                            <p class="mb-2 text-xs font-bold uppercase tracking-wider text-neutral-700" x-text="type ? type.name + ' {{ __('details') }}' : ''"></p>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <template x-for="attr in (type ? type.attributes : [])" :key="categoryId + attr.key">
+                                    <div>
+                                        <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" :for="'attr_' + attr.key" x-text="attr.label + (attr.required ? ' *' : '')"></label>
+                                        <template x-if="attr.type === 'select'">
+                                            <select class="form-input text-sm" :id="'attr_' + attr.key" :name="`attribute_values[${attr.key}]`" x-model="values[attr.key]">
+                                                <option value="">{{ __('Select') }}</option>
+                                                <template x-for="option in attr.options" :key="option"><option :value="option" x-text="option"></option></template>
+                                            </select>
+                                        </template>
+                                        <template x-if="attr.type === 'boolean'">
+                                            <select class="form-input text-sm" :id="'attr_' + attr.key" :name="`attribute_values[${attr.key}]`" x-model="values[attr.key]">
+                                                <option value="">{{ __('Select') }}</option>
+                                                <option value="1">{{ __('Yes') }}</option>
+                                                <option value="0">{{ __('No') }}</option>
+                                            </select>
+                                        </template>
+                                        <template x-if="attr.type === 'text' || attr.type === 'number'">
+                                            <input class="form-input text-sm" :id="'attr_' + attr.key" :type="attr.type === 'number' ? 'number' : 'text'" step="any" maxlength="500" :name="`attribute_values[${attr.key}]`" x-model="values[attr.key]">
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
 
                         {{-- Brand --}}
@@ -882,7 +925,7 @@
 
                 <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200"
                     x-data="{
-                        wsEnabled: @js(old('ws_enabled', $product->ws_enabled ?? false)),
+                        wsEnabled: @js($productLayout === 'apparel' && old('ws_enabled', $product->ws_enabled ?? false)),
                         wsMinSizes: @js(old('ws_min_sizes', $product->ws_min_sizes ?? '')),
                         wsColorMoq: @js(old('ws_color_moq', $product->ws_color_moq ?? 1)),
                         wsMainMoq: @js(old('ws_main_moq', $product->ws_main_moq ?? 40)),
@@ -953,7 +996,10 @@
                     </div>
 
                     {{-- Enable Toggle --}}
-                    <div class="flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/30 p-4">
+                    @if ($productLayout !== 'apparel')
+                        <p class="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">{{ __('Size-ratio wholesale packs are only available for apparel products. This product sells at its normal price and quantity.') }}</p>
+                    @endif
+                    <div @class(['flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/30 p-4', 'hidden' => $productLayout !== 'apparel'])>
                         <div>
                             <label class="text-sm font-bold text-emerald-900">{{ __('Enable Wholesale Rules') }}</label>
                             <p class="text-[11px] text-emerald-700/80 mt-0.5">{{ __('Enforce size ratios, minimum sizes, and MOQ for wholesale buyers.') }}</p>

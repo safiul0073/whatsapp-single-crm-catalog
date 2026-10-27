@@ -20,6 +20,16 @@ class MetaSocialClient
         ]);
     }
 
+    public function exchangeLongLivedToken(string $token): Response
+    {
+        return Http::asForm()->get($this->graphUrl('oauth/access_token'), [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => $this->settings->get('meta_social_app_id'),
+            'client_secret' => $this->settings->get('meta_social_app_secret'),
+            'fb_exchange_token' => $token,
+        ]);
+    }
+
     public function pageAccounts(string $token): Response
     {
         return Http::withToken($token)->get($this->graphUrl('me/accounts'), [
@@ -42,6 +52,11 @@ class MetaSocialClient
     public function sendInstagramMessage(string $igUserId, string $token, array $payload): Response
     {
         return Http::withToken($token)->post($this->graphUrl($igUserId.'/messages'), $payload);
+    }
+
+    public function replyToInstagramComment(string $commentId, string $token, string $message): Response
+    {
+        return Http::withToken($token)->post($this->graphUrl($commentId.'/replies'), ['message' => $message]);
     }
 
     public function instagramProfile(string $igUserId, string $token): Response

@@ -20,9 +20,11 @@ use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use App\Modules\Telegram\Services\TelegramOptInService;
 use App\Modules\WhatsAppCloud\Services\InboundMessageEventApplier;
+use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Str;
@@ -240,9 +242,9 @@ class ProcessChannelWebhookJob implements ShouldQueue
         );
 
         if ($message->wasRecentlyCreated) {
-            $owner = \App\Modules\Workspaces\Models\Workspace::query()->find($account->workspace_id)?->owner;
+            $owner = Workspace::query()->find($account->workspace_id)?->owner;
             if ($owner?->deviceTokens()->exists()) {
-                $owner->notify(new \App\Modules\NotificationTemplates\Notifications\MobileAlert(
+                $owner->notify(new MobileAlert(
                     'New '.$account->provider.' message',
                     mb_strimwidth($body ?: 'New attachment', 0, 120),
                     ['type' => 'inbox', 'workspace_id' => $account->workspace_id, 'conversation_id' => $conversation->id],

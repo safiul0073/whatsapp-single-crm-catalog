@@ -2,20 +2,20 @@
 
 namespace App\Modules\Commerce\Jobs;
 
+use App\Modules\Commerce\Models\MobileCustomerDevice;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
-use App\Modules\Commerce\Models\MobileCustomerDevice;
-use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
+use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 
 class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
 {
