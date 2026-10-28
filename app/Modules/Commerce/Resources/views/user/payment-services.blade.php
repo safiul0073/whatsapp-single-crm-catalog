@@ -92,7 +92,7 @@
             },
             stageIcon(event) {
                 const file = event.target.files[0];
-                const target = this.$root.querySelector(`input[type=file][data-icon-index="${this.editingIndex}"]`);
+                const target = this.$root.querySelectorAll('input[type=file][data-icon-index]')[this.editingIndex];
                 if (!file || !target) {
                     return;
                 }
