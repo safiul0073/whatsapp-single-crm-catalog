@@ -44,6 +44,7 @@ use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Inbox\Models\Conversation;
@@ -972,11 +973,18 @@ class CommerceController extends Controller
             $typeMap[$category->id] = ['name' => $type->name, 'layout' => $type->layout, 'attributes' => $type->attributes ?? []];
         }
 
+        $wholesaleEnabled = StoreFeatures::wholesaleEnabled($workspace->id);
+        $step = $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1;
+        if ($step === 6 && ! $wholesaleEnabled) {
+            $step = 7;
+        }
+
         return view('commerce::user.form', [
             'typeMap' => $typeMap,
             'product' => $product,
             'metaCatalogs' => Catalog::query()->with('channelAccount')->where('workspace_id', $workspace->id)->where('is_active', true)->where('sync_mode', 'api')->get(),
-            'step' => $product ? max(1, min(9, $request->integer('step', $product->wizard_step))) : 1,
+            'step' => $step,
+            'wholesaleEnabled' => $wholesaleEnabled,
             'categories' => $categories->sortBy('path'),
             'brands' => Brand::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'audiences' => Audience::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),

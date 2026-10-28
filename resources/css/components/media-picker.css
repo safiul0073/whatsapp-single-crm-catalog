@@ -153,6 +153,22 @@
   }
 }
 
+.media-grid-item-video {
+  @apply relative h-full w-full bg-neutral-900;
+
+  video {
+    @apply h-full w-full object-cover pointer-events-none;
+  }
+}
+
+.media-grid-item-play {
+  @apply absolute inset-0 m-auto h-10 w-10 text-4xl text-white/90 drop-shadow;
+}
+
+.media-upload-error {
+  @apply mt-2 text-sm text-red-600;
+}
+
 .media-grid-item-info {
   @apply absolute inset-x-0 bottom-0 px-2 py-1.5 bg-neutral-0/90 backdrop-blur-sm;
 

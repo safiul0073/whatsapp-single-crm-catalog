@@ -68,6 +68,7 @@ class CmsService
                 'footer_text' => 'Direct from factory wholesale and retail streetwear, premium heavyweight hoodies, tees, and denim.',
                 'socials' => [],
                 'app_download_enabled' => true,
+                'wholesale_enabled' => true,
                 'app_download_title' => 'Experience On Mobile',
                 'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
                 'app_ios_url' => '',
@@ -75,6 +76,7 @@ class CmsService
             ],
             array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
         );
+        $settings['wholesale_enabled'] = (bool) $settings['wholesale_enabled'];
         if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
             $settings['logo'] = rtrim(config('app.url'), '/').'/storage/'.$clean;

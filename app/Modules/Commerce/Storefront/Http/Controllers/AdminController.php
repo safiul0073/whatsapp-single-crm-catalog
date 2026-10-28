@@ -7,6 +7,7 @@ use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\LiveAdminRequest;
@@ -117,6 +118,7 @@ class AdminController extends Controller
         $existing = (array) (StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? []);
         $newConfig = $r->validated('config');
         unset($newConfig['chat_channels']);
+        $newConfig['wholesale_enabled'] = (bool) ($newConfig['wholesale_enabled'] ?? $existing['wholesale_enabled'] ?? true);
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
         }
@@ -147,6 +149,7 @@ class AdminController extends Controller
         }
 
         StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $newConfig]);
+        StoreFeatures::flush();
         $this->invalidate($w);
 
         return $this->redirectTab($r, 'settings', 'Settings saved.');

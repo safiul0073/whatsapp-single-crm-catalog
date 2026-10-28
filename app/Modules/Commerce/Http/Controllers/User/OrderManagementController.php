@@ -16,6 +16,7 @@ use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderPackingService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Contacts\Models\Contact;
@@ -45,13 +46,13 @@ class OrderManagementController extends Controller
             abort_unless($order->status === 'needs_details' && ! $order->groups()->exists(), 422);
         }
         $products = Product::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('visibility', 'published')->with(['variants', 'colors'])->get()->map(fn ($product) => [
-            'id' => $product->id, 'name' => $product->name, 'mode' => $product->selling_mode,
+            'id' => $product->id, 'name' => $product->name, 'mode' => StoreFeatures::wholesaleEnabled($workspace->id) ? $product->selling_mode : 'retail',
             'variants' => $product->variants->where('status', 'active')->map(fn ($variant) => ['id' => $variant->id, 'name' => $variant->sku.' · '.$variant->size, 'stock' => $variant->stock_quantity])->values(),
             'colors' => $product->colors->map(fn ($color) => ['id' => $color->id, 'name' => $color->name]),
             'ratios' => $product->getEffectiveSizeRatios(), 'multiplier' => $product->ws_ratio_multiplier ?? 1, 'minimum' => $product->ws_main_moq ?? 1,
         ]);
 
-        return view('commerce::user.create-order', ['completingOrder' => $order, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id)]);
+        return view('commerce::user.create-order', ['wholesaleEnabled' => StoreFeatures::wholesaleEnabled($workspace->id), 'completingOrder' => $order, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id)]);
     }
 
     public function preview(CreateUnifiedOrderRequest $request, UnifiedOrderService $orders): JsonResponse

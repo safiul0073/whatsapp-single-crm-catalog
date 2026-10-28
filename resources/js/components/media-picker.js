@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const uploadInput = modal.querySelector('[data-media-upload-input]');
   const uploadProgress = modal.querySelector('[data-media-upload-progress]');
   const uploadBar = modal.querySelector('[data-media-upload-bar]');
+  const uploadError = modal.querySelector('[data-media-upload-error]');
   const selectBtn = modal.querySelector('[data-media-select-btn]');
   const emptyState = modal.querySelector('[data-media-empty]');
   const loadingState = modal.querySelector('[data-media-loading]');
@@ -33,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentPage = 1;
   let hasMore = false;
   let isLoading = false;
+  let loadController = null;  // Aborts the previous browse request when filters change
+  let loadSeq = 0;            // Only the newest browse response may render
   let galleryColorPickerActive = false;
   let customCallback = null;
 
@@ -325,10 +328,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (preview) {
+      preview.innerHTML = '';
       if (selectedMedia.type === 'image') {
-        preview.innerHTML = '<img src="' + selectedMedia.url + '" alt="' + (selectedMedia.name || '') + '">';
+        var img = document.createElement('img');
+        img.src = selectedMedia.url;
+        img.alt = selectedMedia.name || '';
+        preview.appendChild(img);
+      } else if (selectedMedia.type === 'video') {
+        var video = document.createElement('video');
+        video.src = selectedMedia.url;
+        video.controls = true;
+        video.muted = true;
+        video.preload = 'metadata';
+        preview.appendChild(video);
       } else {
-        preview.innerHTML = '<div class="media-picker-file-icon"><i class="ph ph-file-text"></i><span>' + selectedMedia.original_name + '</span></div>';
+        var file = document.createElement('div');
+        file.className = 'media-picker-file-icon';
+        var icon = document.createElement('i');
+        icon.className = getFileIcon(selectedMedia.extension);
+        var label = document.createElement('span');
+        label.textContent = selectedMedia.original_name || '';
+        file.appendChild(icon);
+        file.appendChild(label);
+        preview.appendChild(file);
       }
     }
 
@@ -390,7 +412,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Load Media via AJAX ──
   function loadMedia(append, preSelectId) {
-    if (isLoading) return;
+    if (append && isLoading) return;
+    if (loadController) loadController.abort();
+    loadController = new AbortController();
+    var seq = ++loadSeq;
     isLoading = true;
 
     if (!append) {
@@ -404,13 +429,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (currentSearch) params.set('search', currentSearch);
 
     fetch(browseUrl + '?' + params.toString(), {
-      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      signal: loadController.signal
     })
     .then(function (res) {
       if (!res.ok) throw new Error(res.status);
       return res.json();
     })
     .then(function (json) {
+      if (seq !== loadSeq) return;
       isLoading = false;
       showLoading(false);
 
@@ -442,7 +469,8 @@ document.addEventListener('DOMContentLoaded', function () {
         grid.appendChild(el);
       });
     })
-    .catch(function () {
+    .catch(function (err) {
+      if (seq !== loadSeq || err?.name === 'AbortError') return;
       isLoading = false;
       showLoading(false);
       showEmpty(true);
@@ -452,6 +480,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Upload Files ──
   function uploadFiles(files) {
+    var errors = [];
+    files = Array.from(files).filter(function (file) {
+      var problem = validateUpload(file);
+      if (problem) errors.push(file.name + ': ' + problem);
+      return !problem;
+    });
+    showUploadError(errors);
+    if (files.length === 0) return;
+
     var total = files.length;
     var completed = 0;
 
@@ -501,6 +538,9 @@ document.addEventListener('DOMContentLoaded', function () {
               updateSelectBtn();
             }
           }
+        } else {
+          errors.push(file.name + ': ' + uploadErrorMessage(xhr));
+          showUploadError(errors);
         }
 
         if (completed === total) {
@@ -509,6 +549,8 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
       xhr.addEventListener('error', function () {
+        errors.push(file.name + ': Upload failed. Check your connection and try again.');
+        showUploadError(errors);
         completed++;
         if (completed === total) {
           setTimeout(function () { showUploadProgress(false); }, 500);
@@ -519,6 +561,46 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // ── Upload Validation ──
+  var UPLOAD_LIMITS_MB = { image: 10, video: 200, document: 25 };
+  var UPLOAD_KINDS = {
+    image: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    video: ['mp4', 'mov', 'webm', 'm4v'],
+    document: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'ppt', 'pptx', 'zip']
+  };
+
+  function uploadKind(file) {
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    return Object.keys(UPLOAD_KINDS).find(function (kind) { return UPLOAD_KINDS[kind].includes(ext); }) || null;
+  }
+
+  function validateUpload(file) {
+    var kind = uploadKind(file);
+    if (!kind) return 'This file type is not supported.';
+    if (file.size > UPLOAD_LIMITS_MB[kind] * 1024 * 1024) return 'Too large (max ' + UPLOAD_LIMITS_MB[kind] + ' MB for ' + kind + 's).';
+    return null;
+  }
+
+  function uploadErrorMessage(xhr) {
+    if (xhr.status === 413) return 'File is larger than the server upload limit.';
+    try {
+      var json = JSON.parse(xhr.responseText);
+      return json.errors?.file?.[0] || json.message || 'Upload failed.';
+    } catch (e) {
+      return 'Upload failed (' + xhr.status + ').';
+    }
+  }
+
+  function showUploadError(errors) {
+    if (!uploadError) return;
+    uploadError.textContent = errors.join(' ');
+    uploadError.classList.toggle('hidden', errors.length === 0);
+  }
+
+  if (uploadInput) {
+    uploadInput.setAttribute('accept', Object.values(UPLOAD_KINDS).flat().map(function (ext) { return '.' + ext; }).join(','));
+  }
+
   // ── Create Grid Item ──
   function createGridItem(item) {
     var div = document.createElement('div');
@@ -526,13 +608,44 @@ document.addEventListener('DOMContentLoaded', function () {
     div.setAttribute('data-media-item', JSON.stringify(item));
 
     if (item.type === 'image') {
-      div.innerHTML = '<img src="' + item.thumbnail_url + '" alt="' + (item.name || '') + '" loading="lazy" crossorigin="anonymous">' +
-        '<div class="media-grid-item-info"><span>' + item.name + '</span><span class="text-neutral-400">' + item.human_size + '</span></div>';
+      var img = document.createElement('img');
+      img.src = item.thumbnail_url;
+      img.alt = item.name || '';
+      img.loading = 'lazy';
+      img.crossOrigin = 'anonymous';
+      div.appendChild(img);
+    } else if (item.type === 'video') {
+      var wrap = document.createElement('div');
+      wrap.className = 'media-grid-item-video';
+      var video = document.createElement('video');
+      video.src = item.url + '#t=0.5';
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      var badge = document.createElement('i');
+      badge.className = 'ph-fill ph-play-circle media-grid-item-play';
+      wrap.appendChild(video);
+      wrap.appendChild(badge);
+      div.appendChild(wrap);
     } else {
-      var iconClass = getFileIcon(item.extension);
-      div.innerHTML = '<div class="media-grid-item-icon"><i class="' + iconClass + '"></i></div>' +
-        '<div class="media-grid-item-info"><span>' + item.name + '.' + item.extension + '</span><span class="text-neutral-400">' + item.human_size + '</span></div>';
+      var iconWrap = document.createElement('div');
+      iconWrap.className = 'media-grid-item-icon';
+      var icon = document.createElement('i');
+      icon.className = getFileIcon(item.extension);
+      iconWrap.appendChild(icon);
+      div.appendChild(iconWrap);
     }
+
+    var info = document.createElement('div');
+    info.className = 'media-grid-item-info';
+    var name = document.createElement('span');
+    name.textContent = item.type === 'image' ? (item.name || '') : (item.name || '') + '.' + item.extension;
+    var size = document.createElement('span');
+    size.className = 'text-neutral-400';
+    size.textContent = item.human_size || '';
+    info.appendChild(name);
+    info.appendChild(size);
+    div.appendChild(info);
 
     return div;
   }

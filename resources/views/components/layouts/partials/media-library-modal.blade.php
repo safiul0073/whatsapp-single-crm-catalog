@@ -41,11 +41,13 @@
                     <i class="ph ph-cloud-arrow-up"></i>
                     <p>{{ __('Drag & drop files here or') }} <span
                             class="text-primary font-medium cursor-pointer">{{ __('browse') }}</span></p>
+                    <p class="text-xs text-neutral-400">{{ __('Images up to 10 MB · Videos (MP4, MOV, WEBM) up to 200 MB · Documents (PDF, Office, CSV, ZIP) up to 25 MB') }}</p>
                 </div>
                 <div class="media-upload-progress hidden" data-media-upload-progress>
                     <div class="media-upload-progress-bar" data-media-upload-bar></div>
                 </div>
             </div>
+            <p class="media-upload-error hidden" data-media-upload-error role="alert"></p>
             <div class="media-grid" data-media-grid></div>
             <div class="media-empty hidden" data-media-empty>
                 <i class="ph ph-image-broken"></i>

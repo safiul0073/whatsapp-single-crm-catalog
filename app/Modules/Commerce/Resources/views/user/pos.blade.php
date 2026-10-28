@@ -4,16 +4,18 @@
     @endphp
     <div class="space-y-6" x-data="commercePos" data-config="{{ json_encode($config) }}">
         <header class="flex flex-wrap items-center justify-between gap-4">
-            <div><h1 class="heading-3 text-title">{{ __('Point of sale') }}</h1><p class="text-sm text-body">{{ __('Retail pieces and wholesale size quantities in one sale') }} · <span x-text="currencySymbol()">{{ $settings->currency }}</span></p></div>
+            <div><h1 class="heading-3 text-title">{{ __('Point of sale') }}</h1><p class="text-sm text-body">{{ ($wholesaleEnabled ?? true) ? __('Retail pieces and wholesale size quantities in one sale') : __('Retail sale') }} · <span x-text="currencySymbol()">{{ $settings->currency }}</span></p></div>
             <x-ui.button href="{{ route('user.commerce.orders.index', ['source' => 'pos']) }}" variant="outline">{{ __('POS orders') }}</x-ui.button>
         </header>
         <p x-show="error" x-cloak x-text="error" role="alert" class="rounded-md border border-danger/30 bg-danger/10 p-4 text-sm text-title"></p>
         <div class="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-bg-elevated p-3 sm:p-4">
             <div><h2 class="font-semibold text-title" x-text="mode === 'retail' ? 'Retail sale' : 'Wholesale order'"></h2><p class="text-sm text-body" x-text="mode === 'retail' ? 'Add multiple products and variants to one order.' : (wholesaleProductId ? 'One product per order · choose sizes by color.' : 'Choose one product, then enter quantities by color.')"></p></div>
+            @if($wholesaleEnabled ?? true)
             <div class="inline-flex rounded-md bg-section p-1" role="group" aria-label="{{ __('Sale type') }}">
                 <button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold" :class="mode === 'retail' ? 'bg-bg-elevated text-title shadow-sm' : 'text-body'" :aria-pressed="mode === 'retail'" @click="switchMode('retail')">{{ __('Retail') }}</button>
                 <button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold" :class="mode === 'wholesale' ? 'bg-bg-elevated text-title shadow-sm' : 'text-body'" :aria-pressed="mode === 'wholesale'" @click="switchMode('wholesale')">{{ __('Wholesale') }}</button>
             </div>
+            @endif
         </div>
         <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <section class="min-w-0 section-card space-y-4">
