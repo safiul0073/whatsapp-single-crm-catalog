@@ -352,3 +352,19 @@ it('exposes active live status in cms settings, renders live_videos cms sections
     Storage::disk('public')->assertMissing($videoPath);
     expect(LiveStream::query()->find($liveId))->toBeNull();
 });
+
+it('returns pusher websocket connection details when broadcasting through pusher', function (): void {
+    config([
+        'broadcasting.default' => 'pusher',
+        'broadcasting.connections.pusher.key' => 'pusher-test-key',
+        'broadcasting.connections.pusher.options.cluster' => 'ap2',
+    ]);
+
+    expect(app(LiveStreamService::class)->reverbConfig())->toBe([
+        'app_key' => 'pusher-test-key',
+        'host' => 'ws-ap2.pusher.com',
+        'port' => 443,
+        'scheme' => 'https',
+        'enabled' => true,
+    ]);
+});
