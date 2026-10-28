@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\PackTemplateRequest;
 use App\Modules\Commerce\Storefront\Models\PackTemplate;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
@@ -19,6 +20,7 @@ class PackTemplateAdminController extends Controller
     public function index(Request $r): View
     {
         $w = $this->workspaces->current($r->user())->id;
+        abort_unless(StoreFeatures::wholesaleEnabled($w), 404);
 
         return view('commerce::user.pack-templates', [
             'templates' => PackTemplate::query()->where('workspace_id', $w)->orderBy('position')->get(),
@@ -35,6 +37,7 @@ class PackTemplateAdminController extends Controller
     public function create(Request $r): View
     {
         $w = $this->workspaces->current($r->user())->id;
+        abort_unless(StoreFeatures::wholesaleEnabled($w), 404);
 
         return view('commerce::user.pack-template-form', [
             'template' => null,
@@ -51,6 +54,7 @@ class PackTemplateAdminController extends Controller
     public function edit(Request $r, int $id): View
     {
         $w = $this->workspaces->current($r->user())->id;
+        abort_unless(StoreFeatures::wholesaleEnabled($w), 404);
         $template = PackTemplate::query()->where('workspace_id', $w)->findOrFail($id);
 
         return view('commerce::user.pack-template-form', [
@@ -68,6 +72,7 @@ class PackTemplateAdminController extends Controller
     public function save(PackTemplateRequest $r, ?int $id = null): RedirectResponse
     {
         $w = $this->workspaces->current($r->user())->id;
+        abort_unless(StoreFeatures::wholesaleEnabled($w), 404);
         $template = $id ? PackTemplate::query()->where('workspace_id', $w)->findOrFail($id) : new PackTemplate(['workspace_id' => $w]);
         $data = $r->validated();
         unset($data['_edit_id']);
@@ -98,6 +103,7 @@ class PackTemplateAdminController extends Controller
     public function destroy(Request $r, int $id): RedirectResponse
     {
         $w = $this->workspaces->current($r->user())->id;
+        abort_unless(StoreFeatures::wholesaleEnabled($w), 404);
         $template = PackTemplate::query()->where('workspace_id', $w)->findOrFail($id);
         $template->delete();
 

@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Resources\ProductDetailResource;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\PackRequest;
 use App\Modules\Commerce\Storefront\Models\CartGroup;
 use App\Modules\Commerce\Storefront\Models\CartItem;
@@ -24,6 +25,9 @@ class PackController extends Controller
     public function templates(Request $r): JsonResponse
     {
         $workspace = $r->attributes->get('store_workspace')->id;
+        if (! StoreFeatures::wholesaleEnabled($workspace)) {
+            return response()->json(['data' => []]);
+        }
         $templates = PackTemplate::query()->where('workspace_id', $workspace)->where('published', true)->orderBy('position')->get();
 
         return response()->json(['data' => $templates->map(function ($template) use ($workspace) {
@@ -50,6 +54,7 @@ class PackController extends Controller
 
     private function mutate(PackRequest $r, ?int $id = null, bool $preview = false): JsonResponse
     {
+        abort_unless(StoreFeatures::wholesaleEnabled($r->attributes->get('store_workspace')?->id), 422, 'Wholesale is not available in this store.');
         $connection = DB::connection();
         $connection->beginTransaction();
         try {

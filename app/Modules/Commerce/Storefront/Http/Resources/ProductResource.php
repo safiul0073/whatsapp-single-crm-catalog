@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Storefront\Http\Resources;
 use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\ProductTypeService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,12 +16,13 @@ class ProductResource extends JsonResource
     {
         $currency = StoreOrderSetting::catalogCurrency($this->workspace_id);
         $singlePrice = (string) ($this->single_piece_price ?? $this->variants->where('status', 'active')->min('price') ?? '0');
-        $wholesalePrice = (string) ($this->wholesale_price ?? '0');
-        $sellingMode = $this->selling_mode ?? 'both';
+        $wholesaleOn = StoreFeatures::wholesaleEnabled($this->workspace_id);
+        $wholesalePrice = $wholesaleOn ? (string) ($this->wholesale_price ?? '0') : '0';
+        $sellingMode = $wholesaleOn ? ($this->selling_mode ?? 'both') : 'retail';
         $itemMoq = (int) ($this->ws_main_moq ?: ($this->moq ?: 1));
 
         $wsSettings = [
-            'enabled' => (bool) ($this->ws_enabled ?? false),
+            'enabled' => $wholesaleOn && (bool) ($this->ws_enabled ?? false),
             'main_moq' => $itemMoq,
             'color_moq' => (int) ($this->ws_color_moq ?: 1),
             'min_sizes' => $this->ws_min_sizes ? (int) $this->ws_min_sizes : null,
@@ -68,7 +70,7 @@ class ProductResource extends JsonResource
             'ws_main_moq' => $itemMoq,
             'ws_color_moq' => (int) ($this->ws_color_moq ?: 1),
             'ws_min_sizes' => $this->ws_min_sizes ? (int) $this->ws_min_sizes : null,
-            'ws_enabled' => (bool) ($this->ws_enabled ?? false),
+            'ws_enabled' => $wholesaleOn && (bool) ($this->ws_enabled ?? false),
             'wholesale_settings' => $wsSettings,
             'currency' => $currency,
             'image' => $this->primaryMedia?->url,
@@ -114,7 +116,7 @@ class ProductResource extends JsonResource
                 'code' => $o->code,
                 'values' => $o->relationLoaded('values') ? $o->values->pluck('value')->all() : [],
             ]),
-            'tier_prices' => $this->tierPrices->map(fn ($t) => [
+            'tier_prices' => collect($wholesaleOn ? $this->tierPrices : [])->map(fn ($t) => [
                 'id' => $t->id,
                 'min_quantity' => (int) $t->min_quantity,
                 'max_quantity' => $t->max_quantity ? (int) $t->max_quantity : null,

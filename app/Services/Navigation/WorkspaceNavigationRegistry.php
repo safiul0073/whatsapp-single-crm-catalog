@@ -2,6 +2,9 @@
 
 namespace App\Services\Navigation;
 
+use App\Models\User;
+use App\Modules\Commerce\Services\StoreFeatures;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -44,7 +47,7 @@ class WorkspaceNavigationRegistry
                 $visibleItems = [];
 
                 foreach ($group['items'] as $item) {
-                    if (! Route::has($item['route']) || ! $this->canAccess($user, $item['permission'] ?? null)) {
+                    if (! Route::has($item['route']) || ! $this->canAccess($user, $item['permission'] ?? null) || ! $this->featureEnabled($user, $item['feature'] ?? null)) {
                         continue;
                     }
 
@@ -173,6 +176,18 @@ class WorkspaceNavigationRegistry
         }
 
         return $groups;
+    }
+
+    /**
+     * Determine whether a store-level feature (e.g. wholesale) is switched on for the user's workspace.
+     */
+    public function featureEnabled(?Authenticatable $user, ?string $feature): bool
+    {
+        if ($feature !== 'wholesale' || ! $user instanceof User) {
+            return true;
+        }
+
+        return StoreFeatures::wholesaleEnabled(app(WorkspaceResolver::class)->current($user)?->id);
     }
 
     /**
@@ -562,6 +577,7 @@ class WorkspaceNavigationRegistry
                                 'active' => 'user.commerce.pack-templates.*',
                                 'icon' => 'ph-package',
                                 'permission' => 'commerce.pack-templates.manage',
+                                'feature' => 'wholesale',
                                 'keywords' => 'custom pack templates mixed wholesale bundles',
                             ],
                             [

@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\PosService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
@@ -31,6 +32,7 @@ class PosController extends Controller
             'settings' => StoreOrderSetting::forWorkspace($workspace->id),
             'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(['id', 'name', 'phone']),
             'paymentMethods' => $this->pos->paymentMethods($workspace->id),
+            'wholesaleEnabled' => StoreFeatures::wholesaleEnabled($workspace->id),
         ]);
     }
 

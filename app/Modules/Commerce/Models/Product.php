@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Media\Models\Media;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
@@ -162,7 +163,9 @@ class Product extends Model
 
     public function isWholesaleEnabled(): bool
     {
-        return $this->ws_enabled && in_array($this->selling_mode, ['wholesale', 'both'], true);
+        return $this->ws_enabled
+            && in_array($this->selling_mode, ['wholesale', 'both'], true)
+            && StoreFeatures::wholesaleEnabled($this->workspace_id);
     }
 
     public function isRetailEnabled(): bool

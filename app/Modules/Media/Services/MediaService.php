@@ -19,15 +19,17 @@ class MediaService
         }
 
         if (! empty($filters['search'])) {
-            $search = $filters['search'];
+            $search = '%'.addcslashes($filters['search'], '%_\\').'%';
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('original_name', 'like', "%{$search}%");
+                $q->where('name', 'like', $search)
+                    ->orWhere('original_name', 'like', $search)
+                    ->orWhere('alt', 'like', $search)
+                    ->orWhere('extension', 'like', $search);
             });
         }
 
         if (! empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            $query->whereIn('type', $filters['type'] === 'document' ? ['document', 'archive'] : [$filters['type']]);
         }
 
         $query->orderBy('created_at', 'desc');

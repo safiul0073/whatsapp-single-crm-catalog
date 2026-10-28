@@ -62,6 +62,7 @@ class AdminRequest extends FormRequest
                 'config.contact_phone' => 'nullable|string|max:30',
                 'config.footer_text' => 'nullable|string|max:500',
                 'config.app_download_enabled' => 'nullable|boolean',
+                'config.wholesale_enabled' => 'nullable|boolean',
                 'config.app_download_title' => 'nullable|string|max:120',
                 'config.app_download_subtitle' => 'nullable|string|max:200',
                 'config.app_ios_url' => 'nullable|string|max:2048',

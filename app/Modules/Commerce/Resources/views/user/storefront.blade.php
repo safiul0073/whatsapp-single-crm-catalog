@@ -14,6 +14,7 @@
         'footer_text' => '',
         'password_login' => false,
         'app_download_enabled' => true,
+        'wholesale_enabled' => true,
         'app_download_title' => 'Experience On Mobile',
         'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
         'app_ios_url' => '',
@@ -214,6 +215,7 @@
             footer_text: {{ Illuminate\Support\Js::from($cfg['footer_text'] ?? '') }},
             password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }},
             app_download_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['app_download_enabled'] ?? true)) }},
+            wholesale_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['wholesale_enabled'] ?? true)) }},
             app_download_title: {{ Illuminate\Support\Js::from($cfg['app_download_title'] ?? 'Experience On Mobile') }},
             app_download_subtitle: {{ Illuminate\Support\Js::from($cfg['app_download_subtitle'] ?? 'Download our mobile apps for faster checkout and exclusive drops.') }},
             app_ios_url: {{ Illuminate\Support\Js::from($cfg['app_ios_url'] ?? '') }},
@@ -1112,6 +1114,33 @@
                 </div>
 
                 {{-- 5. Mobile App Downloads (iOS & Android) Card --}}
+                <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-2.5">
+                            <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <i class="ph ph-package text-lg"></i>
+                            </span>
+                            <div>
+                                <h2 class="heading-4 text-title text-base font-semibold">{{ __('Wholesale Selling') }}</h2>
+                                <p class="text-xs text-body">{{ __('When off, the store sells retail only. Wholesale prices, packs, pack templates and wholesale menus are hidden on the dashboard, storefront and mobile app.') }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="hidden" name="config[wholesale_enabled]" value="0">
+                            <label class="relative inline-flex cursor-pointer items-center">
+                                <input
+                                    type="checkbox"
+                                    name="config[wholesale_enabled]"
+                                    value="1"
+                                    x-model="form.wholesale_enabled"
+                                    class="peer sr-only"
+                                >
+                                <div class="peer h-6 w-11 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-5">
                     <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
                         <div class="flex items-center gap-2.5">
