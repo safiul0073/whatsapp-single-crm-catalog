@@ -325,9 +325,20 @@
         openGalleryForSlide(sliderId, slideIndex, field = 'image', mediaType = 'image') {
             if (typeof window.openMediaLibrary === 'function') {
                 window.openMediaLibrary((media) => {
-                    if (media && media.url && this.sliderData[sliderId]?.slides?.[slideIndex]) {
-                        this.sliderData[sliderId].slides[slideIndex][field] = media.url;
+                    const slide = this.sliderData[sliderId]?.slides?.[slideIndex];
+                    if (!media || !media.url || !slide) {
+                        return;
                     }
+                    const isVideo = media.type === 'video' || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(media.url);
+                    if (isVideo) {
+                        // A video picked from an image button belongs in the video field, never the image/poster.
+                        slide.video = media.url;
+                        if (field !== 'video' && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide[field] || '')) {
+                            slide[field] = '';
+                        }
+                        return;
+                    }
+                    slide[field === 'video' ? 'image' : field] = media.url;
                 }, { type: mediaType });
             }
         },
@@ -2355,10 +2366,13 @@
                                         {{-- Image / Video Thumbnail Preview & Quick Actions --}}
                                         <div class="md:col-span-4 space-y-2.5">
                                             <div class="h-36 w-full rounded-xl border border-neutral-200 bg-neutral-100 overflow-hidden relative dark:border-neutral-700 dark:bg-neutral-800 flex items-center justify-center group">
-                                                <template x-if="slide.image">
+                                                <template x-if="slide.video && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide.video)">
+                                                    <video :src="slide.video" :poster="slide.image || null" class="absolute inset-0 h-full w-full object-cover" muted loop autoplay playsinline></video>
+                                                </template>
+                                                <template x-if="slide.image && !(slide.video && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide.video))">
                                                     <img :src="slide.image" alt="Slide" class="h-full w-full object-cover" x-on:error="$el.style.display='none'">
                                                 </template>
-                                                <div x-show="!slide.image" class="text-center p-3 text-neutral-400">
+                                                <div x-show="!slide.image && !slide.video" class="text-center p-3 text-neutral-400">
                                                     <i class="ph ph-image text-2xl mb-1 block"></i>
                                                     <span class="text-[11px]">{{ __('No image selected') }}</span>
                                                 </div>
