@@ -717,3 +717,20 @@ it('rejects a wholesale pack that has no sizes configured at all', function () {
 
     expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], $c['data']))->toThrow(ValidationException::class);
 });
+
+it('replaces a payment service icon through the dedicated payment services page', function () {
+    Storage::fake('public');
+    $c = unifiedContext();
+    $url = route('user.commerce.payment-services.update');
+    $method = ['id' => 'bank-deposit', 'name' => 'Bank deposit', 'active' => '1', 'recipient_details' => 'Account 123', 'instructions' => 'Upload proof', 'sort_order' => 1];
+    $data = ['payment_methods' => [$method], 'payment_icons' => ['bank-deposit' => UploadedFile::fake()->image('first.png')]];
+    $this->actingAs($c['user'])->put($url, $data)->assertSessionHasNoErrors();
+    $first = StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['icon_path'];
+    Storage::disk('public')->assertExists($first);
+    $data['payment_icons'] = ['bank-deposit' => UploadedFile::fake()->image('second.jpg')];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    $second = StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['icon_path'];
+    expect($second)->not->toBe($first);
+    Storage::disk('public')->assertMissing($first);
+    Storage::disk('public')->assertExists($second);
+});

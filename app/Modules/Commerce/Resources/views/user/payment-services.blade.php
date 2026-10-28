@@ -90,6 +90,18 @@
             closeModal() {
                 this.editingIndex = null;
             },
+            stageIcon(event) {
+                const file = event.target.files[0];
+                const target = this.$root.querySelector(`input[type=file][data-icon-index="${this.editingIndex}"]`);
+                if (!file || !target) {
+                    return;
+                }
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+                target.files = transfer.files;
+                this.methods[this.editingIndex].icon_url = URL.createObjectURL(file);
+                this.methods[this.editingIndex].remove_icon = false;
+            },
             async removeMethod(index) {
                 const confirmed = await window.requestConfirm?.({
                     title: '{{ __('Remove Payment Service?') }}',
@@ -325,8 +337,9 @@
             </div>
 
             <!-- Hidden Form Inputs for State Submission -->
-            <template x-for="(method, index) in methods" :key="method.id">
+            <template x-for="(method, index) in methods" :key="index">
                 <div>
+                    <input type="file" class="hidden" tabindex="-1" :data-icon-index="index" :name="`payment_icons[${method.id}]`">
                     <input type="hidden" :name="`payment_methods[${index}][id]`" :value="method.id">
                     <input type="hidden" :name="`payment_methods[${index}][name]`" :value="method.name">
                     <input type="hidden" :name="`payment_methods[${index}][recipient_details]`" :value="method.recipient_details">
@@ -438,7 +451,7 @@
                                             </template>
                                             <input
                                                 type="file"
-                                                :name="`payment_icons[${methods[editingIndex].id}]`"
+                                                @change="stageIcon($event)"
                                                 accept="image/png,image/jpeg,image/webp"
                                                 class="form-input form-input-compact !rounded-[4px] text-xs flex-1 !py-1"
                                             >
