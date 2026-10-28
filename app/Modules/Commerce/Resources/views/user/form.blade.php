@@ -72,6 +72,7 @@
         ]);
 
     $currentStep = (int) ($step ?? 1);
+    $wholesaleEnabled = $wholesaleEnabled ?? true;
     $colorState = old('colors', $colorState) ?: [];
     $tierPricesState = old('tier_prices', $tierPricesState) ?: [];
     $featureHighlightsState = old('feature_highlights', $featureHighlightsState) ?: [];
@@ -136,6 +137,9 @@
                         8 => ['label' => __('Description')],
                         9 => ['label' => __('Specifications')],
                     ];
+                    if (! $wholesaleEnabled) {
+                        unset($steps[6]);
+                    }
                 @endphp
 
                 @foreach($steps as $stepNum => $sData)
@@ -236,6 +240,7 @@
                         </div>
 
                         {{-- Wholesale Price --}}
+                        @if($wholesaleEnabled)
                         <div class="rounded-md border border-emerald-500/30 bg-emerald-50/30 p-4">
                             <label class="form-label text-xs font-bold uppercase tracking-wider text-emerald-800" for="wholesale_price">{{ __('Wholesale Price *') }}</label>
                             <div class="flex items-center gap-2 mt-1">
@@ -246,6 +251,7 @@
                                 <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+                        @endif
 
                         {{-- Retail Price --}}
                         <div class="rounded-md border border-border/80 bg-neutral-50/50 p-4">
@@ -760,7 +766,7 @@
         @elseif($currentStep === 5)
             <form method="POST" action="{{ route('user.commerce.products.details.update', $product) }}" class="space-y-6" @submit="markSaved()">
                 @csrf @method('PUT')
-                <input type="hidden" name="next_step" value="6">
+                <input type="hidden" name="next_step" value="{{ $wholesaleEnabled ? 6 : 7 }}">
                 <input type="hidden" name="tier_prices" value="">
                 <input type="hidden" name="name" value="{{ $product->name }}">
 
@@ -912,7 +918,7 @@
 
                 <div class="flex items-center justify-between gap-3 pt-2">
                     <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 4]) }}">{{ __('Back') }}</x-ui.button>
-                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Wholesale Settings →') }}</button>
+                    <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ $wholesaleEnabled ? __('Save & Next: Wholesale Settings →') : __('Save & Next: Features →') }}</button>
                 </div>
             </form>
 
@@ -1304,7 +1310,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 6]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => $wholesaleEnabled ? 6 : 5]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Description →') }}</button>
                 </div>
             </form>

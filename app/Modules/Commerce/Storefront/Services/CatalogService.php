@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Storefront\Services;
 
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Services\StoreFeatures;
 use Illuminate\Database\Eloquent\Builder;
 
 class CatalogService
@@ -16,6 +17,9 @@ class CatalogService
             'all' => ['retail', 'wholesale', 'both'],
             default => ['retail', 'both'],
         };
+        if (! StoreFeatures::wholesaleEnabled($workspace)) {
+            $sellingModes = ['retail', 'both'];
+        }
 
         $q = Product::query()
             ->where('workspace_id', $workspace)

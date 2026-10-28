@@ -3,11 +3,11 @@
 namespace App\Modules\Media\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Media\Http\Requests\BrowseUserMediaRequest;
 use App\Modules\Media\Http\Requests\UploadUserMediaRequest;
 use App\Modules\Media\Services\MediaService;
 use App\Modules\Shared\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class MediaController extends Controller
 {
@@ -15,11 +15,11 @@ class MediaController extends Controller
 
     public function __construct(protected MediaService $service) {}
 
-    public function browse(Request $request): JsonResponse
+    public function browse(BrowseUserMediaRequest $request): JsonResponse
     {
         $filters = [
-            'search' => $request->get('search'),
-            'type' => $request->get('type'),
+            'search' => trim((string) $request->validated('search')),
+            'type' => $request->validated('type'),
             'uploaded_by' => auth()->id(),
         ];
 

@@ -7,11 +7,13 @@ use App\Modules\Commerce\Models\ProductColor;
 use App\Modules\Commerce\Models\ProductTierPrice;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Services\OrderWorkflowService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Cart;
 use App\Modules\Commerce\Storefront\Models\CartItem;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Models\PackTemplate;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\InvoiceService;
 use App\Modules\Commerce\Storefront\Services\PackSelectionService;
@@ -370,4 +372,28 @@ it('provides non-persistent preview with explicit group data and validates repla
     $this->getJson('/api/storefront/v1/cart', $h)->assertOk()
         ->assertJsonCount(0, 'data.groups')
         ->assertJsonCount(0, 'data.items');
+});
+
+it('sells retail only when the owner switches wholesale off', function () {
+    $selection = mixedPackFixture($this);
+    $wholesaleOnly = Product::query()->create(['workspace_id' => $this->store->id, 'name' => 'Bulk only', 'slug' => 'bulk-only', 'sku' => 'bulk-only', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'wholesale', 'ws_enabled' => true, 'wholesale_price' => 5]);
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.wholesale_enabled', true);
+
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['wholesale_enabled' => false]]);
+    StoreFeatures::flush();
+
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.wholesale_enabled', false);
+    $this->getJson('/api/storefront/v1/pack-templates', $this->headers)->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/api/storefront/v1/catalog/products/'.$wholesaleOnly->slug, $this->headers)->assertNotFound();
+    $this->getJson('/api/storefront/v1/catalog/products?selling_mode=wholesale', $this->headers)->assertOk()->assertJsonMissing(['slug' => 'bulk-only']);
+    $this->getJson('/api/storefront/v1/catalog/products/shirt-pack', $this->headers)->assertOk()
+        ->assertJsonPath('data.selling_mode', 'retail')
+        ->assertJsonPath('data.ws_enabled', false)
+        ->assertJsonPath('data.wholesale_price', '0')
+        ->assertJsonCount(0, 'data.tier_prices');
+
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token, 'Idempotency-Key' => (string) Str::uuid()];
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], $h)->assertUnprocessable();
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $selection['items'][0]['variant_id'], 'quantity' => 1], $h)->assertOk()->assertJsonPath('data.subtotal', '20.00');
 });

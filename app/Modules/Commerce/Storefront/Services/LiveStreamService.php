@@ -159,6 +159,19 @@ class LiveStreamService
      */
     public function reverbConfig(): array
     {
+        if (config('broadcasting.default') === 'pusher') {
+            $pusher = (array) config('broadcasting.connections.pusher', []);
+            $cluster = (string) (($pusher['options']['cluster'] ?? null) ?: 'mt1');
+
+            return [
+                'app_key' => (string) ($pusher['key'] ?? ''),
+                'host' => "ws-{$cluster}.pusher.com",
+                'port' => 443,
+                'scheme' => 'https',
+                'enabled' => true,
+            ];
+        }
+
         $conn = (array) config('broadcasting.connections.reverb', []);
         $options = (array) ($conn['options'] ?? []);
 
