@@ -105,7 +105,7 @@
             <button type="button" data-media-picker-trigger></button>
         </div>
         {{-- Header Bar --}}
-        <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
+        <header class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pb-2">
             <div>
                 <nav class="flex items-center gap-1.5 text-xs font-medium text-neutral-500 mb-1" aria-label="Breadcrumb">
                     <a href="{{ route('user.commerce.products.index') }}" class="hover:text-neutral-900 transition-colors">{{ __('Products') }}</a>
@@ -115,7 +115,7 @@
                 <h1 class="text-2xl font-black tracking-tight text-neutral-900">{{ $isEdit ? $product->name : __('Add Product') }}</h1>
             </div>
             @if($isEdit)
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
                     @include('commerce::user.partials.product-catalog')
                     @include('commerce::user.partials.product-showcase')
                 </div>

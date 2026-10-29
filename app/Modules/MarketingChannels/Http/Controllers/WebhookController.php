@@ -43,6 +43,16 @@ class WebhookController extends Controller
             return response('Channel account not found.', 404);
         }
 
+        if ($provider === 'whatsapp' && $this->isForeignWhatsAppPhone($request->all(), $account)) {
+            Log::info('WhatsApp webhook ignored: phone number not connected.', [
+                'channel_account_id' => $account->id,
+                'account_phone_id' => $account->provider_phone_id,
+                'payload_phone_id' => data_get($request->all(), 'entry.0.changes.0.value.metadata.phone_number_id'),
+            ]);
+
+            return response('', 200);
+        }
+
         if ($rejection = app(WebhookSignatureVerifier::class)->rejection($request, $provider, $account)) {
             return $rejection;
         }
@@ -82,6 +92,18 @@ class WebhookController extends Controller
         }
 
         return response('', 200);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isForeignWhatsAppPhone(array $payload, ChannelAccount $account): bool
+    {
+        $payloadPhoneId = data_get($payload, 'entry.0.changes.0.value.metadata.phone_number_id');
+
+        return filled($payloadPhoneId)
+            && filled($account->provider_phone_id)
+            && (string) $payloadPhoneId !== (string) $account->provider_phone_id;
     }
 
     protected function resolveAccountForVerify(Request $request, string $provider, ?string $webhookCode = null): ?ChannelAccount
