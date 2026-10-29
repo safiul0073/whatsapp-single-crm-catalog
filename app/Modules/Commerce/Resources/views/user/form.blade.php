@@ -389,7 +389,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-neutral-900">{{ __('Product Images') }}</h2>
-                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Upload product photography. Click star to make primary. Recommended size 800x1000px.') }}</p>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Upload product photography. Select a photo to set it as primary, view it full size or delete it. Recommended size 800x1000px.') }}</p>
                         </div>
                         <div class="flex items-center gap-2.5">
                             {{-- Enable Color Picker Toggle Button --}}
@@ -411,105 +411,173 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <div
-                            tabindex="0"
-                            class="group/preview relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-neutral-50 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:min-h-[460px]"
-                            @keydown.arrow-left.prevent="selectGalleryOffset(-1)"
-                            @keydown.arrow-right.prevent="selectGalleryOffset(1)"
-                        >
-                            <template x-if="gallery.length > 1">
-                                <div>
-                                    <button type="button" class="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-700 shadow-sm transition hover:text-primary" @click="selectGalleryOffset(-1)" title="{{ __('Previous photo') }}" aria-label="{{ __('Previous photo') }}">
-                                        <i class="ph-bold ph-caret-left"></i>
-                                    </button>
-                                    <button type="button" class="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-700 shadow-sm transition hover:text-primary" @click="selectGalleryOffset(1)" title="{{ __('Next photo') }}" aria-label="{{ __('Next photo') }}">
-                                        <i class="ph-bold ph-caret-right"></i>
-                                    </button>
-                                    <span class="absolute right-3 top-3 z-10 rounded-md bg-neutral-900/75 px-2 py-1 text-[11px] font-semibold text-white" x-text="`${selectedGalleryIndex() + 1} / ${gallery.length}`"></span>
-                                </div>
-                            </template>
-                            <template x-if="getSelectedGalleryImage()">
-                                <div class="relative flex max-h-[440px] items-center justify-center">
-                                    <img
-                                        :src="getSelectedGalleryImage().url"
-                                        :alt="getSelectedGalleryImage().alt_text || '{{ __('Product image preview') }}'"
-                                        crossorigin="anonymous"
-                                        class="max-h-[440px] w-auto select-none rounded-md object-contain transition"
-                                        :class="galleryColorPickerEnabled ? 'cursor-crosshair inspecting-color-target' : ''"
-                                        x-init="
-                                            $nextTick(() => {
-                                                if (window.ImageColorPicker?.attachColorPickerToImage) {
-                                                    window.ImageColorPicker.attachColorPickerToImage($el, {
-                                                        enabled: () => galleryColorPickerEnabled,
-                                                        autoCopy: () => false,
-                                                        onPick: (hex, name) => {
-                                                            galleryColorPickerEnabled = false;
-                                                            if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        "
-                                    >
-                                    <div x-show="galleryColorPickerEnabled" class="pointer-events-none absolute bottom-2 flex items-center gap-1.5 rounded-md bg-neutral-900/85 px-3 py-1 text-[11px] font-medium text-white shadow-lg backdrop-blur-md">
-                                        <i class="ph ph-hand-pointing text-emerald-400"></i>
-                                        <span>{{ __('Hover to inspect • Click to copy color code') }}</span>
-                                    </div>
-                                </div>
-                            </template>
-                            <span x-show="getSelectedGalleryImage()?.is_primary" class="absolute left-3 top-3 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[11px] font-semibold text-primary shadow-xs">
-                                <i class="ph-fill ph-star"></i> {{ __('Primary image') }}
-                            </span>
-                            <button type="button" x-show="gallery.length === 0" class="flex flex-col items-center text-center text-neutral-400 transition hover:text-primary" @click="openMediaPicker()">
-                                <i class="ph ph-image text-5xl text-neutral-300"></i>
-                                <span class="mt-3 text-sm font-semibold text-neutral-700">{{ __('No images yet') }}</span>
-                                <span class="mt-1 text-xs">{{ __('Click to upload the first product photo') }}</span>
-                            </button>
-                        </div>
-
-                        <div class="flex flex-col">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Photos') }} <span class="text-neutral-400" x-text="`(${gallery.length})`"></span></p>
-                                <p class="text-[11px] text-neutral-400">{{ __('Click a photo to preview') }}</p>
-                            </div>
-                            <div class="mt-3 max-h-[460px] overflow-y-auto overflow-x-hidden p-1 pr-2 -mr-2">
-                            <div class="grid grid-cols-3 content-start gap-3">
-                                <template x-for="(item, index) in gallery" :key="`thumb_${item.id}_${index}`">
-                                    <div
-                                        tabindex="0"
-                                        role="button"
-                                        :aria-label="`{{ __('Preview photo') }} ${index + 1}`"
-                                        class="group relative aspect-[4/5] w-full cursor-pointer overflow-hidden rounded-md border bg-neutral-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                        :class="isGalleryImageSelected(item) ? 'border-primary ring-2 ring-primary/30' : 'border-neutral-200 hover:border-neutral-400'"
-                                        x-effect="if (isGalleryImageSelected(item)) { const list = $el.closest('.overflow-y-auto'); if (list && ($el.offsetTop < list.scrollTop || $el.offsetTop + $el.offsetHeight > list.scrollTop + list.clientHeight)) { list.scrollTop = $el.offsetTop - 8; } }"
-                                        @click="selectedGalleryPreviewId = item.id"
-                                        @keydown.enter.prevent="selectedGalleryPreviewId = item.id"
-                                    >
-                                        <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
-                                        <span x-show="item.is_primary" class="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                                            <i class="ph-fill ph-star text-[9px]"></i> {{ __('Primary') }}
-                                        </span>
-                                        <div class="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-linear-to-t from-black/55 to-transparent p-1.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                                            <button type="button" x-show="!item.is_primary" class="grid h-7 w-7 place-items-center rounded bg-white/95 text-neutral-700 hover:text-primary" @click.stop="setPrimaryById(item.id)" title="{{ __('Set as primary') }}" aria-label="{{ __('Set as primary') }}">
-                                                <i class="ph ph-star text-sm"></i>
-                                            </button>
-                                            <button type="button" class="grid h-7 w-7 place-items-center rounded bg-white/95 text-neutral-700 hover:text-red-600" @click.stop="removeMedia(index)" title="{{ __('Remove image') }}" aria-label="{{ __('Remove image') }}">
-                                                <i class="ph ph-trash text-sm"></i>
-                                            </button>
+                    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+                        {{-- Selected photo + actions --}}
+                        <div class="flex flex-col overflow-hidden rounded-md border border-neutral-200 bg-white">
+                            <div
+                                tabindex="0"
+                                class="relative flex min-h-[340px] flex-1 items-center justify-center bg-neutral-50 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 lg:min-h-[420px]"
+                                @keydown.arrow-left.prevent="selectGalleryOffset(-1)"
+                                @keydown.arrow-right.prevent="selectGalleryOffset(1)"
+                            >
+                                <template x-if="getSelectedGalleryImage()">
+                                    <div class="relative flex max-h-[400px] items-center justify-center">
+                                        <img
+                                            :src="getSelectedGalleryImage().url"
+                                            :alt="getSelectedGalleryImage().alt_text || '{{ __('Product image preview') }}'"
+                                            crossorigin="anonymous"
+                                            class="max-h-[400px] w-auto select-none rounded-md object-contain transition"
+                                            :class="galleryColorPickerEnabled ? 'cursor-crosshair inspecting-color-target' : 'cursor-zoom-in'"
+                                            @click="if (!galleryColorPickerEnabled) { galleryViewerOpen = true; }"
+                                            x-init="
+                                                $nextTick(() => {
+                                                    if (window.ImageColorPicker?.attachColorPickerToImage) {
+                                                        window.ImageColorPicker.attachColorPickerToImage($el, {
+                                                            enabled: () => galleryColorPickerEnabled,
+                                                            autoCopy: () => false,
+                                                            onPick: (hex, name) => {
+                                                                galleryColorPickerEnabled = false;
+                                                                if (window.ImageColorPicker?.loupe) window.ImageColorPicker.loupe.hide();
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            "
+                                        >
+                                        <div x-show="galleryColorPickerEnabled" class="pointer-events-none absolute bottom-2 flex items-center gap-1.5 rounded-md bg-neutral-900/85 px-3 py-1 text-[11px] font-medium text-white shadow-lg backdrop-blur-md">
+                                            <i class="ph ph-hand-pointing text-emerald-400"></i>
+                                            <span>{{ __('Hover to inspect • Click to copy color code') }}</span>
                                         </div>
                                     </div>
                                 </template>
-                                <button type="button" class="flex aspect-[4/5] flex-col items-center justify-center rounded-sm border-2 border-dashed border-neutral-300 bg-neutral-50 text-center transition hover:border-primary hover:bg-primary/5" @click="openMediaPicker()">
-                                    <i class="ph ph-plus text-xl text-primary"></i>
-                                    <span class="mt-1 text-xs font-semibold text-neutral-800">{{ __('Add photo') }}</span>
-                                    <span class="mt-0.5 text-[10px] text-neutral-400">800×1000px</span>
+
+                                <span x-show="getSelectedGalleryImage()?.is_primary" class="absolute left-3 top-3 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white shadow-xs">
+                                    <i class="ph-fill ph-star"></i> {{ __('Primary image') }}
+                                </span>
+                                <span x-show="gallery.length > 1" class="absolute right-3 top-3 rounded-md bg-neutral-900/75 px-2 py-1 text-[11px] font-semibold tabular-nums text-white" x-text="`${selectedGalleryIndex() + 1} / ${gallery.length}`"></span>
+
+                                <button type="button" x-show="gallery.length > 1" class="absolute left-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white text-neutral-700 shadow-sm ring-1 ring-neutral-200 transition hover:text-primary" @click="selectGalleryOffset(-1)" title="{{ __('Previous photo') }}" aria-label="{{ __('Previous photo') }}">
+                                    <i class="ph-bold ph-caret-left"></i>
+                                </button>
+                                <button type="button" x-show="gallery.length > 1" class="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white text-neutral-700 shadow-sm ring-1 ring-neutral-200 transition hover:text-primary" @click="selectGalleryOffset(1)" title="{{ __('Next photo') }}" aria-label="{{ __('Next photo') }}">
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </button>
+
+                                <button type="button" x-show="gallery.length === 0" class="flex flex-col items-center text-center text-neutral-400 transition hover:text-primary" @click="openMediaPicker()">
+                                    <i class="ph ph-image text-5xl text-neutral-300"></i>
+                                    <span class="mt-3 text-sm font-semibold text-neutral-700">{{ __('No images yet') }}</span>
+                                    <span class="mt-1 text-xs">{{ __('Click to upload the first product photo') }}</span>
                                 </button>
                             </div>
+
+                            {{-- Action bar for the selected photo --}}
+                            <div x-show="gallery.length > 0" class="flex flex-wrap items-center gap-2 border-t border-neutral-200 px-3 py-3">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm rounded-sm! text-xs font-semibold"
+                                    :class="getSelectedGalleryImage()?.is_primary ? 'btn-primary pointer-events-none' : 'btn-outline-primary'"
+                                    :disabled="getSelectedGalleryImage()?.is_primary"
+                                    @click="setSelectedGalleryImageAsPrimary()"
+                                >
+                                    <i :class="getSelectedGalleryImage()?.is_primary ? 'ph-fill ph-check-circle' : 'ph ph-star'"></i>
+                                    <span x-text="getSelectedGalleryImage()?.is_primary ? '{{ __('Primary image') }}' : '{{ __('Set as primary') }}'"></span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline rounded-sm! text-xs font-semibold" @click="galleryViewerOpen = true">
+                                    <i class="ph ph-arrows-out"></i> {{ __('View full size') }}
+                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline rounded-sm! px-2! text-xs" :disabled="selectedGalleryIndex() <= 0" @click="moveSelectedGalleryImage(-1)" title="{{ __('Move earlier') }}" aria-label="{{ __('Move earlier') }}">
+                                        <i class="ph ph-arrow-left"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline rounded-sm! px-2! text-xs" :disabled="selectedGalleryIndex() >= gallery.length - 1" @click="moveSelectedGalleryImage(1)" title="{{ __('Move later') }}" aria-label="{{ __('Move later') }}">
+                                        <i class="ph ph-arrow-right"></i>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-sm rounded-sm! ml-auto border border-red-200 bg-white text-xs font-semibold text-red-600 hover:bg-red-50" @click="removeSelectedGalleryImage()">
+                                    <i class="ph ph-trash"></i> {{ __('Delete') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Thumbnails --}}
+                        <div class="flex flex-col">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Photos') }} <span class="text-neutral-400" x-text="`(${gallery.length})`"></span></p>
+                                <p class="text-[11px] text-neutral-400">{{ __('Select a photo to edit it') }}</p>
+                            </div>
+                            <div class="mt-3 max-h-[480px] overflow-y-auto overflow-x-hidden p-1 pr-2 -mr-2">
+                                <div class="grid grid-cols-3 content-start auto-rows-max gap-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+                                    <template x-for="(item, index) in gallery" :key="`thumb_${item.id}_${index}`">
+                                        <div
+                                            tabindex="0"
+                                            role="button"
+                                            :aria-label="`{{ __('Select photo') }} ${index + 1}`"
+                                            :aria-pressed="isGalleryImageSelected(item)"
+                                            class="group relative aspect-[4/5] w-full cursor-pointer overflow-hidden rounded-md border-2 bg-neutral-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                            :class="isGalleryImageSelected(item) ? 'border-primary shadow-md' : 'border-transparent ring-1 ring-neutral-200 hover:ring-neutral-400'"
+                                            x-effect="if (isGalleryImageSelected(item)) { const list = $el.closest('.overflow-y-auto'); if (list) { const box = list.getBoundingClientRect(); const tile = $el.getBoundingClientRect(); if (tile.top < box.top) { list.scrollTop -= box.top - tile.top + 8; } else if (tile.bottom > box.bottom) { list.scrollTop += tile.bottom - box.bottom + 8; } } }"
+                                            @click="selectedGalleryPreviewId = item.id"
+                                            @dblclick="selectedGalleryPreviewId = item.id; galleryViewerOpen = true"
+                                            @keydown.enter.prevent="selectedGalleryPreviewId = item.id"
+                                        >
+                                            <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
+                                            <span class="absolute bottom-1 left-1 rounded bg-neutral-900/70 px-1.5 text-[10px] font-semibold tabular-nums text-white" x-text="index + 1"></span>
+                                            <span x-show="item.is_primary" class="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-xs">
+                                                <i class="ph-fill ph-star text-[9px]"></i> {{ __('Primary') }}
+                                            </span>
+                                            <span x-show="isGalleryImageSelected(item)" class="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-white shadow-xs">
+                                                <i class="ph-bold ph-check text-[10px]"></i>
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <button type="button" class="flex aspect-[4/5] flex-col items-center justify-center rounded-md border-2 border-dashed border-neutral-300 bg-neutral-50 text-center transition hover:border-primary hover:bg-primary/5" @click="openMediaPicker()">
+                                        <i class="ph ph-plus text-xl text-primary"></i>
+                                        <span class="mt-1 text-xs font-semibold text-neutral-800">{{ __('Add photo') }}</span>
+                                        <span class="mt-0.5 text-[10px] text-neutral-400">800×1000px</span>
+                                    </button>
+                                </div>
                             </div>
                             <p class="mt-4 rounded-md bg-neutral-50 px-3 py-2 text-[11px] leading-relaxed text-neutral-500">
-                                <i class="ph ph-info mr-1 text-neutral-400"></i>{{ __('The primary image is shown first in the store and catalog. Hover a photo to make it primary or remove it.') }}
+                                <i class="ph ph-info mr-1 text-neutral-400"></i>{{ __('Select a photo, then use the buttons under the preview to set it as primary, view it full size, reorder or delete it. The primary image is shown first in the store. Changes are saved when you click Save.') }}
                             </p>
+                        </div>
+                    </div>
+
+                    {{-- Full-size viewer --}}
+                    <div
+                        x-show="galleryViewerOpen && gallery.length > 0"
+                        x-cloak
+                        x-transition.opacity
+                        class="fixed inset-0 z-[90] flex flex-col bg-neutral-950/95"
+                        role="dialog"
+                        aria-modal="true"
+                        @keydown.escape.window="galleryViewerOpen = false"
+                        @keydown.arrow-left.window="if (galleryViewerOpen) { selectGalleryOffset(-1); }"
+                        @keydown.arrow-right.window="if (galleryViewerOpen) { selectGalleryOffset(1); }"
+                    >
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 text-white">
+                            <span class="text-sm font-semibold tabular-nums" x-text="`${selectedGalleryIndex() + 1} / ${gallery.length}`"></span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition" :class="getSelectedGalleryImage()?.is_primary ? 'bg-primary text-white' : 'bg-white/10 text-white hover:bg-white/20'" @click="setSelectedGalleryImageAsPrimary()">
+                                    <i :class="getSelectedGalleryImage()?.is_primary ? 'ph-fill ph-star' : 'ph ph-star'"></i>
+                                    <span x-text="getSelectedGalleryImage()?.is_primary ? '{{ __('Primary image') }}' : '{{ __('Set as primary') }}'"></span>
+                                </button>
+                                <button type="button" class="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20" @click="removeSelectedGalleryImage()">
+                                    <i class="ph ph-trash"></i> {{ __('Delete') }}
+                                </button>
+                                <button type="button" class="grid h-9 w-9 place-items-center rounded-full text-white transition hover:bg-white/10" @click="galleryViewerOpen = false" aria-label="{{ __('Close') }}">
+                                    <i class="ph ph-x text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative flex min-h-0 flex-1 items-center justify-center px-14 pb-4" @click.self="galleryViewerOpen = false">
+                            <img :src="getSelectedGalleryImage()?.url" :alt="getSelectedGalleryImage()?.alt_text || ''" class="max-h-full max-w-full select-none object-contain">
+                            <button type="button" x-show="gallery.length > 1" class="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/25" @click="selectGalleryOffset(-1)" aria-label="{{ __('Previous photo') }}">
+                                <i class="ph-bold ph-caret-left text-lg"></i>
+                            </button>
+                            <button type="button" x-show="gallery.length > 1" class="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/25" @click="selectGalleryOffset(1)" aria-label="{{ __('Next photo') }}">
+                                <i class="ph-bold ph-caret-right text-lg"></i>
+                            </button>
                         </div>
                     </div>
 

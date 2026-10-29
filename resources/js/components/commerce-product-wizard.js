@@ -69,6 +69,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   // Gallery Preview & Color Picker State
   selectedGalleryPreviewId: null,
   galleryColorPickerEnabled: false,
+  galleryViewerOpen: false,
   colorModalEyedropperEnabled: false,
   activeEyedropperRow: null,
   activeInspectorImage: null,
@@ -484,6 +485,26 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     if (this.gallery.length === 0) return;
     const next = (this.selectedGalleryIndex() + step + this.gallery.length) % this.gallery.length;
     this.selectedGalleryPreviewId = this.gallery[next].id;
+  },
+
+  setSelectedGalleryImageAsPrimary() {
+    const selected = this.getSelectedGalleryImage();
+    if (selected) this.setPrimaryById(selected.id);
+  },
+
+  removeSelectedGalleryImage() {
+    const index = this.selectedGalleryIndex();
+    if (index < 0) return;
+    this.removeMedia(index);
+    const next = this.gallery[Math.min(index, this.gallery.length - 1)];
+    this.selectedGalleryPreviewId = next ? next.id : null;
+    if (!next) this.galleryViewerOpen = false;
+  },
+
+  moveSelectedGalleryImage(direction) {
+    const index = this.selectedGalleryIndex();
+    if (index < 0) return;
+    this.moveMedia(index, direction);
   },
 
   toggleGalleryColorPicker() {
