@@ -412,7 +412,23 @@
                     </div>
 
                     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <div class="relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-neutral-50 p-4 lg:min-h-[460px]">
+                        <div
+                            tabindex="0"
+                            class="group/preview relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-neutral-50 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:min-h-[460px]"
+                            @keydown.arrow-left.prevent="selectGalleryOffset(-1)"
+                            @keydown.arrow-right.prevent="selectGalleryOffset(1)"
+                        >
+                            <template x-if="gallery.length > 1">
+                                <div>
+                                    <button type="button" class="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-700 shadow-sm transition hover:text-primary" @click="selectGalleryOffset(-1)" title="{{ __('Previous photo') }}" aria-label="{{ __('Previous photo') }}">
+                                        <i class="ph-bold ph-caret-left"></i>
+                                    </button>
+                                    <button type="button" class="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-700 shadow-sm transition hover:text-primary" @click="selectGalleryOffset(1)" title="{{ __('Next photo') }}" aria-label="{{ __('Next photo') }}">
+                                        <i class="ph-bold ph-caret-right"></i>
+                                    </button>
+                                    <span class="absolute right-3 top-3 z-10 rounded-md bg-neutral-900/75 px-2 py-1 text-[11px] font-semibold text-white" x-text="`${selectedGalleryIndex() + 1} / ${gallery.length}`"></span>
+                                </div>
+                            </template>
                             <template x-if="getSelectedGalleryImage()">
                                 <div class="relative flex max-h-[440px] items-center justify-center">
                                     <img
@@ -457,18 +473,24 @@
                                 <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Photos') }} <span class="text-neutral-400" x-text="`(${gallery.length})`"></span></p>
                                 <p class="text-[11px] text-neutral-400">{{ __('Click a photo to preview') }}</p>
                             </div>
-                            <div class="mt-3 grid grid-cols-3 gap-3 max-h-[460px] overflow-y-auto overflow-x-hidden pr-2 -mr-2">
+                            <div class="mt-3 max-h-[460px] overflow-y-auto overflow-x-hidden p-1 pr-2 -mr-2">
+                            <div class="grid grid-cols-3 content-start gap-3">
                                 <template x-for="(item, index) in gallery" :key="`thumb_${item.id}_${index}`">
                                     <div
-                                        class="group relative aspect-[4/5] cursor-pointer overflow-hidden rounded-md border bg-neutral-50 transition"
-                                        :class="(selectedGalleryPreviewId ? String(selectedGalleryPreviewId) === String(item.id) : item.is_primary) ? 'border-primary ring-2 ring-primary/30' : 'border-neutral-200 hover:border-neutral-400'"
+                                        tabindex="0"
+                                        role="button"
+                                        :aria-label="`{{ __('Preview photo') }} ${index + 1}`"
+                                        class="group relative aspect-[4/5] w-full cursor-pointer overflow-hidden rounded-md border bg-neutral-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                        :class="isGalleryImageSelected(item) ? 'border-primary ring-2 ring-primary/30' : 'border-neutral-200 hover:border-neutral-400'"
+                                        x-effect="if (isGalleryImageSelected(item)) { const list = $el.closest('.overflow-y-auto'); if (list && ($el.offsetTop < list.scrollTop || $el.offsetTop + $el.offsetHeight > list.scrollTop + list.clientHeight)) { list.scrollTop = $el.offsetTop - 8; } }"
                                         @click="selectedGalleryPreviewId = item.id"
+                                        @keydown.enter.prevent="selectedGalleryPreviewId = item.id"
                                     >
-                                        <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" class="h-full w-full object-cover">
+                                        <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
                                         <span x-show="item.is_primary" class="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                             <i class="ph-fill ph-star text-[9px]"></i> {{ __('Primary') }}
                                         </span>
-                                        <div class="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-linear-to-t from-black/55 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                                        <div class="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-linear-to-t from-black/55 to-transparent p-1.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                                             <button type="button" x-show="!item.is_primary" class="grid h-7 w-7 place-items-center rounded bg-white/95 text-neutral-700 hover:text-primary" @click.stop="setPrimaryById(item.id)" title="{{ __('Set as primary') }}" aria-label="{{ __('Set as primary') }}">
                                                 <i class="ph ph-star text-sm"></i>
                                             </button>
@@ -483,6 +505,7 @@
                                     <span class="mt-1 text-xs font-semibold text-neutral-800">{{ __('Add photo') }}</span>
                                     <span class="mt-0.5 text-[10px] text-neutral-400">800×1000px</span>
                                 </button>
+                            </div>
                             </div>
                             <p class="mt-4 rounded-md bg-neutral-50 px-3 py-2 text-[11px] leading-relaxed text-neutral-500">
                                 <i class="ph ph-info mr-1 text-neutral-400"></i>{{ __('The primary image is shown first in the store and catalog. Hover a photo to make it primary or remove it.') }}

@@ -471,6 +471,21 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     return this.gallery.find((g) => g.is_primary) || this.gallery[0] || null;
   },
 
+  selectedGalleryIndex() {
+    const selected = this.getSelectedGalleryImage();
+    return selected ? this.gallery.indexOf(selected) : -1;
+  },
+
+  isGalleryImageSelected(item) {
+    return this.getSelectedGalleryImage() === item;
+  },
+
+  selectGalleryOffset(step) {
+    if (this.gallery.length === 0) return;
+    const next = (this.selectedGalleryIndex() + step + this.gallery.length) % this.gallery.length;
+    this.selectedGalleryPreviewId = this.gallery[next].id;
+  },
+
   toggleGalleryColorPicker() {
     this.galleryColorPickerEnabled = !this.galleryColorPickerEnabled;
     if (!this.galleryColorPickerEnabled && window.ImageColorPicker?.loupe) {
