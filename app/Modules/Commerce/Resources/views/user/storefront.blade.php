@@ -427,7 +427,7 @@
         },
         focusSlide(slide) {
             this.$nextTick(() => {
-                const card = document.querySelector('[data-slide-uid="' + slide._uid + '"]');
+                const card = [...document.querySelectorAll('[data-slide-uid]')].find((el) => el.dataset.slideUid === slide._uid);
                 if (!card) {
                     return;
                 }

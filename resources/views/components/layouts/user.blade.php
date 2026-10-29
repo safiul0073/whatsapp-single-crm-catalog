@@ -69,6 +69,10 @@
         ])>
             {{ $slot }}
         </main>
+
+        @unless($fullHeight)
+            @include('components.layouts.partials.user-footer')
+        @endunless
     </div>
 
     {{-- Toast & Flash --}}
