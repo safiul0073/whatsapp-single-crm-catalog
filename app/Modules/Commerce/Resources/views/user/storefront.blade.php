@@ -166,6 +166,10 @@
             }
         },
         init() {
+            Object.keys(this.sliderData).forEach((id) => {
+                this.sliderData[id].slides.forEach((slide) => this.ensureSlideUid(slide));
+                this.openSlide[id] = this.sliderData[id].slides[0]?._uid ?? null;
+            });
             if (this.activeTab && history.replaceState) {
                 const url = new URL(window.location.href);
                 url.searchParams.set('tab', this.activeTab);
@@ -325,9 +329,20 @@
         openGalleryForSlide(sliderId, slideIndex, field = 'image', mediaType = 'image') {
             if (typeof window.openMediaLibrary === 'function') {
                 window.openMediaLibrary((media) => {
-                    if (media && media.url && this.sliderData[sliderId]?.slides?.[slideIndex]) {
-                        this.sliderData[sliderId].slides[slideIndex][field] = media.url;
+                    const slide = this.sliderData[sliderId]?.slides?.[slideIndex];
+                    if (!media || !media.url || !slide) {
+                        return;
                     }
+                    const isVideo = media.type === 'video' || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(media.url);
+                    if (isVideo) {
+                        // A video picked from an image button belongs in the video field, never the image/poster.
+                        slide.video = media.url;
+                        if (field !== 'video' && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide[field] || '')) {
+                            slide[field] = '';
+                        }
+                        return;
+                    }
+                    slide[field === 'video' ? 'image' : field] = media.url;
                 }, { type: mediaType });
             }
         },
@@ -392,20 +407,61 @@
                 raw: false
             }
         },
+        openSlide: {},
+        confirmDeleteSlide: null,
+        slideUidSeq: 0,
+        ensureSlideUid(slide) {
+            if (!slide._uid) {
+                slide._uid = 'slide-' + (++this.slideUidSeq);
+            }
+            return slide._uid;
+        },
+        serializeSlides(sliderId) {
+            return JSON.stringify(this.sliderData[sliderId].slides.map(({ _uid, ...slide }) => slide));
+        },
+        isSlideOpen(sliderId, slide) {
+            return this.openSlide[sliderId] === slide._uid;
+        },
+        toggleSlide(sliderId, slide) {
+            this.openSlide[sliderId] = this.isSlideOpen(sliderId, slide) ? null : slide._uid;
+        },
+        focusSlide(slide) {
+            this.$nextTick(() => {
+                const card = document.querySelector('[data-slide-uid="' + slide._uid + '"]');
+                if (!card) {
+                    return;
+                }
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                card.querySelector('[data-slide-title]')?.focus({ preventScroll: true });
+            });
+        },
         addSlide(sliderId) {
-            this.sliderData[sliderId].slides.push({
+            const slide = {
                 title: 'New Headline Slide',
                 subtitle: 'Add an engaging promotion or story description here.',
-                image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=80',
+                image: '',
                 mobile_image: '',
                 video: '',
                 button_text: 'Shop Now',
                 button_link: '/products',
                 active: true
-            });
+            };
+            this.ensureSlideUid(slide);
+            this.sliderData[sliderId].slides.unshift(slide);
+            this.openSlide[sliderId] = slide._uid;
+            this.focusSlide(slide);
+        },
+        duplicateSlide(sliderId, index) {
+            const { _uid, ...source } = this.sliderData[sliderId].slides[index];
+            const copy = { ...source, title: (source.title || '') + ' (Copy)' };
+            this.ensureSlideUid(copy);
+            this.sliderData[sliderId].slides.splice(index + 1, 0, copy);
+            this.openSlide[sliderId] = copy._uid;
+            this.focusSlide(copy);
         },
         removeSlide(sliderId, index) {
             this.sliderData[sliderId].slides.splice(index, 1);
+            this.confirmDeleteSlide = null;
         },
         moveSlide(sliderId, from, to) {
             if (to < 0 || to >= this.sliderData[sliderId].slides.length) return;
@@ -1699,6 +1755,10 @@
                                     <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 flex items-center gap-1">
                                         <i class="ph ph-check-circle"></i> {{ __('Active & Verified') }}
                                     </span>
+                                @elseif($domain->status === 'failed')
+                                    <span class="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400 flex items-center gap-1">
+                                        <i class="ph ph-warning-circle"></i> {{ __('Verification Failed') }}
+                                    </span>
                                 @else
                                     <span class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 flex items-center gap-1">
                                         <i class="ph ph-clock"></i> {{ __('Pending DNS Verification') }}
@@ -1714,6 +1774,15 @@
                             <p class="text-xs text-neutral-500">
                                 {{ __('Added on') }} {{ $domain->created_at?->format('M d, Y') }}
                             </p>
+                            @if($domain->status !== 'active' && $domain->verification_error)
+                                <p class="text-xs text-red-600 dark:text-red-400">
+                                    @switch($domain->verification_error)
+                                        @case('txt_missing') {{ __('TXT verification record not found yet.') }} @break
+                                        @case('routing_missing') {{ __('Domain does not point to the storefront target yet.') }} @break
+                                        @default {{ __('DNS target is not configured for this platform.') }}
+                                    @endswitch
+                                </p>
+                            @endif
                         </div>
 
                         {{-- Domain Action Buttons --}}
@@ -2301,15 +2370,39 @@
                         <textarea
                             name="slides"
                             class="hidden"
-                            :value="JSON.stringify(sliderData['{{ $sId }}'].slides)"
+                            :value="serializeSlides('{{ $sId }}')"
                         ></textarea>
 
                         {{-- Visual Slide Cards --}}
                         <div class="space-y-4">
-                            <template x-for="(slide, sIdx) in sliderData['{{ $sId }}'].slides" :key="sIdx">
-                                <div class="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-800/40 space-y-4">
-                                    <div class="flex items-center justify-between border-b border-neutral-200/80 pb-2.5 dark:border-neutral-700">
-                                        <div class="flex items-center gap-2">
+                            <template x-for="(slide, sIdx) in sliderData['{{ $sId }}'].slides" :key="ensureSlideUid(slide)">
+                                <div
+                                    :data-slide-uid="slide._uid"
+                                    class="scroll-mt-24 rounded-xl border bg-neutral-50/50 p-3 shadow-2xs transition dark:bg-neutral-800/40"
+                                    :class="isSlideOpen('{{ $sId }}', slide) ? 'border-primary/50 ring-1 ring-primary/20 space-y-4' : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300'"
+                                >
+                                    <div
+                                        class="flex items-center justify-between gap-3"
+                                        :class="isSlideOpen('{{ $sId }}', slide) ? 'border-b border-neutral-200/80 pb-3 dark:border-neutral-700' : ''"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click="toggleSlide('{{ $sId }}', slide)"
+                                            class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                                            :aria-expanded="isSlideOpen('{{ $sId }}', slide)"
+                                        >
+                                            <i class="ph ph-caret-right text-sm text-neutral-400 transition-transform" :class="isSlideOpen('{{ $sId }}', slide) ? 'rotate-90' : ''"></i>
+                                            <span class="relative flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+                                                <template x-if="slide.image">
+                                                    <img :src="slide.image" alt="" class="h-full w-full object-cover" loading="lazy">
+                                                </template>
+                                                <template x-if="!slide.image && slide.video && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide.video)">
+                                                    <video :src="slide.video" class="h-full w-full object-cover" muted preload="metadata"></video>
+                                                </template>
+                                                <i x-show="!slide.image && !slide.video" class="ph ph-image text-base text-neutral-400"></i>
+                                                <i x-show="slide.video" class="ph-fill ph-play-circle absolute text-lg text-white drop-shadow"></i>
+                                            </span>
+                                            <span class="flex min-w-0 flex-wrap items-center gap-2">
                                             <span class="rounded bg-neutral-200 px-2 py-0.5 text-xs font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200" x-text="'Slide #' + (sIdx + 1)"></span>
                                             <span class="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate" x-text="slide.title || 'Untitled Slide'"></span>
                                             <span
@@ -2319,9 +2412,23 @@
                                                 <i class="ph-fill ph-video-camera"></i>
                                                 <span>{{ __('Video Slide') }}</span>
                                             </span>
-                                        </div>
+                                            <span
+                                                class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                                :class="slide.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'"
+                                                x-text="slide.active ? '{{ __('Active') }}' : '{{ __('Hidden') }}'"
+                                            ></span>
+                                            <span x-show="!slide.image" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                                <i class="ph ph-warning"></i>
+                                                <span>{{ __('Image needed') }}</span>
+                                            </span>
+                                            </span>
+                                        </button>
 
-                                        <div class="flex items-center gap-1">
+                                        <div class="flex shrink-0 items-center gap-1">
+                                            <label class="mr-1 inline-flex cursor-pointer items-center" title="{{ __('Show on storefront') }}">
+                                                <input type="checkbox" x-model="slide.active" class="peer sr-only">
+                                                <span class="relative h-5 w-9 rounded-full bg-neutral-300 transition after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition peer-checked:bg-primary peer-checked:after:translate-x-4 dark:bg-neutral-600"></span>
+                                            </label>
                                             <button
                                                 type="button"
                                                 @click="moveSlide('{{ $sId }}', sIdx, sIdx - 1)"
@@ -2342,23 +2449,40 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                @click="removeSlide('{{ $sId }}', sIdx)"
+                                                @click="duplicateSlide('{{ $sId }}', sIdx)"
+                                                class="rounded p-1 text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
+                                                title="{{ __('Duplicate slide') }}"
+                                            >
+                                                <i class="ph ph-copy text-sm"></i>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                x-show="confirmDeleteSlide !== slide._uid"
+                                                @click="confirmDeleteSlide = slide._uid"
                                                 class="rounded p-1 text-neutral-400 hover:text-red-600"
                                                 title="{{ __('Remove slide') }}"
                                             >
                                                 <i class="ph ph-trash text-sm"></i>
                                             </button>
+                                            <span x-show="confirmDeleteSlide === slide._uid" class="flex items-center gap-1 text-[11px] font-medium">
+                                                <span class="text-neutral-600 dark:text-neutral-300">{{ __('Delete?') }}</span>
+                                                <button type="button" @click="removeSlide('{{ $sId }}', sIdx)" class="rounded bg-red-600 px-1.5 py-0.5 text-white hover:bg-red-700">{{ __('Yes') }}</button>
+                                                <button type="button" @click="confirmDeleteSlide = null" class="rounded px-1.5 py-0.5 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700">{{ __('No') }}</button>
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                    <div x-show="isSlideOpen('{{ $sId }}', slide)" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                                         {{-- Image / Video Thumbnail Preview & Quick Actions --}}
                                         <div class="md:col-span-4 space-y-2.5">
                                             <div class="h-36 w-full rounded-xl border border-neutral-200 bg-neutral-100 overflow-hidden relative dark:border-neutral-700 dark:bg-neutral-800 flex items-center justify-center group">
-                                                <template x-if="slide.image">
+                                                <template x-if="slide.video && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide.video)">
+                                                    <video :src="slide.video" :poster="slide.image || null" class="absolute inset-0 h-full w-full object-cover" muted loop autoplay playsinline></video>
+                                                </template>
+                                                <template x-if="slide.image && !(slide.video && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(slide.video))">
                                                     <img :src="slide.image" alt="Slide" class="h-full w-full object-cover" x-on:error="$el.style.display='none'">
                                                 </template>
-                                                <div x-show="!slide.image" class="text-center p-3 text-neutral-400">
+                                                <div x-show="!slide.image && !slide.video" class="text-center p-3 text-neutral-400">
                                                     <i class="ph ph-image text-2xl mb-1 block"></i>
                                                     <span class="text-[11px]">{{ __('No image selected') }}</span>
                                                 </div>
@@ -2401,7 +2525,7 @@
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div>
                                                     <label class="form-label text-xs">{{ __('Slide Title') }} *</label>
-                                                    <input type="text" x-model="slide.title" required class="form-input form-input-sm text-xs" placeholder="Summer Flash Sale">
+                                                    <input type="text" x-model="slide.title" data-slide-title required class="form-input form-input-sm text-xs" placeholder="Summer Flash Sale">
                                                 </div>
                                                 <div>
                                                     <label class="form-label text-xs">{{ __('Subtitle / Description') }}</label>

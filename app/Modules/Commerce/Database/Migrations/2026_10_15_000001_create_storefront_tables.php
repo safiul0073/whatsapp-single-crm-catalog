@@ -27,6 +27,7 @@ return new class extends Migration
             $t->boolean('is_primary')->default(false);
             $t->string('status')->default('pending_dns');
             $t->string('verification_token');
+            $t->string('verification_error')->nullable();
             $t->timestamp('verified_at')->nullable();
             $t->string('ssl_status')->default('unprovisioned');
             $t->timestamps();

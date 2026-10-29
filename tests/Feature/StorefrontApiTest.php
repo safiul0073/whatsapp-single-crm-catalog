@@ -17,6 +17,7 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
+use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
@@ -501,4 +502,52 @@ it('queues one Meta purchase event per new order with validated browser details'
         && $job->client['user_agent'] === 'Mozilla/5.0'
         && $job->client['fbp'] === 'fb.1.1710000000.123'
         && $job->client['fbc'] === null);
+});
+
+function fakeDnsJob(int $domainId, array $records): VerifyStoreDomainJob
+{
+    return new class($domainId, $records) extends VerifyStoreDomainJob
+    {
+        public function __construct(int $domainId, private array $records)
+        {
+            parent::__construct($domainId);
+        }
+
+        protected function lookup(string $host, int $type): array
+        {
+            return $this->records[$host.'|'.$type] ?? [];
+        }
+    };
+}
+
+it('activates www when the apex is already active and the host routes to the target', function (): void {
+    config(['storefront.dns_target' => 'edge.example.net']);
+    StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'shop.test', 'status' => 'active', 'verification_token' => 'a']);
+    $www = StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'www.shop.test', 'verification_token' => 'b']);
+
+    fakeDnsJob($www->id, ['www.shop.test|'.DNS_CNAME => [['target' => 'edge.example.net.']]])->handle();
+
+    expect($www->fresh()->status)->toBe('active')->and($www->fresh()->verification_error)->toBeNull();
+});
+
+it('keeps www pending with a reason when no sibling is active and the TXT record is missing', function (): void {
+    config(['storefront.dns_target' => 'edge.example.net']);
+    $www = StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'www.shop.test', 'verification_token' => 'b']);
+
+    fakeDnsJob($www->id, ['www.shop.test|'.DNS_CNAME => [['target' => 'edge.example.net']]])->handle();
+
+    expect($www->fresh()->status)->toBe('verifying')->and($www->fresh()->verification_error)->toBe('txt_missing');
+});
+
+it('accepts matching A records when no CNAME is visible', function (): void {
+    config(['storefront.dns_target' => 'edge.example.net']);
+    $d = StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'shop.test', 'verification_token' => 'tok']);
+
+    fakeDnsJob($d->id, [
+        '_verify.shop.test|'.DNS_TXT => [['txt' => 'tok']],
+        'shop.test|'.DNS_A => [['ip' => '1.2.3.4']],
+        'edge.example.net|'.DNS_A => [['ip' => '1.2.3.4']],
+    ])->handle();
+
+    expect($d->fresh()->status)->toBe('active');
 });

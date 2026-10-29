@@ -1,7 +1,7 @@
 @inject('showcaseLinks', 'App\Modules\Commerce\Services\ProductShowcaseLink')
 @php($showcaseUrl = $showcaseLinks->url($product))
 @if ($showcaseUrl)
-    <div class="flex flex-wrap items-center gap-2" x-data="{ copied: false, fallback: false }">
+    <div class="flex flex-nowrap items-center gap-2 whitespace-nowrap" x-data="{ copied: false, fallback: false }">
         <a href="{{ $showcaseUrl }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">{{ __('Open showcase') }}</a>
         <button type="button" class="btn btn-outline btn-sm" @click="navigator.clipboard ? navigator.clipboard.writeText(@js($showcaseUrl)).then(() => { copied = true; fallback = false; }).catch(() => { fallback = true; }) : fallback = true" x-text="copied ? @js(__('Link copied')) : @js(__('Copy showcase link'))">{{ __('Copy showcase link') }}</button>
         <input x-show="fallback" x-cloak type="text" readonly value="{{ $showcaseUrl }}" class="form-input text-xs" aria-label="{{ __('Copy this showcase link') }}" @focus="$el.select()">
