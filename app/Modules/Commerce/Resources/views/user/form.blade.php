@@ -1142,6 +1142,12 @@
                             </div>
                         </div>
 
+                        {{-- Always rendered: the modal below is removed from the DOM when closed, so its inputs would never be submitted. --}}
+                        <input type="hidden" name="ws_main_moq" :value="wsMainMoq">
+                        <input type="hidden" name="ws_min_sizes" :value="wsMinSizes">
+                        <input type="hidden" name="ws_color_moq" :value="wsColorMoq">
+                        <input type="hidden" name="ws_ratio_multiplier" :value="wsRatioMultiplier">
+
                         {{-- ══════ Settings Edit Modal ══════ --}}
                         <template x-if="editingSettings">
                             <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-neutral-900/50 p-4 backdrop-blur-sm" @keydown.escape.window="editingSettings = false" @click.self="editingSettings = false">
@@ -1160,7 +1166,7 @@
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Main Order MOQ') }}</label>
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Total pieces buyer must reach before ordering.') }}</p>
                                             <div class="flex items-center gap-2">
-                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_main_moq" x-model="wsMainMoq" placeholder="40">
+                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" x-model="wsMainMoq" placeholder="40">
                                                 <span class="rounded-md bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">{{ __('pcs total') }}</span>
                                             </div>
                                         </div>
@@ -1168,7 +1174,7 @@
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Minimum Size Selection') }}</label>
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Store setup rule: how many sizes each pack must contain (shown for your own planning). Buyers never pick sizes — they order whole packs, so this does not limit their order.') }}</p>
                                             <div class="flex items-center gap-2">
-                                                <input type="number" min="1" :max="productSizes.length || 20" class="form-input text-sm font-bold flex-1" name="ws_min_sizes" x-model="wsMinSizes" :placeholder="productSizes.length || '5'">
+                                                <input type="number" min="1" :max="productSizes.length || 20" class="form-input text-sm font-bold flex-1" x-model="wsMinSizes" :placeholder="productSizes.length || '5'">
                                                 <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700" x-text="'of ' + productSizes.length + ' sizes'"></span>
                                             </div>
                                         </div>
@@ -1176,7 +1182,7 @@
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Per-Color MOQ') }}</label>
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Default pieces per size when a color is selected.') }}</p>
                                             <div class="flex items-center gap-2">
-                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_color_moq" x-model="wsColorMoq" placeholder="1">
+                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" x-model="wsColorMoq" placeholder="1">
                                                 <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">{{ __('pcs/size') }}</span>
                                             </div>
                                         </div>
@@ -1184,7 +1190,7 @@
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Ratio Multiplier') }}</label>
                                             <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Scale factor applied to all ratios (e.g. ×2 doubles everything).') }}</p>
                                             <div class="flex items-center gap-2">
-                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" name="ws_ratio_multiplier" x-model="wsRatioMultiplier" placeholder="1">
+                                                <input type="number" min="1" class="form-input text-sm font-bold flex-1" x-model="wsRatioMultiplier" placeholder="1">
                                                 <span class="rounded-md bg-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">× {{ __('multiplier') }}</span>
                                             </div>
                                         </div>

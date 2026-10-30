@@ -89,6 +89,10 @@ it('round trips all nine wizard steps without resetting previously saved fields'
     for ($step = 1; $step <= 9; $step++) {
         $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => $step]))->assertSuccessful();
     }
+    // The wholesale rules modal is removed from the DOM when closed, so the values must be posted via always-rendered hidden inputs.
+    $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => 6]))
+        ->assertSee('<input type="hidden" name="ws_main_moq" :value="wsMainMoq">', false)
+        ->assertSee('<input type="hidden" name="ws_ratio_multiplier" :value="wsRatioMultiplier">', false);
     $api = (new ProductDetailResource($product->load(['options.values', 'colors.swatchMedia', 'gallery.media', 'variants.media', 'tierPrices'])))->resolve();
     expect(((array) $api['wholesale_settings']['size_ratios'])[$color->id]['M'])->toBe(2)
         ->and($api['tier_prices'][0]['price'])->toBe(12.0)
