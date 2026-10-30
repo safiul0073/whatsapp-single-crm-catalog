@@ -17,10 +17,18 @@ class DomainResolver
 
     public function resolve(string $host): array
     {
-        $domain = StoreDomain::query()->where('host', self::normalize($host))->where('status', 'active')->firstOrFail();
+        $host = self::normalize($host);
+        // A verified apex also serves its www sibling (and the reverse); the proxy then redirects to the primary host.
+        $domain = StoreDomain::query()->where('host', $host)->where('status', 'active')->first()
+            ?? StoreDomain::query()->where('host', self::sibling($host))->where('status', 'active')->firstOrFail();
         $workspace = Workspace::query()->where('status', 'active')->findOrFail($domain->workspace_id);
         $primary = StoreDomain::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('is_primary', true)->firstOrFail();
 
-        return ['store_id' => $workspace->id, 'name' => $workspace->name, 'primary_host' => $primary->host, 'host' => $domain->host, 'status' => 'active'];
+        return ['store_id' => $workspace->id, 'name' => $workspace->name, 'primary_host' => $primary->host, 'host' => $host, 'status' => 'active'];
+    }
+
+    public static function sibling(string $host): string
+    {
+        return str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host;
     }
 }

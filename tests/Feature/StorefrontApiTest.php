@@ -551,3 +551,29 @@ it('accepts matching A records when no CNAME is visible', function (): void {
 
     expect($d->fresh()->status)->toBe('active');
 });
+
+it('serves the www sibling of an active apex and redirects via the primary host', function (): void {
+    StoreDomain::query()->where('workspace_id', $this->store->id)->update(['is_primary' => false]);
+    StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'shop.test', 'is_primary' => true, 'status' => 'active', 'verification_token' => 'a']);
+
+    $this->getJson('/internal/stores/resolve?host=www.shop.test', $this->headers)->assertOk()
+        ->assertJsonPath('data.store_id', $this->store->id)->assertJsonPath('data.primary_host', 'shop.test')->assertJsonPath('data.host', 'www.shop.test');
+    $this->getJson('/internal/stores/resolve?host=www.unrelated.test', $this->headers)->assertNotFound();
+
+    StoreDomain::query()->where('host', 'shop.test')->update(['status' => 'failed']);
+    $this->getJson('/internal/stores/resolve?host=www.shop.test', $this->headers)->assertNotFound();
+});
+
+it('activates a www host that shares the active apex servers even when it points at a CDN', function (): void {
+    config(['storefront.dns_target' => 'edge.example.net']);
+    StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'shop.test', 'status' => 'active', 'verification_token' => 'a']);
+    $www = StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'www.shop.test', 'verification_token' => 'b']);
+
+    fakeDnsJob($www->id, [
+        'www.shop.test|'.DNS_CNAME => [['target' => 'www.shop.test.cdn.example.net.']],
+        'www.shop.test|'.DNS_A => [['ip' => '9.9.9.9']],
+        'shop.test|'.DNS_A => [['ip' => '9.9.9.9']],
+    ])->handle();
+
+    expect($www->fresh()->status)->toBe('active');
+});
