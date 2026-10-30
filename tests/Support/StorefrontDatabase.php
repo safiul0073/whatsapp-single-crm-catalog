@@ -33,7 +33,7 @@ class StorefrontDatabase
         }
         $paths = glob(database_path('migrations/*'));
         foreach ($paths as $path) {
-            if (str_contains($path, 'wholesale_settings') || str_contains($path, 'volumetric_shipping') || str_contains($path, 'weight_to_commerce')) {
+            if (str_contains($path, 'wholesale_settings') || str_contains($path, 'wholesale_pack_pricing') || str_contains($path, 'volumetric_shipping') || str_contains($path, 'weight_to_commerce')) {
                 (require $path)->up();
             }
         }

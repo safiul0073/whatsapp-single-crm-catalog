@@ -56,6 +56,8 @@ class ProductDetailResource extends JsonResource
                 'main_moq' => $this->ws_main_moq ?? 1,
                 'size_ratios' => $this->ws_size_ratios !== null ? (object) $this->ws_size_ratios : null,
                 'ratio_multiplier' => $this->ws_ratio_multiplier ?? 1,
+                'moq_unit' => $this->ws_moq_unit ?? 'pcs',
+                'pack_prices' => $this->packPrices(),
             ],
             'country_of_origin' => $this->country_of_origin,
             'published_at' => $this->published_at,

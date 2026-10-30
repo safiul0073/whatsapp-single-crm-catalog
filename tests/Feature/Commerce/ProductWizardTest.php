@@ -89,10 +89,18 @@ it('round trips all nine wizard steps without resetting previously saved fields'
     for ($step = 1; $step <= 9; $step++) {
         $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => $step]))->assertSuccessful();
     }
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Wizard Tee', 'ws_moq_unit' => 'packs', 'ws_pack_prices' => [['packs' => 3, 'price' => '600'], ['packs' => 2, 'price' => '500']],
+    ])->assertSessionHasNoErrors();
+    expect($product->fresh()->ws_moq_unit)->toBe('packs')
+        ->and($product->fresh()->packPrices())->toBe([['packs' => 2, 'price' => '500'], ['packs' => 3, 'price' => '600']]);
+    $this->put(route('user.commerce.products.details.update', $product), ['name' => 'Wizard Tee', 'ws_moq_unit' => 'pcs', 'ws_pack_prices' => ''])->assertSessionHasNoErrors();
+    expect($product->fresh()->ws_pack_prices)->toBeNull();
     // The wholesale rules modal is removed from the DOM when closed, so the values must be posted via always-rendered hidden inputs.
     $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => 6]))
         ->assertSee('<input type="hidden" name="ws_main_moq" :value="wsMainMoq">', false)
-        ->assertSee('<input type="hidden" name="ws_ratio_multiplier" :value="wsRatioMultiplier">', false);
+        ->assertSee('<input type="hidden" name="ws_ratio_multiplier" :value="wsRatioMultiplier">', false)
+        ->assertSee('<input type="hidden" name="ws_moq_unit" :value="wsMoqUnit">', false);
     $api = (new ProductDetailResource($product->load(['options.values', 'colors.swatchMedia', 'gallery.media', 'variants.media', 'tierPrices'])))->resolve();
     expect(((array) $api['wholesale_settings']['size_ratios'])[$color->id]['M'])->toBe(2)
         ->and($api['tier_prices'][0]['price'])->toBe(12.0)

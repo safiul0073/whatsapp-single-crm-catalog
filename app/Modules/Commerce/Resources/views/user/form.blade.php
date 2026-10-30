@@ -1027,12 +1027,32 @@
                         wsColorMoq: @js(old('ws_color_moq', $product->ws_color_moq ?? 1)),
                         wsMainMoq: @js(old('ws_main_moq', $product->ws_main_moq ?? 40)),
                         wsRatioMultiplier: @js(old('ws_ratio_multiplier', $product->ws_ratio_multiplier ?? 1)),
+                        wsMoqUnit: @js(old('ws_moq_unit', $product->ws_moq_unit ?? 'pcs')),
+                        wsPackPrices: @js(array_values(old('ws_pack_prices', $product->ws_pack_prices ?? []) ?? [])),
                         productSizes: @js(
                             ($product->options->first(fn ($o) => strtolower($o->code) === 'size' || strtolower($o->name) === 'size')?->values?->pluck('value')?->all()) ?? $product->variants->pluck('size')->filter()->unique()->values()->all()
                         ),
                         wsRatios: @js(old('ws_size_ratios', $product->ws_size_ratios ?? [])),
                         editingColorKey: null,
                         editingSettings: false,
+
+                        setMoqUnit(unit) {
+                            this.wsMoqUnit = unit;
+                            if (unit === 'packs' && ! this.wsPackPrices.length) {
+                                this.addPackPrice();
+                            }
+                        },
+
+                        addPackPrice() {
+                            const last = this.wsPackPrices[this.wsPackPrices.length - 1];
+                            this.wsPackPrices.push({ packs: last ? parseInt(last.packs || 0) + 1 : (parseInt(this.wsMainMoq) || 1), price: '' });
+                        },
+
+                        perPackPrice(row) {
+                            const packs = parseInt(row.packs);
+                            const price = parseFloat(row.price);
+                            return packs > 0 && price > 0 ? (price / packs).toFixed(2) : '';
+                        },
 
                         colorTotalPcs(key) {
                             if (!this.wsRatios[key] || !this.productSizes.length) return 0;
@@ -1108,13 +1128,25 @@
 
                     <div x-show="wsEnabled" x-transition class="mt-6 space-y-5">
 
+                        {{-- ══════ MOQ unit ══════ --}}
+                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-neutral-200 p-4">
+                            <div>
+                                <p class="text-sm font-bold text-neutral-900">{{ __('Count MOQ in') }}</p>
+                                <p class="text-[11px] text-neutral-500 mt-0.5">{{ __('Packs: 1 pack = 1 color box. Price comes from your pack price list. Wholesale prices include shipping.') }}</p>
+                            </div>
+                            <div class="inline-flex rounded-md border border-neutral-200 bg-neutral-50 p-1" role="radiogroup" aria-label="{{ __('MOQ unit') }}">
+                                <button type="button" role="radio" :aria-checked="wsMoqUnit === 'pcs'" class="rounded px-4 py-1.5 text-xs font-bold transition" :class="wsMoqUnit === 'pcs' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'" @click="setMoqUnit('pcs')">{{ __('Pieces') }}</button>
+                                <button type="button" role="radio" :aria-checked="wsMoqUnit === 'packs'" class="rounded px-4 py-1.5 text-xs font-bold transition" :class="wsMoqUnit === 'packs' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'" @click="setMoqUnit('packs')">{{ __('Packs') }}</button>
+                            </div>
+                        </div>
+
                         {{-- ══════ Settings Summary Cards ══════ --}}
                         <div class="grid grid-cols-3 gap-3">
                             {{-- Main MOQ Card --}}
                             <div class="rounded-md border border-neutral-200 bg-neutral-50/50 p-4 flex items-center justify-between cursor-pointer hover:border-neutral-300 transition" @click="editingSettings = true">
                                 <div>
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{{ __('Main MOQ') }}</p>
-                                    <p class="text-xl font-black text-neutral-900 mt-0.5"><span x-text="wsMainMoq || 0"></span> <span class="text-xs font-semibold text-neutral-400">{{ __('pcs') }}</span></p>
+                                    <p class="text-xl font-black text-neutral-900 mt-0.5"><span x-text="wsMainMoq || 0"></span> <span class="text-xs font-semibold text-neutral-400" x-text="wsMoqUnit === 'packs' ? '{{ __('packs') }}' : '{{ __('pcs') }}'"></span></p>
                                 </div>
                                 <i class="ph ph-pencil-simple text-neutral-400 text-sm"></i>
                             </div>
@@ -1147,6 +1179,35 @@
                         <input type="hidden" name="ws_min_sizes" :value="wsMinSizes">
                         <input type="hidden" name="ws_color_moq" :value="wsColorMoq">
                         <input type="hidden" name="ws_ratio_multiplier" :value="wsRatioMultiplier">
+                        <input type="hidden" name="ws_moq_unit" :value="wsMoqUnit">
+                        <input type="hidden" name="ws_pack_prices" value="" :disabled="wsPackPrices.length > 0">
+
+                        {{-- ══════ Pack price list (packs mode) ══════ --}}
+                        <div x-show="wsMoqUnit === 'packs'" x-cloak class="rounded-md border border-emerald-200 bg-emerald-50/30 p-4">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-800">{{ __('Pack price list') }}</h3>
+                                    <p class="text-[11px] text-neutral-500 mt-0.5">
+                                        {{ __('Total price for a number of packs, shipping included.') }}
+                                        <span x-show="totalPerColor > 0" x-text="'{{ __('1 pack') }} = ' + totalPerColor + ' {{ __('pcs') }}'"></span>
+                                    </p>
+                                </div>
+                                <button type="button" class="btn btn-outline btn-sm rounded-sm!" @click="addPackPrice()"><i class="ph ph-plus"></i> {{ __('Add row') }}</button>
+                            </div>
+                            <p x-show="! wsPackPrices.length" class="mt-3 text-xs text-amber-700">{{ __('Add at least one row, otherwise wholesale is priced per piece.') }}</p>
+                            <div class="mt-3 space-y-2">
+                                <template x-for="(row, idx) in wsPackPrices" :key="idx">
+                                    <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[5.5rem_8rem_auto_10rem_minmax(0,1fr)_auto]">
+                                        <input type="number" min="1" max="500" class="form-input h-9 text-sm font-bold" :name="`ws_pack_prices[${idx}][packs]`" x-model="row.packs" aria-label="{{ __('Packs') }}">
+                                        <span class="text-xs text-neutral-600" x-text="'{{ __('packs') }}' + (totalPerColor > 0 && row.packs ? ' (' + (row.packs * totalPerColor) + ' {{ __('pcs') }})' : '')"></span>
+                                        <span class="hidden text-neutral-400 sm:inline">→</span>
+                                        <input type="number" min="0.01" step="0.01" class="form-input h-9 text-sm font-bold text-emerald-700" :name="`ws_pack_prices[${idx}][price]`" x-model="row.price" placeholder="500" aria-label="{{ __('Total price') }}">
+                                        <span class="text-[11px] text-neutral-500" x-show="perPackPrice(row)" x-text="perPackPrice(row) + ' / {{ __('pack') }}'"></span>
+                                        <button type="button" class="justify-self-end grid h-8 w-8 place-items-center rounded-sm text-neutral-400 transition hover:bg-error/10 hover:text-error" @click="wsPackPrices.splice(idx, 1)" aria-label="{{ __('Remove row') }}"><i class="ph ph-trash"></i></button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
 
                         {{-- ══════ Settings Edit Modal ══════ --}}
                         <template x-if="editingSettings">
@@ -1164,10 +1225,10 @@
                                     <div class="px-6 py-5 space-y-4">
                                         <div>
                                             <label class="form-label text-xs font-bold text-neutral-700">{{ __('Main Order MOQ') }}</label>
-                                            <p class="text-[10px] text-neutral-500 mb-1.5">{{ __('Total pieces buyer must reach before ordering.') }}</p>
+                                            <p class="text-[10px] text-neutral-500 mb-1.5" x-text="wsMoqUnit === 'packs' ? '{{ __('Minimum packs buyer must order (1 pack = 1 color box).') }}' : '{{ __('Total pieces buyer must reach before ordering.') }}'"></p>
                                             <div class="flex items-center gap-2">
                                                 <input type="number" min="1" class="form-input text-sm font-bold flex-1" x-model="wsMainMoq" placeholder="40">
-                                                <span class="rounded-md bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800">{{ __('pcs total') }}</span>
+                                                <span class="rounded-md bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800" x-text="wsMoqUnit === 'packs' ? '{{ __('packs') }}' : '{{ __('pcs total') }}'"></span>
                                             </div>
                                         </div>
                                         <div>

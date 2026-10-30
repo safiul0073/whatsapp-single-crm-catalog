@@ -499,6 +499,8 @@ class ProductService
             'ws_color_moq' => array_key_exists('ws_color_moq', $data) ? (int) ($data['ws_color_moq'] ?? 1) : ($product?->ws_color_moq ?? 1),
             'ws_main_moq' => array_key_exists('ws_main_moq', $data) ? (int) ($data['ws_main_moq'] ?? 1) : ($product?->ws_main_moq ?? 1),
             'ws_size_ratios' => array_key_exists('ws_size_ratios', $data) ? $data['ws_size_ratios'] : $product?->ws_size_ratios,
+            'ws_moq_unit' => array_key_exists('ws_moq_unit', $data) ? ($data['ws_moq_unit'] ?: 'pcs') : ($product?->ws_moq_unit ?? 'pcs'),
+            'ws_pack_prices' => array_key_exists('ws_pack_prices', $data) ? $data['ws_pack_prices'] : $product?->ws_pack_prices,
             'ws_ratio_multiplier' => array_key_exists('ws_ratio_multiplier', $data) ? (int) ($data['ws_ratio_multiplier'] ?? 1) : ($product?->ws_ratio_multiplier ?? 1),
             'country_of_origin' => strtoupper(array_key_exists('country_of_origin', $data) ? $data['country_of_origin'] : ($product?->country_of_origin ?? 'BD')),
             'status' => array_key_exists('status', $data) ? $data['status'] : ($product?->status ?? 'draft'),

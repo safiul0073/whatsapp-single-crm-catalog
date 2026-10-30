@@ -79,7 +79,12 @@ class PackSelectionService
                 }
                 $orders[] = ['product_id' => $p->id, 'mode' => 'wholesale', ...$color];
             }
-            $this->check(array_sum(array_column($rows, 'quantity')) >= max(1, (int) $p->ws_main_moq), "{$p->name} requires at least {$p->ws_main_moq} pieces.");
+            if ($p->usesPackPricing()) {
+                $minPacks = $p->minimumPacks();
+                $this->check(array_sum(array_column($selection['colors'], 'box_count')) >= $minPacks, "{$p->name} requires at least {$minPacks} packs.");
+            } else {
+                $this->check(array_sum(array_column($rows, 'quantity')) >= max(1, (int) $p->ws_main_moq), "{$p->name} requires at least {$p->ws_main_moq} pieces.");
+            }
         } else {
             $template = PackTemplate::query()->where('workspace_id', $workspace)->where('published', true)->find($selection['template_id']);
             $this->check((bool) $template, 'This custom pack template is unavailable.');

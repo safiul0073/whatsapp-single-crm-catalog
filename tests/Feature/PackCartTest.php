@@ -397,3 +397,45 @@ it('sells retail only when the owner switches wholesale off', function () {
     $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], $h)->assertUnprocessable();
     $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $selection['items'][0]['variant_id'], 'quantity' => 1], $h)->assertOk()->assertJsonPath('data.subtotal', '20.00');
 });
+
+it('prices pack-mode standard wholesale from the pack price list and skips shipping for wholesale-only carts', function () {
+    $p = Product::query()->create(['workspace_id' => $this->store->id, 'name' => 'Set', 'slug' => 'set', 'sku' => 'set', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'ws_enabled' => true, 'single_piece_price' => 20, 'wholesale_price' => 10, 'ws_main_moq' => 1, 'ws_color_moq' => 1, 'ws_moq_unit' => 'packs', 'ws_pack_prices' => [['packs' => 2, 'price' => '500'], ['packs' => 3, 'price' => '600']]]);
+    $colors = [];
+    foreach (['Red', 'Blue'] as $name) {
+        $color = ProductColor::query()->create(['workspace_id' => $this->store->id, 'product_id' => $p->id, 'name' => $name, 'slug' => strtolower($name)]);
+        $colors[] = $color->id;
+        foreach (['S', 'M', 'L'] as $size) {
+            ProductVariant::query()->create(['workspace_id' => $this->store->id, 'product_id' => $p->id, 'color_id' => $color->id, 'sku' => $name.$size, 'meta_retailer_id' => $name.$size, 'size' => $size, 'price' => 20, 'stock_quantity' => 500, 'status' => 'active']);
+        }
+        $ratios[$color->id] = ['S' => 2, 'M' => 2, 'L' => 2];
+    }
+    $p->update(['ws_size_ratios' => $ratios]);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token];
+
+    $oneColor = ['type' => 'standard_wholesale', 'product_id' => $p->id, 'colors' => [['color_id' => $colors[0], 'box_count' => 1]]];
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $oneColor], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertUnprocessable();
+
+    $twoColors = ['type' => 'standard_wholesale', 'product_id' => $p->id, 'colors' => [['color_id' => $colors[0], 'box_count' => 1], ['color_id' => $colors[1], 'box_count' => 1]]];
+    $res = $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $twoColors], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertOk();
+    expect($res->json('data.subtotal'))->toBe('500.00')->and($res->json('data.shipping_required'))->toBeFalse();
+    $this->getJson('/api/storefront/v1/catalog/products/set', $this->headers)->assertJsonPath('data.wholesale_settings.moq_unit', 'packs')->assertJsonPath('data.wholesale_settings.min_packs', 2);
+
+    $res = $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 1], $h)->assertOk();
+    expect($res->json('data.subtotal'))->toBe('520.00')->and($res->json('data.shipping_required'))->toBeTrue();
+});
+
+it('lets only customers with a completed order of the product rate it', function () {
+    $url = '/api/storefront/v1/catalog/products/shirt/reviews';
+    $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->headers)->assertUnauthorized();
+    $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->auth)->assertOk()->assertJsonPath('data.can_review', false);
+    $this->postJson($url, ['rating' => 5, 'body' => 'Great'], $this->auth)->assertForbidden();
+
+    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => $this->contact->id, 'source' => 'storefront', 'submission_reference' => (string) Str::uuid(), 'payload_hash' => 'x', 'number' => 'ORD-R1', 'tracking_code' => 'TRK-R1', 'status' => 'processing', 'currency' => 'USD', 'subtotal' => 20, 'total' => 20, 'customer_snapshot' => [], 'shipping_address' => []]);
+    $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
+    $this->postJson($url, ['rating' => 5, 'body' => 'Great'], $this->auth)->assertForbidden();
+
+    $order->update(['status' => 'completed']);
+    $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->auth)->assertOk()->assertJsonPath('data.can_review', true);
+    $this->postJson($url, ['rating' => 4, 'body' => 'Great'], $this->auth)->assertCreated()->assertJsonPath('data.status', 'pending');
+});
