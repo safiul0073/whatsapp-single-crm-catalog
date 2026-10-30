@@ -122,6 +122,11 @@ class AdminController extends Controller
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
         }
+        if (isset($newConfig['seo'])) {
+            $newConfig['seo']['noindex'] = (bool) ($newConfig['seo']['noindex'] ?? false);
+        } elseif (isset($existing['seo'])) {
+            $newConfig['seo'] = $existing['seo'];
+        }
         if (isset($existing['tracking'])) {
             $newConfig['tracking'] = $existing['tracking'];
         }

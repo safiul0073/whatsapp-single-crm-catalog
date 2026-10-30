@@ -21,9 +21,20 @@ document.addEventListener('DOMContentLoaded', function () {
   const loadingState = modal.querySelector('[data-media-loading]');
   const loadMoreWrap = modal.querySelector('[data-media-load-more]');
   const loadMoreBtn = loadMoreWrap ? loadMoreWrap.querySelector('button') : null;
+  const manageToggle = modal.querySelector('[data-media-manage-toggle]');
+  const manageBar = modal.querySelector('[data-media-manage-bar]');
+  const manageSelect = modal.querySelector('[data-media-manage-select]');
+  const manageConfirm = modal.querySelector('[data-media-manage-confirm]');
+  const manageCount = modal.querySelector('[data-media-manage-count]');
+  const manageAllBtn = modal.querySelector('[data-media-manage-all]');
+  const manageDeleteBtn = modal.querySelector('[data-media-manage-delete]');
+  const confirmText = modal.querySelector('[data-media-confirm-text]');
+  const confirmYes = modal.querySelector('[data-media-confirm-yes]');
+  const confirmNo = modal.querySelector('[data-media-confirm-no]');
 
   const browseUrl = modal.dataset.browseUrl;
   const uploadUrl = modal.dataset.uploadUrl;
+  const deleteUrl = modal.dataset.deleteUrl;
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
   // State
@@ -38,6 +49,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let loadSeq = 0;            // Only the newest browse response may render
   let galleryColorPickerActive = false;
   let customCallback = null;
+  let manageMode = false;     // Checkbox mode for bulk delete
+  let pendingDelete = null;   // Ids awaiting inline confirmation
 
   window.openMediaLibrary = function (callback, options = {}) {
     activePicker = null;
@@ -51,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (searchInput) searchInput.value = '';
     currentSearch = '';
     selectedMedia = null;
+    resetManage();
     updateSelectBtn();
     openModal('mediaLibraryModal');
     loadMedia(false);
@@ -127,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const input = activePicker?.querySelector('[data-media-picker-input]');
     const currentValue = input ? input.value : '';
 
+    resetManage();
     updateSelectBtn();
     currentPage = 1;
     if (searchInput) searchInput.value = '';
@@ -255,6 +270,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const item = e.target.closest('[data-media-item]');
     if (!item) return;
 
+    if (e.target.closest('.media-grid-item-delete')) {
+      e.stopPropagation();
+      askDelete([String(JSON.parse(item.dataset.mediaItem).id)]);
+      return;
+    }
+
+    if (manageMode) {
+      item.classList.toggle('checked');
+      renderManageBar();
+      return;
+    }
+
     const media = JSON.parse(item.dataset.mediaItem);
     if (activePicker?.dataset.mediaMultiple === 'true') {
       const existingIndex = selectedMedia.findIndex(function (selected) { return String(selected.id) === String(media.id); });
@@ -277,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Double Click Item to Select Immediately ──
   grid.addEventListener('dblclick', function (e) {
-    if (galleryColorPickerActive) return;
+    if (galleryColorPickerActive || manageMode) return;
     const item = e.target.closest('[data-media-item]');
     if (!item) return;
     if (activePicker?.dataset.mediaMultiple === 'true') return;
@@ -468,6 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         grid.appendChild(el);
       });
+      renderManageBar();
     })
     .catch(function (err) {
       if (seq !== loadSeq || err?.name === 'AbortError') return;
@@ -564,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Upload Validation ──
   var UPLOAD_LIMITS_MB = { image: 10, video: 200, document: 25 };
   var UPLOAD_KINDS = {
-    image: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'ico'],
     video: ['mp4', 'mov', 'webm', 'm4v'],
     document: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'ppt', 'pptx', 'zip']
   };
@@ -636,6 +664,19 @@ document.addEventListener('DOMContentLoaded', function () {
       div.appendChild(iconWrap);
     }
 
+    var check = document.createElement('span');
+    check.className = 'media-grid-item-check';
+    check.innerHTML = '<i class="ph-bold ph-check text-xs"></i>';
+    div.appendChild(check);
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'media-grid-item-delete';
+    del.title = 'Delete';
+    del.setAttribute('aria-label', 'Delete ' + (item.name || 'file'));
+    del.innerHTML = '<i class="ph ph-trash text-sm"></i>';
+    div.appendChild(del);
+
     var info = document.createElement('div');
     info.className = 'media-grid-item-info';
     var name = document.createElement('span');
@@ -665,8 +706,120 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ── UI Helpers ──
+  // ── Manage / Delete ──
+  function checkedIds() {
+    return Array.from(grid.querySelectorAll('[data-media-item].checked')).map(function (el) {
+      return String(JSON.parse(el.dataset.mediaItem).id);
+    });
+  }
+
+  function renderManageBar() {
+    if (!manageBar) return;
+    var show = manageMode || pendingDelete !== null;
+    manageBar.classList.toggle('hidden', !show);
+    manageSelect.classList.toggle('hidden', pendingDelete !== null);
+    manageConfirm.classList.toggle('hidden', pendingDelete === null);
+    var count = checkedIds().length;
+    manageCount.textContent = count;
+    manageDeleteBtn.disabled = count === 0;
+    if (pendingDelete !== null) {
+      confirmText.textContent = confirmText.dataset.template.replace(':count', pendingDelete.length);
+    }
+  }
+
+  function resetManage() {
+    manageMode = false;
+    pendingDelete = null;
+    grid.classList.remove('is-managing');
+    if (manageToggle) manageToggle.setAttribute('aria-pressed', 'false');
+    grid.querySelectorAll('[data-media-item].checked').forEach(function (el) { el.classList.remove('checked'); });
+    renderManageBar();
+    updateSelectBtn();
+  }
+
+  function askDelete(ids) {
+    pendingDelete = ids;
+    renderManageBar();
+  }
+
+  function removeDeleted(ids) {
+    var gone = new Set(ids.map(String));
+    grid.querySelectorAll('[data-media-item]').forEach(function (el) {
+      if (gone.has(String(JSON.parse(el.dataset.mediaItem).id))) el.remove();
+    });
+    if (Array.isArray(selectedMedia)) {
+      selectedMedia = selectedMedia.filter(function (m) { return !gone.has(String(m.id)); });
+    } else if (selectedMedia && gone.has(String(selectedMedia.id))) {
+      selectedMedia = null;
+    }
+    showEmpty(grid.querySelectorAll('[data-media-item]').length === 0);
+  }
+
+  function performDelete() {
+    var ids = pendingDelete || [];
+    if (!ids.length || !deleteUrl) return;
+    confirmYes.disabled = true;
+
+    fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ ids: ids })
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.status);
+      return res.json();
+    })
+    .then(function () {
+      showUploadError([]);
+      removeDeleted(ids);
+      pendingDelete = null;
+      renderManageBar();
+      updateSelectBtn();
+    })
+    .catch(function () {
+      showUploadError(['Could not delete the selected files. Please try again.']);
+      pendingDelete = null;
+      renderManageBar();
+    })
+    .finally(function () {
+      confirmYes.disabled = false;
+    });
+  }
+
+  if (manageToggle) {
+    manageToggle.addEventListener('click', function () {
+      var next = !manageMode;
+      resetManage();
+      manageMode = next;
+      grid.classList.toggle('is-managing', manageMode);
+      manageToggle.setAttribute('aria-pressed', manageMode ? 'true' : 'false');
+      renderManageBar();
+      updateSelectBtn();
+    });
+    manageAllBtn.addEventListener('click', function () {
+      var items = grid.querySelectorAll('[data-media-item]');
+      var allChecked = items.length > 0 && checkedIds().length === items.length;
+      items.forEach(function (el) { el.classList.toggle('checked', !allChecked); });
+      renderManageBar();
+    });
+    manageDeleteBtn.addEventListener('click', function () {
+      var ids = checkedIds();
+      if (ids.length) askDelete(ids);
+    });
+    confirmYes.addEventListener('click', performDelete);
+    confirmNo.addEventListener('click', function () {
+      pendingDelete = null;
+      renderManageBar();
+    });
+  }
+
   function updateSelectBtn() {
-    if (selectBtn) selectBtn.disabled = Array.isArray(selectedMedia) ? selectedMedia.length === 0 : !selectedMedia;
+    if (selectBtn) selectBtn.disabled = manageMode || (Array.isArray(selectedMedia) ? selectedMedia.length === 0 : !selectedMedia);
   }
 
   function updateBrowseButton(picker, hasSelection) {

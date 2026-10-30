@@ -24,7 +24,11 @@
                 'bg-primary/10 text-primary' => $depth === 0,
                 'bg-neutral-100 text-body' => $depth > 0,
             ])>
-                <i class="ph {{ $category->children_count > 0 ? 'ph-folders' : 'ph-folder' }} text-base"></i>
+                @if($category->image_url)
+                    <img src="{{ $category->image_url }}" alt="" class="h-full w-full rounded-md object-cover">
+                @else
+                    <i class="ph {{ $category->children_count > 0 ? 'ph-folders' : 'ph-folder' }} text-base"></i>
+                @endif
             </span>
 
             <div class="min-w-0 flex-1">
@@ -74,6 +78,7 @@
         ]) x-show="editing" x-cloak>
             @csrf
             @method('PUT')
+            @include('commerce::user.partials.category-image-field', ['image' => $category->image, 'previewUrl' => $category->image_url, 'fieldId' => 'category_image_'.$category->id])
             <div>
                 <label class="form-label" for="category_name_{{ $category->id }}">{{ __('Name') }}</label>
                 <input id="category_name_{{ $category->id }}" class="form-input rounded-md!" name="name" required maxlength="120" value="{{ $category->name }}">

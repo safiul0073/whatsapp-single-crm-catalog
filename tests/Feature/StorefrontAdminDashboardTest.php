@@ -144,6 +144,54 @@ it('smoothly saves updated storefront settings including colors and relative log
         ->and((bool) $saved->config['password_login'])->toBeTrue();
 });
 
+it('saves SEO settings, keeps them when omitted and exposes them to the storefront', function (): void {
+    $user = User::query()->create([
+        'id' => 3,
+        'name' => 'Store Owner 3',
+        'email' => 'owner3@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+    $workspace = Workspace::query()->create([
+        'name' => 'SEO Workspace',
+        'slug' => 'seo-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    $base = ['name' => 'SEO Store', 'primary' => '#1FAA53', 'hover' => '#178A43', 'footer_color' => '#075E54'];
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'config' => $base + ['seo' => [
+            'title' => 'Wholesale Apparel',
+            'description' => 'Factory direct hoodies and tees.',
+            'og_image' => 'media/share.jpg',
+            'twitter_handle' => '@seostore',
+            'google_verification' => 'abc123_-X',
+            'noindex' => '1',
+        ]],
+    ])->assertSessionHasNoErrors();
+
+    $seo = app(CmsService::class)->settings($workspace->id)['seo'];
+    expect($seo['title'])->toBe('Wholesale Apparel')
+        ->and($seo['noindex'])->toBeTrue()
+        ->and($seo['og_image'])->toEndWith('/storage/media/share.jpg')
+        ->and($seo['keywords'])->toBe('');
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', ['config' => $base])->assertSessionHasNoErrors();
+    expect(app(CmsService::class)->settings($workspace->id)['seo']['title'])->toBe('Wholesale Apparel');
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'config' => $base + ['seo' => ['google_verification' => 'bad code!']],
+    ])->assertSessionHasErrors('config.seo.google_verification');
+});
+
 it('renders media library integration for logo and hero slider slides without icon overlaps', function (): void {
     $user = User::query()->create([
         'id' => 2,

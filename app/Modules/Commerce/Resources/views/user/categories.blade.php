@@ -66,6 +66,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @include('commerce::user.partials.category-image-field', ['image' => old('image'), 'previewUrl' => old('image')])
                     <input type="hidden" name="is_active" value="1">
                     <x-forms.submit :label="__('Create category')" class="w-full rounded-md! shadow-none!" />
                 </form>

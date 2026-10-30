@@ -85,6 +85,16 @@ class CmsService
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['favicon'], '/'));
             $settings['favicon'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
         }
+        $seo = array_replace(
+            ['title' => '', 'description' => '', 'keywords' => '', 'og_image' => '', 'twitter_handle' => '', 'google_verification' => '', 'bing_verification' => '', 'noindex' => false],
+            (array) ($settings['seo'] ?? [])
+        );
+        if ($seo['og_image'] !== '' && ! str_starts_with($seo['og_image'], 'http')) {
+            $clean = preg_replace('#^/?storage/#', '', ltrim($seo['og_image'], '/'));
+            $seo['og_image'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
+        }
+        $seo['noindex'] = (bool) $seo['noindex'];
+        $settings['seo'] = $seo;
         if (! empty($settings['app_ios_url']) && ! str_starts_with($settings['app_ios_url'], 'http') && ! str_starts_with($settings['app_ios_url'], '#')) {
             $clean = preg_replace('#^/?storage/#', '', ltrim($settings['app_ios_url'], '/'));
             $settings['app_ios_url'] = rtrim(config('app.url'), '/').'/storage/'.$clean;

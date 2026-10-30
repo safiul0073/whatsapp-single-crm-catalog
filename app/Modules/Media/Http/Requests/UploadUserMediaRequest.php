@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UploadUserMediaRequest extends FormRequest
 {
-    public const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    public const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'ico'];
 
     public const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'm4v'];
 

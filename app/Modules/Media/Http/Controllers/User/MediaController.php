@@ -4,6 +4,7 @@ namespace App\Modules\Media\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Media\Http\Requests\BrowseUserMediaRequest;
+use App\Modules\Media\Http\Requests\DeleteUserMediaRequest;
 use App\Modules\Media\Http\Requests\UploadUserMediaRequest;
 use App\Modules\Media\Services\MediaService;
 use App\Modules\Shared\Traits\ApiResponse;
@@ -61,5 +62,21 @@ class MediaController extends Controller
             'human_size' => $media->human_size,
             'created_at' => $media->created_at->diffForHumans(),
         ], __('File uploaded successfully.'), 201);
+    }
+
+    public function bulkDestroy(DeleteUserMediaRequest $request): JsonResponse
+    {
+        $deleted = $this->service->deleteOwned($request->validated('ids'), (int) auth()->id());
+
+        return $this->successResponse(['deleted' => $deleted], trans_choice(':count file deleted.|:count files deleted.', $deleted, ['count' => $deleted]));
+    }
+
+    public function destroy(int $media): JsonResponse
+    {
+        $deleted = $this->service->deleteOwned([$media], (int) auth()->id());
+
+        abort_if($deleted === 0, 404);
+
+        return $this->successResponse(['deleted' => $deleted], __('File deleted successfully.'));
     }
 }

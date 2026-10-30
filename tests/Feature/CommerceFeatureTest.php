@@ -329,6 +329,27 @@ it('provides a dedicated workspace-scoped category management page', function ()
 
     expect($category->fresh()->name)->toBe('Jackets & Outerwear')
         ->and($category->fresh()->workspace_id)->toBe($context['workspace']->id);
+
+    $this->put(route('user.commerce.categories.update', $category), [
+        'name' => 'Jackets & Outerwear',
+        'is_active' => true,
+        'image' => 'https://example.com/storage/media/jackets.jpg',
+    ])->assertRedirect();
+
+    expect($category->fresh()->image_url)->toBe('https://example.com/storage/media/jackets.jpg');
+
+    $this->get(route('user.commerce.categories.index'))
+        ->assertOk()
+        ->assertSee('Category image')
+        ->assertSee('https://example.com/storage/media/jackets.jpg', false);
+
+    $this->put(route('user.commerce.categories.update', $category), [
+        'name' => 'Jackets & Outerwear',
+        'is_active' => true,
+        'image' => '',
+    ])->assertRedirect();
+
+    expect($category->fresh()->image)->toBeNull();
 });
 
 it('manages table-backed brands and audiences on separate pages', function (): void {
