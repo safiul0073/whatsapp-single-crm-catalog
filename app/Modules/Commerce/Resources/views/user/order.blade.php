@@ -16,6 +16,8 @@
         $productKey = fn ($item) => ($item->variant?->product_id ?? 'snapshot').'|'.$item->product_name;
         $packProductGroups = $order->boxes->groupBy(fn ($box) => $box->contents->map(fn ($content) => $productKey($content->item))->unique()->sort()->implode('||'));
         $individualProductGroups = $unpackedItems->groupBy($productKey);
+        $packedBoxCount = $order->boxes->whereNotNull('packed_at')->count();
+        $canPack = in_array($order->status, ['paid', 'processing', 'packed'], true) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery') && auth()->user()->can('commerce.orders.update');
         $sizeOrder = array_flip(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']);
     @endphp
 
@@ -70,9 +72,23 @@
             <div class="space-y-6 lg:col-span-2">
                 @if($order->boxes->isNotEmpty())
                     <section class="section-card space-y-6">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <h2 class="heading-5 text-title">{{ __('Packs') }}</h2>
-                            <span class="text-sm text-body">{{ $order->boxes->count() }} {{ __('packs') }} · {{ $packedPieces }} {{ __('pieces') }}</span>
+                        <div class="space-y-3" data-packing-progress data-total="{{ $order->boxes->count() }}" data-status="{{ $order->status }}">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h2 class="heading-5 text-title">{{ __('Packing checklist') }}</h2>
+                                <span class="text-sm text-body">{{ $order->boxes->count() }} {{ __('packs') }} · {{ $packedPieces }} {{ __('pieces') }}</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="h-2 min-w-40 flex-1 overflow-hidden rounded-full bg-section" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $order->boxes->count() }}" aria-valuenow="{{ $packedBoxCount }}" data-packing-bar>
+                                    <div class="h-full rounded-full bg-primary transition-all" data-packing-bar-fill data-width="{{ $order->boxes->count() ? round($packedBoxCount / $order->boxes->count() * 100) : 0 }}"></div>
+                                </div>
+                                <span class="text-sm font-medium text-title"><span data-packing-count>{{ $packedBoxCount }}</span> / {{ $order->boxes->count() }} {{ __('packs packed') }}</span>
+                                @if($canPack && $packedBoxCount < $order->boxes->count())
+                                    <form method="POST" action="{{ route('user.commerce.orders.boxes.packed-all', $order) }}" data-packing-all>
+                                        @csrf @method('PUT')
+                                        <button type="submit" class="btn btn-outline btn-sm">{{ __('Mark all packed') }}</button>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
                         @foreach($packProductGroups as $productBoxes)
                             @php $packProducts = $productBoxes->flatMap->contents->map->item->unique($productKey); @endphp
@@ -120,16 +136,23 @@
                                                     </div>
                                                 @endforeach
                                             </div>
-                                            @if($box->packed_at)
-                                                <p class="border-t border-border-soft pt-3 text-xs font-semibold text-primary"><i class="ph ph-check-circle" aria-hidden="true"></i> {{ __('Packed') }} · {{ $box->packed_at->format('M j, Y') }}</p>
-                                            @elseif(in_array($order->status, ['paid', 'processing']) && ($order->source !== 'pos' || $order->fulfillment_type === 'delivery'))
-                                                @can('commerce.orders.update')
-                                                    <form method="POST" action="{{ route('user.commerce.orders.boxes.packed', [$order, $box]) }}" class="border-t border-border-soft pt-3">
+                                            <div class="border-t border-border-soft pt-3">
+                                                @if($canPack)
+                                                    <form method="POST" action="{{ route('user.commerce.orders.boxes.packed', [$order, $box]) }}" data-packing-toggle-form>
                                                         @csrf @method('PUT')
-                                                        <x-forms.submit :label="__('Mark box packed')" />
+                                                        <label class="flex cursor-pointer items-center gap-2.5 text-sm text-title">
+                                                            <input type="checkbox" class="app-checkbox" name="packed" value="1" @checked($box->packed_at) data-packing-toggle>
+                                                            <span>{{ __('Packed') }}</span>
+                                                            <span class="ml-auto text-xs text-body" data-packed-at>@if($box->packed_at){{ $box->packed_at->format('M j, g:i A') }}@endif</span>
+                                                        </label>
                                                     </form>
-                                                @endcan
-                                            @endif
+                                                @else
+                                                    <p class="flex items-center gap-2 text-sm {{ $box->packed_at ? 'text-primary' : 'text-body' }}">
+                                                        <i class="ph {{ $box->packed_at ? 'ph-check-square' : 'ph-square' }} text-base" aria-hidden="true"></i>
+                                                        {{ $box->packed_at ? __('Packed').' · '.$box->packed_at->format('M j, g:i A') : __('Not packed yet') }}
+                                                    </p>
+                                                @endif
+                                            </div>
                                         </article>
                                     @endforeach
                                 </div>

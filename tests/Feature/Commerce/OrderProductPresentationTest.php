@@ -74,7 +74,7 @@ it('shows retail photos snapshot attributes and prices', function () {
 
 it('shows only remaining items alongside wholesale packs', function () {
     $order = ($this->createOrder)([$this->wholesale, $this->retail]);
-    $response = $this->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('Packs')->assertSee('Ordered items');
+    $response = $this->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('Packing checklist')->assertSee('Ordered items');
     expect(substr_count($response->getContent(), 'data-order-item='))->toBe(1);
     $packedIds = $order->boxes->flatMap->contents->pluck('order_item_id');
     foreach ($packedIds as $id) {

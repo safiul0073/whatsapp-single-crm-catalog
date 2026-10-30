@@ -12,8 +12,11 @@ use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
+use App\Modules\Workspaces\Models\WorkspaceRole;
+use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -226,7 +229,7 @@ it('renders POS screens filters receipts and validates tampered prices', functio
     $response = $this->postJson(route('user.commerce.pos.checkout'), $c['data'])->assertCreated();
     $order = Order::findOrFail($response->json('data.id'));
     $this->get($response->json('data.url'))->assertOk()->assertSee('POS payments and balance')->assertSee('15.00');
-    $this->get($response->json('data.receipt_url'))->assertOk()->assertSee('Sales receipt')->assertSee('Payment history')->assertSee('USD 15.00');
+    $this->get($response->json('data.receipt_url'))->assertOk()->assertSee('Sales receipt')->assertSee('Payments')->assertSee('USD 15.00');
     $this->get(route('user.commerce.orders.index', ['source' => 'pos', 'payment_state' => 'partially_paid']))->assertOk()->assertSee($order->number);
     $this->get(route('user.commerce.orders.index', ['payment_state' => 'paid']))->assertOk()->assertDontSee($order->number);
     $this->getJson(route('user.commerce.pos.customer-balance', $order->contact))->assertOk()->assertJsonPath('data.0.amount', '15.00');
@@ -264,23 +267,19 @@ it('shows primary product images and reserved-stock color and size options in PO
         ->assertJsonCount(2, 'data.0.colors.0.sizes');
 });
 
-it('rejects mixed POS modes and wholesale orders containing different products', function () {
+it('sells retail and wholesale lines together in one POS sale', function () {
     $c = posContext();
     posManager($c['user']);
     $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
 
     $mixed = $c['data'];
-    $mixed['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]];
-    $this->postJson(route('user.commerce.pos.preview'), $mixed)->assertUnprocessable()->assertJsonValidationErrors('groups');
-    $this->postJson(route('user.commerce.pos.checkout'), $mixed)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $mixed['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 1, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]];
+    $preview = $this->postJson(route('user.commerce.pos.preview'), $mixed)->assertOk()->json('data');
+    expect(collect($preview['groups'])->pluck('mode')->unique()->sort()->values()->all())->toBe(['retail', 'wholesale']);
 
-    $wholesale = $c['data'];
-    $wholesale['groups'] = [
-        ['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]],
-        ['product_id' => $c['product']->id + 1, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2, 'size_quantities' => ['S' => 6, 'M' => 6, 'L' => 6]],
-    ];
-    $this->postJson(route('user.commerce.pos.preview'), $wholesale)->assertUnprocessable()->assertJsonValidationErrors('groups');
-    $this->postJson(route('user.commerce.pos.checkout'), $wholesale)->assertUnprocessable()->assertJsonValidationErrors('groups');
+    $unknown = $c['data'];
+    $unknown['groups'] = [['product_id' => $c['product']->id + 999, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 1, 'size_quantities' => ['S' => 6]]];
+    $this->postJson(route('user.commerce.pos.preview'), $unknown)->assertNotFound();
 });
 
 it('shows uncolored available sizes and handles products without an image', function () {
@@ -343,7 +342,7 @@ it('requires delivery fields but permits pickup without an address and verifies 
     $delivery = array_replace($c['data'], ['fulfillment_type' => 'delivery']);
     $this->postJson(route('user.commerce.pos.checkout'), $delivery)->assertUnprocessable()->assertJsonValidationErrors('shipping_address.line1');
     $c['data']['groups'] = [['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 1]];
-    $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.size_quantities');
+    $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups');
     $c['data']['groups'][0]['box_count'] = 2;
     $c['data']['groups'][0]['ratio'] = ['S' => 1];
     $this->postJson(route('user.commerce.pos.preview'), $c['data'])->assertUnprocessable()->assertJsonValidationErrors('groups.0.ratio');
@@ -452,3 +451,82 @@ it('uses the order currency precision for payments and remaining balances', func
     $order = app(PosService::class)->checkout($c['workspace'], $c['data'], $c['user']);
     expect($order->balanceDue())->toBe($balance);
 })->with([['JPY', '5', '15'], ['KWD', '5.123', '14.877']]);
+
+it('sells pack-priced wholesale as whole packs at the pack list price', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $c['product']->update(['ws_moq_unit' => 'packs', 'ws_main_moq' => 1, 'ws_pack_prices' => [['packs' => 2, 'price' => '100'], ['packs' => 3, 'price' => '120']]]);
+
+    $data = $c['data'];
+    $data['groups'] = [['product_id' => $c['product']->id, 'mode' => 'wholesale', 'color_id' => $c['color']->id, 'box_count' => 2]];
+    $preview = $this->postJson(route('user.commerce.pos.preview'), $data)->assertOk()->json('data');
+    expect($preview['subtotal'])->toBe('100.00')->and($preview['groups'][0]['quantity'])->toBe(12);
+
+    $data['groups'][0]['box_count'] = 1;
+    $this->postJson(route('user.commerce.pos.preview'), $data)->assertUnprocessable()->assertJsonValidationErrors('groups');
+
+    $this->getJson(route('user.commerce.pos.products'))->assertOk()->assertJsonPath('data.0.pack_pricing', true)->assertJsonPath('data.0.min_packs', 2);
+});
+
+it('applies cashier discounts and records split payments with cash change', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $data = $c['data'];
+    $data['groups'][0]['quantity'] = 10;
+    $data['groups'][0]['line_discount'] = 5;
+    $data['discount'] = ['type' => 'percent', 'value' => 10];
+
+    $preview = $this->postJson(route('user.commerce.pos.preview'), $data)->assertOk()->json('data');
+    expect($preview['subtotal'])->toBe('100.00')->and($preview['discount_amount'])->toBe('14.50')->and($preview['total'])->toBe('85.50');
+
+    $data['payments'] = [
+        ['amount' => '50.00', 'currency' => 'USD', 'method' => 'cash', 'submission_reference' => (string) Str::uuid(), 'tendered_amount' => '60.00'],
+        ['amount' => '35.50', 'currency' => 'USD', 'method' => 'cash', 'submission_reference' => (string) Str::uuid()],
+    ];
+    $id = $this->postJson(route('user.commerce.pos.checkout'), $data)->assertCreated()->json('data.id');
+    $order = Order::query()->findOrFail($id);
+    expect($order->payment_state)->toBe('paid')->and($order->payments)->toHaveCount(2)
+        ->and($order->payments->firstWhere('amount', '50.0000')->change_amount)->toBe('10.0000');
+
+    $data['discount'] = ['type' => 'amount', 'value' => 500];
+    unset($data['payments']);
+    $data['submission_reference'] = (string) Str::uuid();
+    $this->postJson(route('user.commerce.pos.preview'), $data)->assertUnprocessable()->assertJsonValidationErrors('discount');
+
+    $role = WorkspaceRole::query()->create(['workspace_id' => $c['workspace']->id, 'name' => 'Cashier', 'is_system' => false]);
+    foreach (['workspace.view', 'commerce.pos.use'] as $permission) {
+        WorkspaceRolePermission::query()->create(['workspace_id' => $c['workspace']->id, 'workspace_role_id' => $role->id, 'permission_name' => $permission]);
+    }
+    $cashier = User::factory()->create();
+    $c['workspace']->members()->attach($cashier, ['workspace_role_id' => $role->id, 'status' => 'active', 'joined_at' => now()]);
+    $this->actingAs($cashier)->withSession(['active_workspace_id' => $c['workspace']->id])
+        ->postJson(route('user.commerce.pos.preview'), [...$c['data'], 'discount' => ['type' => 'amount', 'value' => 1]])->assertUnprocessable()->assertJsonValidationErrors('discount');
+});
+
+it('finds customers and barcodes and holds sales within the workspace only', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $other = posContext();
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $contact = Contact::withoutEvents(fn () => Contact::query()->create(['workspace_id' => $c['workspace']->id, 'name' => 'Rahim Traders', 'phone' => '+8801711000000', 'source' => 'manual', 'opt_in_status' => 'unknown']));
+    Contact::withoutEvents(fn () => Contact::query()->create(['workspace_id' => $other['workspace']->id, 'name' => 'Rahim Elsewhere', 'phone' => '+8801711000001', 'source' => 'manual', 'opt_in_status' => 'unknown']));
+
+    $this->getJson(route('user.commerce.pos.customers', ['q' => 'Rahim']))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $contact->id);
+
+    $this->getJson(route('user.commerce.pos.products', ['code' => $c['variants'][1]->sku]))->assertOk()->assertJsonPath('matched_variant_id', $c['variants'][1]->id);
+    $this->getJson(route('user.commerce.pos.products', ['code' => $other['variants'][1]->sku]))->assertOk()->assertJsonCount(0, 'data');
+
+    $held = $this->postJson(route('user.commerce.pos.held.store'), ['label' => 'Table 4', 'payload' => ['lines' => [['product_id' => $c['product']->id, 'mode' => 'retail']]]])->assertCreated()->json('data.id');
+    $this->getJson(route('user.commerce.pos.held.index'))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.label', 'Table 4');
+
+    $this->actingAs($other['user'])->withSession(['active_workspace_id' => $other['workspace']->id]);
+    posManager($other['user']);
+    $this->getJson(route('user.commerce.pos.held.index'))->assertOk()->assertJsonCount(0, 'data');
+    $this->deleteJson(route('user.commerce.pos.held.destroy', $held))->assertNotFound();
+
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $this->deleteJson(route('user.commerce.pos.held.destroy', $held))->assertOk();
+    $this->getJson(route('user.commerce.pos.held.index'))->assertJsonCount(0, 'data');
+});

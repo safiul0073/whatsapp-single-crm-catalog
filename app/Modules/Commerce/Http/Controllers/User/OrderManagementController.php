@@ -228,12 +228,37 @@ class OrderManagementController extends Controller
         return back()->with('success', 'Retail box created.');
     }
 
-    public function packed(Request $request, Order $order, int $box, OrderPackingService $packing): RedirectResponse
+    public function packed(Request $request, Order $order, int $box, OrderPackingService $packing): RedirectResponse|JsonResponse
     {
         $this->assertOrder($request, $order);
-        $packing->markPacked($order, $box);
+        $packed = $request->boolean('packed', true);
+        $packing->setBoxPacked($order, $box, $packed);
 
-        return back()->with('success', 'Box marked packed.');
+        return $this->packingResponse($request, $order, $packed ? 'Box marked packed.' : 'Box unmarked.', $box);
+    }
+
+    public function packedAll(Request $request, Order $order, OrderPackingService $packing): RedirectResponse|JsonResponse
+    {
+        $this->assertOrder($request, $order);
+        $packing->markAllPacked($order);
+
+        return $this->packingResponse($request, $order, 'All boxes marked packed.');
+    }
+
+    private function packingResponse(Request $request, Order $order, string $message, ?int $boxId = null): RedirectResponse|JsonResponse
+    {
+        if (! $request->expectsJson()) {
+            return back()->with('success', $message);
+        }
+        $order->refresh();
+
+        return response()->json([
+            'message' => $message,
+            'status' => $order->status,
+            'packed_at' => $boxId ? $order->boxes()->find($boxId)?->packed_at?->format('M j, g:i A') : null,
+            'packed' => $order->boxes()->whereNotNull('packed_at')->count(),
+            'total' => $order->boxes()->count(),
+        ]);
     }
 
     public function slip(Request $request, Order $order): View
@@ -245,7 +270,7 @@ class OrderManagementController extends Controller
                 'contact',
                 'groups',
                 'boxes.group',
-                'boxes.contents.item.variant.product.primaryMedia',
+                'boxes.contents.item.variant.media', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery.media',
                 'boxes.contents.item.variant.color',
             ]),
         ]);

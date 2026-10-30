@@ -44,6 +44,37 @@ class OrderPackingService
         });
     }
 
+    /**
+     * Tick or untick one box on the packing checklist. Unticking a box of a fully packed order
+     * sends the order back to processing; once it has shipped the checklist is locked.
+     */
+    public function setBoxPacked(Order $order, int $boxId, bool $packed): void
+    {
+        if ($packed) {
+            $this->markPacked($order, $boxId);
+
+            return;
+        }
+        DB::transaction(function () use ($order, $boxId): void {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if (! in_array($locked->status, ['paid', 'processing', 'packed'], true)) {
+                throw ValidationException::withMessages(['packing' => 'Packing can no longer be changed for this order.']);
+            }
+            $locked->boxes()->findOrFail($boxId)->update(['packed_at' => null]);
+            if ($locked->status === 'packed') {
+                $locked->update(['status' => 'processing', 'packed_at' => null]);
+                app(UnifiedOrderService::class)->event($locked, 'processing', 'Packing reopened');
+            }
+        });
+    }
+
+    public function markAllPacked(Order $order): void
+    {
+        foreach ($order->boxes()->whereNull('packed_at')->pluck('id') as $boxId) {
+            $this->markPacked($order, (int) $boxId);
+        }
+    }
+
     public function markPacked(Order $order, int $boxId): void
     {
         DB::transaction(function () use ($order, $boxId): void {

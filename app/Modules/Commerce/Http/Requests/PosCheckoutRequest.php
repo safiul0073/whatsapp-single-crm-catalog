@@ -17,7 +17,8 @@ class PosCheckoutRequest extends CreateUnifiedOrderRequest
 
         $groups = is_array($this->input('groups')) ? $this->input('groups') : [];
         foreach ($groups as $index => $group) {
-            if (($group['mode'] ?? null) === 'wholesale') {
+            // Hand-entered size quantities form one custom pack; otherwise whole store-ratio packs are sold.
+            if (($group['mode'] ?? null) === 'wholesale' && ! empty($group['size_quantities'])) {
                 $groups[$index]['box_count'] = 1;
             }
         }
@@ -28,9 +29,17 @@ class PosCheckoutRequest extends CreateUnifiedOrderRequest
     {
         $rules = parent::rules();
         unset($rules['groups.*.size_quantities']);
-        $rules['groups.*.size_quantities'] = ['required_if:groups.*.mode,wholesale', 'prohibited_if:groups.*.mode,retail', 'array', 'min:1', 'max:30'];
+        $rules['groups.*.size_quantities'] = ['sometimes', 'prohibited_if:groups.*.mode,retail', 'array', 'min:1', 'max:30'];
         $rules['groups.*.size_quantities.*'] = ['required', 'integer', 'min:1', 'max:10000'];
-        $rules['groups.*.box_count'] = ['required_if:groups.*.mode,wholesale', 'in:1'];
+        $rules['groups.*.box_count'] = ['required_if:groups.*.mode,wholesale', 'integer', 'min:1', 'max:500'];
+        $rules['groups.*.line_discount'] = ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999'];
+        $rules['discount'] = ['sometimes', 'nullable', 'array:type,value'];
+        $rules['discount.type'] = ['required_with:discount', 'in:amount,percent'];
+        $rules['discount.value'] = ['required_with:discount', 'numeric', 'min:0', 'max:9999999'];
+        $rules['payments'] = ['sometimes', 'array', 'max:5', 'prohibits:payment'];
+        foreach (RecordOrderPaymentRequest::paymentRules() as $field => $validation) {
+            $rules['payments.*.'.$field] = $validation;
+        }
         $rules['fulfillment_type'] = ['required', 'in:pickup,delivery'];
         $rules['walk_in'] = ['required', 'boolean'];
         $rules['handover'] = ['sometimes', 'boolean'];

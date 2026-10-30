@@ -780,3 +780,63 @@ it('prices pack-mode wholesale from the pack price list with exact line totals',
     $c['data']['groups'][0]['box_count'] = 2;
     expect(fn () => $service->preview($c['workspace'], $c['data']))->toThrow(ValidationException::class);
 });
+
+it('walks an order through every status with a packing checklist that can be ticked and unticked', function () {
+    $c = unifiedContext();
+    $c['product']->update(['ws_main_moq' => 1]);
+    $c['data']['groups'][0]['box_count'] = 3;
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $workflow = app(OrderWorkflowService::class);
+    $this->actingAs($c['user']);
+    $statusUrl = route('user.commerce.orders.transition', $order);
+    $show = route('user.commerce.orders.show', $order);
+    $boxes = $order->boxes;
+    expect($order->status)->toBe('awaiting_payment')->and($boxes)->toHaveCount(3);
+
+    // The checklist only unlocks once payment is confirmed.
+    $this->get($show)->assertOk()->assertDontSee('data-packing-toggle', false)->assertSee('data-packing-progress', false)->assertSee('Not packed yet');
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[0]]), ['packed' => true])->assertUnprocessable();
+
+    $this->put($statusUrl, ['status' => 'paid'])->assertSessionHasNoErrors();
+    $this->put($statusUrl, ['status' => 'processing'])->assertSessionHasNoErrors();
+    $this->get($show)->assertOk()->assertSee('data-packing-toggle', false);
+
+    // Tick one box, then untick it again.
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[0]]), ['packed' => true])->assertOk()->assertJson(['packed' => 1, 'total' => 3, 'status' => 'processing']);
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[0]]), ['packed' => false])->assertOk()->assertJson(['packed' => 0]);
+    expect($boxes[0]->fresh()->packed_at)->toBeNull();
+
+    // Packing cannot be declared complete, or shipped, before every box is ticked.
+    $this->put($statusUrl, ['status' => 'packed'])->assertSessionHasErrors('packing');
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[1]]), ['packed' => true])->assertOk();
+    $this->putJson(route('user.commerce.orders.boxes.packed-all', $order))->assertOk()->assertJson(['packed' => 3, 'status' => 'packed']);
+    expect($order->fresh()->status)->toBe('packed');
+
+    // Unticking a box of a packed order reopens packing; ticking it again completes it.
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[2]]), ['packed' => false])->assertOk()->assertJson(['packed' => 2, 'status' => 'processing']);
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[2]]), ['packed' => true])->assertOk()->assertJson(['status' => 'packed']);
+
+    $this->put($statusUrl, ['status' => 'shipped'])->assertSessionHasErrors('tracking_number');
+    $this->put($statusUrl, ['status' => 'shipped', 'tracking_number' => 'TRK-123', 'carrier' => 'DHL'])->assertSessionHasNoErrors();
+    expect($order->fresh()->status)->toBe('shipped');
+
+    // After dispatch the checklist is locked.
+    $this->putJson(route('user.commerce.orders.boxes.packed', [$order, $boxes[0]]), ['packed' => false])->assertUnprocessable();
+    $this->get($show)->assertOk()->assertDontSee('data-packing-toggle', false);
+
+    $this->put($statusUrl, ['status' => 'completed'])->assertSessionHasNoErrors();
+    expect($order->fresh()->status)->toBe('completed')->and($order->fresh()->delivered_at)->not->toBeNull();
+    $this->get($show)->assertOk();
+});
+
+it('lets a member without update permission see but not change the packing checklist', function () {
+    $c = unifiedContext();
+    $c['data']['groups'][0]['box_count'] = 2;
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $workflow = app(OrderWorkflowService::class);
+    $workflow->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5, 'payment_url' => 'https://payment.example.test']);
+    $workflow->transition($order->fresh(), 'paid');
+    $viewer = workspaceMemberWith($c, ['commerce.orders.view']);
+    $this->actingAs($viewer)->get(route('user.commerce.orders.show', $order))->assertOk()->assertDontSee('data-packing-toggle', false)->assertSee('Not packed yet');
+    $this->actingAs($viewer)->putJson(route('user.commerce.orders.boxes.packed', [$order, $order->boxes()->first()]), ['packed' => true])->assertForbidden();
+});
