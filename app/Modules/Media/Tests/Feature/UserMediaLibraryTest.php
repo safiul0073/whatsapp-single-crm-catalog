@@ -38,6 +38,14 @@ it('uploads videos and documents, not only images', function (string $file, stri
     'pdf' => ['catalog.pdf', 'application/pdf', 'document'],
 ]);
 
+it('uploads .ico favicons as images', function (string $mime): void {
+    $this->actingAs($this->user)
+        ->postJson(route('user.media.upload'), ['file' => UploadedFile::fake()->create('favicon.ico', 12, $mime)])
+        ->assertCreated()
+        ->assertJsonPath('data.type', 'image')
+        ->assertJsonPath('data.extension', 'ico');
+})->with(['image/x-icon', 'image/vnd.microsoft.icon']);
+
 it('rejects unsupported or oversized files with a clear message', function (): void {
     $this->actingAs($this->user)
         ->postJson(route('user.media.upload'), ['file' => UploadedFile::fake()->create('tool.exe', 10, 'application/x-msdownload')])
@@ -59,4 +67,38 @@ it('filters the library by search and type for the current user only', function 
         ->and($names('?search=no&type=video'))->toBe(['promo-nordic'])
         ->and($names('?search=%25'))->toBe([]);
     $this->actingAs($this->user)->getJson(route('user.media.browse').'?type=bogus')->assertUnprocessable();
+});
+
+it('deletes one of the current user\'s files and removes it from disk', function (): void {
+    Storage::disk('public')->put('media/mine.jpg', 'x');
+    $mine = libraryMedia($this->user, 'mine');
+
+    $this->actingAs($this->user)->deleteJson(route('user.media.destroy', $mine))->assertOk()->assertJsonPath('data.deleted', 1);
+
+    expect(Media::query()->find($mine->id))->toBeNull();
+    Storage::disk('public')->assertMissing('media/mine.jpg');
+});
+
+it('does not delete files uploaded by someone else', function (): void {
+    $theirs = libraryMedia(User::factory()->create(), 'theirs');
+
+    $this->actingAs($this->user)->deleteJson(route('user.media.destroy', $theirs))->assertNotFound();
+
+    expect(Media::query()->find($theirs->id))->not->toBeNull();
+});
+
+it('bulk deletes only the current user\'s files and validates the id list', function (): void {
+    $a = libraryMedia($this->user, 'a');
+    $b = libraryMedia($this->user, 'b');
+    $theirs = libraryMedia(User::factory()->create(), 'theirs');
+
+    $this->actingAs($this->user)
+        ->deleteJson(route('user.media.bulk-destroy'), ['ids' => [$a->id, $b->id, $theirs->id]])
+        ->assertOk()->assertJsonPath('data.deleted', 2);
+
+    expect(Media::query()->whereKey([$a->id, $b->id])->count())->toBe(0)
+        ->and(Media::query()->find($theirs->id))->not->toBeNull();
+
+    $this->actingAs($this->user)->deleteJson(route('user.media.bulk-destroy'), ['ids' => []])->assertUnprocessable();
+    $this->actingAs($this->user)->deleteJson(route('user.media.bulk-destroy'), ['ids' => ['x']])->assertUnprocessable();
 });

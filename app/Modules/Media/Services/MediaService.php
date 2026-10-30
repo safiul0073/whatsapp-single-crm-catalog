@@ -70,6 +70,28 @@ class MediaService
         return $media->delete();
     }
 
+    /**
+     * Delete the given media ids, limited to files uploaded by the user.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function deleteOwned(array $ids, int $userId): int
+    {
+        $deleted = 0;
+
+        Media::query()
+            ->whereIn('id', $ids)
+            ->where('uploaded_by', $userId)
+            ->get()
+            ->each(function (Media $media) use (&$deleted): void {
+                if ($this->delete($media)) {
+                    $deleted++;
+                }
+            });
+
+        return $deleted;
+    }
+
     public function findOrFail(int $id): Media
     {
         return Media::findOrFail($id);
