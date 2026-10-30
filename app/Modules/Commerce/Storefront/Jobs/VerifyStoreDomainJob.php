@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Storefront\Jobs;
 
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Services\DomainResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -28,7 +29,7 @@ class VerifyStoreDomainJob implements ShouldQueue
             $error = 'target_unset';
         } elseif (! $this->ownershipProven($d)) {
             $error = 'txt_missing';
-        } elseif (! $this->routesToTarget($d->host, $target)) {
+        } elseif (! $this->routesToTarget($d->host, $target) && ! $this->routesLikeActiveSibling($d)) {
             $error = 'routing_missing';
         }
 
@@ -83,6 +84,25 @@ class VerifyStoreDomainJob implements ShouldQueue
         $hostIps = collect($this->lookup($host, DNS_A))->pluck('ip');
 
         return $targetIps->isNotEmpty() && $hostIps->intersect($targetIps)->isNotEmpty();
+    }
+
+    /**
+     * A www/apex pair on the same hosting (e.g. www CNAME to a CDN, apex A records) resolves to the
+     * same servers as its already-active sibling even when it does not point at the configured target.
+     */
+    private function routesLikeActiveSibling(StoreDomain $d): bool
+    {
+        $sibling = StoreDomain::query()
+            ->where('workspace_id', $d->workspace_id)
+            ->where('host', DomainResolver::sibling($d->host))
+            ->where('status', 'active')
+            ->first();
+        if (! $sibling) {
+            return false;
+        }
+        $hostIps = collect($this->lookup($d->host, DNS_A))->pluck('ip');
+
+        return $hostIps->isNotEmpty() && $hostIps->intersect(collect($this->lookup($sibling->host, DNS_A))->pluck('ip'))->isNotEmpty();
     }
 
     /**
