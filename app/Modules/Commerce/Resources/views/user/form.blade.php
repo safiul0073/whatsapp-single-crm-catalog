@@ -593,7 +593,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" class="rounded-sm!" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}"><i class="ph ph-arrow-left"></i> {{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" class="rounded-sm!" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 1]) }}"><i class="ph ph-arrow-left"></i> {{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary rounded-sm! px-6 font-semibold shadow-none!">{{ __('Save & Next: Sizes') }} <i class="ph ph-arrow-right"></i></button>
                 </div>
             </form>
@@ -736,7 +736,7 @@
                 </div>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 2]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 2]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Colors →') }}</button>
                 </div>
             </form>
@@ -848,7 +848,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 3]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 3]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Pricing & MOQ →') }}</button>
                 </div>
             </form>
@@ -1008,7 +1008,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 4]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 4]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ $wholesaleEnabled ? __('Save & Next: Wholesale Settings →') : __('Save & Next: Features →') }}</button>
                 </div>
             </form>
@@ -1400,7 +1400,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 5]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 5]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Features →') }}</button>
                 </div>
             </form>
@@ -1468,7 +1468,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => $wholesaleEnabled ? 6 : 5]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => $wholesaleEnabled ? 6 : 5]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Description →') }}</button>
                 </div>
             </form>
@@ -1493,7 +1493,7 @@
                 </section>
 
                 <div class="flex items-center justify-between gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Specifications →') }}</button>
                 </div>
             </form>
@@ -1564,13 +1564,13 @@
                 </section>
 
                 <div class="flex items-center justify-end gap-3 pt-2">
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 8]) }}">{{ __('Back') }}</x-ui.button>
-                    <x-ui.button variant="outline" href="{{ route('user.commerce.products.index') }}">{{ __('Cancel') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 8]) }}">{{ __('Back') }}</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.index') }}">{{ __('Cancel') }}</x-ui.button>
                     <button
                         type="submit"
                         name="status"
                         value="draft"
-                        class="btn btn-outline text-xs"
+                        class="btn btn-outline btn-sm"
                     >
                         {{ __('Save as Draft') }}
                     </button>
@@ -1578,7 +1578,7 @@
                         type="submit"
                         name="status"
                         value="active"
-                        class="btn btn-primary text-xs flex items-center gap-1.5 px-5 py-2.5 font-bold shadow-sm"
+                        class="btn btn-primary btn-sm flex items-center gap-1.5 font-bold"
                     >
                         <i class="ph ph-floppy-disk text-base"></i>
                         <span>{{ __('Save Product') }}</span>

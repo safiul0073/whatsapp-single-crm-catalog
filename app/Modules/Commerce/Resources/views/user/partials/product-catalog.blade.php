@@ -10,6 +10,6 @@
             <x-forms.submit variant="outline" class="btn-sm whitespace-nowrap" :label="__('Send to Meta catalog')" />
         </form>
     @else
-        <x-ui.button variant="outline" href="{{ route('user.commerce.catalog') }}">{{ __('Connect Meta catalog') }}</x-ui.button>
+        <x-ui.button variant="outline" size="sm" class="whitespace-nowrap" href="{{ route('user.commerce.catalog') }}">{{ __('Connect Meta catalog') }}</x-ui.button>
     @endif
 @endif

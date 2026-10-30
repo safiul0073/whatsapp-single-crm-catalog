@@ -7,7 +7,7 @@
         <input x-show="fallback" x-cloak type="text" readonly value="{{ $showcaseUrl }}" class="form-input text-xs" aria-label="{{ __('Copy this showcase link') }}" @focus="$el.select()">
     </div>
 @elseif (blank(config('commerce.showcase_frontend_url')))
-    <span class="text-xs text-body">{{ __('Configure the Ecommarce frontend URL to share products.') }}</span>
+    <span class="max-w-[14rem] text-xs leading-snug text-body">{{ __('Configure the Ecommarce frontend URL to share products.') }}</span>
 @else
     <span class="text-xs text-body">{{ __('Showcase unavailable: check the frontend URL, publication, and connected store.') }}</span>
 @endif
