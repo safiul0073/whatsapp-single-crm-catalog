@@ -94,6 +94,7 @@ $storefrontRoutes = function (): void {
         Route::post('me/wishlist/{id}', [EngagementController::class, 'saveWishlist']);
         Route::delete('me/wishlist/{id}', [EngagementController::class, 'deleteWishlist']);
         Route::post('catalog/products/{slug}/reviews', [EngagementController::class, 'review']);
+        Route::get('catalog/products/{slug}/review-eligibility', [EngagementController::class, 'reviewEligibility']);
         Route::get('me/referral', [ReferralController::class, 'show']);
         Route::get('me/rewards', [ReferralController::class, 'rewards']);
     });

@@ -61,6 +61,15 @@ class ProductDetailsRequest extends FormRequest
             $merges['ws_size_ratios'] = ! empty($wsRatios) ? $wsRatios : null;
         }
 
+        if ($this->exists('ws_pack_prices')) {
+            $rows = collect((array) $this->input('ws_pack_prices'))
+                ->filter(fn ($row): bool => is_array($row) && filled($row['packs'] ?? null) && filled($row['price'] ?? null))
+                ->sortBy(fn (array $row): int => (int) $row['packs'])
+                ->values()
+                ->all();
+            $merges['ws_pack_prices'] = $rows !== [] ? $rows : null;
+        }
+
         if ($this->has('moq')) {
             $merges['moq'] = max(1, (int) $this->input('moq', 1));
         }
@@ -142,6 +151,10 @@ class ProductDetailsRequest extends FormRequest
             'ws_size_ratios.*' => ['nullable', 'array'],
             'ws_size_ratios.*.*' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'ws_ratio_multiplier' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'ws_moq_unit' => ['nullable', 'in:pcs,packs'],
+            'ws_pack_prices' => ['nullable', 'array', 'max:100'],
+            'ws_pack_prices.*.packs' => ['required', 'integer', 'min:1', 'max:500', 'distinct'],
+            'ws_pack_prices.*.price' => ['required', 'numeric', 'min:0.01', 'max:9999999'],
             'country_of_origin' => ['nullable', 'string', 'max:2'],
             'tier_prices' => ['nullable', 'array'],
             'tier_prices.*.min_quantity' => ['nullable', 'integer', 'min:1', 'distinct'],

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Media\Models\Media;
 use App\Modules\Workspaces\Models\Workspace;
@@ -58,6 +59,8 @@ class Product extends Model
         'ws_main_moq',
         'ws_size_ratios',
         'ws_ratio_multiplier',
+        'ws_moq_unit',
+        'ws_pack_prices',
         'country_of_origin',
         'status',
         'wizard_step',
@@ -88,6 +91,7 @@ class Product extends Model
             'ws_main_moq' => 'integer',
             'ws_size_ratios' => 'array',
             'ws_ratio_multiplier' => 'integer',
+            'ws_pack_prices' => 'array',
         ];
     }
 
@@ -171,6 +175,46 @@ class Product extends Model
     public function isRetailEnabled(): bool
     {
         return in_array($this->selling_mode, ['retail', 'both'], true);
+    }
+
+    /**
+     * Pack mode: wholesale MOQ is counted in packs (one box of one color) and priced from the pack price list.
+     */
+    public function usesPackPricing(): bool
+    {
+        return $this->ws_moq_unit === 'packs' && $this->packPrices() !== [];
+    }
+
+    /**
+     * @return list<array{packs: int, price: string}>
+     */
+    public function packPrices(): array
+    {
+        return collect($this->ws_pack_prices ?? [])
+            ->filter(fn ($row): bool => is_array($row) && (int) ($row['packs'] ?? 0) > 0 && (float) ($row['price'] ?? 0) > 0)
+            ->map(fn (array $row): array => ['packs' => (int) $row['packs'], 'price' => (string) $row['price']])
+            ->sortBy('packs')
+            ->unique('packs')
+            ->values()
+            ->all();
+    }
+
+    public function minimumPacks(): int
+    {
+        return max(1, (int) $this->ws_main_moq, $this->packPrices()[0]['packs'] ?? 1);
+    }
+
+    /**
+     * Total for $packs packs from the row with the largest pack count not above it, at that row's per-pack rate.
+     */
+    public function packTotalMinor(int $packs, int $precision): ?int
+    {
+        $row = collect($this->packPrices())->last(fn (array $row): bool => $row['packs'] <= $packs);
+        if (! $row) {
+            return null;
+        }
+
+        return intdiv(OrderMoney::minor($row['price'], $precision) * $packs * 2 + $row['packs'], $row['packs'] * 2);
     }
 
     public function getEffectiveSizeRatios(): array

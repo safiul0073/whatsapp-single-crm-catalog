@@ -60,6 +60,7 @@ class CartService
         $groupErrors = [];
         $modes = [];
         $wholesaleQuantities = [];
+        $standardGroupIds = [];
         foreach (CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->get() as $group) {
             $mode = $group->selection['type'] === 'retail' ? 'retail' : 'wholesale';
             $modes[$group->id] = $mode;
@@ -86,9 +87,27 @@ class CartService
                 $groupErrors[] = ['item_id' => 'group-'.$group->id, 'group_id' => $group->id, 'message' => $error];
             }
         }
+        $standardPacks = [];
+        foreach (CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->get() as $group) {
+            if (($group->selection['type'] ?? null) === 'standard_wholesale') {
+                $productId = (int) ($group->selection['product_id'] ?? 0);
+                $standardPacks[$productId] = ($standardPacks[$productId] ?? 0) + array_sum(array_column($group->selection['colors'] ?? [], 'box_count'));
+                $standardGroupIds[$group->id] = true;
+            }
+        }
         foreach ($lines as $line) {
             if (($modes[$line->group_id] ?? null) === 'wholesale') {
                 $wholesaleQuantities[$line->product_id] = ($wholesaleQuantities[$line->product_id] ?? 0) + $line->quantity;
+            }
+        }
+        // Pack-priced products: the price list total for all standard packs, split across those lines.
+        $packLineTotals = [];
+        foreach ($standardPacks as $productId => $packs) {
+            $product = $variants->first(fn ($variant) => $variant->product_id === $productId)?->product;
+            $total = $product?->usesPackPricing() ? $product->packTotalMinor($packs, $precision) : null;
+            if ($total !== null) {
+                $packLines = $lines->filter(fn ($line) => $line->product_id === $productId && isset($standardGroupIds[$line->group_id]));
+                $packLineTotals += OrderMoney::allocate($total, $packLines->mapWithKeys(fn ($line) => [$line->id => $line->quantity])->all());
             }
         }
         $requiredStock = $lines->groupBy('variant_id')->map(fn ($rows) => $rows->sum('quantity'));
@@ -112,6 +131,11 @@ class CartService
             $stock = $available ? max(0, $variant->stock_quantity - (int) OrderReservation::query()->where('variant_id', $variant->id)->where('state', 'reserved')->where('expires_at', '>', now())->sum('quantity')) : 0;
             $tier = $ws && $p ? $p->tierPrices->sortByDesc('min_quantity')->first(fn ($t) => ($wholesaleQuantities[$p->id] ?? 0) >= $t->min_quantity && ($t->max_quantity === null || ($wholesaleQuantities[$p->id] ?? 0) <= $t->max_quantity)) : null;
             $price = $available ? OrderMoney::minor($ws ? ($tier?->unit_price ?? $p->wholesale_price ?? 0) : ($p->single_piece_price ?? $variant->price), $precision) : 0;
+            $lineTotal = $price * $line->quantity;
+            if ($available && isset($packLineTotals[$line->id])) {
+                $lineTotal = $packLineTotals[$line->id];
+                $price = intdiv($lineTotal, max(1, $line->quantity));
+            }
             if ($ws && $price <= 0) {
                 $warnings[] = ['item_id' => $line->id, 'message' => 'Wholesale price is unavailable.'];
             }
@@ -144,8 +168,9 @@ class CartService
                 'sku' => $variant?->sku,
                 'quantity' => $line->quantity,
                 'price' => OrderMoney::decimal($price, $precision),
-                'minor_total' => $price * $line->quantity,
-                'line_total' => OrderMoney::decimal($price * $line->quantity, $precision),
+                'minor_total' => $available ? $lineTotal : 0,
+                'line_total' => OrderMoney::decimal($available ? $lineTotal : 0, $precision),
+                'shipping_included' => $ws,
                 'stock' => $stock,
                 'mode' => $mode,
                 'group_id' => $line->group_id,
@@ -165,7 +190,7 @@ class CartService
         }
         unset($group);
 
-        return ['groups' => $groups, 'checkout_allowed' => count($items) > 0 && ! $warnings, 'id' => $cart->id, 'items' => $items, 'currency' => $settings->currency, 'precision' => $precision, 'coupon_code' => $cart->coupon_code, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount' => OrderMoney::decimal($discount, $precision), 'shipping_estimate' => null, 'total' => OrderMoney::decimal($subtotal - $discount, $precision), 'warnings' => $warnings];
+        return ['groups' => $groups, 'checkout_allowed' => count($items) > 0 && ! $warnings, 'id' => $cart->id, 'items' => $items, 'currency' => $settings->currency, 'precision' => $precision, 'coupon_code' => $cart->coupon_code, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount' => OrderMoney::decimal($discount, $precision), 'shipping_estimate' => null, 'shipping_required' => collect($items)->contains(fn (array $item): bool => $item['mode'] !== 'wholesale'), 'total' => OrderMoney::decimal($subtotal - $discount, $precision), 'warnings' => $warnings];
     }
 
     public function checkoutGroups(Cart $cart): array

@@ -55,6 +55,14 @@ function unifiedContext(): array
     return compact('user', 'workspace', 'settings', 'product', 'color', 'variants', 'data');
 }
 
+/** Adds one retail piece: wholesale prices include shipping, so only retail lines need a shipping quote. */
+function withRetailLine(array $c): array
+{
+    $c['data']['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 1];
+
+    return $c;
+}
+
 beforeEach(function () {
     Queue::fake([NotifyOrderEvent::class, RevalidateStorefront::class]);
 });
@@ -63,8 +71,8 @@ it('snapshots three ratio boxes and reserves their exact variant pieces', functi
     $c = unifiedContext();
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
     expect($order->boxes)->toHaveCount(3)->and($order->items->sum('quantity'))->toBe(18)
-        ->and($order->subtotal)->toBe('108.0000')->and($order->shipping_quote_required)->toBeTrue()
-        ->and($order->total)->toBeNull()->and($order->reservations()->sum('quantity'))->toBe('18');
+        ->and($order->subtotal)->toBe('108.0000')->and($order->shipping_quote_required)->toBeFalse()
+        ->and($order->shipping_amount)->toBe('0.0000')->and($order->total)->toBe('108.0000')->and($order->reservations()->sum('quantity'))->toBe('18');
     foreach ($order->boxes as $box) {
         expect($box->contents->sum('quantity'))->toBe(6);
     }
@@ -114,12 +122,12 @@ it('does not oversell stock already reserved by another order', function () {
 });
 
 it('keeps drafts unreserved and submits them through the workflow', function () {
-    $c = unifiedContext();
+    $c = withRetailLine(unifiedContext());
     $c['data']['draft'] = true;
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
     expect($order->status)->toBe('draft')->and($order->reservations()->count())->toBe(0);
     app(OrderWorkflowService::class)->transition($order, 'requested');
-    expect($order->fresh()->status)->toBe('requested')->and($order->reservations()->sum('quantity'))->toBe('18');
+    expect($order->fresh()->status)->toBe('requested')->and($order->reservations()->sum('quantity'))->toBe('19');
 });
 
 it('deducts once after payment, packs every box and creates one shipment', function () {
@@ -332,7 +340,7 @@ it('renders summaries packing slips and currency settings', function () {
 });
 
 it('keeps the selected shipping method and calculates its price in store precision', function () {
-    $c = unifiedContext();
+    $c = withRetailLine(unifiedContext());
     $c['settings']->update(['currency' => 'KWD']);
     $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
     $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
@@ -341,7 +349,7 @@ it('keeps the selected shipping method and calculates its price in store precisi
     $c['data']['shipping_method_id'] = $method->id;
     $service = app(UnifiedOrderService::class);
     $order = $service->create($c['workspace'], $c['data']);
-    expect($order->shipping_method_id)->toBe($method->id)->and($order->delivery_method)->toBe('Air')->and($order->shipping_amount)->toBe('1.2340')->and($order->total)->toBe('109.2340');
+    expect($order->shipping_method_id)->toBe($method->id)->and($order->delivery_method)->toBe('Air')->and($order->shipping_amount)->toBe('1.2340')->and($order->total)->toBe('119.2340');
     $c['data']['shipping_method_id'] = $method->id + 100;
     expect(fn () => $service->preview($c['workspace'], $c['data']))->toThrow(ValidationException::class);
 });
@@ -440,7 +448,7 @@ it('rejects invalid manual proof and protects private receipts', function () {
 });
 
 it('blocks storefront creation without shipping while keeping staff quote workflow', function () {
-    $c = unifiedContext();
+    $c = withRetailLine(unifiedContext());
     $this->postJson('/api/commerce/store/orders', $c['data'])->assertUnprocessable();
     expect(Order::count())->toBe(0);
     expect(app(UnifiedOrderService::class)->create($c['workspace'], $c['data'])->shipping_quote_required)->toBeTrue();
@@ -733,4 +741,42 @@ it('replaces a payment service icon through the dedicated payment services page'
     expect($second)->not->toBe($first);
     Storage::disk('public')->assertMissing($first);
     Storage::disk('public')->assertExists($second);
+});
+
+it('includes shipping in wholesale prices and quotes shipping for retail lines only', function () {
+    $c = unifiedContext();
+    $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
+    $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
+    $method = ShippingMethod::create(['workspace_id' => $c['workspace']->id, 'name' => 'Air', 'code' => 'AIR', 'type' => 'air', 'is_active' => true]);
+    $zone->rates()->create(['workspace_id' => $c['workspace']->id, 'shipping_method_id' => $method->id, 'min_weight_kg' => 0, 'price' => '5', 'price_per_kg' => 0, 'currency' => $c['settings']->currency, 'is_active' => true]);
+    $service = app(UnifiedOrderService::class);
+
+    $wholesaleOnly = $service->preview($c['workspace'], $c['data']);
+    expect($wholesaleOnly['shipping_required'])->toBeFalse()->and($wholesaleOnly['shipping_options'])->toBe([])
+        ->and($wholesaleOnly['shipping_amount'])->toBe('0.00')->and($wholesaleOnly['total'])->toBe('108.00');
+
+    $mixed = $service->preview($c['workspace'], withRetailLine($c)['data']);
+    expect($mixed['shipping_required'])->toBeTrue()->and($mixed['shipping_amount'])->toBe('5.00')->and($mixed['total'])->toBe('123.00');
+});
+
+it('prices pack-mode wholesale from the pack price list with exact line totals', function () {
+    $c = unifiedContext();
+    $c['product']->update(['ws_moq_unit' => 'packs', 'ws_main_moq' => 1, 'ws_pack_prices' => [['packs' => 2, 'price' => '500'], ['packs' => 3, 'price' => '600']]]);
+    $service = app(UnifiedOrderService::class);
+
+    $c['data']['groups'][0]['box_count'] = 2;
+    expect($service->preview($c['workspace'], $c['data'])['subtotal'])->toBe('500.00');
+
+    // 4 packs fall back to the 3-pack row's per-pack rate (200 each).
+    $c['data']['groups'][0]['box_count'] = 4;
+    expect($service->preview($c['workspace'], $c['data'])['subtotal'])->toBe('800.00');
+
+    $c['product']->update(['ws_pack_prices' => [['packs' => 3, 'price' => '1000']]]);
+    $c['data']['groups'][0]['box_count'] = 3;
+    $three = $service->preview($c['workspace'], $c['data']);
+    expect($three['subtotal'])->toBe('1000.00')
+        ->and(collect($three['groups'][0]['items'])->sum(fn ($item) => (int) round((float) $item['line_total'] * 100)))->toBe(100000);
+
+    $c['data']['groups'][0]['box_count'] = 2;
+    expect(fn () => $service->preview($c['workspace'], $c['data']))->toThrow(ValidationException::class);
 });

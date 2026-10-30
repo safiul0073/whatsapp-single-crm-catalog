@@ -105,7 +105,11 @@ class UnifiedOrderService
             $product = Product::query()->with('tierPrices')->findOrFail($productId);
             $quantity = $productGroups->sum('quantity');
             $standardGroups = $productGroups->filter(fn ($g) => empty($g['pack_snapshot']));
-            if ($standardGroups->isNotEmpty() && $standardGroups->sum('quantity') < max(1, (int) $product->ws_main_moq)) {
+            $packPricing = $product->usesPackPricing() && $standardGroups->isNotEmpty();
+            if ($packPricing && $standardGroups->sum('box_count') < $product->minimumPacks()) {
+                $this->invalid('groups', "{$product->name} requires at least {$product->minimumPacks()} packs.");
+            }
+            if (! $packPricing && $standardGroups->isNotEmpty() && $standardGroups->sum('quantity') < max(1, (int) $product->ws_main_moq)) {
                 $this->invalid('groups', "{$product->name} requires at least {$product->ws_main_moq} pieces.");
             }
             foreach ($standardGroups->groupBy('color_id') as $colorGroups) {
@@ -118,10 +122,29 @@ class UnifiedOrderService
             if ($price === null || OrderMoney::minor($price, $precision) <= 0) {
                 $this->invalid('price', 'Configure a wholesale price before ordering.');
             }
-            foreach ($groups as &$group) {
+            $packShares = [];
+            if ($packPricing) {
+                // Price list total for all standard packs, split across their lines so the sum is exact.
+                $weights = [];
+                foreach ($groups as $groupIndex => $group) {
+                    if ($group['mode'] === 'wholesale' && $group['product_id'] === $productId && empty($group['pack_snapshot'])) {
+                        foreach ($group['items'] as $itemIndex => $item) {
+                            $weights[$groupIndex.':'.$itemIndex] = $item['quantity'];
+                        }
+                    }
+                }
+                $packShares = OrderMoney::allocate((int) $product->packTotalMinor($standardGroups->sum('box_count'), $precision), $weights);
+            }
+            foreach ($groups as $groupIndex => &$group) {
                 if ($group['mode'] === 'wholesale' && $group['product_id'] === $productId) {
-                    foreach ($group['items'] as &$item) {
-                        $item['unit_price'] = OrderMoney::decimal(OrderMoney::minor($price, $precision), $precision);
+                    foreach ($group['items'] as $itemIndex => &$item) {
+                        $share = $packShares[$groupIndex.':'.$itemIndex] ?? null;
+                        if ($share !== null) {
+                            $item['line_minor'] = $share;
+                            $item['unit_price'] = OrderMoney::decimal(intdiv($share, max(1, $item['quantity'])), $precision);
+                        } else {
+                            $item['unit_price'] = OrderMoney::decimal(OrderMoney::minor($price, $precision), $precision);
+                        }
                     }
                     unset($item);
                 }
@@ -132,10 +155,14 @@ class UnifiedOrderService
         $items = [];
         foreach ($groups as &$group) {
             foreach ($group['items'] as &$item) {
-                $line = OrderMoney::minor($item['unit_price'], $precision) * $item['quantity'];
+                $line = $item['line_minor'] ?? OrderMoney::minor($item['unit_price'], $precision) * $item['quantity'];
+                unset($item['line_minor']);
                 $item['line_total'] = OrderMoney::decimal($line, $precision);
                 $subtotal += $line;
-                $items[] = ['product_id' => $group['product_id'], 'variant_id' => $item['variant_id'], 'quantity' => $item['quantity']];
+                // Wholesale prices include shipping, so only retail lines are weighed for the shipping quote.
+                if ($group['mode'] === 'retail') {
+                    $items[] = ['product_id' => $group['product_id'], 'variant_id' => $item['variant_id'], 'quantity' => $item['quantity']];
+                }
             }
             unset($item);
         }
@@ -164,8 +191,8 @@ class UnifiedOrderService
             $this->invalid('adjustments', 'Discounts cannot exceed the merchandise subtotal.');
         }
 
-        if (($data['source'] ?? null) === 'pos' && ($data['fulfillment_type'] ?? 'delivery') === 'pickup') {
-            return ['weight' => [], 'chargeable_weight_kg' => null, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => null, 'delivery_method' => 'Pickup', 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => OrderMoney::decimal(0, $precision), 'shipping_quote_required' => false, 'total' => OrderMoney::decimal($subtotal - $discount, $precision), 'shipping_options' => []];
+        if ((($data['source'] ?? null) === 'pos' && ($data['fulfillment_type'] ?? 'delivery') === 'pickup') || $items === []) {
+            return ['shipping_required' => false, 'weight' => [], 'chargeable_weight_kg' => null, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => null, 'delivery_method' => 'Pickup', 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => OrderMoney::decimal(0, $precision), 'shipping_quote_required' => false, 'total' => OrderMoney::decimal($subtotal - $discount, $precision), 'shipping_options' => []];
         }
         $country = $data['shipping_address']['country'];
         $quote = $this->shipping->getQuote($workspace, $items, $country, $data['shipping_method_id'] ?? null);
@@ -176,7 +203,7 @@ class UnifiedOrderService
         }
         $shipping = $selected ? $this->shippingAmount($selected, $precision) : 0;
 
-        return ['weight' => $quote['weight_data'] ?? [], 'chargeable_weight_kg' => $selected?->chargeable_weight_kg, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => $selected?->shipping_method_id, 'delivery_method' => $selected?->method?->name, 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => $selected ? OrderMoney::decimal($shipping, $precision) : null, 'shipping_quote_required' => ! $selected, 'total' => $selected ? OrderMoney::decimal($subtotal + $shipping - $discount, $precision) : null, 'shipping_options' => $rates->map(fn ($rate) => ['id' => $rate->shipping_method_id, 'code' => $rate->method?->code, 'name' => $rate->method?->name ?? 'Shipping', 'currency' => $rate->currency, 'price' => OrderMoney::decimal($this->shippingAmount($rate, $precision), $precision)])->values()->all()];
+        return ['shipping_required' => true, 'weight' => $quote['weight_data'] ?? [], 'chargeable_weight_kg' => $selected?->chargeable_weight_kg, 'charges' => [], 'availability' => $availability, 'currency' => $settings->currency, 'precision' => $precision, 'shipping_method_id' => $selected?->shipping_method_id, 'delivery_method' => $selected?->method?->name, 'groups' => $groups, 'subtotal' => OrderMoney::decimal($subtotal, $precision), 'discount_amount' => OrderMoney::decimal($discount, $precision), 'shipping_amount' => $selected ? OrderMoney::decimal($shipping, $precision) : null, 'shipping_quote_required' => ! $selected, 'total' => $selected ? OrderMoney::decimal($subtotal + $shipping - $discount, $precision) : null, 'shipping_options' => $rates->map(fn ($rate) => ['id' => $rate->shipping_method_id, 'code' => $rate->method?->code, 'name' => $rate->method?->name ?? 'Shipping', 'currency' => $rate->currency, 'price' => OrderMoney::decimal($this->shippingAmount($rate, $precision), $precision)])->values()->all()];
     }
 
     public function create(Workspace $workspace, array $data): Order

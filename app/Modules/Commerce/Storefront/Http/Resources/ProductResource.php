@@ -28,6 +28,10 @@ class ProductResource extends JsonResource
             'min_sizes' => $this->ws_min_sizes ? (int) $this->ws_min_sizes : null,
             'size_ratios' => $this->getEffectiveSizeRatios(),
             'ratio_multiplier' => (int) ($this->ws_ratio_multiplier ?: 1),
+            'moq_unit' => $this->usesPackPricing() ? 'packs' : 'pcs',
+            'pack_prices' => $this->usesPackPricing() ? $this->packPrices() : [],
+            'min_packs' => $this->usesPackPricing() ? $this->minimumPacks() : null,
+            'shipping_included' => true,
         ];
 
         $storefrontSetting = null;

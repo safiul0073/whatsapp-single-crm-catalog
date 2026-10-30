@@ -55,10 +55,32 @@ class EngagementController extends Controller
     {
         $c = $r->attributes->get('store_customer');
         $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
-        abort_unless(Order::query()->where('workspace_id', $c->workspace_id)->where('contact_id', $c->contact_id)->where('status', 'completed')->whereHas('items', fn ($q) => $q->where('product_id', $p->id))->exists(), 403, 'Only verified buyers can review this product.');
+        abort_unless($this->hasCompletedPurchase($c, $p->id), 403, 'Only customers with a completed order of this product can review it.');
         $review = ProductReview::query()->updateOrCreate(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id, 'product_id' => $p->id], [...$r->validated(), 'status' => 'pending']);
 
         return response()->json(['data' => $review], 201);
+    }
+
+    public function reviewEligibility(Request $r, string $slug, CatalogService $catalog): JsonResponse
+    {
+        $c = $r->attributes->get('store_customer');
+        $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
+        $existing = ProductReview::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->where('product_id', $p->id)->first(['rating', 'body', 'status']);
+
+        return response()->json(['data' => ['can_review' => $this->hasCompletedPurchase($c, $p->id), 'review' => $existing]]);
+    }
+
+    /**
+     * Only buyers whose order containing this product is completed may rate it.
+     */
+    private function hasCompletedPurchase($customer, int $productId): bool
+    {
+        return Order::query()
+            ->where('workspace_id', $customer->workspace_id)
+            ->where('contact_id', $customer->contact_id)
+            ->where('status', 'completed')
+            ->whereHas('items.variant', fn ($q) => $q->where('product_id', $productId))
+            ->exists();
     }
 
     public function blogs(Request $r): JsonResponse
