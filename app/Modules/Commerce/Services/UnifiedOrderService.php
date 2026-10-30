@@ -89,7 +89,7 @@ class UnifiedOrderService
                     }
                 }
                 $boxCount = (int) $selection['box_count'];
-                $group = array_replace($group, ['color_id' => $colorId, 'color_name' => $color->display_name, 'box_count' => $boxCount, 'ratio' => $ratio, 'multiplier' => $multiplier, 'pieces_per_box' => array_sum($ratio) * $multiplier]);
+                $group = array_replace($group, ['color_id' => $colorId, 'color_name' => $color->display_name, 'box_count' => $boxCount, 'ratio' => $ratio, 'multiplier' => $multiplier, 'pieces_per_box' => array_sum($ratio) * $multiplier, '_custom' => $editablePackContents]);
                 foreach ($ratio as $size => $perBox) {
                     $variant = $product->variants->first(fn ($variant) => $variant->color_id === $colorId && $variant->size === (string) $size && $variant->status === 'active');
                     if (! $variant) {
@@ -105,8 +105,10 @@ class UnifiedOrderService
             $product = Product::query()->with('tierPrices')->findOrFail($productId);
             $quantity = $productGroups->sum('quantity');
             $standardGroups = $productGroups->filter(fn ($g) => empty($g['pack_snapshot']));
-            $packPricing = $product->usesPackPricing() && $standardGroups->isNotEmpty();
-            if ($packPricing && $standardGroups->sum('box_count') < $product->minimumPacks()) {
+            // Pack prices apply to whole store-ratio packs only, not to hand-entered POS size quantities.
+            $priceListGroups = $standardGroups->filter(fn ($g) => empty($g['_custom']));
+            $packPricing = $product->usesPackPricing() && $priceListGroups->isNotEmpty();
+            if ($packPricing && $priceListGroups->sum('box_count') < $product->minimumPacks()) {
                 $this->invalid('groups', "{$product->name} requires at least {$product->minimumPacks()} packs.");
             }
             if (! $packPricing && $standardGroups->isNotEmpty() && $standardGroups->sum('quantity') < max(1, (int) $product->ws_main_moq)) {
@@ -127,13 +129,13 @@ class UnifiedOrderService
                 // Price list total for all standard packs, split across their lines so the sum is exact.
                 $weights = [];
                 foreach ($groups as $groupIndex => $group) {
-                    if ($group['mode'] === 'wholesale' && $group['product_id'] === $productId && empty($group['pack_snapshot'])) {
+                    if ($group['mode'] === 'wholesale' && $group['product_id'] === $productId && empty($group['pack_snapshot']) && empty($group['_custom'])) {
                         foreach ($group['items'] as $itemIndex => $item) {
                             $weights[$groupIndex.':'.$itemIndex] = $item['quantity'];
                         }
                     }
                 }
-                $packShares = OrderMoney::allocate((int) $product->packTotalMinor($standardGroups->sum('box_count'), $precision), $weights);
+                $packShares = OrderMoney::allocate((int) $product->packTotalMinor($priceListGroups->sum('box_count'), $precision), $weights);
             }
             foreach ($groups as $groupIndex => &$group) {
                 if ($group['mode'] === 'wholesale' && $group['product_id'] === $productId) {
@@ -268,7 +270,7 @@ class UnifiedOrderService
     {
         $customBoxes = [];
         foreach ($groups as $snapshot) {
-            $group = $order->groups()->create(collect($snapshot)->except('items')->all());
+            $group = $order->groups()->create(collect($snapshot)->except(['items', '_custom'])->all());
             $saved = [];
             foreach ($snapshot['items'] as $item) {
                 $saved[] = $order->items()->create(array_merge($item, ['workspace_id' => $workspaceId, 'group_id' => $group->id, 'product_name' => $snapshot['product_name']]));

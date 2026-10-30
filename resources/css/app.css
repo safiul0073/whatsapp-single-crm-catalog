@@ -788,3 +788,4 @@ p {
 .apexcharts-selection-rect {
   display: none !important;
 }
+@import "./components/commerce-pos.css";

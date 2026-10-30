@@ -10,6 +10,9 @@ function pos() {
     vm.runInNewContext(source.replace("import Alpine from 'alpinejs';", ''), {
         Alpine: { data(_name, callback) { factory = callback; } },
         crypto: { randomUUID() { return `uuid-${nextId++}`; } },
+        setTimeout() { return 0; },
+        clearTimeout() {},
+        window: {},
     });
     const state = factory();
     state.$refs = {
@@ -72,20 +75,14 @@ test('single-image galleries do not navigate', () => {
     assert.equal(state.galleryIndex, 0);
 });
 
-test('switching modes preserves independent retail and wholesale drafts', () => {
+test('switching modes keeps one mixed retail and wholesale cart', () => {
     const state = pos();
     const retail = { key: 'retail-line', mode: 'retail' };
-    const wholesale = { key: 'pack-line', mode: 'wholesale', product: { id: 8 } };
     state.groups = [retail];
-    state.switchMode('wholesale');
-    assert.deepEqual(Array.from(state.groups), []);
-    state.groups = [wholesale];
-    state.wholesaleProductId = 8;
-    state.switchMode('retail');
-    assert.equal(state.groups[0].key, 'retail-line');
-    state.switchMode('wholesale');
-    assert.equal(state.groups[0].key, 'pack-line');
-    assert.equal(state.wholesaleProductId, 8);
+    state.mode = 'wholesale';
+    state.groups.push({ key: 'pack-line', mode: 'wholesale', product: { id: 8 } });
+    state.mode = 'retail';
+    assert.deepEqual(state.groups.map(group => group.key), ['retail-line', 'pack-line']);
 });
 
 test('formats USD with a dollar symbol while retaining currency-code support', () => {
@@ -99,7 +96,7 @@ test('formats USD with a dollar symbol while retaining currency-code support', (
 test('retail product modal adds selected variants and quantities to the multi-item cart', () => {
     const state = pos();
     const product = {
-        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true, colors: [{ id: 4, available: 3 }],
+        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true, available: 3, colors: [{ id: 4, available: 3 }],
         variants: [{ id: 91, color_id: 4, size: 'M', available: 3 }],
     };
     state.openProduct(product, null);
@@ -116,7 +113,7 @@ test('wholesale color rows open quantity details without opening the gallery', (
     const state = pos();
     state.mode = 'wholesale';
     const product = {
-        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true,
+        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true, available: 200,
         colors: [{ id: 4, name: 'Red', available: 100 }, { id: 5, name: 'Blue', available: 100 }],
         variants: ['S', 'M', 'L'].flatMap((size, index) => [4, 5].map(colorId => ({ id: index * 2 + colorId, color_id: colorId, size, available: 100 }))),
         ratios: { 4: { M: 3 } }, multiplier: 1, minimum: 6, minimum_sizes: 3, color_minimum: 1,
@@ -134,17 +131,14 @@ test('wholesale color rows open quantity details without opening the gallery', (
     state.saveWholesaleColor();
     state.addWholesaleSelection();
     assert.equal(state.groups.length, 2);
-    assert.equal(state.wholesaleProductId, 12);
-    assert.equal(state.wholesaleSummary(), '7 pieces across 2 colors');
+    assert.equal(state.itemCount(), 7);
     assert.deepEqual(JSON.parse(JSON.stringify(state.payload().groups)), [
         { product_id: 12, mode: 'wholesale', color_id: 4, size_quantities: { S: 1, M: 2, L: 1 } },
         { product_id: 12, mode: 'wholesale', color_id: 5, size_quantities: { S: 1, M: 1, L: 1 } },
     ]);
-    state.$refs.posProductModal.close();
+    // A second wholesale product can join the same sale.
     state.openProduct({ ...product, id: 13 }, null);
-    assert.equal(state.productModalOpened, false);
-    assert.match(state.error, /Clear the current wholesale color selections/);
-    state.clearWholesaleDraft();
-    assert.equal(state.wholesaleProductId, null);
+    assert.equal(state.productModalOpened, true);
+    state.clearCart();
     assert.equal(state.groups.length, 0);
 });

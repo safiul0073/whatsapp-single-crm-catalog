@@ -1,0 +1,108 @@
+/* ── POS till ── */
+.pos-shell {
+  @apply space-y-4;
+}
+
+.pos-grid {
+  @apply grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_26rem];
+}
+
+.pos-panel {
+  @apply rounded-lg border border-border-default bg-bg-elevated p-4;
+}
+
+.pos-cart {
+  @apply flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto;
+}
+
+.pos-lines {
+  @apply max-h-[40dvh] space-y-2 overflow-y-auto;
+}
+
+.pos-line {
+  @apply rounded-md border border-border-default px-3 py-2.5;
+}
+
+.pos-tile {
+  @apply flex min-w-0 flex-col rounded-md border border-border-default bg-bg-elevated p-2.5 text-left transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.pos-tile-image {
+  @apply relative mb-2.5 flex aspect-square w-full items-center justify-center overflow-hidden rounded-sm bg-section p-2;
+}
+
+.pos-segment {
+  @apply rounded-sm px-4 py-1.5 text-sm font-medium text-body transition;
+}
+
+.pos-segment-active {
+  @apply bg-bg-elevated text-title shadow-sm;
+}
+
+.pos-chip {
+  @apply shrink-0 whitespace-nowrap rounded-full border border-border-default bg-bg-elevated px-3 py-1 text-xs font-medium text-body transition hover:border-primary/50 hover:text-title disabled:opacity-40;
+}
+
+.pos-chip-active {
+  @apply border-primary bg-primary/10 text-primary;
+}
+
+.pos-badge {
+  @apply mr-1 inline-flex rounded bg-section px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-body;
+}
+
+.pos-badge-ws {
+  @apply bg-primary/10 text-primary;
+}
+
+.pos-count {
+  @apply rounded-full bg-primary px-1.5 text-[11px] font-medium text-white;
+}
+
+.pos-stepper {
+  @apply inline-flex items-center overflow-hidden rounded-md border border-border-default text-sm text-title;
+}
+
+.pos-stepper > button {
+  @apply grid size-8 place-items-center text-body transition hover:bg-section hover:text-title;
+}
+
+.pos-stepper > span {
+  @apply min-w-8 px-2 text-center tabular-nums;
+}
+
+.pos-icon-btn {
+  @apply grid size-8 place-items-center rounded-md text-body transition hover:bg-section disabled:opacity-40;
+}
+
+.pos-mini-input {
+  @apply h-8 w-16 rounded-md border border-border-default bg-bg-elevated px-2 text-xs text-title;
+}
+
+.pos-select {
+  @apply h-8 rounded-md border border-border-default bg-bg-elevated px-2 text-xs text-title;
+}
+
+.pos-dropdown {
+  @apply absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-md border border-border-default bg-bg-elevated shadow-lg;
+}
+
+.pos-dropdown-item {
+  @apply flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-section;
+}
+
+.pos-swatch {
+  @apply size-9 shrink-0 rounded-full border-2 border-border-default bg-cover bg-center p-0.5;
+}
+
+.pos-swatch-sm {
+  @apply size-7 border;
+}
+
+.pos-swatch-active {
+  @apply border-primary ring-2 ring-primary/30;
+}
+
+.pos-dialog {
+  @apply m-auto max-h-[92dvh] w-[calc(100%_-_1rem)] overflow-y-auto rounded-lg border border-border-default bg-bg-elevated p-5 text-title shadow-xl backdrop:bg-black/60 sm:w-[calc(100%_-_2rem)];
+}

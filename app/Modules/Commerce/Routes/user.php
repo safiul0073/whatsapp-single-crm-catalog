@@ -23,6 +23,10 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
             Route::get('products', [PosController::class, 'products'])->name('products');
             Route::post('preview', [PosController::class, 'preview'])->name('preview');
             Route::post('checkout', [PosController::class, 'checkout'])->name('checkout');
+            Route::get('customers', [PosController::class, 'customers'])->name('customers');
+            Route::get('held', [PosController::class, 'heldSales'])->name('held.index');
+            Route::post('held', [PosController::class, 'holdSale'])->name('held.store');
+            Route::delete('held/{held}', [PosController::class, 'releaseHeldSale'])->name('held.destroy');
             Route::post('orders/{order}/payments', [PosController::class, 'payment'])->name('payment');
             Route::post('orders/{order}/pickup', [PosController::class, 'pickup'])->name('pickup');
         });
@@ -96,6 +100,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     });
     Route::middleware('permission:commerce.orders.update')->group(function () use ($controller): void {
         Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');
+        Route::put('orders/{order}/boxes/packed-all', [$controller, 'packedAll'])->name('orders.boxes.packed-all');
         Route::put('orders/{order}/boxes/{box}/packed', [$controller, 'packed'])->name('orders.boxes.packed');
     });
     Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.orders.view')->name('orders.packing-slip');

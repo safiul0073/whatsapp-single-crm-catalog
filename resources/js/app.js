@@ -26,6 +26,7 @@ import './components/inbox.js';
 import './components/commerce-product-wizard.js';
 import './components/commerce-pos.js';
 import './components/commerce-payment-gallery.js';
+import './components/commerce-order-packing.js';
 import './components/commerce-product-gallery.js';
 import './components/crm-board.js';
 import './components/social-widget-layout-picker.js';

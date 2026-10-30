@@ -25,7 +25,7 @@ class PosService
             if (! $order->wasRecentlyCreated) {
                 return $order->load('payments');
             }
-            if ($order->total === null && (isset($data['payment']) || ! empty($data['handover']))) {
+            if ($order->total === null && (isset($data['payment']) || ! empty($data['payments']) || ! empty($data['handover']))) {
                 $this->invalid('payment', 'Prepare a shipping quote before accepting payment or handing over goods.');
             }
             if ($order->contact_id && (blank($order->contact?->name) || blank($order->contact?->phone))) {
@@ -36,6 +36,10 @@ class PosService
             }
             if (isset($data['payment'])) {
                 $this->recordPayment($order, $data['payment'], $staff);
+            }
+            // Split tender: each part is recorded as its own payment against the same order.
+            foreach ($data['payments'] ?? [] as $payment) {
+                $this->recordPayment($order->fresh(), $payment, $staff);
             }
             $order = $order->fresh('payments');
             if (! $order->contact_id && ($order->fulfillment_type !== 'pickup' || $order->payment_state !== 'paid' || empty($data['handover']))) {
