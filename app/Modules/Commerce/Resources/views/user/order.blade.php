@@ -34,7 +34,24 @@
                 <x-ui.button href="{{ route('user.commerce.orders.packing-slip', $order) }}" variant="outline" class="rounded-sm text-xs py-1.5">
                     <i class="ph ph-printer mr-1"></i>{{ __('Packing slip') }}
                 </x-ui.button>
+                <x-ui.button href="{{ route('user.commerce.orders.invoice', ['order' => $order, 'download' => 1]) }}" variant="outline" class="rounded-sm text-xs py-1.5">
+                    <i class="ph ph-download-simple mr-1"></i>{{ __('Download invoice') }}
+                </x-ui.button>
+                <button type="button" class="btn btn-outline rounded-sm text-xs py-1.5" data-copy-invoice-link="{{ $order->invoiceUrl() }}" data-copied-label="{{ __('Link copied') }}">
+                    <i class="ph ph-link mr-1"></i><span>{{ __('Copy invoice link') }}</span>
+                </button>
+                @can('commerce.orders.update')
+                    <form method="POST" action="{{ route('user.commerce.orders.invoice.send', $order) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-outline rounded-sm text-xs py-1.5">
+                            <i class="ph ph-whatsapp-logo mr-1"></i>{{ $order->invoice_sent_at ? __('Resend invoice on WhatsApp') : __('Send invoice on WhatsApp') }}
+                        </button>
+                    </form>
+                @endcan
             </div>
+            @if($order->invoice_sent_at)
+                <p class="text-xs text-body lg:basis-full lg:text-right">{{ __('Invoice sent on WhatsApp') }} {{ $order->invoice_sent_at->format('M j, Y · g:i A') }}</p>
+            @endif
         </header>
 
         @if($order->status === 'cancelled')

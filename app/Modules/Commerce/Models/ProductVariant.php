@@ -33,6 +33,42 @@ class ProductVariant extends Model
         return ['attributes' => 'array', 'package_dimensions' => 'array', 'price' => 'decimal:4', 'compare_at_price' => 'decimal:4', 'stock_quantity' => 'integer', 'weight_kg' => 'decimal:3'];
     }
 
+    /**
+     * Units a shopper can still buy: stock minus units held by open reservations.
+     */
+    public function availableQuantity(int $reserved = 0): int
+    {
+        if ($this->status !== 'active') {
+            return 0;
+        }
+
+        return max(0, (int) $this->stock_quantity - $reserved);
+    }
+
+    /**
+     * Units currently held by unexpired order reservations, keyed by variant id.
+     *
+     * @param  iterable<int, int>  $variantIds
+     * @return array<int, int>
+     */
+    public static function reservedQuantities(iterable $variantIds): array
+    {
+        $ids = collect($variantIds)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return OrderReservation::query()
+            ->whereIn('variant_id', $ids)
+            ->where('state', 'reserved')
+            ->where('expires_at', '>', now())
+            ->groupBy('variant_id')
+            ->selectRaw('variant_id, SUM(quantity) as reserved_quantity')
+            ->pluck('reserved_quantity', 'variant_id')
+            ->map(fn ($quantity): int => (int) $quantity)
+            ->all();
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

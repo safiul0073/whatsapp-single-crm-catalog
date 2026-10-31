@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderBoxItem;
+use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
@@ -91,6 +92,47 @@ class MobileOrderController extends Controller
         $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($orderId);
 
         return response()->json(['data' => $this->redact($request, $orders->payload($model))]);
+    }
+
+    public function invoice(Request $request, string $workspace, string $order): JsonResponse
+    {
+        abort_unless($request->user()->can('commerce.orders.view'), 403);
+        $model = $this->ownedOrder($request, $order)->ensureInvoice();
+
+        return response()->json(['data' => $this->invoicePayload($model)]);
+    }
+
+    public function sendInvoice(Request $request, string $workspace, string $order, OrderInvoiceWhatsAppService $invoices): JsonResponse
+    {
+        abort_unless($request->user()->can('commerce.orders.update'), 403);
+        $model = $this->ownedOrder($request, $order)->loadMissing('contact');
+        $result = $invoices->send($model, manual: true);
+
+        return response()->json([
+            'sent' => $result['status'] === OrderInvoiceWhatsAppService::SENT,
+            'message' => $result['message'],
+            'data' => $this->invoicePayload($model->refresh()),
+        ]);
+    }
+
+    private function ownedOrder(Request $request, string $order): Order
+    {
+        $orderId = (string) ($request->route('order') ?? $order);
+
+        return Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail($orderId);
+    }
+
+    /**
+     * @return array{number: ?string, url: string, download_url: string, sent_at: ?string}
+     */
+    private function invoicePayload(Order $order): array
+    {
+        return [
+            'number' => $order->invoice_number,
+            'url' => $order->invoiceUrl(),
+            'download_url' => $order->invoiceUrl(download: true),
+            'sent_at' => $order->invoice_sent_at?->toIso8601String(),
+        ];
     }
 
     public function transition(
