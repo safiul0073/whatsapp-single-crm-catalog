@@ -2,7 +2,6 @@
 
 namespace App\Modules\Commerce\Storefront\Services;
 
-use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderMoney;
@@ -128,7 +127,7 @@ class CartService
             $available = $variant && $p && $p->status === 'active' && $p->visibility === 'published'
                 && ($ws ? $p->isWholesaleEnabled() : $p->isRetailEnabled())
                 && $variant->status === 'active';
-            $stock = $available ? max(0, $variant->stock_quantity - (int) OrderReservation::query()->where('variant_id', $variant->id)->where('state', 'reserved')->where('expires_at', '>', now())->sum('quantity')) : 0;
+            $stock = $available ? $variant->availableQuantity((int) (ProductVariant::reservedQuantities([$variant->id])[$variant->id] ?? 0)) : 0;
             $tier = $ws && $p ? $p->tierPrices->sortByDesc('min_quantity')->first(fn ($t) => ($wholesaleQuantities[$p->id] ?? 0) >= $t->min_quantity && ($t->max_quantity === null || ($wholesaleQuantities[$p->id] ?? 0) <= $t->max_quantity)) : null;
             $price = $available ? OrderMoney::minor($ws ? ($tier?->unit_price ?? $p->wholesale_price ?? 0) : ($p->single_piece_price ?? $variant->price), $precision) : 0;
             $lineTotal = $price * $line->quantity;
