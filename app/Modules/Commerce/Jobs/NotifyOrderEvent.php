@@ -53,6 +53,9 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         }
         $event->increment('notification_attempts');
         $order = Order::query()->with('contact')->findOrFail($event->order_id);
+        if ($event->key === 'shipped') {
+            SendOrderInvoiceWhatsApp::dispatch($order->id);
+        }
         if (filled($order->customer_reference) && Cache::add('mobile-order-alert:'.$event->id, true, now()->addDays(7))) {
             MobileCustomerDevice::query()->where('workspace_id', $order->workspace_id)
                 ->where('customer_reference', $order->customer_reference)->each(function (MobileCustomerDevice $device) use ($order, $event): void {

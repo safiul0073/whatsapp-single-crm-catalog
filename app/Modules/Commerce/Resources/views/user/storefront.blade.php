@@ -11,6 +11,7 @@
         'announcement' => '',
         'contact_email' => '',
         'contact_phone' => '',
+        'address' => '',
         'footer_text' => '',
         'password_login' => false,
         'app_download_enabled' => true,
@@ -216,6 +217,7 @@
             announcement: {{ Illuminate\Support\Js::from($cfg['announcement'] ?? '') }},
             contact_email: {{ Illuminate\Support\Js::from($cfg['contact_email'] ?? '') }},
             contact_phone: {{ Illuminate\Support\Js::from($cfg['contact_phone'] ?? '') }},
+            address: {{ Illuminate\Support\Js::from($cfg['address'] ?? '') }},
             footer_text: {{ Illuminate\Support\Js::from($cfg['footer_text'] ?? '') }},
             password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }},
             app_download_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['app_download_enabled'] ?? true)) }},
@@ -1136,6 +1138,22 @@
                                 x-model="form.contact_phone"
                                 class="form-input"
                                 placeholder="+1 (800) 555-0199"
+                            >
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="form-label flex items-center gap-1.5" for="store_address">
+                                <i class="ph ph-map-pin text-primary text-base"></i>
+                                <span>{{ __('Business Address (shown on invoices)') }}</span>
+                            </label>
+                            <input
+                                id="store_address"
+                                type="text"
+                                name="config[address]"
+                                x-model="form.address"
+                                class="form-input"
+                                maxlength="300"
+                                placeholder="House 12, Road 5, Uttara, Dhaka 1230"
                             >
                         </div>
                     </div>
