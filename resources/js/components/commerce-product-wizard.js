@@ -693,7 +693,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.modalError = '';
     
     try {
-      const response = await window.axios.post('/user/commerce/variant-presets', {
+      const response = await window.axios.post('/user/commerce/variants', {
         name: this.modalNewSize.name,
         type: 'size',
         weight: this.modalNewSize.weight ? parseFloat(this.modalNewSize.weight) : null,

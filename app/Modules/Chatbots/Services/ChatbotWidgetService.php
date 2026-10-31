@@ -5,6 +5,7 @@ namespace App\Modules\Chatbots\Services;
 use App\Models\User;
 use App\Modules\Chatbots\Models\Chatbot;
 use App\Modules\Chatbots\Models\ChatbotWidget;
+use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Chatbots\Models\ChatbotWidgetSession;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Enums\ContactSource;
@@ -382,6 +383,11 @@ class ChatbotWidgetService
             ->map(fn (string $domain): string => Str::lower(trim($domain)))
             ->filter()
             ->values();
+
+        $allowed = $allowed->merge(
+            StoreDomain::query()->where('workspace_id', $widget->workspace_id)->where('status', 'active')->pluck('host')
+                ->map(fn (string $domain): string => Str::lower($domain))
+        )->unique()->values();
 
         if ($allowed->isEmpty()) {
             return false;
