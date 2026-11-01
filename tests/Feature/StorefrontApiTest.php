@@ -577,3 +577,51 @@ it('activates a www host that shares the active apex servers even when it points
 
     expect($www->fresh()->status)->toBe('active');
 });
+
+it('refuses to add or raise cart quantities beyond available stock', function (): void {
+    $h = [...$this->headers, 'X-Cart-Token' => $this->postJson('/api/storefront/v1/cart', [], $this->headers)->assertCreated()->json('data.cart_token')];
+
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 6], $h)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'out_of_stock')
+        ->assertJsonPath('available', 5);
+
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 4], $h)->assertOk();
+    $itemId = $this->getJson('/api/storefront/v1/cart', $h)->json('data.items.0.id');
+    $this->patchJson('/api/storefront/v1/cart/items/'.$itemId, ['quantity' => 6], $h)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'out_of_stock');
+    $this->patchJson('/api/storefront/v1/cart/items/'.$itemId, ['quantity' => 5], $h)->assertOk();
+});
+
+it('refuses to add a variant that is out of stock and reports it in the catalog', function (): void {
+    $h = [...$this->headers, 'X-Cart-Token' => $this->postJson('/api/storefront/v1/cart', [], $this->headers)->assertCreated()->json('data.cart_token')];
+    $this->variant->update(['stock_quantity' => 0, 'status' => 'out_of_stock']);
+
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 1], $h)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'out_of_stock')
+        ->assertJsonPath('available', 0);
+
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.in_stock', false)
+        ->assertJsonPath('data.stock_status', 'out_of_stock')
+        ->assertJsonPath('data.variants.0.in_stock', false)
+        ->assertJsonPath('data.variants.0.available_quantity', 0);
+});
+
+it('counts units held by open reservations as unavailable', function (): void {
+    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => $this->contact->id, 'source' => 'storefront', 'submission_reference' => (string) Str::uuid(), 'payload_hash' => 'x', 'number' => 'ORD-S1', 'tracking_code' => 'TRK-S1', 'status' => 'pending', 'currency' => 'USD', 'subtotal' => 20, 'total' => 20, 'customer_snapshot' => [], 'shipping_address' => []]);
+    OrderReservation::query()->create(['order_id' => $order->id, 'variant_id' => $this->variant->id, 'quantity' => 4, 'state' => 'reserved', 'generation' => 1, 'expires_at' => now()->addHour(), 'operation_key' => 'test:reserve']);
+
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.in_stock', true)
+        ->assertJsonPath('data.variants.0.available_quantity', 1);
+
+    $h = [...$this->headers, 'X-Cart-Token' => $this->postJson('/api/storefront/v1/cart', [], $this->headers)->assertCreated()->json('data.cart_token')];
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 2], $h)
+        ->assertUnprocessable()
+        ->assertJsonPath('available', 1);
+});

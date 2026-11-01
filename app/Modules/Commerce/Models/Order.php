@@ -10,21 +10,55 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
     protected $table = 'commerce_orders';
 
-    protected $fillable = ['fulfillment_type', 'shipping_method_id', 'customer_snapshot', 'source', 'submission_reference', 'payload_hash', 'customer_reference', 'tracking_code', 'payment_state', 'payment_instructions', 'payment_evidence', 'discount_amount', 'adjustments', 'shipping_quote_required', 'packed_at', 'delivered_at', 'workspace_id', 'contact_id', 'conversation_id', 'channel_account_id', 'catalog_id', 'number', 'provider_message_id', 'provider_catalog_id', 'status', 'currency', 'subtotal', 'shipping_amount', 'total', 'shipping_address', 'delivery_method', 'delivery_notes', 'duties_disclosure', 'payment_url', 'tracking_number', 'tracking_url', 'inventory_adjusted_at', 'inventory_restored_at', 'paid_at', 'shipped_at', 'issues', 'provider_payload'];
+    protected $fillable = ['fulfillment_type', 'shipping_method_id', 'customer_snapshot', 'source', 'submission_reference', 'payload_hash', 'customer_reference', 'tracking_code', 'payment_state', 'payment_instructions', 'payment_evidence', 'discount_amount', 'adjustments', 'shipping_quote_required', 'packed_at', 'delivered_at', 'workspace_id', 'contact_id', 'conversation_id', 'channel_account_id', 'catalog_id', 'number', 'provider_message_id', 'provider_catalog_id', 'status', 'currency', 'subtotal', 'shipping_amount', 'total', 'shipping_address', 'delivery_method', 'delivery_notes', 'duties_disclosure', 'payment_url', 'tracking_number', 'tracking_url', 'inventory_adjusted_at', 'inventory_restored_at', 'paid_at', 'shipped_at', 'issues', 'provider_payload', 'invoice_number', 'invoice_token', 'invoice_sent_at'];
 
     protected function casts(): array
     {
-        return ['customer_snapshot' => 'array', 'packed_at' => 'datetime', 'delivered_at' => 'datetime', 'payment_evidence' => 'array', 'adjustments' => 'array', 'shipping_quote_required' => 'boolean', 'discount_amount' => 'decimal:4', 'shipping_address' => 'array', 'issues' => 'array', 'provider_payload' => 'array', 'subtotal' => 'decimal:4', 'shipping_amount' => 'decimal:4', 'total' => 'decimal:4', 'inventory_adjusted_at' => 'datetime', 'inventory_restored_at' => 'datetime', 'paid_at' => 'datetime', 'shipped_at' => 'datetime'];
+        return ['customer_snapshot' => 'array', 'packed_at' => 'datetime', 'delivered_at' => 'datetime', 'payment_evidence' => 'array', 'adjustments' => 'array', 'shipping_quote_required' => 'boolean', 'discount_amount' => 'decimal:4', 'shipping_address' => 'array', 'issues' => 'array', 'provider_payload' => 'array', 'subtotal' => 'decimal:4', 'shipping_amount' => 'decimal:4', 'total' => 'decimal:4', 'inventory_adjusted_at' => 'datetime', 'inventory_restored_at' => 'datetime', 'paid_at' => 'datetime', 'shipped_at' => 'datetime', 'invoice_sent_at' => 'datetime'];
     }
 
     public function payments(): HasMany
     {
         return $this->hasMany(OrderPayment::class)->orderBy('recorded_at')->orderBy('id');
+    }
+
+    /**
+     * Gives the order a customer-facing invoice number and a private link token
+     * the first time an invoice is needed.
+     */
+    public function ensureInvoice(): static
+    {
+        if ($this->invoice_number && $this->invoice_token) {
+            return $this;
+        }
+
+        $this->forceFill([
+            'invoice_number' => $this->invoice_number ?: 'INV-'.$this->number,
+            'invoice_token' => $this->invoice_token ?: Str::random(40),
+        ])->save();
+
+        return $this;
+    }
+
+    public function regenerateInvoiceToken(): static
+    {
+        $this->forceFill(['invoice_token' => Str::random(40)])->save();
+
+        return $this;
+    }
+
+    public function invoiceUrl(bool $download = false): string
+    {
+        $this->ensureInvoice();
+        $url = rtrim((string) config('app.url'), '/').'/invoices/'.$this->invoice_token;
+
+        return $download ? $url.'?download=1' : $url;
     }
 
     public function moneyPrecision(): int

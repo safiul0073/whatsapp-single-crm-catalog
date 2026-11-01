@@ -30,6 +30,14 @@ class InvoiceService
 
         $storeSetting = StorefrontSetting::query()->where('workspace_id', $order->workspace_id)->first();
         $storeName = (string) ($storeSetting?->config['name'] ?? Workspace::query()->find($order->workspace_id)?->name ?? 'Storefront');
+        $store = [
+            'name' => $storeName,
+            'address' => trim((string) ($storeSetting?->config['address'] ?? '')),
+            'phone' => trim((string) ($storeSetting?->config['contact_phone'] ?? '')),
+            'email' => trim((string) ($storeSetting?->config['contact_email'] ?? '')),
+        ];
+        $order->ensureInvoice();
+        $order->loadMissing('payments');
 
         $rows = $this->buildInvoiceRows($order, $precision, $currency);
         $rowChunks = $this->paginateRows($rows);
@@ -59,6 +67,15 @@ class InvoiceService
             }
         }
 
+        $logo = $this->loadLogo($this->logoUrl($storeSetting?->config['logo'] ?? null));
+        $logoName = null;
+        if ($logo) {
+            $logoName = 'ImLogo';
+            $objId = $nextObjId++;
+            $imageResources[$logoName] = $objId.' 0 R';
+            $imageObjects[$objId] = '<< /Type /XObject /Subtype /Image /Width '.$logo['width'].' /Height '.$logo['height'].' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($logo['data']).">>\nstream\n".$logo['data']."\nendstream";
+        }
+
         $objects = [
             1 => '<< /Type /Catalog /Pages 2 0 R >>',
             3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
@@ -83,7 +100,8 @@ class InvoiceService
 
             $stream = $this->renderPageStream(
                 order: $order,
-                storeName: $storeName,
+                store: $store,
+                logo: $logo ? ['name' => $logoName, 'w' => $logo['pt_width'], 'h' => $logo['pt_height']] : null,
                 rows: $pageRows,
                 fmt: $fmt,
                 isFirstPage: $isFirstPage,
@@ -131,12 +149,12 @@ class InvoiceService
             return [[]];
         }
 
-        $singlePageMaxRows = 8;
+        $singlePageMaxRows = 7;
         if ($totalRows <= $singlePageMaxRows) {
             return [$rows];
         }
 
-        $page1MaxRows = 8;
+        $page1MaxRows = 7;
         $otherPageMaxRows = 9;
 
         $pages = [];
@@ -326,12 +344,9 @@ class InvoiceService
         return $url ? (string) $url : null;
     }
 
-    /**
-     * @return array{width: int, height: int, data: string}|null
-     */
-    private function loadAndScaleImage(?string $url): ?array
+    private function readImageBytes(?string $url): ?string
     {
-        if (! $url || ! extension_loaded('gd')) {
+        if (! $url) {
             return null;
         }
 
@@ -356,6 +371,19 @@ class InvoiceService
             $rawData = @file_get_contents($url, false, $ctx);
         }
 
+        return $rawData ?: null;
+    }
+
+    /**
+     * @return array{width: int, height: int, data: string}|null
+     */
+    private function loadAndScaleImage(?string $url): ?array
+    {
+        if (! $url || ! extension_loaded('gd')) {
+            return null;
+        }
+
+        $rawData = $this->readImageBytes($url);
         if (! $rawData) {
             return null;
         }
@@ -412,12 +440,95 @@ class InvoiceService
     }
 
     /**
+     * Resolves the store logo setting (a storage path or a full URL) to a URL.
+     */
+    private function logoUrl(mixed $logo): ?string
+    {
+        $logo = is_string($logo) ? trim($logo) : '';
+        if ($logo === '') {
+            return null;
+        }
+        if (preg_match('#^https?://#i', $logo) === 1) {
+            return $logo;
+        }
+
+        $path = ltrim((string) preg_replace('#^/?(storage/)?#', '', $logo), '/');
+
+        return rtrim((string) config('app.url'), '/').'/storage/'.$path;
+    }
+
+    /**
+     * Scales the logo to fit a 150 x 54 pt box keeping its aspect ratio, on a
+     * white background so transparent PNGs print cleanly.
+     *
+     * @return array{width: int, height: int, data: string, pt_width: float, pt_height: float}|null
+     */
+    private function loadLogo(?string $url): ?array
+    {
+        if (! $url || ! extension_loaded('gd')) {
+            return null;
+        }
+
+        $rawData = $this->readImageBytes($url);
+        $src = $rawData ? @imagecreatefromstring($rawData) : false;
+        if (! $src) {
+            return null;
+        }
+
+        $sw = imagesx($src);
+        $sh = imagesy($src);
+        if ($sw <= 0 || $sh <= 0) {
+            imagedestroy($src);
+
+            return null;
+        }
+
+        $maxW = 450;
+        $maxH = 162;
+        $scale = min($maxW / $sw, $maxH / $sh, 1);
+        $dw = max(1, (int) round($sw * $scale));
+        $dh = max(1, (int) round($sh * $scale));
+
+        $canvas = imagecreatetruecolor($dw, $dh);
+        if (! $canvas) {
+            imagedestroy($src);
+
+            return null;
+        }
+        imagefilledrectangle($canvas, 0, 0, $dw, $dh, imagecolorallocate($canvas, 255, 255, 255));
+        imagecopyresampled($canvas, $src, 0, 0, 0, 0, $dw, $dh, $sw, $sh);
+
+        ob_start();
+        imagejpeg($canvas, null, 90);
+        $jpeg = ob_get_clean();
+        imagedestroy($canvas);
+        imagedestroy($src);
+
+        if (! $jpeg) {
+            return null;
+        }
+
+        $ptScale = min(150 / $dw, 54 / $dh);
+
+        return [
+            'width' => $dw,
+            'height' => $dh,
+            'data' => $jpeg,
+            'pt_width' => round($dw * $ptScale, 1),
+            'pt_height' => round($dh * $ptScale, 1),
+        ];
+    }
+
+    /**
      * @param  array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>  $rows
      * @param  array<string, string>  $imageUrlToName
+     * @param  array{name: string, address: string, phone: string, email: string}  $store
+     * @param  array{name: string, w: float, h: float}|null  $logo
      */
     private function renderPageStream(
         Order $order,
-        string $storeName,
+        array $store,
+        ?array $logo,
         array $rows,
         callable $fmt,
         bool $isFirstPage,
@@ -428,63 +539,88 @@ class InvoiceService
     ): string {
         $ops = [];
 
-        // Top Navy Header Bar
-        $ops[] = '0.07 0.09 0.15 rg 0 752 595 90 re f';
-        $ops[] = $this->text(40, 805, $this->truncate($storeName, 36), 'F2', 18, [1, 1, 1]);
-        $ops[] = $this->text(40, 785, 'COMMERCIAL INVOICE & PACKING SUMMARY', 'F1', 9, [0.75, 0.80, 0.88]);
-        $ops[] = $this->text(40, 768, 'INVOICE '.$order->number, 'F2', 11, [0.95, 0.97, 1]);
+        // Brand accent bar and header
+        $ops[] = '0.07 0.09 0.15 rg 0 836 595 6 re f';
 
-        $dateStr = $order->created_at ? $order->created_at->format('Y-m-d H:i') : now()->format('Y-m-d');
-        $statusStr = strtoupper(str_replace('_', ' ', (string) $order->status));
+        $textLeft = 40.0;
+        if ($logo) {
+            $ops[] = 'q '.$logo['w'].' 0 0 '.$logo['h'].' 40 '.(826 - $logo['h']).' cm /'.$logo['name'].' Do Q';
+            $nameY = 826 - $logo['h'] - 12;
+        } else {
+            $ops[] = $this->text($textLeft, 806, $this->truncate($store['name'], 30), 'F2', 20, [0.07, 0.09, 0.15]);
+            $nameY = 790;
+        }
+        if ($logo) {
+            $ops[] = $this->text($textLeft, $nameY, $this->truncate($store['name'], 40), 'F2', 10.5, [0.07, 0.09, 0.15]);
+            $nameY -= 11;
+        }
+        foreach (array_filter([
+            $store['address'] !== '' ? $this->truncate($store['address'], 62) : null,
+            trim(implode('  |  ', array_filter([$store['phone'], $store['email']]))) ?: null,
+        ]) as $line) {
+            $ops[] = $this->text($textLeft, $nameY, $this->truncate((string) $line, 62), 'F1', 8.5, [0.30, 0.35, 0.43]);
+            $nameY -= 11;
+        }
+
+        $dateStr = $order->created_at ? $order->created_at->format('d M Y') : now()->format('d M Y');
         $paymentStr = strtoupper(str_replace('_', ' ', (string) $order->payment_state));
+        $isPaid = in_array((string) $order->payment_state, ['paid', 'completed'], true);
 
-        $ops[] = $this->text(380, 808, 'Date: '.$dateStr, 'F1', 9, [0.85, 0.88, 0.94]);
-        $ops[] = $this->text(380, 793, 'Order Status: '.$statusStr, 'F2', 9, [1, 1, 1]);
-        $ops[] = $this->text(380, 778, 'Payment: '.$paymentStr, 'F2', 9, [0.65, 0.92, 0.75]);
-        $ops[] = $this->text(380, 764, 'Page '.$pageNum.' of '.$totalPages, 'F1', 8, [0.70, 0.75, 0.82]);
+        $ops[] = $this->text(380, 806, 'INVOICE', 'F2', 24, [0.07, 0.09, 0.15]);
+        $ops[] = $this->text(380, 788, $this->truncate((string) $order->invoice_number, 28), 'F2', 10, [0.07, 0.09, 0.15]);
+        $ops[] = $this->text(380, 774, 'Date: '.$dateStr, 'F1', 9, [0.30, 0.35, 0.43]);
+        $ops[] = $this->text(380, 761, 'Order: '.$this->truncate((string) $order->number, 24), 'F1', 9, [0.30, 0.35, 0.43]);
+        $ops[] = $this->text(
+            380,
+            748,
+            'Payment: '.$paymentStr,
+            'F2',
+            9,
+            $isPaid ? [0.10, 0.50, 0.30] : [0.75, 0.40, 0.05]
+        );
+        $ops[] = $this->text(500, 761, 'Page '.$pageNum.' of '.$totalPages, 'F1', 8, [0.50, 0.55, 0.62]);
+        $ops[] = '0.86 0.88 0.91 RG 0.7 w 40 738 m 555 738 l S';
 
-        $y = 732;
+        $y = 730;
 
         if ($isFirstPage) {
-            // Customer & Shipping Box (Left) + Tracking & Delivery Box (Right)
             $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 40 632 250 90 re B';
             $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 305 632 250 90 re B';
 
             $addr = is_array($order->shipping_address) ? $order->shipping_address : [];
             $cust = is_array($order->customer_snapshot) ? $order->customer_snapshot : [];
-            $customerName = (string) ($addr['name'] ?? $cust['name'] ?? 'Customer');
-            $customerPhone = (string) ($addr['phone'] ?? $cust['phone'] ?? '');
-            $line1 = (string) ($addr['line1'] ?? '');
-            $cityCountry = trim(implode(', ', array_filter([$addr['city'] ?? null, $addr['postal_code'] ?? null, $addr['country'] ?? null])));
+            $customerName = (string) ($cust['name'] ?? $addr['name'] ?? 'Customer');
+            $customerPhone = (string) ($cust['phone'] ?? $addr['phone'] ?? '');
+            $customerEmail = (string) ($cust['email'] ?? $addr['email'] ?? '');
+            $shipName = (string) ($addr['name'] ?? $customerName);
+            $shipLines = array_values(array_filter([
+                (string) ($addr['line1'] ?? ''),
+                (string) ($addr['line2'] ?? ''),
+                trim(implode(', ', array_filter([$addr['city'] ?? null, $addr['state'] ?? null, $addr['postal_code'] ?? null, $addr['country'] ?? null]))),
+            ], fn (string $line): bool => $line !== ''));
 
-            $ops[] = $this->text(50, 707, 'BILL & SHIP TO', 'F2', 8, [0.40, 0.45, 0.55]);
+            $ops[] = $this->text(50, 707, 'BILL TO', 'F2', 8, [0.40, 0.45, 0.55]);
             $ops[] = $this->text(50, 691, $this->truncate($customerName, 38), 'F2', 10, [0.07, 0.09, 0.15]);
-            if ($customerPhone !== '') {
-                $ops[] = $this->text(50, 676, 'Phone: '.$customerPhone, 'F1', 9, [0.25, 0.30, 0.38]);
-            }
-            if ($line1 !== '') {
-                $ops[] = $this->text(50, 662, $this->truncate($line1, 42), 'F1', 9, [0.25, 0.30, 0.38]);
-            }
-            if ($cityCountry !== '') {
-                $ops[] = $this->text(50, 648, $this->truncate($cityCountry, 42), 'F1', 9, [0.25, 0.30, 0.38]);
+            $billY = 676;
+            foreach (array_filter([$customerPhone !== '' ? 'Phone: '.$customerPhone : null, $customerEmail !== '' ? $customerEmail : null]) as $line) {
+                $ops[] = $this->text(50, $billY, $this->truncate((string) $line, 42), 'F1', 9, [0.25, 0.30, 0.38]);
+                $billY -= 14;
             }
 
-            $trackingCode = (string) ($order->tracking_code ?: $order->number);
-            $carrierTracking = (string) ($order->tracking_number ?: 'Assigned upon dispatch');
-            $deliveryMethod = (string) ($order->delivery_method ?: 'Standard Shipping');
-
-            $ops[] = $this->text(315, 707, 'TRACKING & SHIPMENT DETAILS', 'F2', 8, [0.40, 0.45, 0.55]);
-            $ops[] = $this->text(315, 691, 'Tracking Code: '.$this->truncate($trackingCode, 30), 'F2', 9, [0.07, 0.09, 0.15]);
-            $ops[] = $this->text(315, 676, 'Carrier Tracking #: '.$this->truncate($carrierTracking, 28), 'F1', 9, [0.25, 0.30, 0.38]);
-            $ops[] = $this->text(315, 662, 'Shipping Method: '.$this->truncate($deliveryMethod, 30), 'F1', 9, [0.25, 0.30, 0.38]);
-            $ops[] = $this->text(315, 648, 'Track online at /track-order with tracking code', 'F1', 8, [0.35, 0.42, 0.55]);
+            $ops[] = $this->text(315, 707, 'SHIP TO', 'F2', 8, [0.40, 0.45, 0.55]);
+            $ops[] = $this->text(315, 691, $this->truncate($shipName, 38), 'F2', 10, [0.07, 0.09, 0.15]);
+            $shipY = 676;
+            foreach (array_slice($shipLines, 0, 3) as $line) {
+                $ops[] = $this->text(315, $shipY, $this->truncate($line, 44), 'F1', 9, [0.25, 0.30, 0.38]);
+                $shipY -= 14;
+            }
 
             $y = 612;
         }
 
         // Table Header
         $ops[] = '0.12 0.16 0.23 rg 40 '.($y - 22).' 515 22 re f';
-        $ops[] = $this->text(48, $y - 14, 'PRODUCT / WHOLESALE PACK DETAILS', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(48, $y - 14, 'ITEM DETAILS', 'F2', 8.5, [1, 1, 1]);
         $ops[] = $this->text(325, $y - 14, 'PACK / MODE', 'F2', 8.5, [1, 1, 1]);
         $ops[] = $this->text(395, $y - 14, 'QTY', 'F2', 8.5, [1, 1, 1]);
         $ops[] = $this->text(445, $y - 14, 'UNIT PRICE', 'F2', 8.5, [1, 1, 1]);
@@ -540,34 +676,44 @@ class InvoiceService
         }
 
         if ($isLastPage) {
-            $boxTop = max(95, $y - 14);
-            $boxBottom = $boxTop - 92;
+            $boxTop = max(140, $y - 14);
+            $boxBottom = $boxTop - 124;
 
-            $ops[] = '0.97 0.98 0.99 rg 0.85 0.88 0.92 RG 0.7 w 335 '.$boxBottom.' 220 92 re B';
+            $instructions = trim((string) $order->payment_instructions);
+            if ($instructions !== '') {
+                $ops[] = $this->text(40, $boxTop - 16, 'PAYMENT INSTRUCTIONS', 'F2', 8, [0.40, 0.45, 0.55]);
+                $noteY = $boxTop - 30;
+                foreach (array_slice(str_split($instructions, 60), 0, 4) as $noteLine) {
+                    $ops[] = $this->text(40, $noteY, $noteLine, 'F1', 8.5, [0.25, 0.30, 0.38]);
+                    $noteY -= 12;
+                }
+            }
+
+            $ops[] = '0.97 0.98 0.99 rg 0.85 0.88 0.92 RG 0.7 w 335 '.$boxBottom.' 220 124 re B';
             $ops[] = $this->text(347, $boxTop - 16, 'Subtotal:', 'F1', 9, [0.30, 0.35, 0.43]);
             $ops[] = $this->text(455, $boxTop - 16, $fmt($order->subtotal), 'F2', 9, [0.07, 0.09, 0.15]);
 
             $ops[] = $this->text(347, $boxTop - 32, 'Discount:', 'F1', 9, [0.30, 0.35, 0.43]);
-            $ops[] = $this->text(455, $boxTop - 32, '-'.$fmt($order->discount_amount), 'F1', 9, [0.10, 0.50, 0.30]);
+            $hasDiscount = OrderMoney::minor($order->discount_amount ?? 0, $order->moneyPrecision()) > 0;
+            $ops[] = $this->text(455, $boxTop - 32, ($hasDiscount ? '-' : '').$fmt($order->discount_amount), 'F1', 9, $hasDiscount ? [0.10, 0.50, 0.30] : [0.07, 0.09, 0.15]);
 
             $ops[] = $this->text(347, $boxTop - 48, 'Shipping:', 'F1', 9, [0.30, 0.35, 0.43]);
             $ops[] = $this->text(455, $boxTop - 48, $fmt($order->shipping_amount), 'F1', 9, [0.07, 0.09, 0.15]);
 
-            $ops[] = '0.07 0.09 0.15 rg 335 '.$boxBottom.' 220 28 re f';
-            $ops[] = $this->text(347, $boxBottom + 10, 'TOTAL:', 'F2', 10, [1, 1, 1]);
-            $ops[] = $this->text(445, $boxBottom + 10, $fmt($order->total), 'F2', 10.5, [1, 1, 1]);
+            $ops[] = '0.07 0.09 0.15 rg 335 '.($boxTop - 80).' 220 28 re f';
+            $ops[] = $this->text(347, $boxTop - 70, 'TOTAL:', 'F2', 10, [1, 1, 1]);
+            $ops[] = $this->text(445, $boxTop - 70, $fmt($order->total), 'F2', 10.5, [1, 1, 1]);
+
+            $ops[] = $this->text(347, $boxTop - 96, 'Paid:', 'F1', 9, [0.30, 0.35, 0.43]);
+            $ops[] = $this->text(455, $boxTop - 96, $fmt($order->paidAmount()), 'F1', 9, [0.10, 0.50, 0.30]);
+            $ops[] = $this->text(347, $boxTop - 112, 'Balance due:', 'F2', 9, [0.07, 0.09, 0.15]);
+            $ops[] = $this->text(455, $boxTop - 112, $fmt($order->balanceDue()), 'F2', 9, [0.07, 0.09, 0.15]);
         }
 
         // Footer
-        $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 48 515 0 re S';
-        $ops[] = $this->text(
-            40,
-            34,
-            'Thank you for your business. Track your order status at /track-order using Reference: '.($order->tracking_code ?: $order->number),
-            'F1',
-            8,
-            [0.45, 0.50, 0.58]
-        );
+        $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 48 m 555 48 l S';
+        $ops[] = $this->text(40, 34, 'Thank you for your business.', 'F2', 8.5, [0.30, 0.35, 0.43]);
+        $ops[] = $this->text(40, 22, $this->truncate('View this invoice online: '.$order->invoiceUrl(), 110), 'F1', 7.5, [0.45, 0.50, 0.58]);
 
         return implode("\n", $ops);
     }

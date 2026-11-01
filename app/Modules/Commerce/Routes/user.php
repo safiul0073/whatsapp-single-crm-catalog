@@ -102,8 +102,11 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');
         Route::put('orders/{order}/boxes/packed-all', [$controller, 'packedAll'])->name('orders.boxes.packed-all');
         Route::put('orders/{order}/boxes/{box}/packed', [$controller, 'packed'])->name('orders.boxes.packed');
+        Route::post('orders/{order}/invoice/send', [$controller, 'sendInvoice'])->name('orders.invoice.send');
+        Route::post('orders/{order}/invoice/link', [$controller, 'regenerateInvoiceLink'])->name('orders.invoice.link');
     });
     Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.orders.view')->name('orders.packing-slip');
+    Route::get('orders/{order}/invoice', [OrderManagementController::class, 'invoice'])->middleware('permission:commerce.orders.view')->name('orders.invoice');
     Route::get('orders/{order}/receipt', [OrderManagementController::class, 'receipt'])->middleware('permission:commerce.orders.payments.view')->name('orders.receipt');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->middleware('permission:commerce.orders.view')->name('orders.show');
     Route::put('orders/{order}/customer', [CommerceController::class, 'updateCustomer'])->middleware('permission:commerce.orders.customer.edit')->name('orders.customer.update');

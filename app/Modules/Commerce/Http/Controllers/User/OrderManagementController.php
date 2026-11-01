@@ -15,10 +15,12 @@ use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
+use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
+use App\Modules\Commerce\Storefront\Services\InvoiceService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Services\ContactService;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -28,6 +30,7 @@ use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -274,6 +277,35 @@ class OrderManagementController extends Controller
                 'boxes.contents.item.variant.color',
             ]),
         ]);
+    }
+
+    public function invoice(Request $request, Order $order, InvoiceService $invoices): Response
+    {
+        $this->assertOrder($request, $order);
+        $order->ensureInvoice();
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($invoices->pdf($order), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$order->invoice_number.'.pdf"',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    public function sendInvoice(Request $request, Order $order, OrderInvoiceWhatsAppService $invoices): RedirectResponse
+    {
+        $this->assertOrder($request, $order);
+        $result = $invoices->send($order->loadMissing('contact'), manual: true);
+
+        return back()->with($result['status'] === OrderInvoiceWhatsAppService::SENT ? 'success' : 'warning', $result['message']);
+    }
+
+    public function regenerateInvoiceLink(Request $request, Order $order): RedirectResponse
+    {
+        $this->assertOrder($request, $order);
+        $order->ensureInvoice()->regenerateInvoiceToken();
+
+        return back()->with('success', __('A new invoice link was created. The old link no longer works.'));
     }
 
     public function receipt(Request $request, Order $order): BinaryFileResponse

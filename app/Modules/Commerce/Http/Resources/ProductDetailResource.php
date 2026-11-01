@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Http\Resources;
 
+use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Shipping\Services\ShippingCalculatorService;
 use App\Modules\Workspaces\Models\Workspace;
@@ -17,6 +18,8 @@ class ProductDetailResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $reserved = ProductVariant::reservedQuantities($this->variants->pluck('id'));
+
         return [
             'id' => $this->id,
             'category_id' => $this->category_id,
@@ -90,6 +93,8 @@ class ProductDetailResource extends JsonResource
                 'compare_at_price' => (float) $variant->compare_at_price,
                 'cost_price' => (float) $variant->cost_price,
                 'stock_quantity' => (int) $variant->stock_quantity,
+                'available_quantity' => $variant->availableQuantity($reserved[$variant->id] ?? 0),
+                'in_stock' => $variant->availableQuantity($reserved[$variant->id] ?? 0) > 0,
                 'weight_kg' => (float) $variant->weight_kg,
                 'color_id' => $variant->color_id,
                 'size' => $variant->size,

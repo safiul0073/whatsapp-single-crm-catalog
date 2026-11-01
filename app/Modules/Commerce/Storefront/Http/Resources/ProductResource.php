@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Storefront\Http\Resources;
 
 use App\Modules\Commerce\Models\ProductType;
+use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
@@ -20,6 +21,13 @@ class ProductResource extends JsonResource
         $wholesalePrice = $wholesaleOn ? (string) ($this->wholesale_price ?? '0') : '0';
         $sellingMode = $wholesaleOn ? ($this->selling_mode ?? 'both') : 'retail';
         $itemMoq = (int) ($this->ws_main_moq ?: ($this->moq ?: 1));
+
+        $stockVariants = $this->variants->whereIn('status', ['active', 'out_of_stock'])->values();
+        $reserved = ProductVariant::reservedQuantities($stockVariants->pluck('id'));
+        $availableByVariant = $stockVariants->mapWithKeys(
+            fn ($v): array => [$v->id => $v->availableQuantity($reserved[$v->id] ?? 0)],
+        );
+        $inStock = $availableByVariant->contains(fn (int $quantity): bool => $quantity > 0);
 
         $wsSettings = [
             'enabled' => $wholesaleOn && (bool) ($this->ws_enabled ?? false),
@@ -91,7 +99,9 @@ class ProductResource extends JsonResource
                 'type' => $g->media_type,
                 'color_id' => $g->color_id,
             ])),
-            'variants' => $this->variants->whereIn('status', ['active', 'out_of_stock'])->values()->map(fn ($v) => [
+            'in_stock' => $inStock,
+            'stock_status' => $inStock ? 'in_stock' : 'out_of_stock',
+            'variants' => $stockVariants->map(fn ($v) => [
                 'id' => $v->id,
                 'sku' => $v->sku,
                 'size' => $v->size,
@@ -99,6 +109,8 @@ class ProductResource extends JsonResource
                 'attributes' => (object) ($v->attributes ?? []),
                 'price' => (string) ($this->single_piece_price ?? $v->price),
                 'stock' => $v->status === 'active' ? $v->stock_quantity : 0,
+                'available_quantity' => $availableByVariant[$v->id],
+                'in_stock' => $availableByVariant[$v->id] > 0,
                 'image' => $v->image,
             ]),
             'colors' => $this->colors->map(function ($c) {
