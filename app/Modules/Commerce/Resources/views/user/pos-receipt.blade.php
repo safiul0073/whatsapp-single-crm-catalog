@@ -1,37 +1,35 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $order->number }} · {{ __('Receipt') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="bg-section text-title print:bg-white">
+<x-layouts.document :title="$order->number.' · '.__('Receipt')" format="receipt">
     @php
-        $money = fn ($amount) => $order->currency.' '.number_format((float) $amount, $order->moneyPrecision());
-        $sizeOrder = array_flip(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']);
-        $lineGroups = $order->items
-            ->groupBy(fn ($item) => $item->product_name.'|'.($item->attributes['color'] ?? ''))
-            ->map(fn ($items) => $items->sortBy(fn ($item) => $sizeOrder[strtoupper($item->attributes['size'] ?? '')] ?? 99)->values());
-        $customerName = $order->customer_snapshot['name'] ?? $order->contact?->name ?? __('Walk-in customer');
-        $customerPhone = $order->customer_snapshot['phone'] ?? $order->contact?->phone;
+        $lineGroups = $groups->map(fn ($group) => $group['items']);
+        $customerPhone = $customer['phone'];
     @endphp
-    <main class="mx-auto my-6 max-w-2xl space-y-5 rounded-lg border border-border-default bg-white p-6 print:my-0 print:max-w-[80mm] print:space-y-3 print:rounded-none print:border-0 print:p-0 print:text-xs">
-        <header class="flex items-start justify-between gap-4 border-b border-border-default pb-4">
-            <div>
-                <h1 class="text-xl font-semibold">{{ $workspace->name }}</h1>
-                <p class="text-sm text-body">{{ __('Sales receipt') }}</p>
+    <x-slot:actions>
+        <a class="btn btn-outline btn-sm" href="{{ route('user.commerce.orders.show', $order) }}">{{ __('View order') }}</a>
+        @if($order->source === 'pos')<a class="btn btn-outline btn-sm" href="{{ route('user.commerce.pos.index') }}">{{ __('New sale') }}</a>@endif
+    </x-slot:actions>
+
+    <header class="document-brand">
+        <div class="flex min-w-0 items-start gap-3">
+            @if($brand['logo'])<img src="{{ $brand['logo'] }}" alt="{{ $brand['name'] }}" class="h-10 w-auto max-w-28 object-contain">@endif
+            <div class="min-w-0">
+                <h1 class="text-xl font-semibold">{{ $brand['name'] }}</h1>
+                @if($brand['address'])<p class="text-xs text-body">{{ $brand['address'] }}</p>@endif
+                @if($brand['phone'])<p class="text-xs text-body">{{ $brand['phone'] }}</p>@endif
+                @if($brand['tax_id'])<p class="text-xs text-body">{{ __('Tax ID') }}: {{ $brand['tax_id'] }}</p>@endif
+                <p class="mt-1 text-sm text-body">{{ __('Sales receipt') }}</p>
             </div>
-            <div class="text-right text-sm">
-                <p class="font-medium">{{ $order->number }}</p>
-                <p class="text-body">{{ $order->created_at->format('M j, Y · g:i A') }}</p>
-            </div>
-        </header>
+        </div>
+        <div class="text-right text-sm">
+            <p class="font-medium">{{ $order->number }}</p>
+            <p class="text-xs text-body">{{ $order->invoice_number }}</p>
+            <p class="text-body">{{ $order->created_at->format('M j, Y · g:i A') }}</p>
+        </div>
+    </header>
 
         <section class="grid grid-cols-2 gap-4 text-sm">
             <div>
                 <p class="text-xs uppercase tracking-wide text-body">{{ __('Customer') }}</p>
-                <p class="mt-1 font-medium">{{ $customerName }}</p>
+                <p class="mt-1 font-medium">{{ ($customer['name'] ?? __('Walk-in customer')) }}</p>
                 @if($customerPhone)<p class="text-body">{{ $customerPhone }}</p>@endif
             </div>
             <div class="text-right">
@@ -112,12 +110,6 @@
 
         <p class="text-center text-xs text-body">{{ __('Thank you for your purchase!') }}</p>
 
-        <div class="flex flex-wrap justify-center gap-3 print:hidden">
-            <button type="button" class="btn btn-primary btn-sm" id="printPosReceipt"><i class="ph ph-printer"></i> {{ __('Print receipt') }}</button>
-            <a class="btn btn-outline btn-sm" href="{{ route('user.commerce.orders.show', $order) }}">{{ __('View order') }}</a>
-            <a class="btn btn-outline btn-sm" href="{{ route('user.commerce.pos.index') }}">{{ __('New sale') }}</a>
-        </div>
-    </main>
-    <script>document.getElementById('printPosReceipt').addEventListener('click', function () { 'use strict'; window.print(); }); if (new URLSearchParams(window.location.search).get('print') === '1') { window.addEventListener('load', function () { 'use strict'; window.print(); }); }</script>
-</body>
-</html>
+
+    @if($brand['footer'])<p class="whitespace-pre-line text-center text-xs text-body">{{ $brand['footer'] }}</p>@endif
+</x-layouts.document>

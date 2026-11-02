@@ -509,7 +509,7 @@ class ContactService
      * Keywords let the searchable picker match ISO codes, dialing codes and common names
      * ("USA", "UK", "880") that are not part of the visible label.
      *
-     * @return array<string, array{label: string, keywords: string}> region code => option, sorted by label
+     * @return array<string, array{label: string, keywords: string, name: string, dial: string}> region code => option, sorted by label
      */
     public function countryOptions(): array
     {
@@ -521,6 +521,8 @@ class ContactService
             $dialingCode = $util->getCountryCodeForRegion($region);
             $options[$region] = [
                 'label' => ($names[$region] ?? $region).' (+'.$dialingCode.')',
+                'name' => $names[$region] ?? $region,
+                'dial' => (string) $dialingCode,
                 'keywords' => trim($region.' '.$dialingCode.' +'.$dialingCode.' '.(self::COUNTRY_SEARCH_ALIASES[$region] ?? '')),
             ];
         }

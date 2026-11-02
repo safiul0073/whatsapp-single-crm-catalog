@@ -60,6 +60,17 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    'photon' => [
+        'url' => env('PHOTON_URL', 'https://photon.komoot.io'),
+        'timeout' => (int) env('PHOTON_TIMEOUT', 4),
+    ],
+
+    'zippopotam' => [
+        'url' => env('ZIPPOPOTAM_URL', 'https://api.zippopotam.us'),
+        'timeout' => (int) env('ZIPPOPOTAM_TIMEOUT', 4),
+        'countries' => ['US', 'BD'],
+    ],
+
     'github' => [
         'client_id' => env('GITHUB_CLIENT_ID'),
         'client_secret' => env('GITHUB_CLIENT_SECRET'),

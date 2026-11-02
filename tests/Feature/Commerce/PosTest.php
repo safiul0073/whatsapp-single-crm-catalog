@@ -12,12 +12,15 @@ use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
 use App\Modules\Workspaces\Models\WorkspaceRole;
 use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -529,4 +532,143 @@ it('finds customers and barcodes and holds sales within the workspace only', fun
     $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
     $this->deleteJson(route('user.commerce.pos.held.destroy', $held))->assertOk();
     $this->getJson(route('user.commerce.pos.held.index'))->assertJsonCount(0, 'data');
+});
+
+it('suggests united states street addresses and returns nothing when the geocoder fails', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    Cache::flush();
+    Http::fake(['*photon*' => Http::sequence()->push(['features' => [
+        ['properties' => ['countrycode' => 'US', 'street' => 'Northwest 1st Street', 'housenumber' => '729', 'city' => 'Fort Lauderdale', 'state' => 'Florida', 'postcode' => '33311']],
+        ['properties' => ['countrycode' => 'MX', 'street' => 'Calle de Mesones', 'housenumber' => '72', 'city' => 'Mexico City']],
+        ['properties' => ['countrycode' => 'US', 'name' => 'Some park']],
+    ]])->push('', 500)]);
+
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '729 NW 1st', 'country' => 'US']))->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.line1', '729 Northwest 1st Street')->assertJsonPath('data.0.state', 'FL')->assertJsonPath('data.0.postal_code', '33311')->assertJsonPath('data.0.country', 'US');
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '72']))->assertUnprocessable();
+
+    Cache::flush();
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '1 Main St', 'country' => 'US']))->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('saves a customer and address immediately without duplicating by phone and within the workspace', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $other = posContext();
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $address = ['name' => 'Ann Lee', 'phone' => '+13055550100', 'line1' => '729 NW 1st St', 'city' => 'Fort Lauderdale', 'state' => 'FL', 'postal_code' => '33311'];
+
+    $id = $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Ann Lee', 'phone' => '+13055550100', 'address' => $address])->assertCreated()
+        ->assertJsonPath('data.addresses.0.line1', '729 NW 1st St')->assertJsonPath('data.addresses.0.is_default', true)->json('data.id');
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Ann Lee', 'phone' => '+13055550100'])->assertCreated()->assertJsonPath('data.id', $id);
+    expect(Contact::query()->where('workspace_id', $c['workspace']->id)->where('phone', '+13055550100')->count())->toBe(1);
+
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'No Street', 'phone' => '+13055550101', 'address' => ['city' => 'Miami']])->assertUnprocessable();
+    $this->postJson(route('user.commerce.pos.customers.addresses.store', $id), [...$address, 'line1' => '1 Ocean Dr', 'city' => 'Miami'])->assertCreated()->assertJsonPath('data.is_default', false);
+    $this->getJson(route('user.commerce.pos.customers', ['q' => 'Ann']))->assertOk()->assertJsonCount(2, 'data.0.addresses');
+
+    $this->actingAs($other['user'])->withSession(['active_workspace_id' => $other['workspace']->id]);
+    posManager($other['user']);
+    $this->postJson(route('user.commerce.pos.customers.addresses.store', $id), $address)->assertNotFound();
+    $this->getJson(route('user.commerce.pos.customers', ['q' => 'Ann']))->assertJsonCount(0, 'data');
+});
+
+it('looks up postal codes for the United States and Bangladesh and tolerates provider failures', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    Cache::flush();
+    Http::fake([
+        '*zippopotam*/US/33311' => Http::response(['places' => [['place name' => 'Fort Lauderdale', 'state' => 'Florida', 'state abbreviation' => 'FL']]]),
+        '*zippopotam*/BD/1212' => Http::response(['places' => [['place name' => 'Gulshan Model Town ', 'state' => 'Dhaka', 'state abbreviation' => '']]]),
+        '*zippopotam*' => Http::response('', 404),
+    ]);
+
+    $this->getJson(route('user.commerce.pos.postal-lookup', ['country' => 'US', 'postal_code' => '33311']))->assertOk()
+        ->assertJsonPath('data.city', 'Fort Lauderdale')->assertJsonPath('data.state', 'FL')->assertJsonPath('data.country', 'US');
+    $this->getJson(route('user.commerce.pos.postal-lookup', ['country' => 'BD', 'postal_code' => '1212']))->assertOk()
+        ->assertJsonPath('data.city', 'Dhaka')->assertJsonPath('data.state', 'Dhaka')->assertJsonPath('data.area', 'Gulshan Model Town');
+    $this->getJson(route('user.commerce.pos.postal-lookup', ['country' => 'US', 'postal_code' => '00000']))->assertOk()->assertJsonPath('data', null);
+    $this->getJson(route('user.commerce.pos.postal-lookup', ['country' => 'US', 'postal_code' => 'abc']))->assertOk()->assertJsonPath('data', null);
+    $this->getJson(route('user.commerce.pos.postal-lookup', ['country' => 'FR', 'postal_code' => '75001']))->assertUnprocessable();
+});
+
+it('searches addresses in the chosen country and does not repeat a number already in the street name', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    Cache::flush();
+    Http::fake(['*photon*' => Http::response(['features' => [
+        ['properties' => ['countrycode' => 'BD', 'street' => 'Uttara Road', 'city' => 'Dhaka', 'state' => 'Dhaka Division', 'postcode' => '1230']],
+        ['properties' => ['countrycode' => 'US', 'street' => 'National Forest Road 2334', 'city' => 'Hurley', 'state' => 'Wisconsin']],
+    ]])]);
+
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '12 Uttara', 'country' => 'BD']))->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.line1', '12 Uttara Road')->assertJsonPath('data.0.state', 'Dhaka')->assertJsonPath('data.0.country', 'BD');
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'bbox=88.0'));
+
+    Cache::flush();
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '2334 National', 'country' => 'US']))->assertOk()
+        ->assertJsonPath('data.0.line1', 'National Forest Road 2334');
+});
+
+it('normalises international phone numbers, dedupes contacts across formats and accepts Bangladesh addresses', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $address = ['name' => 'Rahim', 'phone' => '01712-345678', 'line1' => 'House 4, Road 2', 'line2' => 'Gulshan Model Town', 'city' => 'Dhaka', 'state' => 'Dhaka', 'postal_code' => '1212', 'country' => 'bd'];
+
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Rahim', 'phone' => '+1 (305) 555-0100'])->assertCreated()->assertJsonPath('data.phone', '+13055550100');
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Rahim again', 'phone' => '+13055550100'])->assertCreated();
+    expect(Contact::query()->where('workspace_id', $c['workspace']->id)->where('phone', '+13055550100')->count())->toBe(1);
+
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Bad', 'phone' => '12'])->assertUnprocessable()->assertJsonValidationErrors('phone');
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Bad', 'phone' => '+8801712345678', 'address' => [...$address, 'phone' => 'abc']])->assertUnprocessable()->assertJsonValidationErrors('address.phone');
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Bad', 'phone' => '+8801712345678', 'address' => [...$address, 'phone' => '+8801712345678', 'country' => 'ZZ']])->assertUnprocessable()->assertJsonValidationErrors('address.country');
+
+    $this->postJson(route('user.commerce.pos.customers.store'), ['name' => 'Rahim BD', 'phone' => '+8801712345678', 'address' => [...$address, 'phone' => '+8801712345678']])->assertCreated()
+        ->assertJsonPath('data.addresses.0.country', 'BD')->assertJsonPath('data.addresses.0.postal_code', '1212');
+});
+
+it('searches every supported country when none is chosen and picks the country from the result', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    Cache::flush();
+    Http::fake(fn ($request) => Http::response(['features' => str_contains($request->url(), 'bbox=88.0')
+        ? [['properties' => ['countrycode' => 'BD', 'street' => 'Uttara Road', 'city' => 'Dhaka', 'state' => 'Dhaka Division', 'postcode' => '1230']]]
+        : [['properties' => ['countrycode' => 'US', 'street' => 'Northwest 1st Street', 'housenumber' => '729', 'city' => 'Miami', 'state' => 'Florida', 'postcode' => '33128']]]]));
+
+    $countries = collect($this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '729 1st']))->assertOk()->assertJsonCount(2, 'data')->json('data'))->pluck('country')->all();
+    expect($countries)->toEqualCanonicalizing(['US', 'BD']);
+    $this->getJson(route('user.commerce.pos.address-suggestions', ['q' => '729 1st']))->assertJsonFragment(['postal_code' => '33128', 'state' => 'FL']);
+});
+
+it('prints one invoice in A4 and 80mm receipt formats with store branding and keeps the packing slip free of prices', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $other = posContext();
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $c['workspace']->id], ['config' => ['name' => 'Acme Fashion', 'address' => '12 Market Street', 'tax_id' => 'TAX-99', 'invoice_footer' => 'Pay within 7 days.']]);
+    $c['data']['payment'] = posPayment();
+    $order = Order::findOrFail($this->postJson(route('user.commerce.pos.checkout'), $c['data'])->assertCreated()->json('data.id'));
+
+    $this->get(route('user.commerce.orders.invoice.print', $order))->assertOk()
+        ->assertSee('Acme Fashion')->assertSee('12 Market Street')->assertSee('TAX-99')->assertSee('Pay within 7 days.')
+        ->assertSee('INV-'.$order->number)->assertSee('USD 20.00')->assertSee('Balance due')->assertSee('USD 5.00');
+    $this->get(route('user.commerce.orders.invoice.print', ['order' => $order, 'format' => 'receipt']))->assertOk()
+        ->assertSee('Acme Fashion')->assertSee('Sales receipt')->assertSee('Payments')->assertSee('INV-'.$order->number);
+    $this->get(route('user.commerce.pos.receipt', $order))->assertOk()->assertSee('Acme Fashion')->assertSee('Sales receipt');
+    $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Packing slip')->assertSee('Acme Fashion')->assertDontSee('USD 20.00');
+    $this->get(route('user.commerce.orders.show', $order))->assertOk()->assertSee('Documents')->assertSee('Print invoice')->assertSee('Print receipt (80mm)')->assertDontSee('Cancel order');
+
+    $this->actingAs($other['user'])->withSession(['active_workspace_id' => $other['workspace']->id]);
+    posManager($other['user']);
+    $this->get(route('user.commerce.orders.invoice.print', $order))->assertNotFound();
+    $viewer = User::factory()->create();
+    $c['workspace']->members()->attach($viewer, ['status' => 'active']);
+    $this->actingAs($viewer)->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $this->get(route('user.commerce.orders.invoice.print', $order))->assertForbidden();
 });

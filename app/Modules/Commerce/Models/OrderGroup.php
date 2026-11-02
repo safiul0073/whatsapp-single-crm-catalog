@@ -12,6 +12,6 @@ class OrderGroup extends Model
 
     protected function casts(): array
     {
-        return ['pack_snapshot' => 'array', 'ratio' => 'array', 'box_count' => 'integer', 'quantity' => 'integer'];
+        return ['pack_snapshot' => 'array', 'ratio' => 'array', 'box_count' => 'integer', 'quantity' => 'integer', 'multiplier' => 'integer', 'pieces_per_box' => 'integer'];
     }
 }

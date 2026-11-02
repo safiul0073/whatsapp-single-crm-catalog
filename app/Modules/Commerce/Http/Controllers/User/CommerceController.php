@@ -9,6 +9,7 @@ use App\Modules\Commerce\Http\Requests\BulkDeleteCommerceRequest;
 use App\Modules\Commerce\Http\Requests\CatalogRequest;
 use App\Modules\Commerce\Http\Requests\CategoryRequest;
 use App\Modules\Commerce\Http\Requests\CommerceSettingsRequest;
+use App\Modules\Commerce\Http\Requests\DeleteOrdersRequest;
 use App\Modules\Commerce\Http\Requests\ProductDetailsRequest;
 use App\Modules\Commerce\Http\Requests\ProductGalleryRequest;
 use App\Modules\Commerce\Http\Requests\ProductOptionsRequest;
@@ -688,7 +689,30 @@ class CommerceController extends Controller
             'sources' => Order::query()->where('workspace_id', $workspace->id)->whereNotNull('source')->distinct()->pluck('source'),
             'statusCounts' => $statusCounts,
             'totalCount' => $totalCount,
+            'canDeleteOrders' => $workspace->isOwner($request->user()),
         ]);
+    }
+
+    public function destroyOrder(Request $request, Order $order): RedirectResponse
+    {
+        abort_unless($this->workspaces->current($request->user())?->isOwner($request->user()), 403);
+        $this->assertWorkspace($request, $order->workspace_id);
+
+        $this->orders->delete($order);
+
+        return redirect()->route('user.commerce.orders.index')->with('success', __('Order :number deleted.', ['number' => $order->number]));
+    }
+
+    public function bulkDestroyOrders(DeleteOrdersRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $orders = $this->bulkRecords(Order::class, $workspace->id, $request->validated('ids'));
+
+        foreach ($orders as $order) {
+            $this->orders->delete($order);
+        }
+
+        return back()->with('success', trans_choice(':count order deleted.|:count orders deleted.', $orders->count(), ['count' => $orders->count()]));
     }
 
     public function order(Request $request, Order $order): View
@@ -711,6 +735,7 @@ class CommerceController extends Controller
             'customerBalances' => $order->source === 'pos' && $order->contact ? $pos->customerBalances($order->contact) : [],
             'storeCustomer' => $storeCustomer,
             'customerAddresses' => $customerAddresses,
+            'canDeleteOrders' => $this->workspaces->current($request->user())?->isOwner($request->user()) ?? false,
         ]);
     }
 

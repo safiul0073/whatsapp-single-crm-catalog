@@ -106,3 +106,51 @@
 .pos-dialog {
   @apply m-auto max-h-[92dvh] w-[calc(100%_-_1rem)] overflow-y-auto rounded-lg border border-border-default bg-bg-elevated p-5 text-title shadow-xl backdrop:bg-black/60 sm:w-[calc(100%_-_2rem)];
 }
+
+.pos-card {
+  @apply flex items-center gap-3 rounded-lg border border-border-default bg-bg-elevated px-3 py-2.5 text-left;
+}
+
+.pos-card-empty {
+  @apply justify-center border-dashed text-sm text-body transition hover:border-primary/50 hover:text-title;
+}
+
+.pos-avatar {
+  @apply grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary;
+}
+
+.pos-link {
+  @apply shrink-0 text-xs font-medium text-primary hover:underline;
+}
+
+.pos-form-grid {
+  @apply grid gap-3 sm:grid-cols-2;
+}
+
+.pos-field {
+  @apply flex flex-col gap-1 text-xs font-medium text-body;
+}
+
+.pos-field-wide {
+  @apply sm:col-span-2;
+}
+
+.pos-suggestion {
+  @apply flex w-full items-start gap-2 px-3 py-2 text-left text-sm text-body;
+}
+
+.pos-suggestion-active {
+  @apply bg-section;
+}
+
+.pos-result-list {
+  @apply max-h-72 space-y-1.5 overflow-y-auto;
+}
+
+.pos-result {
+  @apply flex w-full items-center gap-3 rounded-lg border border-border-default bg-bg-elevated px-3 py-2.5 text-left transition hover:border-primary/50;
+}
+
+.pos-result-active {
+  @apply border-primary bg-primary/5;
+}

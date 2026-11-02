@@ -369,7 +369,7 @@
           </div>
         </div>
 
-        <form class="flex max-h-[calc(100dvh-7rem)] flex-col" x-ref="form" :action="action" method="POST" @submit="applyPhoneCode()">
+        <form class="flex max-h-[calc(100dvh-7rem)] flex-col" x-ref="form" :action="action" method="POST">
           @csrf
           <input type="hidden" name="_method" x-model="method" />
           <input type="hidden" name="id" x-model="contactId" />
@@ -395,15 +395,8 @@
 
                     <div class="sm:col-span-2">
                       <label for="contactPhone" class="form-label">WhatsApp number <span class="text-error">*</span></label>
-                      <div class="grid gap-2 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-                        <select x-model="form.phone_code" class="form-input min-w-0 !h-11 !rounded-sm text-sm" aria-label="Phone country code" @change="applyPhoneCode()">
-                          <template x-for="country in phoneCountries" :key="country.code">
-                            <option :value="country.dial" x-text="country.label"></option>
-                          </template>
-                        </select>
-                        <input id="contactPhone" name="phone" type="tel" required x-model="form.phone" placeholder="1712345678" class="form-input min-w-0 !h-11 !rounded-sm text-sm" @blur="applyPhoneCode()" />
-                      </div>
-                      <p class="form-hint">Choose a country code, then enter the number. The prefix is added automatically.</p>
+                      <x-ui.phone-input id="contactPhone" name="phone" :required="true" x-model="form.phone" />
+                      <p class="form-hint">Choose a country code (United States by default), then enter the number.</p>
                     </div>
 
                     <div class="sm:col-span-2">
@@ -1280,23 +1273,9 @@
           action: '{{ route("user.contacts.store") }}',
           availableTags: @js($tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])),
           availableGroups: @js($groups->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])),
-          phoneCountries: [
-            { code: 'BD', dial: '+880', label: 'BD +880' },
-            { code: 'US', dial: '+1', label: 'US +1' },
-            { code: 'GB', dial: '+44', label: 'GB +44' },
-            { code: 'IN', dial: '+91', label: 'IN +91' },
-            { code: 'PK', dial: '+92', label: 'PK +92' },
-            { code: 'LK', dial: '+94', label: 'LK +94' },
-            { code: 'NP', dial: '+977', label: 'NP +977' },
-            { code: 'MY', dial: '+60', label: 'MY +60' },
-            { code: 'SG', dial: '+65', label: 'SG +65' },
-            { code: 'AE', dial: '+971', label: 'AE +971' },
-            { code: 'SA', dial: '+966', label: 'SA +966' },
-          ],
           form: {
             name: '',
             phone: '',
-            phone_code: '+880',
             email: '',
             city: '',
             country: '',
@@ -1305,25 +1284,6 @@
             opt_in_status: 'subscribed',
             tag_ids: [],
             group_ids: [],
-          },
-          applyPhoneCode() {
-            const code = this.form.phone_code || '';
-            const phone = String(this.form.phone || '').trim();
-
-            if (!code || phone === '') return;
-            if (phone.startsWith('+')) {
-              this.form.phone_code = this.inferPhoneCode(phone);
-              return;
-            }
-
-            this.form.phone = `${code}${phone.replace(/^0+/, '')}`;
-          },
-          inferPhoneCode(phone) {
-            const match = [...this.phoneCountries]
-              .sort((a, b) => b.dial.length - a.dial.length)
-              .find((country) => String(phone || '').startsWith(country.dial));
-
-            return match?.dial || this.form.phone_code || '+880';
           },
           customRows(fields = {}) {
             return Object.entries(fields || {})
@@ -1370,7 +1330,6 @@
               this.form = {
                 name: contact.name || '',
                 phone: contact.phone || '',
-                phone_code: this.inferPhoneCode(contact.phone || ''),
                 email: contact.email || '',
                 city: contact.city || '',
                 country: contact.country || '',
@@ -1392,8 +1351,7 @@
             this.form = {
               name: '',
               phone: '',
-              phone_code: '+880',
-              email: '',
+                email: '',
               city: '',
               country: '',
               custom_fields: { website: '' },

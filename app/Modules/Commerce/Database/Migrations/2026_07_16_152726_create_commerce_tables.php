@@ -298,6 +298,7 @@ return new class extends Migration
             $table->json('issues')->nullable();
             $table->json('provider_payload')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             $table->unique(['channel_account_id', 'provider_message_id']);
             $table->index(['workspace_id', 'status', 'created_at']);
         });

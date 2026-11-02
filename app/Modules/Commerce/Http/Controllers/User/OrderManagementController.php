@@ -15,6 +15,7 @@ use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
+use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\StoreFeatures;
@@ -264,19 +265,27 @@ class OrderManagementController extends Controller
         ]);
     }
 
-    public function slip(Request $request, Order $order): View
+    public function slip(Request $request, Order $order, OrderDocumentPresenter $documents): View
     {
         $this->assertOrder($request, $order);
-
-        return view('commerce::user.packing-slip', [
-            'order' => $order->load([
-                'contact',
-                'groups',
-                'boxes.group',
-                'boxes.contents.item.variant.media', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery.media',
-                'boxes.contents.item.variant.color',
-            ]),
+        $order->load([
+            'contact',
+            'groups',
+            'boxes.group',
+            'boxes.contents.item.variant.media', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery.media',
+            'boxes.contents.item.variant.color',
         ]);
+
+        return view('commerce::user.packing-slip', $documents->present($order));
+    }
+
+    /** Printable invoice: A4 by default, the 80mm counter receipt with ?format=receipt. */
+    public function invoicePrint(Request $request, Order $order, OrderDocumentPresenter $documents): View
+    {
+        $this->assertOrder($request, $order);
+        $order->ensureInvoice();
+
+        return view($request->query('format') === 'receipt' ? 'commerce::user.pos-receipt' : 'commerce::user.invoice-print', $documents->present($documents->load($order)));
     }
 
     public function invoice(Request $request, Order $order, InvoiceService $invoices): Response
