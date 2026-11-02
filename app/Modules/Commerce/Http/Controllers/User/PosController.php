@@ -3,21 +3,30 @@
 namespace App\Modules\Commerce\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Http\Requests\AddressSuggestionRequest;
 use App\Modules\Commerce\Http\Requests\PosCheckoutRequest;
+use App\Modules\Commerce\Http\Requests\PosContactAddressRequest;
+use App\Modules\Commerce\Http\Requests\PosCustomerRequest;
+use App\Modules\Commerce\Http\Requests\PostalLookupRequest;
 use App\Modules\Commerce\Http\Requests\RecordOrderPaymentRequest;
 use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\ContactAddress;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\PosHeldSale;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\AddressAutocompleteService;
+use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Services\PosService;
+use App\Modules\Commerce\Services\PostalCodeLookupService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -148,11 +157,12 @@ class PosController extends Controller
         return back()->with('success', __('Pickup completed.'));
     }
 
-    public function receipt(Request $request, Order $order): View
+    public function receipt(Request $request, Order $order, OrderDocumentPresenter $documents): View
     {
         $this->assertOrder($request, $order);
+        $order->ensureInvoice();
 
-        return view('commerce::user.pos-receipt', ['order' => $order->load(['items.variant.color.swatchMedia', 'items.variant.media', 'items.variant.product.primaryMedia', 'items.variant.product.gallery.media', 'groups', 'payments.staff', 'contact']), 'workspace' => $this->workspaces->current($request->user())]);
+        return view('commerce::user.pos-receipt', $documents->present($documents->load($order)));
     }
 
     public function customerBalance(Request $request, Contact $contact): JsonResponse
@@ -200,9 +210,83 @@ class PosController extends Controller
         $workspace = $this->workspaces->current($request->user());
         $search = mb_substr(trim((string) $request->query('q', '')), 0, 100);
 
-        return response()->json(['data' => Contact::query()->where('workspace_id', $workspace->id)
+        $contacts = Contact::query()->where('workspace_id', $workspace->id)
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$search.'%')->orWhere('phone', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
-            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'email'])]);
+            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'email']);
+        $addresses = ContactAddress::query()->where('workspace_id', $workspace->id)->whereIn('contact_id', $contacts->pluck('id'))->orderByDesc('is_default')->latest('id')->get()->groupBy('contact_id');
+
+        return response()->json(['data' => $contacts->map(fn (Contact $contact): array => $this->customerPayload($contact, $addresses->get($contact->id, new Collection)))]);
+    }
+
+    public function storeCustomer(PosCustomerRequest $request): JsonResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $data = $request->validated();
+        $email = filled($data['email'] ?? null) ? strtolower(trim((string) $data['email'])) : null;
+        $contact = Contact::query()->where('workspace_id', $workspace->id)->where('phone', $data['phone'])->first();
+        $contact ??= Contact::query()->create([
+            'workspace_id' => $workspace->id,
+            'phone' => $data['phone'],
+            'name' => $data['name'],
+            'email' => $email !== null && ! Contact::query()->where('workspace_id', $workspace->id)->where('email', $email)->exists() ? $email : null,
+            'country' => $data['address']['country'] ?? 'US',
+        ]);
+        if (filled($data['address']['line1'] ?? null)) {
+            $this->saveAddress($contact, $data['address']);
+        }
+
+        return response()->json(['data' => $this->customerPayload($contact, ContactAddress::query()->where('workspace_id', $workspace->id)->where('contact_id', $contact->id)->orderByDesc('is_default')->latest('id')->get())], 201);
+    }
+
+    public function storeAddress(PosContactAddressRequest $request, Contact $contact): JsonResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        abort_unless($contact->workspace_id === $workspace->id, 404);
+        $address = $this->saveAddress($contact, $request->validated());
+
+        return response()->json(['data' => $this->addressPayload($address)], 201);
+    }
+
+    public function addressSuggestions(AddressSuggestionRequest $request, AddressAutocompleteService $addresses): JsonResponse
+    {
+        return response()->json(['data' => $addresses->suggest($request->validated('q'), $request->validated('country'))]);
+    }
+
+    public function postalLookup(PostalLookupRequest $request, PostalCodeLookupService $postal): JsonResponse
+    {
+        return response()->json(['data' => $postal->lookup($request->validated('country'), $request->validated('postal_code'))]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function saveAddress(Contact $contact, array $data): ContactAddress
+    {
+        $attributes = collect($data)->only(['name', 'phone', 'line1', 'line2', 'city', 'state', 'postal_code', 'country'])->all();
+        $address = ContactAddress::query()->firstOrNew(['workspace_id' => $contact->workspace_id, 'contact_id' => $contact->id, 'line1' => $attributes['line1'], 'postal_code' => $attributes['postal_code'] ?? null]);
+        $address->fill([...$attributes, 'country' => $attributes['country'] ?? 'US']);
+        if (! $address->exists) {
+            $address->is_default = ! ContactAddress::query()->where('contact_id', $contact->id)->exists();
+        }
+        $address->save();
+
+        return $address;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerPayload(Contact $contact, Collection $addresses): array
+    {
+        return [...$contact->only(['id', 'name', 'phone', 'email']), 'addresses' => $addresses->take(5)->map(fn (ContactAddress $address): array => $this->addressPayload($address))->values()->all()];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function addressPayload(ContactAddress $address): array
+    {
+        return $address->only(['id', 'name', 'phone', 'line1', 'line2', 'city', 'state', 'postal_code', 'country', 'is_default']);
     }
 
     /**

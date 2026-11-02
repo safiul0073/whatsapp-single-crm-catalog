@@ -242,4 +242,20 @@ class OrderWorkflowService
         }
         $order->inventory_restored_at = now();
     }
+
+    /**
+     * Soft-deletes an order after releasing any stock it still holds.
+     */
+    public function delete(Order $order): void
+    {
+        DB::transaction(function () use ($order): void {
+            $order = Order::query()->with('items')->lockForUpdate()->findOrFail($order->id);
+            if ($order->inventory_adjusted_at && ! $order->inventory_restored_at) {
+                $this->restoreInventory($order);
+                $order->save();
+            }
+            $order->events()->create(['key' => 'deleted', 'label' => 'Order deleted by owner', 'occurred_at' => now()]);
+            $order->delete();
+        });
+    }
 }

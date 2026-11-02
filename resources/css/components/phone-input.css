@@ -1,0 +1,28 @@
+/* ── International phone input ── */
+.phone-input {
+  @apply relative flex items-stretch gap-2;
+}
+
+.phone-input-code {
+  @apply inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-border-default bg-bg-elevated px-2.5 text-sm text-title transition hover:border-primary/50;
+}
+
+.phone-input-number {
+  @apply min-w-0 flex-1;
+}
+
+.phone-input-menu {
+  @apply absolute left-0 top-full z-30 mt-1 w-full min-w-64 space-y-1 rounded-md border border-border-default bg-bg-elevated p-2 shadow-lg;
+}
+
+.phone-input-list {
+  @apply max-h-56 overflow-y-auto;
+}
+
+.phone-input-option {
+  @apply flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-title;
+}
+
+.phone-input-option-active {
+  @apply bg-section;
+}

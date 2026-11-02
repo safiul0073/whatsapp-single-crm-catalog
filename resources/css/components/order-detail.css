@@ -1,0 +1,41 @@
+/* ── Owner order details page ── */
+.order-menu {
+  @apply absolute right-0 top-full z-30 mt-1 w-64 rounded-md border border-border-default bg-bg-elevated p-1 shadow-lg;
+}
+
+.order-menu-item {
+  @apply flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-title transition hover:bg-section;
+}
+
+.order-stepper {
+  @apply gap-2 border-t border-border-soft pt-4;
+}
+
+.order-step {
+  @apply flex items-center gap-2 text-xs text-body;
+}
+
+.order-step-done {
+  @apply text-primary;
+}
+
+.order-step-current {
+  @apply font-semibold text-primary;
+}
+
+.order-timeline {
+  @apply space-y-3 border-l border-border-default pl-4;
+}
+
+.order-timeline-item {
+  @apply relative flex flex-col text-body;
+}
+
+.order-timeline-item::before {
+  content: '';
+  @apply absolute -left-[1.3rem] top-1.5 size-2.5 rounded-full border border-border-default bg-bg-elevated;
+}
+
+.order-timeline-done::before {
+  @apply border-primary bg-primary;
+}

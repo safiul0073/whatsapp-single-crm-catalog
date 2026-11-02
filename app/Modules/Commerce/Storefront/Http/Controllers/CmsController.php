@@ -3,7 +3,9 @@
 namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontMenu;
+use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Services\CmsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,5 +35,15 @@ class CmsController extends Controller
         abort_if($preview && ! $cms->verifyPreview($w, $slug, $r->query('preview_token')), 403);
 
         return response()->json(['data' => $cms->page($w, $slug, $preview)])->header('Cache-Control', $preview ? 'private, no-store' : 'no-cache');
+    }
+
+    public function sitemap(Request $r): JsonResponse
+    {
+        $w = $r->attributes->get('store_workspace')->id;
+
+        return response()->json(['data' => [
+            'pages' => StorefrontPage::query()->where('workspace_id', $w)->where('status', 'published')->orderBy('id')->get(['slug', 'updated_at']),
+            'blogs' => StorefrontContent::query()->where('workspace_id', $w)->where('type', 'blog')->where('published_at', '<=', now())->orderBy('id')->get(['slug', 'updated_at']),
+        ]]);
     }
 }

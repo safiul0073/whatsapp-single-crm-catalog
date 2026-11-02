@@ -1,36 +1,16 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $order->number }} · {{ __('Packing slip') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="bg-section text-title print:bg-white">
+<x-layouts.document :title="$order->number.' · '.__('Packing slip')" :back="route('user.commerce.orders.show', $order)" format="a4">
     @php
-        $address = $order->shipping_address ?? [];
-        $customerName = $order->contact?->name ?? ($order->customer_snapshot['name'] ?? ($address['name'] ?? __('Customer')));
-        $customerPhone = $order->contact?->phone ?? ($order->customer_snapshot['phone'] ?? ($address['phone'] ?? null));
-        $addressLines = collect([
-            $address['name'] ?? null,
-            $address['line1'] ?? null,
-            $address['line2'] ?? null,
-            collect([$address['city'] ?? null, $address['state'] ?? null, $address['postal_code'] ?? null])->filter()->implode(', '),
-            $address['country'] ?? null,
-        ])->filter()->values();
         $boxes = $order->boxes->sortBy(fn ($box) => preg_match('/(?:BOX-|#)(\d+)/i', $box->label, $matches) ? (int) $matches[1] : (int) $box->id)->values();
         $totalPieces = $boxes->flatMap->contents->sum('quantity');
         $packedCount = $boxes->whereNotNull('packed_at')->count();
-        $sizeOrder = array_flip(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']);
+        $sizeOrder = array_flip(\App\Modules\Commerce\Services\OrderDocumentPresenter::SIZE_ORDER);
+        $customerName = $customer['name'] ?? __('Customer');
+        $customerPhone = $customer['phone'];
+        $addressLines = $shipTo;
     @endphp
-    <main class="mx-auto my-6 max-w-3xl space-y-4 rounded-lg border border-border-default bg-white p-6 print:my-0 print:max-w-none print:rounded-none print:border-0 print:p-0 print:text-xs">
-        <div class="flex items-center justify-between gap-3 print:hidden">
-            <a href="{{ route('user.commerce.orders.show', $order) }}" class="inline-flex items-center gap-1 text-sm text-body hover:text-title"><i class="ph ph-arrow-left"></i> {{ __('Back to order') }}</a>
-            <button type="button" class="btn btn-primary btn-sm" id="printPackingSlip"><i class="ph ph-printer"></i> {{ __('Print') }}</button>
-        </div>
-
         <header class="flex items-start justify-between gap-4 border-b border-border-default pb-3">
             <div>
+                <p class="text-xs text-body">{{ $brand['name'] }}</p>
                 <h1 class="text-xl font-semibold">{{ __('Packing slip') }}</h1>
                 <p class="text-sm text-body">{{ $order->created_at->format('M j, Y · g:i A') }} · {{ str($order->source)->replace('_', ' ')->title() }}</p>
             </div>
@@ -109,7 +89,4 @@
             <p class="border-t border-border-strong pt-1">{{ __('Packed by') }}</p>
             <p class="border-t border-border-strong pt-1">{{ __('Checked by') }}</p>
         </footer>
-    </main>
-    <script>document.getElementById('printPackingSlip').addEventListener('click', function () { 'use strict'; window.print(); });</script>
-</body>
-</html>
+</x-layouts.document>

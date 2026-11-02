@@ -412,6 +412,7 @@ class UnifiedOrderService
             $group['unit_price'] = $firstItem['unit_price'] ?? OrderMoney::decimal(0, $precision);
             $group['line_total'] = OrderMoney::decimal($groupMinorTotal, $precision);
             $group['size_breakdown'] = $sizeBreakdown;
+            $group['ratio'] = array_map('intval', (array) ($group['ratio'] ?? []));
 
             return $group;
         }, $payload['groups']);

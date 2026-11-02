@@ -218,6 +218,8 @@
             contact_email: {{ Illuminate\Support\Js::from($cfg['contact_email'] ?? '') }},
             contact_phone: {{ Illuminate\Support\Js::from($cfg['contact_phone'] ?? '') }},
             address: {{ Illuminate\Support\Js::from($cfg['address'] ?? '') }},
+            tax_id: {{ Illuminate\Support\Js::from($cfg['tax_id'] ?? '') }},
+            invoice_footer: {{ Illuminate\Support\Js::from($cfg['invoice_footer'] ?? '') }},
             footer_text: {{ Illuminate\Support\Js::from($cfg['footer_text'] ?? '') }},
             password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }},
             app_download_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['app_download_enabled'] ?? true)) }},
@@ -1155,6 +1157,16 @@
                                 maxlength="300"
                                 placeholder="House 12, Road 5, Uttara, Dhaka 1230"
                             >
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="store_tax_id">{{ __('Tax / VAT ID (shown on invoices)') }}</label>
+                            <input id="store_tax_id" type="text" name="config[tax_id]" x-model="form.tax_id" class="form-input" maxlength="60">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="store_invoice_footer">{{ __('Invoice footer / terms') }}</label>
+                            <textarea id="store_invoice_footer" name="config[invoice_footer]" x-model="form.invoice_footer" class="form-input" rows="3" maxlength="500" placeholder="{{ __('Payment terms, return policy or a thank-you note') }}"></textarea>
                         </div>
                     </div>
                 </div>

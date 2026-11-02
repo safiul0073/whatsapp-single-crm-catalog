@@ -840,3 +840,44 @@ it('lets a member without update permission see but not change the packing check
     $this->actingAs($viewer)->get(route('user.commerce.orders.show', $order))->assertOk()->assertDontSee('data-packing-toggle', false)->assertSee('Not packed yet');
     $this->actingAs($viewer)->putJson(route('user.commerce.orders.boxes.packed', [$order, $order->boxes()->first()]), ['packed' => true])->assertForbidden();
 });
+
+it('lets only the workspace owner delete orders, singly or in bulk, and releases held stock', function () {
+    $c = unifiedContext();
+    $workflow = app(OrderWorkflowService::class);
+    $paid = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $workflow->quote($paid, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5, 'payment_url' => 'https://payment.example.test']);
+    $workflow->transition($paid->fresh(), 'paid');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(94);
+    $second = app(UnifiedOrderService::class)->create($c['workspace'], [...$c['data'], 'submission_reference' => (string) Str::uuid()]);
+    $third = app(UnifiedOrderService::class)->create($c['workspace'], [...$c['data'], 'submission_reference' => (string) Str::uuid()]);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $member = workspaceMemberWith($c, ['commerce.orders.view', 'commerce.orders.update']);
+    $this->actingAs($member)->get(route('user.commerce.orders.index'))->assertOk()->assertDontSee('Select all orders')->assertDontSee('Delete order');
+    $this->actingAs($member)->get(route('user.commerce.orders.show', $paid))->assertOk()->assertDontSee('Delete order');
+    $this->actingAs($member)->delete(route('user.commerce.orders.destroy', $paid))->assertForbidden();
+    $this->actingAs($member)->delete(route('user.commerce.orders.bulk-destroy'), ['ids' => [$paid->id]])->assertForbidden();
+    expect(Order::query()->count())->toBe(3);
+
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.index'))->assertOk()->assertSee('Select all orders')->assertSee('Delete order');
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $paid))->assertOk()->assertSee('Delete order');
+    $this->actingAs($c['user'])->delete(route('user.commerce.orders.destroy', $paid))->assertRedirect(route('user.commerce.orders.index'));
+    expect(Order::query()->count())->toBe(2)->and(Order::withTrashed()->count())->toBe(3)->and($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
+    expect(Order::withTrashed()->find($paid->id)->events()->where('key', 'deleted')->exists())->toBeTrue();
+
+    $this->actingAs($c['user'])->delete(route('user.commerce.orders.bulk-destroy'), ['ids' => [$second->id, $third->id]])->assertRedirect();
+    expect(Order::query()->count())->toBe(0);
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $second))->assertNotFound();
+});
+
+it('rejects deleting orders from another workspace', function () {
+    $c = unifiedContext();
+    $other = unifiedContext();
+    $foreign = app(UnifiedOrderService::class)->create($other['workspace'], $other['data']);
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $this->delete(route('user.commerce.orders.destroy', $foreign))->assertNotFound();
+    $this->delete(route('user.commerce.orders.bulk-destroy'), ['ids' => [$foreign->id]])->assertNotFound();
+    $this->delete(route('user.commerce.orders.bulk-destroy'), ['ids' => []])->assertSessionHasErrors('ids');
+    expect(Order::query()->count())->toBe(1);
+});

@@ -41,6 +41,7 @@ use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -624,4 +625,23 @@ it('counts units held by open reservations as unavailable', function (): void {
     $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 2], $h)
         ->assertUnprocessable()
         ->assertJsonPath('available', 1);
+});
+
+it('looks up postal codes for the storefront and validates international phone numbers', function (): void {
+    Http::fake(['*zippopotam*' => Http::response(['places' => [['place name' => 'Gulshan Model Town ', 'state' => 'Dhaka', 'state abbreviation' => '']]])]);
+
+    $this->getJson('/api/storefront/v1/geo/postal-lookup?country=BD&postal_code=1212', $this->headers)->assertOk()
+        ->assertJsonPath('data.city', 'Dhaka')->assertJsonPath('data.area', 'Gulshan Model Town')->assertJsonPath('data.postal_code', '1212');
+    $this->getJson('/api/storefront/v1/geo/postal-lookup?country=FR&postal_code=75001', $this->headers)->assertUnprocessable();
+
+    $binding = ['session_binding' => str_repeat('b', 32), 'consent' => true];
+    $this->postJson('/api/storefront/v1/auth/whatsapp/challenges', ['phone' => '+1', ...$binding], $this->headers)->assertUnprocessable()->assertJsonValidationErrors('phone');
+    $this->postJson('/api/storefront/v1/auth/password/login', ['phone' => 'not a number', 'password' => 'x'], $this->headers)->assertUnprocessable()->assertJsonValidationErrors('phone');
+});
+
+it('lists only published pages and blogs in the cms sitemap', function (): void {
+    StorefrontPage::query()->where('workspace_id', $this->store->id)->where('slug', 'home')->update(['status' => 'published']);
+    StorefrontPage::query()->create(['workspace_id' => $this->store->id, 'slug' => 'draft-page', 'title' => 'Draft', 'status' => 'draft']);
+    $slugs = $this->getJson('/api/storefront/v1/cms/sitemap', $this->headers)->assertOk()->json('data.pages.*.slug');
+    expect($slugs)->toContain('home')->not->toContain('draft-page');
 });

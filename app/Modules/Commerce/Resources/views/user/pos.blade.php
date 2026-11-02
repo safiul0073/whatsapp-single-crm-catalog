@@ -6,6 +6,10 @@
             'preview' => route('user.commerce.pos.preview'),
             'checkout' => route('user.commerce.pos.checkout'),
             'customers' => route('user.commerce.pos.customers'),
+            'customerStore' => route('user.commerce.pos.customers.store'),
+            'addressStore' => route('user.commerce.pos.customers.addresses.store', '__CONTACT__'),
+            'addressSuggestions' => route('user.commerce.pos.address-suggestions'),
+            'postalLookup' => route('user.commerce.pos.postal-lookup'),
             'held' => route('user.commerce.pos.held.index'),
             'heldDestroy' => route('user.commerce.pos.held.destroy', '__HELD__'),
             'balance' => route('user.commerce.pos.customer-balance', '__CONTACT__'),
@@ -118,7 +122,7 @@
                 </div>
 
                 {{-- Customer --}}
-                <section class="space-y-2 border-t border-border-default pt-3">
+                <section class="space-y-3 border-t border-border-default pt-3">
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-body">{{ __('Customer') }}</h3>
                         <select class="pos-select" x-model="fulfillment" aria-label="{{ __('Fulfillment') }}">
@@ -127,38 +131,45 @@
                         </select>
                     </div>
                     <template x-if="customerType === 'existing' && contactId">
-                        <div class="flex items-center justify-between rounded-md bg-primary/5 px-3 py-2 text-sm">
-                            <span class="min-w-0 truncate text-title" x-text="contactLabel"></span>
-                            <button type="button" class="text-xs text-body hover:text-error" @click="clearCustomer()">{{ __('Change') }}</button>
+                        <div class="pos-card">
+                            <span class="pos-avatar" x-text="initials(contactLabel.split(' · ')[0])"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-title" x-text="contactLabel.split(' · ')[0]"></p>
+                                <p class="truncate text-xs text-body" x-text="contactLabel.split(' · ')[1] || ''"></p>
+                                <template x-for="balance in balances" :key="balance.currency"><p class="text-xs text-warning" x-text="`Outstanding: ${money(balance.amount, balance.currency)}`"></p></template>
+                            </div>
+                            <button type="button" class="pos-link" @click="clearCustomer()">{{ __('Change') }}</button>
                         </div>
                     </template>
-                    <template x-for="balance in balances" :key="balance.currency"><p class="text-xs text-warning" x-text="`Outstanding: ${money(balance.amount, balance.currency)}`"></p></template>
-                    <div x-show="!(customerType === 'existing' && contactId)" class="relative">
-                        <input x-ref="posCustomer" type="search" class="form-input" x-model="customerQuery" @input.debounce.300ms="searchCustomers()" @focus="customerQuery === '' && searchCustomers()" placeholder="{{ __('Search customer by name or phone (F4)') }}" aria-label="{{ __('Search customer') }}">
-                        <div x-show="customerResults.length" x-cloak @click.outside="customerResults = []" class="pos-dropdown">
-                            <template x-for="contact in customerResults" :key="contact.id">
-                                <button type="button" class="pos-dropdown-item" @click="pickCustomer(contact)"><span class="font-medium text-title" x-text="contact.name"></span><span class="text-xs text-body" x-text="contact.phone"></span></button>
-                            </template>
-                        </div>
-                        <div class="mt-2 flex gap-2 text-xs">
+                    <div x-show="!(customerType === 'existing' && contactId)" class="space-y-2">
+                        <button x-ref="posCustomer" type="button" class="pos-card pos-card-empty w-full" @click="openCustomerModal()"><i class="ph ph-user-plus"></i>{{ __('Add customer') }}<kbd class="text-[10px] text-body">F4</kbd></button>
+                        <div class="flex gap-2 text-xs">
                             <button type="button" class="pos-chip" :class="customerType === 'walk_in' && 'pos-chip-active'" @click="customerType = 'walk_in'" :disabled="fulfillment === 'delivery'">{{ __('Walk-in') }}</button>
-                            <button type="button" class="pos-chip" :class="customerType === 'new' && 'pos-chip-active'" @click="customerType = 'new'">+ {{ __('New customer') }}</button>
                         </div>
                     </div>
-                    <template x-if="customerType === 'new'">
-                        <div class="grid grid-cols-2 gap-2">
-                            <input class="form-input" x-model="customer.name" maxlength="150" placeholder="{{ __('Name') }}" required aria-label="{{ __('Name') }}">
-                            <input class="form-input" x-model="customer.phone" maxlength="30" placeholder="{{ __('Phone') }}" required aria-label="{{ __('Phone') }}">
-                            <input type="email" class="form-input col-span-2" x-model="customer.email" maxlength="255" placeholder="{{ __('Email (optional)') }}" aria-label="{{ __('Email') }}">
-                        </div>
-                    </template>
-                    <template x-if="fulfillment === 'delivery'">
-                        <div class="grid grid-cols-2 gap-2">
-                            @foreach(['name' => 'Recipient name', 'phone' => 'Delivery phone', 'line1' => 'Address', 'line2' => 'Address line 2', 'city' => 'City', 'state' => 'State / region', 'postal_code' => 'Postal code', 'country' => 'Country code (US)'] as $field => $label)
-                                <input class="form-input @if(in_array($field, ['line1', 'line2'])) col-span-2 @endif" x-model="address.{{ $field }}" placeholder="{{ __($label) }}" aria-label="{{ __($label) }}" maxlength="{{ $field === 'country' ? 2 : 255 }}" @if(in_array($field, ['name', 'phone', 'line1', 'city', 'country'])) required @endif>
-                            @endforeach
+                    <template x-if="fulfillment === 'delivery' && customerType === 'existing'">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <h4 class="text-xs font-medium uppercase tracking-wide text-body">{{ __('Shipping address') }}</h4>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="pos-link" x-show="address.line1" @click="openAddressModal('edit')">{{ __('Edit') }}</button>
+                                    <button type="button" class="pos-link" x-show="savedAddresses.length > 1" @click="openAddressModal()">{{ __('Change') }}</button>
+                                    <button type="button" class="pos-link" @click="openAddressModal('create')">+ {{ __('New address') }}</button>
+                                </div>
+                            </div>
+                            <template x-if="address.line1">
+                                <div class="pos-card">
+                                    <i class="ph ph-map-pin shrink-0 text-lg text-primary"></i>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-title" x-text="address.name"></p>
+                                        <p class="text-xs text-body" x-text="addressSummary()"></p>
+                                        <p class="text-xs text-body" x-text="address.phone"></p>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" x-show="!address.line1" class="pos-card pos-card-empty w-full" @click="openAddressModal()"><i class="ph ph-plus"></i>{{ __('Add shipping address') }}</button>
                             <template x-if="quote && quote.shipping_options.length">
-                                <select class="form-input col-span-2" x-model="shippingMethod" aria-label="{{ __('Shipping method') }}">
+                                <select class="form-input" x-model="shippingMethod" aria-label="{{ __('Shipping method') }}">
                                     <option value="">{{ __('Best available shipping') }}</option>
                                     <template x-for="option in quote.shipping_options" :key="option.id"><option :value="option.id" x-text="`${option.name} · ${money(option.price, option.currency)}`"></option></template>
                                 </select>
@@ -308,7 +319,7 @@
                                         <button type="button" class="flex w-full items-center gap-3 rounded-md border border-border-default px-3 py-2 text-left transition hover:border-primary/50" @click="openWholesaleColor(color, $event.currentTarget)" :aria-pressed="selectedWholesaleColorIds.includes(String(color.id))">
                                             <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
                                             <span class="min-w-0 flex-1"><span class="block text-sm text-title" x-text="color.name"></span><span class="text-xs text-body" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? Object.entries(wholesaleSizeQuantities[color.id] || {}).filter(([, q]) => Number(q) > 0).map(([s, q]) => `${s}: ${q}`).join(' · ') : `${color.available} available`"></span></span>
-                                            <span class="text-xs font-medium text-primary" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? 'Edit' : 'Select'"></span>
+                                            <span class="flex flex-col items-end gap-0.5 text-right"><span class="text-xs font-medium text-primary" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? 'Edit' : 'Select'"></span><span class="text-xs text-body" x-text="`${wholesaleRemainingStock(color)} in stock`"></span></span>
                                         </button>
                                     </template></div>
                                     <p class="text-xs text-error" x-show="selectedWholesaleColorIds.length && !canAddWholesaleSelection()" x-text="wholesaleSelectionError()"></p>
@@ -323,7 +334,7 @@
 
         {{-- Wholesale color sizes --}}
         <dialog x-ref="posWholesaleColorModal" aria-labelledby="pos-wholesale-color-title" class="pos-dialog max-w-lg" @close="closeWholesaleColor()">
-            <template x-if="selectedProduct && selectedWholesaleColorId">
+            <template x-if="selectedProduct && wholesaleSizeQuantities[selectedWholesaleColorId]">
                 <div class="space-y-4">
                     <div class="flex items-start justify-between gap-3"><div><h2 id="pos-wholesale-color-title" class="font-semibold text-title" x-text="`${selectedProduct.name} · ${wholesaleColorName()}`"></h2><p class="text-xs text-body">{{ __('Pieces to sell by size') }}</p></div><button type="button" class="pos-icon-btn" autofocus @click="$refs.posWholesaleColorModal.close()" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button></div>
                     <div class="space-y-2"><template x-for="variant in selectedProduct.variants.filter(item => String(item.color_id) === selectedWholesaleColorId)" :key="variant.id"><label class="flex items-center justify-between gap-3 rounded-md bg-section px-3 py-2"><span class="text-sm text-title"><span x-text="variant.size"></span> <span class="text-xs text-body" x-text="`· ${variant.available} available`"></span></span><input type="number" min="0" step="1" class="form-input w-24" :max="variant.available" :disabled="variant.available < 1" x-model.number="wholesaleSizeQuantities[selectedWholesaleColorId][variant.size]" :aria-label="`${variant.size} pieces`"></label></template></div>
@@ -331,6 +342,80 @@
                     <button type="button" class="btn btn-primary w-full" @click="saveWholesaleColor()" :disabled="Boolean(wholesaleColorSelectionError())" x-text="selectedWholesaleColorIds.includes(selectedWholesaleColorId) ? 'Update color' : 'Add color'"></button>
                 </div>
             </template>
+        </dialog>
+
+        {{-- Customer: search or create --}}
+        <dialog x-ref="posCustomerModal" aria-labelledby="pos-customer-title" class="pos-dialog max-w-lg">
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 id="pos-customer-title" class="font-semibold text-title" x-text="customerView === 'search' ? '{{ __('Select customer') }}' : '{{ __('New customer') }}'"></h2>
+                        <p class="text-xs text-body" x-text="customerView === 'search' ? '{{ __('Search your contacts or create a new customer.') }}' : '{{ __('Saved to your contacts and selected for this sale.') }}'"></p>
+                    </div>
+                    <button type="button" class="pos-icon-btn" @click="$refs.posCustomerModal.close()" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button>
+                </div>
+                <div x-show="customerView === 'search'" class="space-y-3">
+                    <input x-ref="posCustomerSearch" type="search" class="form-input" x-model="customerQuery" @input.debounce.300ms="searchCustomers()" placeholder="{{ __('Search by name, phone or email') }}" aria-label="{{ __('Search customer') }}">
+                    <ul class="pos-result-list">
+                        <template x-for="contact in customerResults" :key="contact.id">
+                            <li>
+                                <button type="button" class="pos-result" @click="pickCustomer(contact)">
+                                    <span class="pos-avatar" x-text="initials(contact.name)"></span>
+                                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-medium text-title" x-text="contact.name"></span><span class="block truncate text-xs text-body" x-text="[contact.phone, contact.email].filter(Boolean).join(' · ')"></span></span>
+                                    <span class="shrink-0 text-xs text-body" x-show="contact.addresses.length" x-text="`${contact.addresses.length} ${contact.addresses.length === 1 ? 'address' : 'addresses'}`"></span>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                    <p x-show="!customerResults.length && !customerSearching" x-cloak class="py-3 text-center text-sm text-body">{{ __('No customers found.') }}</p>
+                    <button type="button" class="btn btn-outline w-full" @click="showCustomerForm()">+ {{ __('Create new customer') }}</button>
+                </div>
+                <form x-show="customerView === 'create'" x-cloak class="space-y-4" @submit.prevent="saveCustomer()">
+                    <div class="pos-form-grid">
+                        <label class="pos-field"><span>{{ __('Name') }}</span><input x-ref="posCustomerName" class="form-input" x-model="customerForm.name" maxlength="150" required autocomplete="off"></label>
+                        <div class="pos-field"><label for="pos-customer-phone">{{ __('Phone') }}</label><x-ui.phone-input id="pos-customer-phone" x-model="customerForm.phone" :required="true" /></div>
+                        <label class="pos-field pos-field-wide"><span>{{ __('Email (optional)') }}</span><input type="email" class="form-input" x-model="customerForm.email" maxlength="255" autocomplete="off"></label>
+                    </div>
+                    <p x-show="formError" x-cloak class="rounded-md bg-error/10 px-3 py-2 text-xs text-error" x-text="formError" role="alert"></p>
+                    <div class="flex justify-between gap-2"><button type="button" class="btn btn-outline" @click="customerView = 'search'">{{ __('Back to search') }}</button><button type="submit" class="btn btn-primary" :disabled="savingCustomer">{{ __('Save customer') }}</button></div>
+                </form>
+            </div>
+        </dialog>
+
+        {{-- Shipping address: choose or add --}}
+        <dialog x-ref="posAddressModal" aria-labelledby="pos-address-title" class="pos-dialog max-w-lg">
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 id="pos-address-title" class="font-semibold text-title" x-text="addressView === 'choose' ? '{{ __('Choose shipping address') }}' : '{{ __('New shipping address') }}'"></h2>
+                        <p class="text-xs text-body" x-text="contactLabel.split(' · ')[0]"></p>
+                    </div>
+                    <button type="button" class="pos-icon-btn" @click="$refs.posAddressModal.close()" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button>
+                </div>
+                <div x-show="addressView === 'choose'" class="space-y-3">
+                    <ul class="pos-result-list">
+                        <template x-for="saved in savedAddresses" :key="saved.id">
+                            <li>
+                                <button type="button" class="pos-result" :class="String(saved.id) === addressId && 'pos-result-active'" @click="chooseAddress(saved)">
+                                    <i class="ph ph-map-pin shrink-0 text-lg text-primary"></i>
+                                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-medium text-title" x-text="saved.name"></span><span class="block text-xs text-body" x-text="addressSummary(saved)"></span><span class="block text-xs text-body" x-text="saved.phone"></span></span>
+                                    <span x-show="saved.is_default" class="pos-badge pos-badge-ws">{{ __('Default') }}</span>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                    <button type="button" class="btn btn-outline w-full" @click="startAddressForm()">+ {{ __('Add new address') }}</button>
+                </div>
+                <form x-show="addressView === 'create'" x-cloak class="space-y-4" @submit.prevent="saveAddress()">
+                    @include('commerce::user.partials.pos-address-fields')
+                    <p x-show="formError" x-cloak class="rounded-md bg-error/10 px-3 py-2 text-xs text-error" x-text="formError" role="alert"></p>
+                    <div class="flex justify-between gap-2">
+                        <button type="button" class="btn btn-outline" x-show="savedAddresses.length" @click="addressView = 'choose'">{{ __('Back') }}</button>
+                        <span x-show="!savedAddresses.length"></span>
+                        <button type="submit" class="btn btn-primary" :disabled="savingAddress">{{ __('Save address') }}</button>
+                    </div>
+                </form>
+            </div>
         </dialog>
 
         {{-- Gallery --}}

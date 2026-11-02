@@ -4,6 +4,7 @@ import Alpine from 'alpinejs';
 // Core UI components (always loaded)
 import './components/sidebar.js';
 import './components/modal.js';
+import './components/dialog-backdrop.js';
 import './components/drawer.js';
 import './components/toast.js';
 import './components/topbar.js';
@@ -24,6 +25,7 @@ import './components/automation-builder.js';
 import './components/auto-reply-editor.js';
 import './components/inbox.js';
 import './components/commerce-product-wizard.js';
+import './components/phone-input.js';
 import './components/commerce-pos.js';
 import './components/commerce-payment-gallery.js';
 import './components/commerce-order-packing.js';

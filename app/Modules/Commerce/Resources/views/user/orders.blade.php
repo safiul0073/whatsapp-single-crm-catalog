@@ -15,7 +15,15 @@
         ];
     @endphp
 
-    <div class="space-y-6">
+    <div
+        class="space-y-6"
+        x-data="{
+            selected: [],
+            ids: @js($orders->pluck('id')->map(fn ($id) => (string) $id)->values()),
+            toggleAll(event) { this.selected = event.target.checked ? [...this.ids] : [] },
+            allSelected() { return this.ids.length > 0 && this.selected.length === this.ids.length },
+        }"
+    >
         {{-- Header & Action Buttons --}}
         <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -185,7 +193,20 @@
                     <h2 class="text-sm font-semibold text-title">{{ __('Orders list') }}</h2>
                     <span class="rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-bold text-neutral-600">{{ $orders->total() }}</span>
                 </div>
-                <div class="text-xs text-body">
+                <div class="flex flex-wrap items-center gap-3 text-xs text-body">
+                    @if($canDeleteOrders)
+                        <form method="POST" action="{{ route('user.commerce.orders.bulk-destroy') }}" x-show="selected.length > 0" x-cloak>
+                            @csrf
+                            @method('DELETE')
+                            <template x-for="id in selected" :key="id">
+                                <input type="hidden" name="ids[]" :value="id">
+                            </template>
+                            <button type="submit" class="btn btn-sm btn-outline text-error hover:border-error hover:text-error" data-confirm data-confirm-title="{{ __('Delete selected orders?') }}" data-confirm-message="{{ __('The selected orders disappear from your lists and reports and stock they hold is released. Paid, shipped and completed orders are included. This cannot be undone from the dashboard.') }}" data-confirm-button="{{ __('Delete') }}" data-confirm-variant="danger">
+                                <i class="ph ph-trash"></i>
+                                <span x-text="'{{ __('Delete selected') }} (' + selected.length + ')'"></span>
+                            </button>
+                        </form>
+                    @endif
                     @if($orders->total() > 0)
                         {{ __('Showing') }} <span class="font-semibold text-title">{{ $orders->firstItem() }}</span>–<span class="font-semibold text-title">{{ $orders->lastItem() }}</span> {{ __('of') }} <span class="font-semibold text-title">{{ $orders->total() }}</span>
                     @else
@@ -199,6 +220,11 @@
                 <table class="w-full min-w-[860px] text-left text-sm border-collapse">
                     <thead>
                         <tr class="border-b border-border-soft bg-neutral-50/75 text-xs font-semibold uppercase tracking-wider text-neutral-600">
+                            @if($canDeleteOrders)
+                                <th class="w-10 py-3 px-4">
+                                    <input type="checkbox" class="app-checkbox" :checked="allSelected()" @change="toggleAll($event)" aria-label="{{ __('Select all orders') }}">
+                                </th>
+                            @endif
                             <th class="py-3 px-4">{{ __('Order') }}</th>
                             <th class="py-3 px-4">{{ __('Buyer') }}</th>
                             <th class="py-3 px-4">{{ __('Status') }}</th>
@@ -244,6 +270,11 @@
                                 };
                             @endphp
                             <tr class="hover:bg-neutral-50/70 transition-colors">
+                                @if($canDeleteOrders)
+                                    <td class="py-3 px-4">
+                                        <input type="checkbox" class="app-checkbox" value="{{ $order->id }}" x-model="selected" aria-label="{{ __('Select order :number', ['number' => $order->number]) }}">
+                                    </td>
+                                @endif
                                 {{-- Order Number & Tracking --}}
                                 <td class="py-3 px-4">
                                     <a class="font-mono font-semibold text-primary hover:underline inline-flex items-center gap-1.5" href="{{ route('user.commerce.orders.show', $order) }}">
@@ -341,18 +372,26 @@
                                             <i class="ph ph-printer text-base"></i>
                                             <span class="sr-only">{{ __('Print packing slip') }}</span>
                                         </a>
-                                        @if($order->source === 'pos')
-                                            <a href="{{ route('user.commerce.pos.receipt', $order) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('Print receipt') }}">
-                                                <i class="ph ph-receipt text-base"></i>
-                                                <span class="sr-only">{{ __('Print receipt') }}</span>
-                                            </a>
+                                        <a href="{{ route('user.commerce.orders.invoice.print', $order->source === 'pos' ? ['order' => $order, 'format' => 'receipt'] : $order) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('Print invoice') }}">
+                                            <i class="ph ph-file-text text-base"></i>
+                                            <span class="sr-only">{{ __('Print invoice') }}</span>
+                                        </a>
+                                        @if($canDeleteOrders)
+                                            <form method="POST" action="{{ route('user.commerce.orders.destroy', $order) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-error hover:text-error transition shadow-2xs" title="{{ __('Delete order') }}" data-confirm data-confirm-title="{{ __('Delete order :number?', ['number' => $order->number]) }}" data-confirm-message="{{ $order->payments->isNotEmpty() || in_array($order->status, ['shipped', 'completed', 'delivered'], true) ? __('This order has payments or has already shipped. It disappears from your lists and reports. Stock it holds is released.') : __('The order disappears from your lists and reports. Stock it holds is released.') }}" data-confirm-button="{{ __('Delete') }}" data-confirm-variant="danger">
+                                                    <i class="ph ph-trash text-base"></i>
+                                                    <span class="sr-only">{{ __('Delete order') }}</span>
+                                                </button>
+                                            </form>
                                         @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="p-12 text-center">
+                                <td colspan="{{ $canDeleteOrders ? 9 : 8 }}" class="p-12 text-center">
                                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 mb-3">
                                         <i class="ph ph-shopping-bag text-2xl"></i>
                                     </div>

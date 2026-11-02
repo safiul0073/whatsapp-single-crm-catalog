@@ -8,8 +8,10 @@ Alpine.data('commercePos', () => {
         selectedProduct: null, selectedColorId: '', selectedVariantId: '', selectedQuantity: 1, selectedWholesaleColorIds: [], wholesaleSizeQuantities: {}, selectedWholesaleColorId: '', packCounts: {}, productModalTrigger: null, wholesaleColorTrigger: null, detailImageFailed: false,
         search: '', quote: null, error: '', busy: false, searching: false, previewing: false,
         searchVersion: 0, revision: 0, previewTimer: null, fulfillment: 'pickup', customerType: 'walk_in', contactId: '', contactLabel: '',
-        customerQuery: '', customerResults: [], customerSearching: false,
-        customer: { name: '', phone: '', email: '' }, address: { name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: '' },
+        customerQuery: '', customerResults: [], customerSearching: false, customerView: 'search', addressView: 'create',
+        customerForm: { name: '', phone: '', email: '' }, address: { name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US' },
+        addressForm: { name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US' }, savedAddresses: [], addressId: '',
+        suggestions: [], suggestIndex: -1, suggestVersion: 0, suggestTimer: null, postalStatus: '', postalVersion: 0, countryTouched: false, formError: '', savingCustomer: false, savingAddress: false,
         shippingMethod: '', handover: true, paymentType: 'full', payments: [], balances: [],
         discountType: 'amount', discountValue: '',
         held: [], heldOpen: false,
@@ -22,12 +24,17 @@ Alpine.data('commercePos', () => {
             this.resetPayments();
             this.$watch('address', () => this.invalidate(), { deep: true });
             this.$watch('shippingMethod', () => this.invalidate());
+            this.$watch('addressForm', () => { this.formError = ''; }, { deep: true });
+            this.$watch('customerForm', () => { this.formError = ''; }, { deep: true });
             this.$watch('discountType', () => this.invalidate());
             this.$watch('discountValue', () => this.invalidate());
             this.$watch('fulfillment', () => {
                 this.handover = this.fulfillment === 'pickup';
                 this.shippingMethod = '';
-                if (this.fulfillment === 'delivery' && this.customerType === 'walk_in') this.customerType = 'new';
+                if (this.fulfillment === 'delivery') {
+                    if (this.customerType === 'walk_in') this.openCustomerModal();
+                    else if (!this.address.line1) this.openAddressModal();
+                }
                 this.invalidate();
             });
             this.$watch('customerType', () => {
@@ -117,19 +124,19 @@ Alpine.data('commercePos', () => {
                 this.notify(this.mode === 'retail' ? 'This product is only available for wholesale.' : 'Wholesale is unavailable for this product.');
                 return;
             }
+            this.selectedWholesaleColorId = '';
+            this.wholesaleSizeQuantities = {};
             this.selectedProduct = product;
             this.selectedColorId = String(product.colors.find(color => color.available > 0)?.id || product.colors[0]?.id || '');
             this.selectedVariantId = String(product.variants.find(variant => variant.available > 0 && (!this.selectedColorId || String(variant.color_id) === this.selectedColorId))?.id || '');
             this.selectedQuantity = 1;
             this.selectedWholesaleColorIds = [];
-            this.wholesaleSizeQuantities = {};
-            this.selectedWholesaleColorId = '';
             this.packCounts = {};
             this.detailImageFailed = false;
             this.productModalTrigger = trigger;
             this.$refs.posProductModal.showModal();
         },
-        closeProductModal() { this.productModalTrigger?.focus(); },
+        closeProductModal() { this.selectedWholesaleColorId = ''; this.productModalTrigger?.focus(); },
         selectColor(color) {
             this.selectedColorId = String(color.id);
             const variant = this.selectedProduct?.variants.find(item => item.available > 0 && String(item.color_id) === this.selectedColorId);
@@ -200,7 +207,6 @@ Alpine.data('commercePos', () => {
         openWholesaleColor(color, trigger) {
             if (!color || !this.selectedProduct) return;
             const colorId = String(color.id);
-            this.selectedWholesaleColorId = colorId;
             this.wholesaleColorTrigger = trigger;
             if (!this.wholesaleSizeQuantities[colorId]) {
                 const configured = this.selectedProduct.ratios?.[color.id] || this.selectedProduct.ratios?.[colorId] || {};
@@ -209,9 +215,16 @@ Alpine.data('commercePos', () => {
                     .filter(variant => String(variant.color_id) === colorId)
                     .map(variant => [variant.size, Number(variant.available) > 0 ? Math.max(0, Number(configured[variant.size] || 0) * multiplier) : 0]));
             }
+            this.selectedWholesaleColorId = colorId;
             this.$refs.posWholesaleColorModal.showModal();
         },
         closeWholesaleColor() { this.wholesaleColorTrigger?.focus(); },
+        wholesaleRemainingStock(color) {
+            const colorId = String(color.id);
+            if (!this.selectedWholesaleColorIds.includes(colorId)) return Number(color.available);
+            const reserved = Object.values(this.wholesaleSizeQuantities[colorId] || {}).reduce((sum, quantity) => sum + Number(quantity || 0), 0);
+            return Math.max(0, Number(color.available) - reserved);
+        },
         wholesaleColorName(colorId = this.selectedWholesaleColorId) {
             return this.selectedProduct?.colors.find(color => String(color.id) === String(colorId))?.name || '';
         },
@@ -341,9 +354,13 @@ Alpine.data('commercePos', () => {
             this.contactLabel = [contact.name, contact.phone].filter(Boolean).join(' · ');
             this.customerResults = [];
             this.customerQuery = '';
-            this.address.name ||= contact.name || '';
-            this.address.phone ||= contact.phone || '';
+            this.savedAddresses = contact.addresses || [];
             this.balances = [];
+            const preferred = this.savedAddresses.find(item => item.is_default) || this.savedAddresses[0];
+            if (preferred) this.useAddress(preferred);
+            else this.clearAddress({ name: contact.name || '', phone: contact.phone || '' });
+            if (this.$refs.posCustomerModal.open) this.$refs.posCustomerModal.close();
+            if (this.fulfillment === 'delivery') this.openAddressModal();
             try {
                 const result = await this.request(this.config.balance.replace('__CONTACT__', contact.id));
                 if (this.contactId === String(contact.id)) this.balances = result.data;
@@ -353,6 +370,150 @@ Alpine.data('commercePos', () => {
             this.customerType = 'walk_in';
             this.contactId = '';
             this.contactLabel = '';
+            this.savedAddresses = [];
+            this.clearAddress();
+            if (this.fulfillment === 'delivery') this.fulfillment = 'pickup';
+        },
+        clearAddress(values = {}) {
+            this.addressId = '';
+            this.address = { name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US', ...values };
+        },
+        useAddress(saved) {
+            this.addressId = String(saved.id);
+            this.address = { name: saved.name || '', phone: saved.phone || '', line1: saved.line1 || '', line2: saved.line2 || '', city: saved.city || '', state: saved.state || '', postal_code: saved.postal_code || '', country: saved.country || 'US' };
+        },
+        addressSummary(address = this.address) {
+            return [address.line1, address.line2, [address.city, [address.state, address.postal_code].filter(Boolean).join(' ')].filter(Boolean).join(', '), address.country && address.country !== 'US' ? address.country : ''].filter(Boolean).join(', ');
+        },
+        initials(name) {
+            return (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0].toUpperCase()).join('');
+        },
+
+        // ---- Customer modal ------------------------------------------------------------------
+        openCustomerModal(view = 'search') {
+            this.formError = '';
+            this.customerView = view;
+            this.customerForm = { name: '', phone: '', email: '' };
+            this.customerQuery = '';
+            this.$refs.posCustomerModal.showModal();
+            this.searchCustomers();
+            this.$nextTick(() => (view === 'search' ? this.$refs.posCustomerSearch : this.$refs.posCustomerName)?.focus());
+        },
+        showCustomerForm() {
+            this.formError = '';
+            this.customerView = 'create';
+            this.customerForm = { name: this.customerQuery.trim() && !/\d/.test(this.customerQuery) ? this.customerQuery.trim() : '', phone: '', email: '' };
+            this.$nextTick(() => this.$refs.posCustomerName?.focus());
+        },
+        async saveCustomer() {
+            const form = this.customerForm;
+            if (!form.name.trim() || !form.phone.trim()) { this.formError = 'Enter the customer name and phone.'; return; }
+            this.savingCustomer = true;
+            try {
+                const result = await this.request(this.config.customerStore, { name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || null });
+                await this.pickCustomer(result.data);
+                this.notify('Customer saved.', 'success');
+            } catch (error) { this.formError = error.message; }
+            finally { this.savingCustomer = false; }
+        },
+
+        // ---- Shipping address modal ----------------------------------------------------------
+        // mode: 'auto' (pick from saved addresses, or add the first one), 'create' (blank form), 'edit' (current address).
+        openAddressModal(mode = 'auto') {
+            if (!this.contactId) { this.openCustomerModal(); return; }
+            this.formError = '';
+            if (mode === 'edit' && this.address.line1) this.startAddressForm({ ...this.address });
+            else if (mode === 'create' || !this.savedAddresses.length) this.startAddressForm();
+            else this.addressView = 'choose';
+            this.$refs.posAddressModal.showModal();
+        },
+        startAddressForm(values = null) {
+            this.formError = '';
+            this.postalStatus = '';
+            this.suggestions = [];
+            this.countryTouched = false;
+            const [name, phone] = this.contactLabel.split(' · ');
+            this.addressForm = values || { name: name || '', phone: phone || '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US' };
+            this.addressView = 'create';
+        },
+        chooseAddress(saved) {
+            this.useAddress(saved);
+            this.$refs.posAddressModal.close();
+        },
+        async saveAddress() {
+            const form = this.addressForm;
+            const missing = [['name', 'the recipient name'], ['phone', 'the delivery phone'], ['line1', 'the street address'], ['city', 'the city']].filter(([field]) => !String(form[field] || '').trim());
+            if (missing.length) { this.formError = `Enter ${missing.map(([, label]) => label).join(', ')}.`; return; }
+            this.savingAddress = true;
+            try {
+                const result = await this.request(this.config.addressStore.replace('__CONTACT__', this.contactId), form);
+                this.savedAddresses = [result.data, ...this.savedAddresses.filter(item => item.id !== result.data.id)];
+                this.useAddress(result.data);
+                this.$refs.posAddressModal.close();
+            } catch (error) { this.formError = error.message; }
+            finally { this.savingAddress = false; }
+        },
+
+        // ---- Address autocomplete ------------------------------------------------------------
+        queueSuggestions() {
+            clearTimeout(this.suggestTimer);
+            const query = this.addressForm.line1.trim();
+            if (query.length < 3) { this.suggestions = []; return; }
+            this.suggestTimer = setTimeout(() => this.loadSuggestions(query), 250);
+        },
+        async loadSuggestions(query) {
+            const version = ++this.suggestVersion;
+            try {
+                const result = await this.request(`${this.config.addressSuggestions}?q=${encodeURIComponent(query)}${this.countryTouched ? `&country=${this.addressForm.country}` : ''}`);
+                if (version === this.suggestVersion) { this.suggestions = result.data; this.suggestIndex = -1; }
+            } catch { if (version === this.suggestVersion) this.suggestions = []; }
+        },
+        moveSuggestion(delta) {
+            if (!this.suggestions.length) return;
+            this.suggestIndex = (this.suggestIndex + delta + this.suggestions.length) % this.suggestions.length;
+        },
+        chooseSuggestion(suggestion = this.suggestions[this.suggestIndex]) {
+            if (!suggestion) return;
+            Object.assign(this.addressForm, { line1: suggestion.line1, city: suggestion.city || this.addressForm.city, state: suggestion.state || this.addressForm.state, postal_code: suggestion.postal_code || this.addressForm.postal_code, country: suggestion.country || this.addressForm.country });
+            this.suggestVersion++;
+            this.suggestions = [];
+            this.suggestIndex = -1;
+        },
+        // ---- Postal code lookup (US and Bangladesh) ------------------------------------------
+        countryChanged() {
+            this.countryTouched = true;
+            this.addressForm.state = '';
+            this.suggestions = [];
+            this.postalStatus = '';
+            this.lookupPostal();
+        },
+        async lookupPostal() {
+            const patterns = { US: /^\d{5}(-\d{4})?$/, BD: /^\d{4}$/ };
+            const code = String(this.addressForm.postal_code || '').trim();
+            // Until the owner picks a country by hand, the ZIP format decides it (4 digits: Bangladesh, 5 digits: US).
+            if (!this.countryTouched && !patterns[this.addressForm.country]?.test(code)) {
+                const detected = Object.keys(patterns).find(key => patterns[key].test(code));
+                if (detected) { this.addressForm.country = detected; this.addressForm.state = ''; }
+            }
+            const country = this.addressForm.country;
+            const pattern = patterns[country];
+            if (!pattern || !pattern.test(code)) { this.postalStatus = ''; return; }
+            const version = ++this.postalVersion;
+            this.postalStatus = 'loading';
+            try {
+                const result = await this.request(`${this.config.postalLookup}?country=${country}&postal_code=${encodeURIComponent(code)}`);
+                if (version !== this.postalVersion) return;
+                if (!result.data) { this.postalStatus = 'missing'; return; }
+                Object.assign(this.addressForm, { city: result.data.city, state: result.data.state, postal_code: result.data.postal_code });
+                if (result.data.area && !this.addressForm.line2) this.addressForm.line2 = result.data.area;
+                this.postalStatus = 'found';
+                this.$nextTick(() => document.getElementById('pos-address-line1')?.focus());
+            } catch { if (version === this.postalVersion) this.postalStatus = 'missing'; }
+        },
+        highlight(label) {
+            const typed = this.addressForm.line1.trim();
+            const index = typed ? label.toLowerCase().indexOf(typed.toLowerCase()) : -1;
+            return index < 0 ? { before: label, match: '', after: '' } : { before: label.slice(0, index), match: label.slice(index, index + typed.length), after: label.slice(index + typed.length) };
         },
 
         // ---- Totals & payment ----------------------------------------------------------------
@@ -371,7 +532,6 @@ Alpine.data('commercePos', () => {
             };
             if (Number(this.discountValue) > 0) data.discount = { type: this.discountType, value: Number(this.discountValue) };
             if (this.customerType === 'existing') data.contact_id = Number(this.contactId);
-            if (this.customerType === 'new') data.customer = this.customer;
             if (this.fulfillment === 'delivery') {
                 data.shipping_address = this.address;
                 if (this.shippingMethod) data.shipping_method_id = Number(this.shippingMethod);
@@ -460,7 +620,6 @@ Alpine.data('commercePos', () => {
             this.quote = null;
             this.discountValue = '';
             this.clearCustomer();
-            this.customer = { name: '', phone: '', email: '' };
             this.fulfillment = 'pickup';
             this.paymentType = 'full';
             this.submission = crypto.randomUUID();
@@ -478,7 +637,7 @@ Alpine.data('commercePos', () => {
             if (!this.groups.length) { this.notify('Add products before holding a sale.'); return; }
             const lines = this.groups.map(({ product, ...line }) => ({ ...line, product_id: product.id, product }));
             try {
-                await this.request(this.config.held, { label: this.contactLabel || this.customer.name || '', payload: { lines, customerType: this.customerType, contactId: this.contactId, contactLabel: this.contactLabel, customer: this.customer, discountType: this.discountType, discountValue: this.discountValue } });
+                await this.request(this.config.held, { label: this.contactLabel || '', payload: { lines, customerType: this.customerType, contactId: this.contactId, contactLabel: this.contactLabel, fulfillment: this.fulfillment, address: this.address, savedAddresses: this.savedAddresses, addressId: this.addressId, discountType: this.discountType, discountValue: this.discountValue } });
                 this.notify('Sale held.', 'success');
                 this.newSale();
                 this.loadHeld();
@@ -488,10 +647,13 @@ Alpine.data('commercePos', () => {
             if (this.groups.length && !window.confirm('Replace the current cart with this held sale?')) return;
             const payload = sale.payload;
             this.groups = payload.lines.map(line => ({ ...line, key: crypto.randomUUID() }));
-            this.customerType = payload.customerType || 'walk_in';
+            this.customerType = payload.customerType === 'existing' ? 'existing' : 'walk_in';
             this.contactId = payload.contactId || '';
             this.contactLabel = payload.contactLabel || '';
-            this.customer = payload.customer || { name: '', phone: '', email: '' };
+            this.savedAddresses = payload.savedAddresses || [];
+            this.addressId = payload.addressId || '';
+            this.address = payload.address || this.address;
+            this.fulfillment = payload.fulfillment || 'pickup';
             this.discountType = payload.discountType || 'amount';
             this.discountValue = payload.discountValue || '';
             this.heldOpen = false;
@@ -508,7 +670,7 @@ Alpine.data('commercePos', () => {
 
         // ---- Keyboard ------------------------------------------------------------------------
         shortcut(event) {
-            const keys = { F2: () => this.$refs.posSearch?.focus(), F4: () => this.$refs.posCustomer?.focus(), F8: () => this.holdSale(), F9: () => this.checkout() };
+            const keys = { F2: () => this.$refs.posSearch?.focus(), F4: () => this.openCustomerModal(), F8: () => this.holdSale(), F9: () => this.checkout() };
             if (keys[event.key]) { event.preventDefault(); keys[event.key](); }
         },
     };

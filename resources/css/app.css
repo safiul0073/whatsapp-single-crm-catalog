@@ -789,3 +789,6 @@ p {
   display: none !important;
 }
 @import "./components/commerce-pos.css";
+@import "./components/phone-input.css";
+@import "./components/order-document.css";
+@import "./components/order-detail.css";

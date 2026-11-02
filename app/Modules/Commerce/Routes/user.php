@@ -24,6 +24,10 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
             Route::post('preview', [PosController::class, 'preview'])->name('preview');
             Route::post('checkout', [PosController::class, 'checkout'])->name('checkout');
             Route::get('customers', [PosController::class, 'customers'])->name('customers');
+            Route::post('customers', [PosController::class, 'storeCustomer'])->name('customers.store');
+            Route::post('customers/{contact}/addresses', [PosController::class, 'storeAddress'])->name('customers.addresses.store');
+            Route::get('address-suggestions', [PosController::class, 'addressSuggestions'])->middleware('throttle:60,1')->name('address-suggestions');
+            Route::get('postal-lookup', [PosController::class, 'postalLookup'])->middleware('throttle:60,1')->name('postal-lookup');
             Route::get('held', [PosController::class, 'heldSales'])->name('held.index');
             Route::post('held', [PosController::class, 'holdSale'])->name('held.store');
             Route::delete('held/{held}', [PosController::class, 'releaseHeldSale'])->name('held.destroy');
@@ -106,8 +110,11 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::post('orders/{order}/invoice/link', [$controller, 'regenerateInvoiceLink'])->name('orders.invoice.link');
     });
     Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.orders.view')->name('orders.packing-slip');
+    Route::get('orders/{order}/invoice/print', [OrderManagementController::class, 'invoicePrint'])->middleware('permission:commerce.orders.view')->name('orders.invoice.print');
     Route::get('orders/{order}/invoice', [OrderManagementController::class, 'invoice'])->middleware('permission:commerce.orders.view')->name('orders.invoice');
     Route::get('orders/{order}/receipt', [OrderManagementController::class, 'receipt'])->middleware('permission:commerce.orders.payments.view')->name('orders.receipt');
+    Route::delete('orders', [CommerceController::class, 'bulkDestroyOrders'])->name('orders.bulk-destroy');
+    Route::delete('orders/{order}', [CommerceController::class, 'destroyOrder'])->name('orders.destroy');
     Route::get('orders/{order}', [CommerceController::class, 'order'])->middleware('permission:commerce.orders.view')->name('orders.show');
     Route::put('orders/{order}/customer', [CommerceController::class, 'updateCustomer'])->middleware('permission:commerce.orders.customer.edit')->name('orders.customer.update');
     Route::put('orders/{order}/quote', [CommerceController::class, 'quote'])->middleware('permission:commerce.orders.update')->name('orders.quote');

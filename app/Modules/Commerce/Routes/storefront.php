@@ -7,6 +7,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\CheckoutController;
 use App\Modules\Commerce\Storefront\Http\Controllers\CmsController;
 use App\Modules\Commerce\Storefront\Http\Controllers\DomainController;
 use App\Modules\Commerce\Storefront\Http\Controllers\EngagementController;
+use App\Modules\Commerce\Storefront\Http\Controllers\GeoController;
 use App\Modules\Commerce\Storefront\Http\Controllers\LiveController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 $storefrontRoutes = function (): void {
     Route::get('pack-templates', [PackController::class, 'templates']);
+    Route::get('geo/postal-lookup', [GeoController::class, 'postalLookup']);
     Route::get('catalog/menu', [CatalogController::class, 'menu']);
     Route::get('catalog/categories', [CatalogController::class, 'categories']);
     Route::get('catalog/categories/{slug}', [CatalogController::class, 'category']);
@@ -33,6 +35,7 @@ $storefrontRoutes = function (): void {
     Route::get('cms/settings', [CmsController::class, 'settings']);
     Route::get('cms/menus/{slot}', [CmsController::class, 'menu']);
     Route::get('cms/pages/{slug}', [CmsController::class, 'page']);
+    Route::get('cms/sitemap', [CmsController::class, 'sitemap']);
     Route::get('lives', [LiveController::class, 'index']);
     Route::get('lives/active', [LiveController::class, 'active']);
     Route::get('lives/{slug}', [LiveController::class, 'show']);
