@@ -99,7 +99,8 @@ class WebhookSignatureVerifier
     }
 
     /**
-     * Every saved Meta app secret is accepted, because WhatsApp, Messenger and Threads may run on different Meta apps.
+     * Every saved Meta app secret is accepted: the shared Meta app plus the legacy per-product apps,
+     * because channels connected before the move to one app still receive webhooks signed by their old app.
      *
      * @return array<int, string>
      */
@@ -107,7 +108,9 @@ class WebhookSignatureVerifier
     {
         return collect([
             $this->whatsapp->get('whatsapp_meta_app_secret'),
+            $this->whatsapp->all()['whatsapp_meta_app_secret'] ?? null,
             $this->social->get('meta_social_app_secret'),
+            $this->social->all()['meta_social_app_secret'] ?? null,
         ])->map(fn ($secret): string => trim((string) $secret))->filter()->unique()->values()->all();
     }
 }

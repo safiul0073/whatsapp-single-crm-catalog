@@ -87,6 +87,8 @@ class ProductResource extends JsonResource
             'currency' => $currency,
             'image' => $this->primaryMedia?->url,
             'primary_image' => $this->primaryMedia?->url,
+            'image_thumb' => $this->primaryMedia?->variantUrl('thumb'),
+            'image_large' => $this->primaryMedia?->variantUrl('large'),
             'category' => $this->category?->only(['id', 'name', 'slug']),
             'product_type' => ['slug' => $type->slug, 'name' => $type->name, 'layout' => $type->layout, 'variant_axes' => $type->variant_axes ?? []],
             'attributes' => collect($type->attributes ?? [])
@@ -96,6 +98,8 @@ class ProductResource extends JsonResource
             'brand' => $this->brandRecord?->only(['id', 'name', 'slug']),
             'gallery' => $this->whenLoaded('gallery', fn () => $this->gallery->map(fn ($g) => [
                 'url' => $g->media?->url,
+                'thumb' => $g->media?->variantUrl('thumb'),
+                'large' => $g->media?->variantUrl('large'),
                 'type' => $g->media_type,
                 'color_id' => $g->color_id,
             ])),

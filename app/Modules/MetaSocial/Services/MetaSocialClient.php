@@ -33,8 +33,20 @@ class MetaSocialClient
     public function pageAccounts(string $token): Response
     {
         return Http::withToken($token)->get($this->graphUrl('me/accounts'), [
-            'fields' => 'id,name,access_token,instagram_business_account{id,username,name}',
+            'fields' => 'id,name,access_token,tasks,instagram_business_account{id,username,name}',
         ]);
+    }
+
+    public function subscribePage(string $pageId, string $pageToken, string $fields): Response
+    {
+        return Http::withToken($pageToken)->asForm()->post($this->graphUrl($pageId.'/subscribed_apps'), [
+            'subscribed_fields' => $fields,
+        ]);
+    }
+
+    public function pageSubscriptions(string $pageId, string $pageToken): Response
+    {
+        return Http::withToken($pageToken)->get($this->graphUrl($pageId.'/subscribed_apps'));
     }
 
     public function account(string $accountId, string $token, array $fields = ['id', 'name']): Response

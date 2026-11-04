@@ -3,9 +3,11 @@
 namespace App\Modules\Threads\Providers;
 
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\Shared\Support\BasePanelModuleProvider;
 use App\Modules\Threads\Services\ThreadsClient;
 use App\Modules\Threads\Services\ThreadsProvider;
+use App\Modules\Threads\Services\ThreadsReadinessChecker;
 
 class ThreadsServiceProvider extends BasePanelModuleProvider
 {
@@ -18,5 +20,6 @@ class ThreadsServiceProvider extends BasePanelModuleProvider
     protected function bootModule(array $module): void
     {
         app(ChannelManager::class)->register(app(ThreadsProvider::class));
+        app(ChannelReadinessService::class)->register(app(ThreadsReadinessChecker::class));
     }
 }

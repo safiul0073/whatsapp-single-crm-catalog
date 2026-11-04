@@ -6,12 +6,14 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="min-w-0">
             <h2 class="heading-2">{{ __('Channels') }}</h2>
-            <p class="m-text mt-1">{{ __('Connect the channels your workspace uses for inbox, campaigns and automation. Each channel has its own guided setup.') }}</p>
+            <p class="m-text mt-1">{{ __('Connect the channels your workspace uses for inbox, campaigns and automation. Meta channels connect together with one login.') }}</p>
         </div>
         <span class="badge badge-soft">{{ trans_choice(':count channel connected|:count channels connected', $connectedTotal, ['count' => $connectedTotal]) }}</span>
     </div>
 
     <x-marketing-channels::status-banner />
+
+    @include('marketing-channels::user.partials.meta-connect')
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         @foreach ($cards as $card)
@@ -20,7 +22,12 @@
                     <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                         <i class="ph {{ $card['icon'] }} text-2xl"></i>
                     </span>
-                    <x-marketing-channels::status-badge :status="$card['status']" />
+                    <div class="flex flex-col items-end gap-1">
+                        <x-marketing-channels::status-badge :status="$card['status']" />
+                        @if ($card['account'])
+                            <x-marketing-channels::readiness-badge :report="$card['readiness']" />
+                        @endif
+                    </div>
                 </div>
 
                 <h3 class="heading-5 mt-4">{{ __($card['title']) }}</h3>
@@ -54,10 +61,17 @@
                         </span>
                     @elseif ($card['setup_url'] && $card['permission'])
                         @can($card['permission'])
-                            <a href="{{ $card['setup_url'] }}" class="btn-sm {{ $card['account'] ? 'btn-outline' : 'btn-primary' }}" data-channel-setup-link="{{ $card['key'] }}">
-                                <i class="ph {{ $card['account'] ? 'ph-gear-six' : 'ph-plus' }} text-base"></i>
-                                {{ $card['account'] ? __('Manage') : __('Set up') }}
-                            </a>
+                            @if ($card['meta_login'] && ! $card['account'])
+                                <a href="#meta-connect" class="btn-sm btn-primary" data-channel-setup-link="{{ $card['key'] }}">
+                                    <i class="ph-fill ph-meta-logo text-base"></i>
+                                    {{ __('Connect with Meta') }}
+                                </a>
+                            @else
+                                <a href="{{ $card['setup_url'] }}" class="btn-sm {{ $card['account'] ? 'btn-outline' : 'btn-primary' }}" data-channel-setup-link="{{ $card['key'] }}">
+                                    <i class="ph {{ $card['account'] ? 'ph-gear-six' : 'ph-plus' }} text-base"></i>
+                                    {{ $card['account'] ? __('Manage') : __('Set up') }}
+                                </a>
+                            @endif
                             @if ($card['widget_url'])
                                 <a href="{{ $card['widget_url'] }}" class="btn-sm btn-outline" data-channel-widgets-link="{{ $card['key'] }}">
                                     <i class="ph ph-squares-four text-base"></i>

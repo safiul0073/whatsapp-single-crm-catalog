@@ -276,7 +276,6 @@ Alpine.data("liveInbox", (config) => ({
         headers: { Accept: "application/json" },
       });
 
-      const previousLastId = this.messages.at(-1)?.id;
       this.activeConversation = response.data.conversation;
       this.messages = silent
         ? this.decorateMessages(this.mergeMessages(this.messages, response.data.messages || []))
@@ -295,8 +294,7 @@ Alpine.data("liveInbox", (config) => ({
         this.clearAttachment();
       }
 
-      const newLastId = this.messages.at(-1)?.id;
-      if (!silent || wasNearBottom || previousLastId !== newLastId) {
+      if (!silent || wasNearBottom) {
         this.scrollToBottom();
       }
     } catch (error) {
@@ -1022,6 +1020,18 @@ Alpine.data("liveInbox", (config) => ({
       }
     }
 
-    return error.response?.data?.error || error.response?.data?.message || fallback;
+    // Meta send failures come with a plain-language title, what to do next and a support code.
+    const detail = error.response?.data?.error_detail;
+    if (detail && detail.message) {
+      return [
+        detail.title ? `${detail.title}:` : "",
+        detail.message,
+        detail.action || "",
+        detail.trace_id ? `(Support code: ${detail.trace_id})` : "",
+      ].filter(Boolean).join(" ");
+    }
+
+    const message = error.response?.data?.error || error.response?.data?.message;
+    return typeof message === "string" && message !== "" ? message : fallback;
   },
 }));

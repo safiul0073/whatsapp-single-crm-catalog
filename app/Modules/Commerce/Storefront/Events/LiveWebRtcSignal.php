@@ -39,6 +39,9 @@ class LiveWebRtcSignal implements ShouldBroadcastNow
     }
 
     /**
+     * The payload is cast to an object so an empty payload is sent as `{}`
+     * instead of `[]`; clients decode it as a map.
+     *
      * @return array<string, mixed>
      */
     public function broadcastWith(): array
@@ -48,7 +51,7 @@ class LiveWebRtcSignal implements ShouldBroadcastNow
             'type' => $this->type,
             'sender_peer_id' => $this->senderPeerId,
             'target_peer_id' => $this->targetPeerId,
-            'payload' => $this->payload,
+            'payload' => (object) $this->payload,
         ];
     }
 }

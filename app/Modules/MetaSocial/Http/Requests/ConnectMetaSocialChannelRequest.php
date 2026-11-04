@@ -14,15 +14,7 @@ class ConnectMetaSocialChannelRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['nullable', 'string', 'max:1000'],
-            'access_token' => ['nullable', 'string', 'max:5000'],
-            'provider_account_id' => ['nullable', 'string', 'max:255'],
-            'page_id' => ['nullable', 'string', 'max:255'],
-            'page_name' => ['nullable', 'string', 'max:255'],
-            'instagram_account_id' => ['nullable', 'string', 'max:255'],
-            'username' => ['nullable', 'string', 'max:255'],
-            'display_name' => ['nullable', 'string', 'max:255'],
-            'metadata' => ['nullable', 'array'],
+            'code' => ['required', 'string', 'max:1000'],
         ];
     }
 }

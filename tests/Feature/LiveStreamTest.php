@@ -14,7 +14,10 @@ use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Broadcasting\Broadcasters\Broadcaster;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -367,4 +370,55 @@ it('returns pusher websocket connection details when broadcasting through pusher
         'scheme' => 'https',
         'enabled' => true,
     ]);
+});
+
+it('broadcasts an empty webrtc signal payload as a json object so mobile clients can decode it', function (): void {
+    $event = new LiveWebRtcSignal(1, 'viewer-join', 'viewer_1', 'owner_broadcaster', []);
+
+    expect(json_encode($event->broadcastWith()))->toContain('"payload":{}');
+});
+
+it('keeps live controls working when the realtime server is down and reports signal relay as unavailable', function (): void {
+    Sanctum::actingAs($this->owner);
+    Event::swap(Event::getFacadeRoot()->dispatcher);
+    Broadcast::extend('failing', fn () => new class extends Broadcaster
+    {
+        public function auth($request): mixed
+        {
+            return null;
+        }
+
+        public function validAuthenticationResponse($request, $result): mixed
+        {
+            return null;
+        }
+
+        public function broadcast(array $channels, $event, array $payload = []): void
+        {
+            throw new BroadcastException('Realtime server unreachable.');
+        }
+    });
+    config([
+        'broadcasting.default' => 'failing',
+        'broadcasting.connections.failing' => ['driver' => 'failing'],
+    ]);
+
+    $live = LiveStream::query()->create([
+        'workspace_id' => $this->store->id,
+        'title' => 'Offline Realtime Live',
+        'slug' => 'offline-realtime-live',
+        'stream_key' => 'offline-key',
+        'status' => 'scheduled',
+        'broadcast_platforms' => ['storefront'],
+    ]);
+
+    $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/{$live->id}/start", [
+        'broadcast_platforms' => ['storefront'],
+    ])->assertOk()->assertJsonPath('data.status', 'live');
+
+    $this->postJson('/api/storefront/v1/lives/offline-realtime-live/signal', [
+        'type' => 'viewer-join',
+        'sender_peer_id' => 'viewer_1',
+        'payload' => [],
+    ], $this->headers)->assertStatus(503);
 });

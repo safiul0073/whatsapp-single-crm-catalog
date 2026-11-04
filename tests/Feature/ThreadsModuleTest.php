@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\MetaSocial\Services\MetaAppSettingsService;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,28 +35,34 @@ it('registers the Threads marketing channel driver', function (): void {
     expect(app(ChannelManager::class)->providers())->toContain('threads');
 });
 
-it('connects a Threads channel from Channel Setup and shows test action', function (): void {
+it('connects a Threads channel through Threads login and shows test action', function (): void {
+    app(MetaAppSettingsService::class)->update(['meta_threads_app_id' => 'threads-app', 'meta_threads_app_secret' => 'threads-secret']);
+
     Http::fake([
-        'https://graph.threads.net/v1.0/threads-user-123*' => Http::response([
-            'id' => 'threads-user-123',
-            'username' => 'brand',
-        ]),
+        'https://graph.threads.net/oauth/access_token' => Http::response(['access_token' => 'short-token', 'user_id' => 'threads-user-123']),
+        'https://graph.threads.net/access_token*' => Http::response(['access_token' => 'long-token', 'expires_in' => 5184000]),
+        'https://graph.threads.net/v1.0/me*' => Http::response(['id' => 'threads-user-123', 'username' => 'brand']),
     ]);
 
     $user = User::factory()->create(['email_verified_at' => now()]);
     threadsWorkspaceFor($user);
 
+    $redirect = withoutThreadsPanelMiddleware($this)
+        ->actingAs($user)
+        ->post(route('user.threads.connect'))
+        ->assertRedirect()
+        ->headers->get('Location');
+
+    parse_str((string) parse_url((string) $redirect, PHP_URL_QUERY), $query);
+
+    expect($redirect)->toStartWith('https://threads.net/oauth/authorize')
+        ->and($query['client_id'])->toBe('threads-app')
+        ->and($query['redirect_uri'])->toBe(route('user.threads.callback'));
+
     withoutThreadsPanelMiddleware($this)
         ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store-generic'), [
-            'provider' => 'threads',
-            'name' => 'Brand Threads',
-            'provider_account_id' => 'threads-user-123',
-            'provider_display_id' => '@brand',
-            'access_token' => 'threads-token',
-            'webhook_verify_token' => 'threads-verify',
-        ])
-        ->assertRedirect()
+        ->get(route('user.threads.callback', ['code' => 'auth-code#_', 'state' => $query['state']]))
+        ->assertRedirect(route('user.meta-social.setup').'#threads')
         ->assertSessionHas('status');
 
     $channel = ChannelAccount::query()->where('provider', 'threads')->firstOrFail();
@@ -63,14 +70,47 @@ it('connects a Threads channel from Channel Setup and shows test action', functi
     expect($channel->status->value)->toBe('connected')
         ->and($channel->provider_account_id)->toBe('threads-user-123')
         ->and($channel->provider_display_id)->toBe('@brand')
-        ->and($channel->credential('access_token'))->toBe('threads-token');
+        ->and($channel->credential('access_token'))->toBe('long-token')
+        ->and($channel->credential('source'))->toBe('threads_login');
+
+    Http::assertSent(fn ($request): bool => $request->url() === 'https://graph.threads.net/oauth/access_token' && $request['code'] === 'auth-code');
 
     withoutThreadsPanelMiddleware($this)
         ->actingAs($user)
         ->get(route('user.meta-social.setup'))
         ->assertOk()
         ->assertSee('Threads')
-        ->assertSee('Test Connection');
+        ->assertSee('Test Connection')
+        ->assertDontSee('name="access_token"', false);
+});
+
+it('rejects a Threads callback with a forged state', function (): void {
+    app(MetaAppSettingsService::class)->update(['meta_threads_app_id' => 'threads-app', 'meta_threads_app_secret' => 'threads-secret']);
+    Http::fake();
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    threadsWorkspaceFor($user);
+
+    withoutThreadsPanelMiddleware($this)->actingAs($user)->post(route('user.threads.connect'));
+
+    withoutThreadsPanelMiddleware($this)
+        ->actingAs($user)
+        ->get(route('user.threads.callback', ['code' => 'auth-code', 'state' => 'forged']))
+        ->assertSessionHas('error');
+
+    expect(ChannelAccount::query()->where('provider', 'threads')->exists())->toBeFalse();
+    Http::assertNothingSent();
+});
+
+it('does not start Threads login before the admin adds the Threads app', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    threadsWorkspaceFor($user);
+
+    withoutThreadsPanelMiddleware($this)
+        ->actingAs($user)
+        ->post(route('user.threads.connect'))
+        ->assertRedirect(route('user.meta-social.setup').'#threads')
+        ->assertSessionHas('error');
 });
 
 it('tests a Threads connection through Channel Setup', function (): void {

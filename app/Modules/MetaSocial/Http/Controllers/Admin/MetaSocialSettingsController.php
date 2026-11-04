@@ -6,17 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Modules\MetaSocial\Http\Requests\UpdateMetaSocialSettingsRequest;
 use App\Modules\MetaSocial\Services\MetaSocialSettingsService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class MetaSocialSettingsController extends Controller
 {
     public function __construct(protected MetaSocialSettingsService $settings) {}
 
-    public function index(): View
+    /**
+     * Messenger and Instagram settings now live on the shared Meta App page.
+     */
+    public function index(): RedirectResponse
     {
-        return view('meta-social::admin.settings', [
-            'settings' => $this->settings->all(),
-        ]);
+        return redirect()->route('admin.meta-app.settings.index');
     }
 
     public function update(UpdateMetaSocialSettingsRequest $request): RedirectResponse

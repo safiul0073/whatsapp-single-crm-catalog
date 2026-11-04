@@ -2,6 +2,7 @@
 
 namespace App\Modules\Media\Services;
 
+use App\Modules\Media\Jobs\GenerateImageVariants;
 use App\Modules\Media\Models\Media;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -49,7 +50,7 @@ class MediaService
         $directory = 'media/'.now()->format('Y/m');
         $path = $file->storeAs($directory, $fileName, $disk);
 
-        return Media::create([
+        $media = Media::create([
             'name' => $name,
             'file_name' => $fileName,
             'original_name' => $originalName,
@@ -61,11 +62,18 @@ class MediaService
             'path' => $path,
             'uploaded_by' => auth()->id(),
         ]);
+
+        if (app(ImageVariantService::class)->supports($media)) {
+            GenerateImageVariants::dispatch($media->id)->afterCommit();
+        }
+
+        return $media;
     }
 
     public function delete(Media $media): bool
     {
         Storage::disk($media->disk)->delete($media->path);
+        app(ImageVariantService::class)->delete($media);
 
         return $media->delete();
     }

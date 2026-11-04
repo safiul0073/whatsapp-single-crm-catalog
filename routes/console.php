@@ -5,7 +5,10 @@ use App\Modules\Commerce\Jobs\SendCustomerWhatsAppWelcome;
 use App\Modules\Commerce\Models\OrderEvent;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Storefront\Models\StorefrontPageView;
+use App\Modules\Commerce\Storefront\Models\StorefrontVisitor;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
 use App\Modules\TikTok\Services\TikTokTokenService;
 use Illuminate\Support\Facades\Schedule;
@@ -30,3 +33,12 @@ Schedule::call(function (): void {
 Schedule::call(fn () => app(ReferralService::class)->awardTargetSlabs())->name('commerce-referral-target-bonuses')->dailyAt('00:30')->withoutOverlapping();
 
 Schedule::call(fn () => app(TikTokTokenService::class)->refreshDue())->name('tiktok-refresh-tokens')->hourly()->withoutOverlapping();
+
+// Re-check what each connected Meta channel still needs (display name review, payment, permissions, token expiry).
+Schedule::call(fn () => app(ChannelReadinessService::class)->checkConnected())->name('channel-readiness-recheck')->dailyAt('03:15')->withoutOverlapping();
+
+Schedule::call(function (): void {
+    $cutoff = now()->subDays(config('commerce.visit_retention_days'));
+    StorefrontPageView::query()->where('viewed_at', '<', $cutoff)->delete();
+    StorefrontVisitor::query()->where('last_seen_at', '<', $cutoff)->delete();
+})->name('commerce-prune-storefront-visits')->dailyAt('02:45')->withoutOverlapping();
