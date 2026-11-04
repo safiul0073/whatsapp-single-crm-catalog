@@ -556,6 +556,14 @@ class WorkspaceNavigationRegistry
                                 'keywords' => 'customers buyers accounts storefront mobile app',
                             ],
                             [
+                                'label' => __('Visitors'),
+                                'route' => 'user.commerce.visitors.index',
+                                'active' => 'user.commerce.visitors.*',
+                                'icon' => 'ph-globe-hemisphere-west',
+                                'permission' => 'commerce.customers.view',
+                                'keywords' => 'visitors traffic analytics country ip live storefront activity',
+                            ],
+                            [
                                 'label' => __('Storefront'),
                                 'route' => 'user.commerce.storefront.index',
                                 'active' => 'user.commerce.storefront.index',

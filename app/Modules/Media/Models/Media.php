@@ -3,6 +3,7 @@
 namespace App\Modules\Media\Models;
 
 use App\Models\User;
+use App\Modules\Media\Services\ImageVariantService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,6 +24,9 @@ class Media extends Model
         'alt',
         'uploaded_by',
     ];
+
+    /** @var array<string, bool> */
+    protected array $variantCache = [];
 
     protected function casts(): array
     {
@@ -46,7 +50,22 @@ class Media extends Model
 
     public function getThumbnailUrlAttribute(): string
     {
-        return $this->url;
+        return $this->variantUrl('thumb');
+    }
+
+    /** URL of a resized WebP copy, falling back to the original until it has been generated. */
+    public function variantUrl(string $size): string
+    {
+        return $this->hasVariant($size) ? Storage::disk($this->disk)->url(ImageVariantService::variantPath($this->path, $size)) : $this->url;
+    }
+
+    public function hasVariant(string $size): bool
+    {
+        if (str_starts_with((string) $this->path, 'https://') || ! isset(ImageVariantService::SIZES[$size]) || ! $this->isImage()) {
+            return false;
+        }
+
+        return $this->variantCache[$size] ??= Storage::disk($this->disk)->exists(ImageVariantService::variantPath($this->path, $size));
     }
 
     public function getHumanSizeAttribute(): string

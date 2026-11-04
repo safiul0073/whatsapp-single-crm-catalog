@@ -4,6 +4,8 @@ namespace App\Modules\Commerce\Providers;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Models\ProductColor;
+use App\Modules\Commerce\Models\ProductMedia;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Storefront\Console\ImportLegacy;
 use App\Modules\Commerce\Storefront\Console\ProvisionStore;
@@ -11,9 +13,11 @@ use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\ProvisionStoreService;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\Media\Events\ImageVariantsGenerated;
 use App\Modules\Shared\Support\BasePanelModuleProvider;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -40,6 +44,15 @@ class CommerceServiceProvider extends BasePanelModuleProvider
         });
         Product::saved(fn ($product) => RevalidateStorefront::dispatch($product->workspace_id, ['all'])->afterCommit());
         ProductVariant::saved(fn ($variant) => RevalidateStorefront::dispatch($variant->workspace_id, ['all'])->afterCommit());
+        ProductMedia::saved(fn ($media) => RevalidateStorefront::dispatch($media->workspace_id, ['all'])->afterCommit());
+        ProductMedia::deleted(fn ($media) => RevalidateStorefront::dispatch($media->workspace_id, ['all'])->afterCommit());
+        Event::listen(ImageVariantsGenerated::class, function (ImageVariantsGenerated $event): void {
+            Product::query()->where('primary_media_id', $event->mediaId)->pluck('workspace_id')
+                ->merge(ProductMedia::query()->where('media_id', $event->mediaId)->pluck('workspace_id'))
+                ->merge(ProductColor::query()->where('swatch_media_id', $event->mediaId)->join('commerce_products', 'commerce_products.id', '=', 'commerce_product_colors.product_id')->pluck('commerce_products.workspace_id'))
+                ->unique()
+                ->each(fn (int $workspaceId) => RevalidateStorefront::dispatch($workspaceId, ['all']));
+        });
         $this->commands([ProvisionStore::class, ImportLegacy::class]);
     }
 

@@ -13,6 +13,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ReferralController;
+use App\Modules\Commerce\Storefront\Http\Controllers\TrackingController;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticateCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticatePlatform;
 use App\Modules\Commerce\Storefront\Http\Middleware\OptionalCustomer;
@@ -43,6 +44,7 @@ $storefrontRoutes = function (): void {
     Route::post('lives/{slug}/react', [LiveController::class, 'react']);
     Route::get('auth/status', [AuthController::class, 'status']);
     Route::get('referral/program', [ReferralController::class, 'program']);
+    Route::post('track/page-view', [TrackingController::class, 'pageView']);
     Route::middleware('throttle:storefront-auth')->group(function (): void {
         Route::post('auth/whatsapp/challenges', [AuthController::class, 'challenge']);
         Route::post('auth/whatsapp/challenges/{id}/resend', [AuthController::class, 'resend']);
