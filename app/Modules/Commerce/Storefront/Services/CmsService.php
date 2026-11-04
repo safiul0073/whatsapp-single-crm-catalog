@@ -69,6 +69,7 @@ class CmsService
                 'socials' => [],
                 'app_download_enabled' => true,
                 'wholesale_enabled' => true,
+                'retail_enabled' => true,
                 'app_download_title' => 'Experience On Mobile',
                 'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
                 'app_ios_url' => '',
@@ -77,14 +78,10 @@ class CmsService
             array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
         );
         $settings['wholesale_enabled'] = (bool) $settings['wholesale_enabled'];
-        if (! empty($settings['logo']) && ! str_starts_with($settings['logo'], 'http')) {
-            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['logo'], '/'));
-            $settings['logo'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
-        }
-        if (! empty($settings['favicon']) && ! str_starts_with($settings['favicon'], 'http')) {
-            $clean = preg_replace('#^/?storage/#', '', ltrim($settings['favicon'], '/'));
-            $settings['favicon'] = rtrim(config('app.url'), '/').'/storage/'.$clean;
-        }
+        $settings['retail_enabled'] = ! $settings['wholesale_enabled'] || (bool) $settings['retail_enabled'];
+        $settings['logo'] = $this->mediaUrl($settings['logo']);
+        $settings['favicon'] = $this->mediaUrl($settings['favicon']);
+        $settings['pwa'] = $this->pwaSettings($settings);
         $seo = array_replace(
             ['title' => '', 'description' => '', 'keywords' => '', 'og_image' => '', 'twitter_handle' => '', 'google_verification' => '', 'bing_verification' => '', 'noindex' => false],
             (array) ($settings['seo'] ?? [])
@@ -388,6 +385,42 @@ class CmsService
         }
 
         return $slides;
+    }
+
+    /**
+     * Turns a stored media path into an absolute URL served from the public disk.
+     */
+    private function mediaUrl(?string $path): ?string
+    {
+        if ($path === null || $path === '' || str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return rtrim(config('app.url'), '/').'/storage/'.preg_replace('#^/?storage/#', '', ltrim($path, '/'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @return array{enabled: bool, name: string, short_name: string, icon: ?string, theme_color: string, background_color: string, offline_title: string, offline_message: string, offline_images: list<string>}
+     */
+    private function pwaSettings(array $settings): array
+    {
+        $stored = (array) ($settings['pwa'] ?? []);
+        $name = (string) $settings['name'];
+        $text = fn (string $key, string $default): string => trim((string) ($stored[$key] ?? '')) !== '' ? trim((string) $stored[$key]) : $default;
+        $hex = fn (string $key, string $default): string => preg_match('/^#[0-9a-fA-F]{6}$/D', (string) ($stored[$key] ?? '')) ? strtoupper($stored[$key]) : strtoupper($default);
+
+        return [
+            'enabled' => (bool) ($stored['enabled'] ?? true),
+            'name' => $text('name', $name),
+            'short_name' => $text('short_name', mb_substr($name, 0, 12)),
+            'icon' => $this->mediaUrl($stored['icon'] ?? null) ?: null,
+            'theme_color' => $hex('theme_color', (string) $settings['primary']),
+            'background_color' => $hex('background_color', (string) ($settings['canvas'] ?? '#F0F2F5')),
+            'offline_title' => $text('offline_title', "You're offline"),
+            'offline_message' => $text('offline_message', 'Check your connection. Your cart is safe, and we will pick up right where you left off.'),
+            'offline_images' => array_values(array_map(fn (string $p): string => (string) $this->mediaUrl($p), array_slice(array_filter((array) ($stored['offline_images'] ?? []), fn (mixed $p): bool => is_string($p) && $p !== ''), 0, 3))),
+        ];
     }
 
     private function products(int $workspace, array $config): array

@@ -12,8 +12,10 @@ use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -86,6 +88,16 @@ it('creates retail and mixed orders with server prices', function () {
     $c['data']['groups'][] = ['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2, 'price' => '0.01'];
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
     expect($order->items->sum('quantity'))->toBe(20)->and($order->subtotal)->toBe('128.0000');
+});
+
+it('rejects retail groups and keeps wholesale boxes when the owner switches retail off', function () {
+    $c = unifiedContext();
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $c['workspace']->id], ['config' => ['retail_enabled' => false]]);
+    StoreFeatures::flush();
+
+    expect(fn () => app(UnifiedOrderService::class)->create($c['workspace'], withRetailLine($c)['data']))->toThrow(ValidationException::class);
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    expect($order->boxes)->toHaveCount(3);
 });
 
 it('rejects duplicate payload changes but returns an identical submission', function () {

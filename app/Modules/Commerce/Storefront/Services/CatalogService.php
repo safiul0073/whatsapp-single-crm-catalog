@@ -20,12 +20,17 @@ class CatalogService
         if (! StoreFeatures::wholesaleEnabled($workspace)) {
             $sellingModes = ['retail', 'both'];
         }
+        $retailOn = StoreFeatures::retailEnabled($workspace);
+        if (! $retailOn) {
+            $sellingModes = ['wholesale', 'both'];
+        }
 
         $q = Product::query()
             ->where('workspace_id', $workspace)
             ->where('status', 'active')
             ->where('visibility', 'published')
             ->whereIn('selling_mode', $sellingModes)
+            ->when(! $retailOn, fn (Builder $query): Builder => $query->where('ws_enabled', true))
             ->with(['primaryMedia', 'category', 'brandRecord', 'colors.swatchMedia', 'variants', 'options.values', 'tierPrices']);
         $search = $filters['q'] ?? $filters['search'] ?? null;
         if (! empty($search)) {

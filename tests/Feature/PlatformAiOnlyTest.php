@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Chatbots\Services\ClaudeReplyService;
 use Illuminate\Support\Facades\Route;
 
 it('does not expose workspace ai provider routes', function (): void {
@@ -44,4 +45,14 @@ it('removes provider and model controls from chatbot screens', function (): void
         ->not->toContain('chatbot_ai_provider_id')
         ->not->toContain('ai-providers')
         ->not->toContain('Model override');
+});
+
+it('never shows technical AI setup errors to customers', function (): void {
+    $reply = app(ClaudeReplyService::class)->draftReply('hi, can you answer me');
+    $source = file_get_contents(app_path('Modules/Chatbots/Services/ClaudeReplyService.php'));
+
+    expect($reply['reply'])->toBe(ClaudeReplyService::CUSTOMER_FALLBACK_REPLY)
+        ->and($reply['handoff'])->toBeTrue()
+        ->and($source)->not->toContain('Check AI Settings')
+        ->not->toContain('is not configured for text generation');
 });

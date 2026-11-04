@@ -2,6 +2,8 @@
 
 namespace App\Modules\Commerce\Storefront\Http\Requests;
 
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AdminRequest extends FormRequest
@@ -66,6 +68,7 @@ class AdminRequest extends FormRequest
                 'config.footer_text' => 'nullable|string|max:500',
                 'config.app_download_enabled' => 'nullable|boolean',
                 'config.wholesale_enabled' => 'nullable|boolean',
+                'config.retail_enabled' => 'nullable|boolean',
                 'config.app_download_title' => 'nullable|string|max:120',
                 'config.app_download_subtitle' => 'nullable|string|max:200',
                 'config.seo' => 'nullable|array',
@@ -79,6 +82,17 @@ class AdminRequest extends FormRequest
                 'config.seo.noindex' => 'nullable|boolean',
                 'config.app_ios_url' => 'nullable|string|max:2048',
                 'config.app_android_url' => 'nullable|string|max:2048',
+                'config.pwa' => 'nullable|array',
+                'config.pwa.enabled' => 'nullable|boolean',
+                'config.pwa.name' => 'nullable|string|max:60',
+                'config.pwa.short_name' => 'nullable|string|max:12',
+                'config.pwa.icon' => 'nullable|string|max:2048',
+                'config.pwa.theme_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/D'],
+                'config.pwa.background_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/D'],
+                'config.pwa.offline_title' => 'nullable|string|max:80',
+                'config.pwa.offline_message' => 'nullable|string|max:250',
+                'config.pwa.offline_images' => 'nullable|array|max:3',
+                'config.pwa.offline_images.*' => 'nullable|string|max:2048',
                 'android_app_file' => 'nullable|file|max:153600',
                 'ios_app_file' => 'nullable|file|max:153600',
             ],
@@ -116,5 +130,29 @@ class AdminRequest extends FormRequest
             ],
             default => [],
         };
+    }
+
+    /**
+     * A store must keep selling something: retail and wholesale cannot both be switched off.
+     */
+    public function after(): array
+    {
+        return [function ($validator): void {
+            if ($this->route()->getActionMethod() !== 'settings' || $validator->errors()->isNotEmpty()) {
+                return;
+            }
+            $config = (array) $this->input('config', []);
+            if (! array_key_exists('retail_enabled', $config) && ! array_key_exists('wholesale_enabled', $config)) {
+                return;
+            }
+            $existing = (array) (StorefrontSetting::query()
+                ->where('workspace_id', app(WorkspaceResolver::class)->current($this->user())?->id)
+                ->first()?->config ?? []);
+            $retail = (bool) ($config['retail_enabled'] ?? $existing['retail_enabled'] ?? true);
+            $wholesale = (bool) ($config['wholesale_enabled'] ?? $existing['wholesale_enabled'] ?? true);
+            if (! $retail && ! $wholesale) {
+                $validator->errors()->add('config.retail_enabled', __('Keep at least one of Retail or Wholesale selling switched on.'));
+            }
+        }];
     }
 }

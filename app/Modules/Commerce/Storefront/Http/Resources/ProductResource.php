@@ -19,7 +19,11 @@ class ProductResource extends JsonResource
         $singlePrice = (string) ($this->single_piece_price ?? $this->variants->where('status', 'active')->min('price') ?? '0');
         $wholesaleOn = StoreFeatures::wholesaleEnabled($this->workspace_id);
         $wholesalePrice = $wholesaleOn ? (string) ($this->wholesale_price ?? '0') : '0';
-        $sellingMode = $wholesaleOn ? ($this->selling_mode ?? 'both') : 'retail';
+        $sellingMode = match (true) {
+            ! $wholesaleOn => 'retail',
+            ! StoreFeatures::retailEnabled($this->workspace_id) => 'wholesale',
+            default => $this->selling_mode ?? 'both',
+        };
         $itemMoq = (int) ($this->ws_main_moq ?: ($this->moq ?: 1));
 
         $stockVariants = $this->variants->whereIn('status', ['active', 'out_of_stock'])->values();

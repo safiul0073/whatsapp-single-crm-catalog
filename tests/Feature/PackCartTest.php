@@ -398,6 +398,38 @@ it('sells retail only when the owner switches wholesale off', function () {
     $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $selection['items'][0]['variant_id'], 'quantity' => 1], $h)->assertOk()->assertJsonPath('data.subtotal', '20.00');
 });
 
+it('sells wholesale only when the owner switches retail off', function () {
+    $selection = mixedPackFixture($this);
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.retail_enabled', true);
+
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['retail_enabled' => false]]);
+    StoreFeatures::flush();
+
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()
+        ->assertJsonPath('data.retail_enabled', false)
+        ->assertJsonPath('data.wholesale_enabled', true);
+    $this->getJson('/api/storefront/v1/catalog/products/'.$this->product->slug, $this->headers)->assertNotFound();
+    $this->getJson('/api/storefront/v1/catalog/products?selling_mode=retail', $this->headers)->assertOk()
+        ->assertJsonMissing(['slug' => 'shirt'])
+        ->assertJsonFragment(['slug' => 'shirt-pack']);
+    $this->getJson('/api/storefront/v1/catalog/products/shirt-pack', $this->headers)->assertOk()->assertJsonPath('data.selling_mode', 'wholesale');
+
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token, 'Idempotency-Key' => (string) Str::uuid()];
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 1], $h)->assertUnprocessable();
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $selection['items'][0]['variant_id'], 'quantity' => 1], $h)->assertUnprocessable();
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], $h)->assertOk()->assertJsonPath('data.subtotal', '80.00');
+});
+
+it('keeps retail on when both switches are stored off', function () {
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['retail_enabled' => false, 'wholesale_enabled' => false]]);
+    StoreFeatures::flush();
+
+    expect(StoreFeatures::retailEnabled($this->store->id))->toBeTrue()
+        ->and(StoreFeatures::wholesaleEnabled($this->store->id))->toBeFalse();
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.retail_enabled', true);
+});
+
 it('prices pack-mode standard wholesale from the pack price list and skips shipping for wholesale-only carts', function () {
     $p = Product::query()->create(['workspace_id' => $this->store->id, 'name' => 'Set', 'slug' => 'set', 'sku' => 'set', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'ws_enabled' => true, 'single_piece_price' => 20, 'wholesale_price' => 10, 'ws_main_moq' => 1, 'ws_color_moq' => 1, 'ws_moq_unit' => 'packs', 'ws_pack_prices' => [['packs' => 2, 'price' => '500'], ['packs' => 3, 'price' => '600']]]);
     $colors = [];

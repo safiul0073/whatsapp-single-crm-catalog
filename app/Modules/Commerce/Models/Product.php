@@ -174,7 +174,8 @@ class Product extends Model
 
     public function isRetailEnabled(): bool
     {
-        return in_array($this->selling_mode, ['retail', 'both'], true);
+        return in_array($this->selling_mode, ['retail', 'both'], true)
+            && StoreFeatures::retailEnabled($this->workspace_id);
     }
 
     /**

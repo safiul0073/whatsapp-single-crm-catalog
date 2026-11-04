@@ -31,6 +31,12 @@
     .wapro-row{display:flex;gap:8px}.wapro-row .wapro-text{flex:1}.wapro-note{font-size:12px;color:#647067}.wapro-file-input{display:none}.wapro-file-pill{display:none;align-items:center;justify-content:space-between;gap:8px;border:1px solid #d8e2dc;border-radius:12px;background:#f6faf7;padding:8px 10px;font-size:12px;color:#17211b}.wapro-file-pill.visible{display:flex}.wapro-file-clear{border:0;background:transparent;color:#647067;cursor:pointer;font-size:16px}
     .wapro-attachment{display:block;margin-bottom:7px;overflow:hidden;border-radius:12px;color:inherit;text-decoration:none}.wapro-attachment img{display:block;max-width:100%;max-height:220px;object-fit:cover}.wapro-file-card{display:flex;align-items:center;gap:10px;border:1px solid #e3ebe6;background:rgba(255,255,255,.35);padding:10px}.wapro-file-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:rgba(22,163,74,.12);font-weight:900}.wapro-file-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}.wapro-file-size{display:block;font-size:11px;opacity:.72}
     .wapro-product-link{display:inline-block;margin-top:4px;padding:6px 12px;background:rgba(255,255,255,0.2);border:1px solid currentColor;border-radius:6px;text-decoration:none;font-weight:bold;color:inherit;font-size:13px;transition:opacity 0.2s;}.wapro-msg.outbound .wapro-product-link{background:var(--wapro-primary,#16a34a);color:#fff;border-color:transparent;}
+    .wapro-msg.pending{opacity:.75}
+    .wapro-typing{align-self:flex-start;display:flex;gap:4px;align-items:center;background:#fff;border:1px solid #e3ebe6;border-radius:14px;border-bottom-left-radius:4px;padding:12px 14px}
+    .wapro-typing span{width:7px;height:7px;border-radius:50%;background:#9aa8a0;animation:wapro-bounce 1.2s infinite ease-in-out}
+    .wapro-typing span:nth-child(2){animation-delay:.15s}.wapro-typing span:nth-child(3){animation-delay:.3s}
+    @keyframes wapro-bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+    @media (prefers-reduced-motion:reduce){.wapro-typing span{animation:none}}
   `;
   document.head.appendChild(style);
 
@@ -77,8 +83,28 @@
     });
   }
 
+  function scrollToEnd() {
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function showTyping() {
+    if (messages.querySelector(".wapro-typing")) return;
+    const typing = document.createElement("div");
+    typing.className = "wapro-typing";
+    typing.setAttribute("role", "status");
+    typing.setAttribute("aria-label", "Typing");
+    typing.innerHTML = "<span></span><span></span><span></span>";
+    messages.appendChild(typing);
+    scrollToEnd();
+  }
+
+  function hideTyping() {
+    messages.querySelector(".wapro-typing")?.remove();
+  }
+
   function appendMessage(message) {
     if (!message || document.querySelector(`[data-wapro-id="${message.id}"]`)) return;
+    if (message.direction === "outbound") hideTyping();
     const bubble = document.createElement("div");
     bubble.className = `wapro-msg ${message.direction}`;
     bubble.dataset.waproId = message.id;
@@ -96,9 +122,11 @@
       text.innerHTML = bodyHtml;
       bubble.appendChild(text);
     }
-    messages.appendChild(bubble);
+    const typing = messages.querySelector(".wapro-typing");
+    if (typing) messages.insertBefore(bubble, typing); else messages.appendChild(bubble);
     if (!Number.isNaN(Number(message.id))) lastMessageId = Math.max(lastMessageId, Number(message.id));
-    messages.scrollTop = messages.scrollHeight;
+    scrollToEnd();
+    return bubble;
   }
 
   function renderAttachment(attachment) {
@@ -221,8 +249,19 @@
     const input = form.elements.message;
     const text = input.value.trim();
     if (!text && !selectedAttachment) return;
-    note.textContent = "Sending...";
+    note.textContent = "";
     input.value = "";
+    const pendingId = `pending-${Date.now()}`;
+    const pendingFile = selectedAttachment;
+    const pending = appendMessage({
+      id: pendingId,
+      direction: "inbound",
+      body: text,
+      attachment: pendingFile ? {type: "file", url: "#", name: pendingFile.name, size: pendingFile.size} : null
+    });
+    pending?.classList.add("pending");
+    pending?.querySelector("a")?.removeAttribute("href");
+    showTyping();
     try {
       await ensureSession();
       const payload = new FormData();
@@ -240,11 +279,15 @@
       });
       attachmentInput.value = "";
       setAttachment(null);
+      pending?.remove();
       appendMessage(data.message);
       appendMessage(data.reply);
+      hideTyping();
       note.textContent = data.error || "";
     } catch (error) {
-      note.textContent = error.message || "Unable to send message.";
+      hideTyping();
+      pending?.classList.remove("pending");
+      note.textContent = "Message not sent. Please try again.";
     }
   });
 

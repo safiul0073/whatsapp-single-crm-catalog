@@ -401,5 +401,7 @@ it('renders widget loader attachment upload and preview hooks', function (): voi
         ->assertOk()
         ->assertSee('wapro-file-input', false)
         ->assertSee('renderAttachment', false)
-        ->assertSee('selectedAttachment', false);
+        ->assertSee('selectedAttachment', false)
+        ->assertSee('wapro-typing', false)
+        ->assertDontSee('Sending...', false);
 });

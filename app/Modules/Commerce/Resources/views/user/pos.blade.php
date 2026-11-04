@@ -16,6 +16,7 @@
             'currency' => $settings->currency,
             'precision' => $settings->precision(),
             'paymentMethods' => $paymentMethods,
+            'mode' => ($retailEnabled ?? true) ? 'retail' : 'wholesale',
         ];
     @endphp
     <div class="pos-shell" x-data="commercePos" data-config="{{ json_encode($config) }}" @keydown.window="shortcut($event)">
@@ -26,7 +27,7 @@
                 <p class="text-sm text-body">{{ __('Scan or search, build the cart, take payment.') }} · <span x-text="currencySymbol()">{{ $settings->currency }}</span></p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                @if($wholesaleEnabled ?? true)
+                @if(($wholesaleEnabled ?? true) && ($retailEnabled ?? true))
                     <div class="inline-flex rounded-md bg-section p-1" role="group" aria-label="{{ __('Add products as') }}">
                         <button type="button" class="pos-segment" :class="mode === 'retail' && 'pos-segment-active'" :aria-pressed="mode === 'retail'" @click="mode = 'retail'">{{ __('Retail') }}</button>
                         <button type="button" class="pos-segment" :class="mode === 'wholesale' && 'pos-segment-active'" :aria-pressed="mode === 'wholesale'" @click="mode = 'wholesale'">{{ __('Wholesale') }}</button>
