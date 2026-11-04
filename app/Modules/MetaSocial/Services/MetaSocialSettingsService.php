@@ -20,6 +20,19 @@ class MetaSocialSettingsService
         'meta_social_instagram_config_id' => '',
     ];
 
+    /**
+     * Legacy Messenger/Instagram keys now owned by the shared Meta app settings.
+     */
+    protected array $sharedKeys = [
+        'meta_social_graph_api_version' => 'meta_graph_api_version',
+        'meta_social_app_id' => 'meta_app_id',
+        'meta_social_app_secret' => 'meta_app_secret',
+        'meta_social_default_verify_token' => 'meta_default_verify_token',
+        'meta_social_webhook_base_url' => 'meta_webhook_base_url',
+    ];
+
+    public function __construct(protected MetaAppSettingsService $metaApp) {}
+
     public function all(): array
     {
         return Cache::remember(self::CACHE_KEY, 86400, function (): array {
@@ -34,6 +47,10 @@ class MetaSocialSettingsService
 
     public function get(string $key, mixed $default = null): mixed
     {
+        if (isset($this->sharedKeys[$key]) && ($shared = $this->metaApp->filled($this->sharedKeys[$key])) !== null) {
+            return $shared;
+        }
+
         return $this->all()[$key] ?? $default;
     }
 
@@ -48,7 +65,7 @@ class MetaSocialSettingsService
 
     public function graphApiVersion(): string
     {
-        return trim((string) $this->get('meta_social_graph_api_version', 'v20.0'), '/');
+        return MetaAppSettingsService::normalizeGraphApiVersion((string) $this->get('meta_social_graph_api_version', 'v20.0'), 'v20.0');
     }
 
     public function webhookBaseUrl(): ?string

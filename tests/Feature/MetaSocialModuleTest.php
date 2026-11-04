@@ -63,7 +63,8 @@ it('renders Messenger and Instagram setup options without exposing credentials',
         ->assertSee('Social Channels')
         ->assertSee('Messenger')
         ->assertSee('Instagram')
-        ->assertSee('Admin setup required')
+        ->assertSee('Connect with Meta')
+        ->assertSee(route('user.channels.index').'#meta-connect', false)
         ->assertSee('WaPro Support')
         ->assertDontSee('page-secret-token');
 });
@@ -81,9 +82,9 @@ it('enables embedded signup config when admin settings are complete', function (
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.meta-social.setup'))
+        ->get(route('user.channels.index'))
         ->assertOk()
-        ->assertSee('Embedded Signup ready')
+        ->assertSee('data-meta-connect="messenger"', false)
         ->assertSee('messenger-config')
         ->assertSee('instagram-config');
 });
@@ -97,8 +98,9 @@ it('connects Messenger from embedded signup code exchange', function (): void {
     ]);
 
     Http::fake([
-        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::response(['access_token' => 'page-token']),
-        'https://graph.facebook.com/v20.0/me/accounts*' => Http::response([], 500),
+        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::response(['access_token' => 'user-token']),
+        'https://graph.facebook.com/v20.0/me/accounts*' => Http::response(['data' => [['id' => 'page-123', 'name' => 'WaPro Support', 'access_token' => 'page-token']]]),
+        'https://graph.facebook.com/v20.0/page-123/subscribed_apps*' => Http::response(['success' => true]),
         'https://graph.facebook.com/v20.0/page-123*' => Http::response(['id' => 'page-123', 'name' => 'WaPro Support']),
     ]);
 
@@ -106,11 +108,7 @@ it('connects Messenger from embedded signup code exchange', function (): void {
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->post(route('user.meta-social.setup.embedded', 'messenger'), [
-            'code' => 'embedded-code',
-            'page_id' => 'page-123',
-            'page_name' => 'WaPro Support',
-        ])
+        ->post(route('user.meta-social.setup.embedded', 'messenger'), ['code' => 'embedded-code'])
         ->assertRedirect()
         ->assertSessionHas('status');
 
@@ -123,11 +121,7 @@ it('connects Messenger from embedded signup code exchange', function (): void {
         ->and($channel->status->value)->toBe('connected');
 });
 
-it('connects Instagram from manual page access token fallback', function (): void {
-    Http::fake([
-        'https://graph.facebook.com/v20.0/ig-123*' => Http::response(['id' => 'ig-123', 'username' => 'wapro.app']),
-    ]);
-
+it('rejects a pasted Instagram token without a Meta login code', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
 
     $this->withoutMiddleware()
@@ -137,127 +131,29 @@ it('connects Instagram from manual page access token fallback', function (): voi
             'instagram_account_id' => 'ig-123',
             'username' => 'wapro.app',
         ])
-        ->assertRedirect();
+        ->assertSessionHasErrors('code');
 
-    $channel = ChannelAccount::query()->where('provider', 'instagram')->firstOrFail();
-
-    expect($channel->provider_account_id)->toBe('ig-123')
-        ->and($channel->provider_display_id)->toBe('wapro.app')
-        ->and($channel->credential('access_token'))->toBe('instagram-token')
-        ->and($channel->status->value)->toBe('connected');
+    expect(ChannelAccount::query()->where('provider', 'instagram')->exists())->toBeFalse();
+    Http::assertNothingSent();
 });
 
-it('connects Messenger from Channel Setup after live Meta validation', function (): void {
-    Http::fake([
-        'https://graph.facebook.com/v20.0/page-123*' => Http::response(['id' => 'page-123', 'name' => 'WaPro Support']),
-    ]);
-
+it('refuses to save Meta channels from pasted credentials', function (string $provider): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
     metaSocialWorkspace($user);
 
     $this->withoutMiddleware()
         ->actingAs($user)
         ->post(route('user.whatsapp-cloud.channel-setup.store-generic'), [
-            'provider' => 'messenger',
-            'name' => 'WaPro Support',
-            'provider_account_id' => 'page-123',
-            'provider_display_id' => '',
-            'access_token' => 'page-token',
-            'webhook_verify_token' => 'verify-token',
+            'provider' => $provider,
+            'name' => 'Pasted channel',
+            'provider_account_id' => 'account-123',
+            'access_token' => 'pasted-token',
         ])
-        ->assertRedirect()
-        ->assertSessionHas('status');
+        ->assertSessionHasErrors('provider');
 
-    $channel = ChannelAccount::query()->where('provider', 'messenger')->firstOrFail();
-
-    expect($channel->status->value)->toBe('connected')
-        ->and($channel->provider_display_id)->toBe('WaPro Support')
-        ->and($channel->credential('access_token'))->toBe('page-token')
-        ->and(data_get($channel->settings, 'last_error'))->toBeNull();
-});
-
-it('saves Messenger with error status when Channel Setup Meta validation fails', function (): void {
-    Http::fake([
-        'https://graph.facebook.com/v20.0/page-123*' => Http::response([
-            'error' => ['message' => 'Invalid OAuth access token.'],
-        ], 400),
-    ]);
-
-    $user = User::factory()->create(['email_verified_at' => now()]);
-    metaSocialWorkspace($user);
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store-generic'), [
-            'provider' => 'messenger',
-            'name' => 'WaPro Support',
-            'provider_account_id' => 'page-123',
-            'access_token' => 'bad-token',
-        ])
-        ->assertRedirect()
-        ->assertSessionHas('error');
-
-    $channel = ChannelAccount::query()->where('provider', 'messenger')->firstOrFail();
-
-    expect($channel->status->value)->toBe('error')
-        ->and(data_get($channel->settings, 'last_error'))->toBe('Invalid OAuth access token.');
-});
-
-it('connects Instagram from Channel Setup after live Meta validation', function (): void {
-    Http::fake([
-        'https://graph.facebook.com/v20.0/ig-123*' => Http::response(['id' => 'ig-123', 'username' => 'wapro.app']),
-    ]);
-
-    $user = User::factory()->create(['email_verified_at' => now()]);
-    metaSocialWorkspace($user);
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store-generic'), [
-            'provider' => 'instagram',
-            'name' => 'WaPro Instagram',
-            'provider_account_id' => 'ig-123',
-            'provider_display_id' => '',
-            'access_token' => 'instagram-token',
-            'webhook_verify_token' => 'verify-token',
-        ])
-        ->assertRedirect()
-        ->assertSessionHas('status');
-
-    $channel = ChannelAccount::query()->where('provider', 'instagram')->firstOrFail();
-
-    expect($channel->status->value)->toBe('connected')
-        ->and($channel->provider_display_id)->toBe('wapro.app')
-        ->and($channel->credential('access_token'))->toBe('instagram-token')
-        ->and(data_get($channel->settings, 'last_error'))->toBeNull();
-});
-
-it('saves Instagram with error status when Channel Setup Meta validation fails', function (): void {
-    Http::fake([
-        'https://graph.facebook.com/v20.0/ig-123*' => Http::response([
-            'error' => ['message' => 'Unsupported get request.'],
-        ], 400),
-    ]);
-
-    $user = User::factory()->create(['email_verified_at' => now()]);
-    metaSocialWorkspace($user);
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store-generic'), [
-            'provider' => 'instagram',
-            'name' => 'WaPro Instagram',
-            'provider_account_id' => 'ig-123',
-            'access_token' => 'bad-token',
-        ])
-        ->assertRedirect()
-        ->assertSessionHas('error');
-
-    $channel = ChannelAccount::query()->where('provider', 'instagram')->firstOrFail();
-
-    expect($channel->status->value)->toBe('error')
-        ->and(data_get($channel->settings, 'last_error'))->toBe('Unsupported get request.');
-});
+    expect(ChannelAccount::query()->where('provider', $provider)->exists())->toBeFalse();
+    Http::assertNothingSent();
+})->with(['whatsapp', 'messenger', 'instagram', 'threads']);
 
 it('tests Messenger connection through Channel Setup', function (): void {
     Http::fake([
@@ -551,9 +447,9 @@ it('stores a never-expiring page token after the long-lived token exchange', fun
             ->push(['access_token' => 'short-user-token'])
             ->push(['access_token' => 'long-user-token']),
         'https://graph.facebook.com/v20.0/me/accounts*' => Http::response(['data' => [
-            ['id' => 'other-page', 'access_token' => 'other-page-token'],
             $page,
         ]]),
+        'https://graph.facebook.com/v20.0/*/subscribed_apps*' => Http::response(['success' => true]),
         'https://graph.facebook.com/v20.0/'.$accountId.'*' => Http::response(['id' => $accountId, 'name' => 'Shop', 'username' => 'shop']),
     ]);
 
@@ -561,10 +457,7 @@ it('stores a never-expiring page token after the long-lived token exchange', fun
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->post(route('user.meta-social.setup.embedded', $provider), [
-            'code' => 'embedded-code',
-            ($provider === 'instagram' ? 'instagram_account_id' : 'page_id') => $accountId,
-        ])
+        ->post(route('user.meta-social.setup.embedded', $provider), ['code' => 'embedded-code'])
         ->assertRedirect();
 
     $channel = ChannelAccount::query()->where('provider', $provider)->firstOrFail();
@@ -582,7 +475,7 @@ it('stores a never-expiring page token after the long-lived token exchange', fun
     'instagram' => ['instagram', 'ig-123', ['id' => 'page-9', 'access_token' => 'page-access-token', 'instagram_business_account' => ['id' => 'ig-123']]],
 ]);
 
-it('falls back to the long-lived user token when the page is not listed', function (): void {
+it('saves nothing when Meta shares no Page during login', function (): void {
     app(MetaSocialSettingsService::class)->update([
         'meta_social_embedded_signup_enabled' => true,
         'meta_social_app_id' => 'meta-app-id',
@@ -591,19 +484,16 @@ it('falls back to the long-lived user token when the page is not listed', functi
     ]);
 
     Http::fake([
-        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::sequence()
-            ->push(['access_token' => 'short-user-token'])
-            ->push(['error' => ['message' => 'nope']], 400),
+        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::response(['access_token' => 'user-token']),
         'https://graph.facebook.com/v20.0/me/accounts*' => Http::response(['data' => []]),
-        'https://graph.facebook.com/v20.0/page-123*' => Http::response(['id' => 'page-123', 'name' => 'Shop']),
     ]);
 
     $user = User::factory()->create(['email_verified_at' => now()]);
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->post(route('user.meta-social.setup.embedded', 'messenger'), ['code' => 'embedded-code', 'page_id' => 'page-123'])
-        ->assertRedirect();
+        ->post(route('user.meta-social.setup.embedded', 'messenger'), ['code' => 'embedded-code'])
+        ->assertSessionHasErrors('embedded_signup');
 
-    expect(ChannelAccount::query()->where('provider', 'messenger')->firstOrFail()->credential('access_token'))->toBe('short-user-token');
+    expect(ChannelAccount::query()->where('provider', 'messenger')->exists())->toBeFalse();
 });

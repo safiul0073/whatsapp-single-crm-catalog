@@ -87,9 +87,31 @@ class WhatsAppCloudClient
         ]);
     }
 
+    /**
+     * Numbers added through Embedded Signup's "new number" flow cannot send until they are
+     * registered for Cloud API; the PIN becomes the number's two-step verification PIN.
+     */
+    public function registerPhoneNumber(string $phoneNumberId, string $token, string $pin): Response
+    {
+        return Http::withToken($token)->post($this->endpoint($phoneNumberId, 'register'), [
+            'messaging_product' => 'whatsapp',
+            'pin' => $pin,
+        ]);
+    }
+
     protected function endpoint(string $phoneNumberId, string $resource): string
     {
         return $this->graphUrl("{$phoneNumberId}/{$resource}");
+    }
+
+    public function node(string $id, string $token, string $fields): Response
+    {
+        return Http::withToken($token)->timeout(20)->get($this->graphUrl($id), ['fields' => $fields]);
+    }
+
+    public function subscribedApps(string $businessAccountId, string $token): Response
+    {
+        return Http::withToken($token)->timeout(20)->get($this->graphUrl($businessAccountId.'/subscribed_apps'));
     }
 
     protected function graphUrl(string $path): string

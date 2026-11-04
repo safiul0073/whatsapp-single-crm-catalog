@@ -3,8 +3,10 @@
 namespace App\Modules\MetaSocial\Providers;
 
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MetaSocial\Services\MetaSocialClient;
 use App\Modules\MetaSocial\Services\MetaSocialDriver;
+use App\Modules\MetaSocial\Services\MetaSocialReadinessChecker;
 use App\Modules\Shared\Support\BasePanelModuleProvider;
 
 class MetaSocialServiceProvider extends BasePanelModuleProvider
@@ -20,5 +22,9 @@ class MetaSocialServiceProvider extends BasePanelModuleProvider
 
         $manager->register(new MetaSocialDriver(app(MetaSocialClient::class), 'messenger'));
         $manager->register(new MetaSocialDriver(app(MetaSocialClient::class), 'instagram'));
+
+        foreach (['messenger', 'instagram'] as $provider) {
+            app(ChannelReadinessService::class)->register(app(MetaSocialReadinessChecker::class, ['provider' => $provider]));
+        }
     }
 }

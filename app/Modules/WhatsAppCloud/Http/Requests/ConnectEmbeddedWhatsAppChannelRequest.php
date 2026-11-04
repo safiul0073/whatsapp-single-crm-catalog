@@ -19,6 +19,7 @@ class ConnectEmbeddedWhatsAppChannelRequest extends FormRequest
             'phone_number_id' => ['nullable', 'string', 'max:255'],
             'business_id' => ['nullable', 'string', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
+            'signup_mode' => ['nullable', 'string', 'in:new,coexistence'],
             'metadata' => ['nullable', 'array'],
         ];
     }

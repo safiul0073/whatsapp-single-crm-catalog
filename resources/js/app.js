@@ -36,6 +36,7 @@ import './components/social-widget-layout-picker.js';
 import './components/social-widget-editor.js';
 import './components/social-widget-library.js';
 import './components/image-color-picker.js';
+import './components/meta-connect.js';
 
 // Alpine.js components (register before Alpine.start())
 import './components/datatable.js';

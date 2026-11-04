@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Modules\WhatsAppCloud\Http\Requests\UpdateWhatsAppSettingsRequest;
 use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class WhatsAppSettingsController extends Controller
 {
-    public function index(WhatsAppSettingsService $settings): View
+    /**
+     * WhatsApp settings now live on the shared Meta App page.
+     */
+    public function index(): RedirectResponse
     {
-        return view('whatsapp-cloud::admin.settings', [
-            'settings' => $settings->all(),
-        ]);
+        return redirect()->route('admin.meta-app.settings.index');
     }
 
     public function update(UpdateWhatsAppSettingsRequest $request, WhatsAppSettingsService $settings): RedirectResponse

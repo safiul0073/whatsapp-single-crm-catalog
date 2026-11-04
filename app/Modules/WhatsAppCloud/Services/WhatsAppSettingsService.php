@@ -2,6 +2,7 @@
 
 namespace App\Modules\WhatsAppCloud\Services;
 
+use App\Modules\MetaSocial\Services\MetaAppSettingsService;
 use App\Modules\Settings\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,6 +22,19 @@ class WhatsAppSettingsService
         'whatsapp_embedded_signup_config_id' => '',
     ];
 
+    /**
+     * Legacy WhatsApp keys now owned by the shared Meta app settings.
+     */
+    protected array $sharedKeys = [
+        'whatsapp_graph_api_version' => 'meta_graph_api_version',
+        'whatsapp_meta_app_id' => 'meta_app_id',
+        'whatsapp_meta_app_secret' => 'meta_app_secret',
+        'whatsapp_default_verify_token' => 'meta_default_verify_token',
+        'whatsapp_webhook_base_url' => 'meta_webhook_base_url',
+    ];
+
+    public function __construct(protected MetaAppSettingsService $metaApp) {}
+
     public function all(): array
     {
         return Cache::remember(self::CACHE_KEY, 86400, function (): array {
@@ -35,6 +49,10 @@ class WhatsAppSettingsService
 
     public function get(string $key, mixed $default = null): mixed
     {
+        if (isset($this->sharedKeys[$key]) && ($shared = $this->metaApp->filled($this->sharedKeys[$key])) !== null) {
+            return $shared;
+        }
+
         return $this->all()[$key] ?? $default;
     }
 
@@ -49,9 +67,7 @@ class WhatsAppSettingsService
 
     public function graphApiVersion(): string
     {
-        $version = trim((string) $this->get('whatsapp_graph_api_version', 'v24.0'), '/');
-
-        return preg_match('/^v\d+\.\d+$/', $version) === 1 ? $version : 'v24.0';
+        return MetaAppSettingsService::normalizeGraphApiVersion((string) $this->get('whatsapp_graph_api_version', 'v24.0'));
     }
 
     public function webhookBaseUrl(): ?string

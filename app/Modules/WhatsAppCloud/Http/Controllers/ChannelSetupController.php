@@ -5,10 +5,10 @@ namespace App\Modules\WhatsAppCloud\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\WhatsAppCloud\Http\Requests\ConnectEmbeddedWhatsAppChannelRequest;
 use App\Modules\WhatsAppCloud\Http\Requests\ConnectGenericChannelRequest;
-use App\Modules\WhatsAppCloud\Http\Requests\ConnectWhatsAppChannelRequest;
 use App\Modules\WhatsAppCloud\Services\ChannelSetupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,15 +19,6 @@ class ChannelSetupController extends Controller
     public function index(Request $request, ChannelSetupService $service): View
     {
         return view('whatsapp-cloud::user.channel-setup', $service->pageData($request->user()));
-    }
-
-    public function store(ConnectWhatsAppChannelRequest $request, ChannelSetupService $service): RedirectResponse
-    {
-        $channel = $service->connect($request->user(), $request->validated());
-
-        return back()->with('status', $channel->status->value === 'error'
-            ? 'WhatsApp channel saved. Check the card warning before sending messages.'
-            : 'WhatsApp channel connected.');
     }
 
     public function storeGeneric(ConnectGenericChannelRequest $request, ChannelSetupService $service): RedirectResponse
@@ -41,16 +32,26 @@ class ChannelSetupController extends Controller
             : "{$channel->name} connected.");
     }
 
-    public function embedded(ConnectEmbeddedWhatsAppChannelRequest $request, ChannelSetupService $service): RedirectResponse
+    public function embedded(ConnectEmbeddedWhatsAppChannelRequest $request, ChannelSetupService $service, ChannelReadinessService $readiness): RedirectResponse
     {
         $result = $service->connectFromEmbeddedSignup($request->user(), $request->validated());
+        $channel = $result['channel'];
+        $report = $readiness->check($channel);
+        $failed = $channel->fresh()?->status?->value === 'error';
 
-        return back()->with('status', "Connected WhatsApp with Meta. Synced {$result['phone_numbers']} phone number(s) and {$result['templates']} template(s).");
+        return redirect()->route('user.whatsapp-cloud.channel-setup')->with($failed ? 'error' : 'status', $failed
+            ? __('WhatsApp was saved, but setup did not finish: :error', ['error' => data_get($channel->fresh()?->settings, 'last_error', __('see the checklist below.'))])
+            : trim(__('WhatsApp connected. Synced :numbers phone number(s) and :templates template(s).', ['numbers' => $result['phone_numbers'], 'templates' => $result['templates']]).' '.(($report['status'] ?? 'ready') === 'ready' ? '' : __('A few steps are left before you can send messages. See the checklist below.'))));
     }
 
-    public function sync(Request $request, ChannelSetupService $service): RedirectResponse
+    public function sync(Request $request, ChannelSetupService $service, ChannelReadinessService $readiness): RedirectResponse
     {
         $result = $service->sync($request->user());
+        $channel = $service->pageData($request->user())['channel'];
+
+        if ($channel) {
+            $readiness->check($channel);
+        }
 
         return back()->with($result['ok'] ? 'status' : 'error', $result['ok']
             ? "Synced {$result['phone_numbers']} phone number(s) and {$result['synced']} template(s) from Meta."

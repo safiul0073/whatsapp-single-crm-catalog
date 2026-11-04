@@ -206,7 +206,6 @@
             class="min-h-0 flex-1 overflow-y-auto bg-section px-3 py-4 sm:px-5 flex flex-col"
             x-ref="messagesPane"
             x-init="$nextTick(() => scrollToBottom())"
-            x-effect="messages.length && !olderMessagesLoading && scrollToBottom()"
           >
             <div class="flex justify-center shrink-0" x-show="threadLoading">
               <span class="rounded-sm bg-neutral-0 px-3 py-1 text-xs font-medium text-body shadow-sm">{{ __('Loading messages...') }}</span>
@@ -296,6 +295,13 @@
               </div>
             </div>
           </div>
+
+          <template x-if="activeConversation && activeConversation.channel_warning">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-warning/20 bg-warning/10 px-3 py-2" data-inbox-channel-warning>
+              <p class="text-sm font-medium text-warning" x-text="activeConversation.channel_warning.message"></p>
+              <a x-show="activeConversation.channel_warning.url" :href="activeConversation.channel_warning.url" class="btn-sm btn-outline">{{ __('See what is needed') }}</a>
+            </div>
+          </template>
 
           <div class="border-t border-neutral-200 bg-neutral-0 px-3 py-2" x-show="sendError">
             <p class="text-sm font-medium text-error" x-text="sendError"></p>

@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -402,6 +403,7 @@ class InboxService
             'message' => $this->formatMessage($message),
             'conversation' => $this->formatConversation($conversation->fresh(['contact.tags', 'channelAccount']), $message),
             'error' => ($result['ok'] ?? false) ? null : ($result['error'] ?? data_get($result, 'response.error.message', __('Message failed to send.'))),
+            'error_detail' => ($result['ok'] ?? false) ? null : ($result['error_detail'] ?? null),
         ];
     }
 
@@ -597,6 +599,32 @@ class InboxService
         ])->values()->all();
     }
 
+    /**
+     * When Meta still blocks sending on this channel (display name pending, payment missing, …),
+     * say so above the composer with a link to the channel checklist.
+     *
+     * @return array{message: string, url: string|null}|null
+     */
+    protected function channelSendWarning(Conversation $conversation): ?array
+    {
+        $readiness = data_get($conversation->channelAccount?->settings, 'readiness');
+
+        if (! is_array($readiness) || ! in_array('send', (array) ($readiness['blocked_features'] ?? []), true)) {
+            return null;
+        }
+
+        $route = match ($conversation->provider) {
+            'whatsapp' => 'user.whatsapp-cloud.channel-setup',
+            'messenger', 'instagram', 'threads' => 'user.meta-social.setup',
+            default => null,
+        };
+
+        return [
+            'message' => (string) ($readiness['headline'] ?? __('This channel still needs setup in Meta before messages can be sent.')),
+            'url' => $route && Route::has($route) ? route($route) : null,
+        ];
+    }
+
     protected function formatConversation(Conversation $conversation, ?Message $latestMessage = null): array
     {
         $contact = $conversation->contact;
@@ -623,6 +651,7 @@ class InboxService
             'status' => $conversation->status?->value ?? (string) $conversation->status,
             'labels' => $labels,
             'channel_name' => $conversation->channelAccount?->name,
+            'channel_warning' => $this->channelSendWarning($conversation),
             'recipient_ready' => $this->recipientReady($conversation),
             'can_reply' => $this->canReply($conversation),
             'reply_disabled_reason' => $this->replyDisabledReason($conversation),

@@ -21,6 +21,9 @@
             'provider_label' => config("marketing-channels.providers.{$channel->provider}.label", ucfirst($channel->provider)),
             'name' => $channel->name,
             'display' => $channel->provider_display_id,
+            'warning' => in_array('campaigns', (array) data_get($channel->settings, 'readiness.blocked_features', []), true)
+                ? (string) data_get($channel->settings, 'readiness.headline')
+                : null,
         ])->values();
         $templateOptions = $templates->map(fn ($template) => [
             'id' => $template->id,
@@ -187,6 +190,13 @@
                                             <span class="badge badge-soft">{{ $channel['provider_label'] }}</span>
                                         </span>
                                         <span class="mt-0.5 block truncate text-xs text-neutral-400">{{ $channel['display'] ?: __('No display id') }}</span>
+                                        @if ($channel['warning'])
+                                            <span class="mt-1 block text-xs font-medium text-warning" data-campaign-channel-warning>
+                                                <i class="ph ph-warning"></i>
+                                                {{ $channel['warning'] }}
+                                                <a href="{{ $channel['provider'] === 'whatsapp' ? route('user.whatsapp-cloud.channel-setup') : route('user.channels.index') }}" class="font-semibold underline">{{ __('See what is needed') }}</a>
+                                            </span>
+                                        @endif
                                     </span>
                                 </label>
                             @empty

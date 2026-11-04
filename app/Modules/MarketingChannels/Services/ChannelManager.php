@@ -11,6 +11,8 @@ use InvalidArgumentException;
 
 class ChannelManager
 {
+    public const META_PROVIDERS = ['whatsapp', 'messenger', 'instagram', 'threads'];
+
     /** @var array<string, MarketingChannelDriver> */
     protected array $drivers = [];
 
@@ -34,7 +36,34 @@ class ChannelManager
             ];
         }
 
-        return $this->driver($account->provider)->sendMessage($account, $recipient, $payload);
+        return $this->explainMetaError($account, $this->driver($account->provider)->sendMessage($account, $recipient, $payload));
+    }
+
+    /**
+     * Meta send failures get a plain-language error and a next step (error_detail), while the raw
+     * Meta response stays in "response" for support.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<string, mixed>
+     */
+    protected function explainMetaError(ChannelAccount $account, array $result): array
+    {
+        if (($result['ok'] ?? false) || ! in_array($account->provider, self::META_PROVIDERS, true)) {
+            return $result;
+        }
+
+        $error = data_get($result, 'response.error');
+
+        if (! is_array($error) || blank($error['code'] ?? null)) {
+            return $result;
+        }
+
+        $translator = app(MetaErrorTranslator::class);
+        $result['error_detail'] = $translator->translate(['error' => $error], $result['error'] ?? null);
+        $result['error'] = $translator->summary(['error' => $error], $result['error'] ?? null);
+        $result['error_code'] = $result['error_code'] ?? (string) $error['code'];
+
+        return $result;
     }
 
     public function verifyWebhook(Request $request, ChannelAccount $account): bool

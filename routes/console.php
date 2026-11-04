@@ -6,6 +6,7 @@ use App\Modules\Commerce\Models\OrderEvent;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
 use App\Modules\TikTok\Services\TikTokTokenService;
 use Illuminate\Support\Facades\Schedule;
@@ -30,3 +31,6 @@ Schedule::call(function (): void {
 Schedule::call(fn () => app(ReferralService::class)->awardTargetSlabs())->name('commerce-referral-target-bonuses')->dailyAt('00:30')->withoutOverlapping();
 
 Schedule::call(fn () => app(TikTokTokenService::class)->refreshDue())->name('tiktok-refresh-tokens')->hourly()->withoutOverlapping();
+
+// Re-check what each connected Meta channel still needs (display name review, payment, permissions, token expiry).
+Schedule::call(fn () => app(ChannelReadinessService::class)->checkConnected())->name('channel-readiness-recheck')->dailyAt('03:15')->withoutOverlapping();

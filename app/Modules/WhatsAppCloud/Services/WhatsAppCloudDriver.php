@@ -17,6 +17,7 @@ use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
@@ -134,6 +135,8 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             foreach ($this->templateUpdates($payload, $account) as $update) {
                 $this->persistTemplateUpdate($account, $update['field'], $update['value']);
             }
+
+            $this->recheckOnAccountChange($account, $payload);
 
             $event->update(['status' => ChannelWebhookEventStatus::Processed->value, 'processed_at' => now()]);
 
@@ -352,6 +355,34 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
     protected function syncedContacts(array $payload): array
     {
         return $this->flattenValues($payload, 'contacts');
+    }
+
+    /**
+     * Meta announces display name decisions, account reviews, quality and limit changes by
+     * webhook, so refresh the channel checklist after the response when one arrives.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function recheckOnAccountChange(ChannelAccount $account, array $payload): void
+    {
+        $fields = ['account_update', 'account_review_update', 'phone_number_name_update', 'phone_number_quality_update', 'business_capability_update'];
+        $changed = collect((array) data_get($payload, 'entry', []))
+            ->flatMap(fn ($entry): array => (array) data_get($entry, 'changes', []))
+            ->contains(fn ($change): bool => in_array(data_get($change, 'field'), $fields, true));
+
+        if (! $changed) {
+            return;
+        }
+
+        $accountId = $account->id;
+
+        dispatch(function () use ($accountId): void {
+            $channel = ChannelAccount::query()->find($accountId);
+
+            if ($channel) {
+                app(ChannelReadinessService::class)->check($channel);
+            }
+        })->afterResponse();
     }
 
     /**
@@ -851,6 +882,8 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
         foreach ($this->templateUpdates($payload, $account) as $update) {
             $this->persistTemplateUpdate($account, $update['field'], $update['value']);
         }
+
+        $this->recheckOnAccountChange($account, $payload);
 
         foreach ($this->messages($payload) as $message) {
             $normalizedPayload = $this->inboundMessagePayload($account, $message);
