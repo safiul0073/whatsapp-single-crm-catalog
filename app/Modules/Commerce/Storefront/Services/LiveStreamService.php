@@ -16,6 +16,7 @@ use App\Modules\Commerce\Storefront\Models\LiveStreamProduct;
 use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -337,7 +338,7 @@ class LiveStreamService
         }
 
         $formatted = $this->formatStream($stream->refresh(), true, false);
-        broadcast(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'live', $formatted));
+        $this->broadcastSafely(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'live', $formatted));
         RevalidateStorefront::dispatch($stream->workspace_id, ['cms', 'live']);
 
         return $stream;
@@ -431,7 +432,7 @@ class LiveStreamService
         }
 
         $formatted = $this->formatStream($stream->refresh(), true, false);
-        broadcast(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'ended', $formatted));
+        $this->broadcastSafely(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'ended', $formatted));
         RevalidateStorefront::dispatch($stream->workspace_id, ['cms', 'live']);
 
         return $stream;
@@ -523,13 +524,15 @@ class LiveStreamService
         ?string $targetPeerId = null,
         array $payload = [],
     ): void {
-        broadcast(new LiveWebRtcSignal(
+        $relayed = $this->broadcastSafely(new LiveWebRtcSignal(
             $stream->id,
             $type,
             $senderPeerId,
             $targetPeerId,
             $payload,
         ));
+
+        abort_unless($relayed, 503, 'The live realtime server is unavailable. Please try again shortly.');
     }
 
     /**
@@ -568,7 +571,7 @@ class LiveStreamService
             $stream->update(['pinned_product_id' => null]);
         }
 
-        broadcast(new LiveProductPinned($stream->id, $stream->pinned_product_id, $pinnedProductPayload));
+        $this->broadcastSafely(new LiveProductPinned($stream->id, $stream->pinned_product_id, $pinnedProductPayload));
 
         return $stream->refresh();
     }
@@ -597,7 +600,7 @@ class LiveStreamService
             'offset_seconds' => $offset,
         ]);
 
-        broadcast(new LiveCommentCreated($stream->id, $this->formatComment($comment)));
+        $this->broadcastSafely(new LiveCommentCreated($stream->id, $this->formatComment($comment)));
 
         return $comment;
     }
@@ -631,7 +634,7 @@ class LiveStreamService
             'peak_viewers' => $peakViewers,
         ]);
 
-        broadcast(new LiveEngagementUpdated(
+        $this->broadcastSafely(new LiveEngagementUpdated(
             $stream->id,
             $viewerCount,
             (int) $stream->facebook_viewer_count,
@@ -737,6 +740,24 @@ class LiveStreamService
             'offset_seconds' => (int) $comment->offset_seconds,
             'created_at' => $comment->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Broadcast a live event without failing the request when the realtime
+     * server (Reverb/Pusher) is unreachable; the database change has already
+     * been saved, so the failure is reported instead of thrown.
+     */
+    protected function broadcastSafely(object $event): bool
+    {
+        try {
+            broadcast($event);
+
+            return true;
+        } catch (BroadcastException $exception) {
+            report($exception);
+
+            return false;
+        }
     }
 
     protected function uniqueSlug(int $workspaceId, string $base): string
