@@ -1,0 +1,1 @@
+{"name":"MetaAds","alias":"meta-ads","description":"Meta Ads reporting and click-to-message ad attribution for connected Meta Business ad accounts","version":"1.0.0","priority":34,"providers":["App\\Modules\\MetaAds\\Providers\\MetaAdsServiceProvider"],"requires":["meta-social","inbox","commerce"],"active":true}

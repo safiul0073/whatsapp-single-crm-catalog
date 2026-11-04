@@ -125,6 +125,8 @@ class ChannelHubService
             'setup_url' => $isInternal ? null : $this->setupUrl($key),
             'permission' => self::PERMISSIONS[$key] ?? null,
             'widget_url' => $this->widgetUrl($key),
+            'readiness' => is_array(data_get($primary?->settings, 'readiness')) ? data_get($primary->settings, 'readiness') : null,
+            'meta_login' => in_array($key, ['whatsapp', 'messenger', 'instagram'], true),
         ];
     }
 

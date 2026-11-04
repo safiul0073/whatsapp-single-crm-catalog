@@ -4,6 +4,7 @@ namespace App\Modules\WhatsAppCloud\Http\Requests;
 
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\WhatsAppCloud\Services\ChannelSetupService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,7 +23,7 @@ class ConnectGenericChannelRequest extends FormRequest
         $providerAccountRequired = ! in_array($provider, ['email', 'sms'], true);
 
         $rules = [
-            'provider' => ['required', 'string', Rule::in($providers)],
+            'provider' => ['required', 'string', Rule::in($providers), Rule::notIn(ChannelSetupService::META_LOGIN_PROVIDERS)],
             'name' => ['required', 'string', 'max:255'],
             'provider_account_id' => [$providerAccountRequired ? 'required' : 'nullable', 'string', 'max:255'],
             'provider_display_id' => ['nullable', 'string', 'max:255'],
@@ -64,6 +65,16 @@ class ConnectGenericChannelRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'provider.not_in' => __('Connect this channel with Meta login instead of entering credentials.'),
+        ];
     }
 
     public function withValidator($validator): void

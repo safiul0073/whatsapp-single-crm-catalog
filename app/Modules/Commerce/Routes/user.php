@@ -3,6 +3,7 @@
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
+use App\Modules\Commerce\Http\Controllers\User\VisitorController;
 use App\Modules\Commerce\Storefront\Http\Controllers\AdminController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackTemplateAdminController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ReferralAdminController;
@@ -85,6 +86,9 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog/{catalog}/verify-sales-channels', [CommerceController::class, 'verifySalesChannels'])->middleware('permission:commerce.catalog.manage')->name('catalog.verify-sales-channels');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->middleware('permission:commerce.catalog.manage')->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->middleware('permission:commerce.orders.view')->name('orders.index');
+    Route::get('visitors', [VisitorController::class, 'index'])->middleware('permission:commerce.customers.view')->name('visitors.index');
+    Route::get('visitors/live', [VisitorController::class, 'live'])->middleware('permission:commerce.customers.view')->name('visitors.live');
+    Route::get('visitors/{visitor}', [VisitorController::class, 'show'])->middleware('permission:commerce.customers.view')->name('visitors.show');
     Route::get('customers', [CommerceController::class, 'customers'])->middleware('permission:commerce.customers.view')->name('customers.index');
     Route::get('customers/{customer}', [CommerceController::class, 'customer'])->middleware('permission:commerce.customers.view')->name('customers.show');
     $controller = OrderManagementController::class;

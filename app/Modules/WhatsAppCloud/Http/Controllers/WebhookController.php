@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\WhatsAppCloud\Jobs\ProcessWhatsAppWebhookJob;
+use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class WebhookController extends Controller
 {
-    public function verify(Request $request, string $account, ChannelManager $channels): Response
+    public function verify(Request $request, string $account, ChannelManager $channels, WhatsAppSettingsService $settings): Response
     {
         $channel = $this->channelForAccount($account);
 
@@ -19,8 +20,9 @@ class WebhookController extends Controller
             abort_unless($channels->verifyWebhook($request, $channel), 403);
         } else {
             $mode = $request->query('hub_mode') ?? $request->query('hub.mode');
-            $token = $request->query('hub_verify_token') ?? $request->query('hub.verify_token');
-            abort_unless($mode === 'subscribe' && filled($token), 403);
+            $token = (string) ($request->query('hub_verify_token') ?? $request->query('hub.verify_token'));
+            $defaultToken = (string) $settings->get('whatsapp_default_verify_token');
+            abort_unless($mode === 'subscribe' && $defaultToken !== '' && hash_equals($defaultToken, $token), 403);
         }
 
         $challenge = $request->query('hub_challenge') ?? $request->query('hub.challenge');

@@ -7,7 +7,9 @@ use App\Modules\Commerce\Models\Catalog;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
+use App\Modules\MarketingChannels\Services\MetaErrorTranslator;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
@@ -19,6 +21,11 @@ use Illuminate\Validation\ValidationException;
 
 class ChannelSetupService
 {
+    /**
+     * Meta channels connect only through Meta login (Embedded Signup / OAuth), never with pasted tokens.
+     */
+    public const META_LOGIN_PROVIDERS = ['whatsapp', 'messenger', 'instagram', 'threads'];
+
     public function __construct(
         protected WorkspaceResolver $workspaces,
         protected ChannelManager $channels,
@@ -50,6 +57,7 @@ class ChannelSetupService
                 ->get(),
             'webhookUrl' => $this->webhookUrlForProvider('whatsapp'),
             'embeddedSignup' => $this->embeddedSignupConfig(),
+            'readinessReport' => $channel ? app(ChannelReadinessService::class)->report($channel) : null,
         ];
     }
 
@@ -100,68 +108,12 @@ class ChannelSetupService
         ];
     }
 
-    public function connect(?User $user, array $data): ChannelAccount
-    {
-        $workspace = $this->workspaces->current($user);
-        $phonePayload = null;
-        $lastError = null;
-
-        try {
-            $phonePayload = $this->validateManualCredentials($workspace->id, $data);
-        } catch (ValidationException $exception) {
-            $lastError = collect($exception->errors())->flatten()->first() ?: __('Meta credential validation failed.');
-        }
-
-        $name = $this->firstFilled($data['name'], $phonePayload['verified_name'] ?? null, 'WhatsApp Business');
-
-        $existing = ChannelAccount::query()
-            ->where('workspace_id', $workspace->id)
-            ->where('provider', 'whatsapp')
-            ->first();
-
-        if ($existing &&
-            (($existing->provider_account_id !== $data['waba_id']) ||
-             ($existing->provider_phone_id !== $data['phone_number_id']))) {
-            MessageTemplate::query()
-                ->where('workspace_id', $workspace->id)
-                ->where('provider', 'whatsapp')
-                ->delete();
-        }
-
-        return ChannelAccount::query()->updateOrCreate(
-            [
-                'workspace_id' => $workspace->id,
-                'provider' => 'whatsapp',
-            ],
-            [
-                'name' => $name,
-                'status' => $lastError ? ChannelAccountStatus::Error->value : ChannelAccountStatus::Connected->value,
-                'credentials' => [
-                    'access_token' => $data['access_token'],
-                    'source' => 'manual',
-                ],
-                'webhook_verify_token' => $data['webhook_verify_token'],
-                'provider_account_id' => $data['waba_id'],
-                'provider_phone_id' => $data['phone_number_id'],
-                'provider_display_id' => $phonePayload['display_phone_number'] ?? $phonePayload['verified_name'] ?? null,
-                'settings' => array_filter([
-                    'inbox_active' => true,
-                    'business_id' => $data['business_id'],
-                    'verified_name' => $phonePayload['verified_name'] ?? null,
-                    'last_error' => $lastError,
-                ], fn ($value) => $value !== null && $value !== ''),
-                'connected_at' => $lastError ? null : now(),
-                'last_synced_at' => now(),
-            ]
-        );
-    }
-
     public function connectGeneric(?User $user, array $data): ChannelAccount
     {
         $provider = (string) $data['provider'];
         $providers = $this->providerCatalog();
 
-        abort_unless(isset($providers[$provider]) && $provider !== 'whatsapp', 404);
+        abort_unless(isset($providers[$provider]) && ! in_array($provider, self::META_LOGIN_PROVIDERS, true), 404);
 
         $workspace = $this->workspaces->current($user);
         $webhookRequired = (bool) ($providers[$provider]['webhook_required'] ?? false);
@@ -174,38 +126,26 @@ class ChannelSetupService
             ->first();
 
         $credentials = $this->genericCredentials($providers[$provider], $data, $existing);
-        $token = $this->firstFilled($credentials['access_token'] ?? null, $existing?->credential('access_token'));
-
-        $validation = in_array($provider, ['messenger', 'instagram'], true)
-            ? $this->validateMetaSocialCredentials($provider, (string) $data['provider_account_id'], $token)
-            : ['ok' => true, 'payload' => null, 'error' => null];
-        $displayId = $this->firstFilled(
-            $data['provider_display_id'] ?? null,
-            data_get($validation, $provider === 'instagram' ? 'payload.username' : 'payload.name')
-        );
+        $displayId = $this->firstFilled($data['provider_display_id'] ?? null);
         $providerAccountId = $this->firstFilled(
             $data['provider_account_id'] ?? null,
             $credentials[$providers[$provider]['credential_provider_field'] ?? ''] ?? null,
             $existing?->provider_account_id,
             $provider
         );
-        $connectionTest = ['ok' => true, 'error' => null];
-
-        if ($validation['ok'] ?? false) {
-            $connectionTest = $this->testGenericConnection(
-                $provider,
-                $workspace->id,
-                $data['name'],
-                $credentials,
-                $providerAccountId,
-                $displayId,
-                $verifyToken,
-            );
-        }
-        $status = ($validation['ok'] ?? false) && ($connectionTest['ok'] ?? false)
+        $connectionTest = $this->testGenericConnection(
+            $provider,
+            $workspace->id,
+            $data['name'],
+            $credentials,
+            $providerAccountId,
+            $displayId,
+            $verifyToken,
+        );
+        $status = ($connectionTest['ok'] ?? false)
             ? ChannelAccountStatus::Connected
             : ChannelAccountStatus::Error;
-        $lastError = $validation['error'] ?? ($connectionTest['error'] ?? null);
+        $lastError = $connectionTest['error'] ?? null;
 
         $channel = ChannelAccount::query()->updateOrCreate(
             [
@@ -364,11 +304,11 @@ class ChannelSetupService
             ];
         }
 
-        $this->subscribeToWebhooks($channel);
-
         $phoneResult = $this->settings->enabled('whatsapp_auto_sync_phone_numbers')
             ? $this->syncPhoneNumbers($channel)
             : ['ok' => true, 'synced' => 0];
+
+        $this->subscribeToWebhooks($channel);
         $templateResult = $this->settings->enabled('whatsapp_auto_sync_templates')
             ? $this->channels->syncTemplates($channel)
             : ['ok' => true, 'synced' => 0];
@@ -394,6 +334,7 @@ class ChannelSetupService
         }
 
         $code = $data['code'];
+        $tokenMeta = [];
 
         if (str_starts_with($code, 'EA')) {
             $token = $code;
@@ -407,8 +348,21 @@ class ChannelSetupService
             }
 
             $token = (string) $response->json('access_token');
+            $tokenMeta = [
+                'token_type' => $response->json('token_type'),
+                'expires_in' => $response->json('expires_in'),
+            ];
         }
 
+        return $this->connectWithToken($user, $token, $data, $tokenMeta);
+    }
+
+    /**
+     * Connects a WABA phone number with a token already in hand, e.g. from Embedded Signup or the
+     * "Connect your Meta Business" flow.
+     */
+    public function connectWithToken(?User $user, string $token, array $data, array $tokenMeta = [], string $source = 'embedded_signup'): array
+    {
         $workspace = $this->workspaces->current($user);
         $wabaId = $this->firstFilled(
             $data['waba_id'] ?? null,
@@ -473,12 +427,10 @@ class ChannelSetupService
             [
                 'name' => $this->firstFilled($phonePayload['verified_name'] ?? null, $data['display_name'] ?? null, 'WhatsApp Business'),
                 'status' => ChannelAccountStatus::Connected->value,
-                'credentials' => [
+                'credentials' => array_merge($existing?->credentials ?? [], [
                     'access_token' => $token,
-                    'source' => 'embedded_signup',
-                    'token_type' => $response->json('token_type'),
-                    'expires_in' => $response->json('expires_in'),
-                ],
+                    'source' => $source,
+                ], $tokenMeta),
                 'webhook_verify_token' => $this->settings->get('whatsapp_default_verify_token') ?: Str::random(40),
                 'provider_account_id' => $wabaId,
                 'provider_phone_id' => $phoneNumberId,
@@ -487,6 +439,7 @@ class ChannelSetupService
                     'inbox_active' => true,
                     'business_id' => $this->firstFilled($data['business_id'] ?? null, data_get($data, 'metadata.business_id'), data_get($data, 'metadata.data.business_id')),
                     'embedded_signup' => true,
+                    'signup_mode' => $data['signup_mode'] ?? null,
                     'quality_rating' => $phonePayload['quality_rating'] ?? null,
                     'code_verification_status' => $phonePayload['code_verification_status'] ?? null,
                     'platform_type' => $phonePayload['platform_type'] ?? null,
@@ -497,14 +450,20 @@ class ChannelSetupService
             ]
         );
 
-        $this->subscribeToWebhooks($channel);
-
         $phoneResult = $this->settings->enabled('whatsapp_auto_sync_phone_numbers')
             ? $this->syncPhoneNumbers($channel)
             : ['ok' => true, 'synced' => 1];
+
+        if (($data['signup_mode'] ?? null) === 'new') {
+            $this->registerPhoneNumber($channel);
+        }
+
+        $this->subscribeToWebhooks($channel);
         $templateResult = $this->settings->enabled('whatsapp_auto_sync_templates')
             ? $this->channels->syncTemplates($channel)
             : ['ok' => true, 'synced' => 0];
+
+        $channel->refresh();
 
         return [
             'channel' => $channel,
@@ -569,6 +528,8 @@ class ChannelSetupService
         $numbers = $response->json('data') ?? [];
         $synced = 0;
 
+        $otherNumbers = [];
+
         foreach ($numbers as $number) {
             $phoneId = $number['id'] ?? null;
 
@@ -576,32 +537,28 @@ class ChannelSetupService
                 continue;
             }
 
-            ChannelAccount::query()->updateOrCreate(
-                [
-                    'workspace_id' => $source->workspace_id,
-                    'provider' => 'whatsapp',
-                ],
-                [
-                    'name' => $number['verified_name'] ?? $source->name,
-                    'status' => ChannelAccountStatus::Connected->value,
-                    'credentials' => $source->credentials,
-                    'webhook_verify_token' => $source->webhook_verify_token,
-                    'provider_account_id' => $source->provider_account_id,
-                    'provider_phone_id' => $phoneId,
-                    'provider_display_id' => $number['display_phone_number'] ?? $number['verified_name'] ?? null,
-                    'settings' => array_filter([
-                        'inbox_active' => true,
-                        'quality_rating' => $number['quality_rating'] ?? null,
-                        'code_verification_status' => $number['code_verification_status'] ?? null,
-                        'platform_type' => $number['platform_type'] ?? null,
-                        'throughput' => $number['throughput'] ?? null,
-                    ], fn ($value) => $value !== null),
-                    'connected_at' => $source->connected_at ?? now(),
-                    'last_synced_at' => now(),
-                ]
-            );
-
             $synced++;
+
+            if ((string) $phoneId !== (string) $source->provider_phone_id) {
+                $otherNumbers[] = array_filter([
+                    'id' => (string) $phoneId,
+                    'display_phone_number' => $number['display_phone_number'] ?? null,
+                    'verified_name' => $number['verified_name'] ?? null,
+                ], fn ($value) => $value !== null);
+
+                continue;
+            }
+
+            $source->fill([
+                'name' => $number['verified_name'] ?? $source->name,
+                'provider_display_id' => $number['display_phone_number'] ?? $number['verified_name'] ?? $source->provider_display_id,
+                'settings' => array_merge($source->settings ?? [], array_filter([
+                    'quality_rating' => $number['quality_rating'] ?? null,
+                    'code_verification_status' => $number['code_verification_status'] ?? null,
+                    'platform_type' => $number['platform_type'] ?? null,
+                    'throughput' => $number['throughput'] ?? null,
+                ], fn ($value) => $value !== null)),
+            ]);
         }
 
         $settings = $source->settings ?? [];
@@ -609,6 +566,7 @@ class ChannelSetupService
             $settings['last_error'] = $this->metaError($response->json());
         } else {
             unset($settings['last_error']);
+            $settings['other_phone_numbers'] = $otherNumbers;
         }
 
         $source->update([
@@ -635,11 +593,65 @@ class ChannelSetupService
         );
 
         if (! $response->successful()) {
+            $error = $this->metaError($response->json());
+
             Log::warning('WhatsApp webhook subscription failed.', [
                 'channel_account_id' => $channel->id,
-                'error' => $this->metaError($response->json()),
+                'error' => $error,
+            ]);
+
+            $channel->update([
+                'status' => ChannelAccountStatus::Error->value,
+                'settings' => array_merge($channel->settings ?? [], [
+                    'last_error' => Str::limit(__('Webhook subscription failed: :error', ['error' => $error]), 1000),
+                ]),
             ]);
         }
+    }
+
+    /**
+     * Registers a number created through Embedded Signup's "new number" flow so it can send.
+     * Skipped once a number is registered, because Meta rate-limits repeat register calls.
+     */
+    protected function registerPhoneNumber(ChannelAccount $channel): void
+    {
+        $settings = $channel->settings ?? [];
+
+        if (($settings['registered_phone_id'] ?? null) === $channel->provider_phone_id) {
+            return;
+        }
+
+        $credentials = $channel->credentials ?? [];
+        $pin = (string) ($credentials['two_step_pin'] ?? str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT));
+
+        $response = $this->client->registerPhoneNumber(
+            (string) $channel->provider_phone_id,
+            (string) $channel->credential('access_token'),
+            $pin,
+        );
+
+        if (! $response->successful()) {
+            $error = $this->metaError($response->json());
+
+            Log::warning('WhatsApp phone number registration failed.', [
+                'channel_account_id' => $channel->id,
+                'error' => $error,
+            ]);
+
+            $channel->update([
+                'status' => ChannelAccountStatus::Error->value,
+                'settings' => array_merge($settings, [
+                    'last_error' => Str::limit(__('Phone number registration failed: :error', ['error' => $error]), 1000),
+                ]),
+            ]);
+
+            return;
+        }
+
+        $channel->update([
+            'credentials' => array_merge($credentials, ['two_step_pin' => $pin]),
+            'settings' => array_merge($settings, ['registered_phone_id' => $channel->provider_phone_id]),
+        ]);
     }
 
     protected function webhookUrl(ChannelAccount $channel): string
@@ -680,88 +692,8 @@ class ChannelSetupService
         return null;
     }
 
-    protected function validateManualCredentials(int $workspaceId, array $data): array
-    {
-        $response = $this->client->phoneNumbers($data['waba_id'], $data['access_token']);
-
-        if (! $response->successful()) {
-            $this->markExistingManualChannelError($workspaceId, $data['phone_number_id'], $this->metaError($response->json()));
-
-            throw ValidationException::withMessages([
-                'access_token' => __('Meta rejected these credentials. Check the WABA ID and access token.'),
-            ]);
-        }
-
-        $numbers = $response->json('data') ?? [];
-        $phonePayload = collect($numbers)->first(fn (array $number): bool => (string) ($number['id'] ?? '') === (string) $data['phone_number_id']);
-
-        if (! $phonePayload) {
-            $message = __('The selected Phone Number ID was not found in this WhatsApp Business Account.');
-            $this->markExistingManualChannelError($workspaceId, $data['phone_number_id'], $message);
-
-            throw ValidationException::withMessages([
-                'phone_number_id' => $message,
-            ]);
-        }
-
-        return $phonePayload;
-    }
-
-    protected function validateMetaSocialCredentials(string $provider, string $accountId, ?string $token): array
-    {
-        if (blank($token)) {
-            return [
-                'ok' => false,
-                'payload' => null,
-                'error' => __('Meta access token is required.'),
-            ];
-        }
-
-        $response = $this->metaSocial->account(
-            $accountId,
-            $token,
-            $provider === 'instagram' ? ['id', 'username', 'name'] : ['id', 'name']
-        );
-
-        if (! $response->successful()) {
-            return [
-                'ok' => false,
-                'payload' => $response->json(),
-                'error' => $this->metaError($response->json()),
-            ];
-        }
-
-        $payload = $response->json() ?? [];
-
-        if ((string) data_get($payload, 'id') !== $accountId) {
-            return [
-                'ok' => false,
-                'payload' => $payload,
-                'error' => __('Meta returned a different account than the one requested.'),
-            ];
-        }
-
-        return [
-            'ok' => true,
-            'payload' => $payload,
-            'error' => null,
-        ];
-    }
-
-    protected function markExistingManualChannelError(int $workspaceId, string $phoneNumberId, string $message): void
-    {
-        ChannelAccount::query()
-            ->where('workspace_id', $workspaceId)
-            ->where('provider', 'whatsapp')
-            ->where('provider_phone_id', $phoneNumberId)
-            ->update([
-                'status' => ChannelAccountStatus::Error->value,
-                'settings->last_error' => Str::limit($message, 1000),
-            ]);
-    }
-
     protected function metaError(?array $payload): string
     {
-        return (string) data_get($payload, 'error.message', __('Meta credential validation failed.'));
+        return app(MetaErrorTranslator::class)->summary($payload, __('Meta credential validation failed.'));
     }
 }

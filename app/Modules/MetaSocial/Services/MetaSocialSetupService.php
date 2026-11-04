@@ -6,13 +6,24 @@ use App\Models\User;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelSetupSteps;
+use App\Modules\MarketingChannels\Services\MetaErrorTranslator;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class MetaSocialSetupService
 {
+    protected const PENDING_SESSION_KEY = 'meta_social.pending_accounts';
+
+    /**
+     * Page webhook fields needed for Messenger and Instagram DMs to reach the shared inbox.
+     */
+    public const PAGE_WEBHOOK_FIELDS = 'messages,messaging_postbacks,message_deliveries,message_reads,messaging_referrals';
+
     public function __construct(
         protected WorkspaceResolver $workspaces,
         protected MetaSocialClient $client,
@@ -34,6 +45,9 @@ class MetaSocialSetupService
             'threadsAccounts' => $threadsAccounts,
             'messengerSignup' => $this->embeddedSignupConfig('messenger'),
             'instagramSignup' => $this->embeddedSignupConfig('instagram'),
+            'pendingSelection' => $this->pendingSelection(),
+            'threadsLoginReady' => app(MetaAppSettingsService::class)->filled('meta_threads_app_id') !== null
+                && app(MetaAppSettingsService::class)->filled('meta_threads_app_secret') !== null,
             'sections' => [
                 $this->section('messenger', $messengerAccounts, $this->embeddedSignupConfig('messenger')),
                 $this->section('instagram', $instagramAccounts, $this->embeddedSignupConfig('instagram')),
@@ -103,30 +117,173 @@ class MetaSocialSetupService
         ];
     }
 
-    public function connectFromEmbeddedSignup(?User $user, string $provider, array $data): ChannelAccount
+    /**
+     * Exchanges a Facebook Login for Business code once and lists the Pages (Messenger) or linked
+     * Instagram accounts the user granted, so they can pick which ones to connect.
+     *
+     * @return array<int, array{id: string, name: string, page_id: string, page_name: string, username?: string}>
+     */
+    public function discoverAccounts(string $provider, string $code): array
     {
         $this->ensureProvider($provider);
 
-        if (! $this->settings->embeddedSignupReady($provider) && blank($data['access_token'] ?? null)) {
+        if (! $this->settings->embeddedSignupReady($provider)) {
             throw ValidationException::withMessages([
                 'embedded_signup' => __('Meta Embedded Signup is not configured by the administrator.'),
             ]);
         }
 
-        $workspace = $this->workspaces->current($user);
-        $token = $this->accessToken($data);
-        $providerAccountId = $this->providerAccountId($provider, $data);
+        $userToken = $this->longLivedToken($this->accessToken($code));
+        $accounts = $this->grantedAccounts($provider, $userToken);
 
-        if (! $providerAccountId) {
+        if ($accounts === []) {
             throw ValidationException::withMessages([
-                'embedded_signup' => __('Meta did not return a connected account.'),
+                'embedded_signup' => $provider === 'instagram'
+                    ? __('Meta did not share any Instagram Business account. Link Instagram to a Facebook Page and select it during login.')
+                    : __('Meta did not share any Facebook Page. Select at least one Page during login.'),
             ]);
         }
 
-        if (blank($data['access_token'] ?? null) && filled($data['code'] ?? null)) {
-            $token = $this->pageAccessToken($provider, $providerAccountId, $this->longLivedToken($token));
+        session()->put(self::PENDING_SESSION_KEY, [
+            'provider' => $provider,
+            'user_token' => Crypt::encryptString($userToken),
+            'accounts' => $accounts,
+            'expires_at' => now()->addMinutes(30)->getTimestamp(),
+        ]);
+
+        return $accounts;
+    }
+
+    /**
+     * The accounts waiting for the user to pick, without the token.
+     *
+     * @return array{provider: string, accounts: array<int, array<string, string>>}|null
+     */
+    public function pendingSelection(): ?array
+    {
+        $pending = session(self::PENDING_SESSION_KEY);
+
+        if (! is_array($pending) || ($pending['expires_at'] ?? 0) < now()->getTimestamp()) {
+            return null;
         }
 
+        return ['provider' => (string) $pending['provider'], 'accounts' => $pending['accounts'] ?? []];
+    }
+
+    public function forgetPendingSelection(): void
+    {
+        session()->forget(self::PENDING_SESSION_KEY);
+    }
+
+    /**
+     * Connects the accounts the user ticked from the last discovery, each with its own Page token.
+     *
+     * @param  array<int, string>  $accountIds
+     * @return Collection<int, ChannelAccount>
+     */
+    public function connectSelected(?User $user, string $provider, array $accountIds): Collection
+    {
+        $this->ensureProvider($provider);
+        $pending = session(self::PENDING_SESSION_KEY);
+
+        if (! is_array($pending) || $pending['provider'] !== $provider || ($pending['expires_at'] ?? 0) < now()->getTimestamp()) {
+            throw ValidationException::withMessages([
+                'embedded_signup' => __('This Meta login has expired. Please connect again.'),
+            ]);
+        }
+
+        $channels = $this->connectGrantedAccounts($user, $provider, Crypt::decryptString((string) $pending['user_token']), $accountIds);
+
+        $this->forgetPendingSelection();
+
+        return $channels;
+    }
+
+    /**
+     * Connects the chosen Pages or Instagram accounts that this user token can access, each with its own Page token.
+     *
+     * @param  array<int, string>  $accountIds
+     * @return Collection<int, ChannelAccount>
+     */
+    public function connectGrantedAccounts(?User $user, string $provider, string $userToken, array $accountIds, string $source = 'embedded_signup'): Collection
+    {
+        $this->ensureProvider($provider);
+        $workspace = $this->workspaces->current($user);
+        $granted = collect($this->grantedAccounts($provider, $userToken, withTokens: true))->keyBy('id');
+        $selected = collect($accountIds)->map(fn ($id): string => (string) $id)->unique()->filter(fn (string $id): bool => $granted->has($id));
+
+        if ($selected->isEmpty()) {
+            throw ValidationException::withMessages([
+                'account_ids' => __('Select at least one account to connect.'),
+            ]);
+        }
+
+        return $selected->map(function (string $id) use ($granted, $workspace, $provider, $userToken, $source): ChannelAccount {
+            $account = $granted->get($id);
+
+            return $this->persistAccount($workspace, $provider, $id, (string) ($account['access_token'] ?? $userToken), [
+                'page_id' => $account['page_id'],
+                'page_name' => $account['page_name'],
+                'instagram_account_id' => $provider === 'instagram' ? $id : null,
+                'username' => $account['username'] ?? null,
+                'display_name' => $provider === 'instagram' ? ($account['username'] ?? $account['name']) : $account['name'],
+            ], $source);
+        })->values();
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    protected function grantedAccounts(string $provider, string $userToken, bool $withTokens = false): array
+    {
+        $response = $this->client->pageAccounts($userToken);
+
+        if (! $response->successful()) {
+            throw ValidationException::withMessages([
+                'embedded_signup' => app(MetaErrorTranslator::class)->summary($response->json(), __('Meta could not list your Pages. Please try connecting again.')),
+            ]);
+        }
+
+        return collect($response->json('data', []))
+            ->map(function (array $page) use ($provider, $withTokens): ?array {
+                $pageId = (string) ($page['id'] ?? '');
+                $pageName = (string) ($page['name'] ?? '');
+
+                if ($pageId === '') {
+                    return null;
+                }
+
+                if ($provider === 'instagram') {
+                    $instagram = $page['instagram_business_account'] ?? null;
+
+                    if (blank($instagram['id'] ?? null)) {
+                        return null;
+                    }
+
+                    $account = [
+                        'id' => (string) $instagram['id'],
+                        'name' => (string) ($instagram['name'] ?? $instagram['username'] ?? $pageName),
+                        'username' => (string) ($instagram['username'] ?? ''),
+                        'page_id' => $pageId,
+                        'page_name' => $pageName,
+                    ];
+                } else {
+                    $account = ['id' => $pageId, 'name' => $pageName, 'page_id' => $pageId, 'page_name' => $pageName];
+                }
+
+                if ($withTokens) {
+                    $account['access_token'] = (string) ($page['access_token'] ?? '');
+                }
+
+                return $account;
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    protected function persistAccount(Workspace $workspace, string $provider, string $providerAccountId, string $token, array $data, string $source): ChannelAccount
+    {
         $validation = $this->validateAccount($provider, $providerAccountId, $token);
         $status = ($validation['ok'] ?? false) ? ChannelAccountStatus::Connected : ChannelAccountStatus::Error;
         $displayId = $this->firstFilled(
@@ -136,7 +293,13 @@ class MetaSocialSetupService
             data_get($validation, $provider === 'instagram' ? 'payload.username' : 'payload.name')
         );
 
-        return ChannelAccount::query()->updateOrCreate(
+        $existingVerifyToken = ChannelAccount::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('provider', $provider)
+            ->where('provider_account_id', $providerAccountId)
+            ->value('webhook_verify_token');
+
+        $channel = ChannelAccount::query()->updateOrCreate(
             [
                 'workspace_id' => $workspace->id,
                 'provider' => $provider,
@@ -147,14 +310,14 @@ class MetaSocialSetupService
                 'status' => $status->value,
                 'credentials' => [
                     'access_token' => $token,
-                    'source' => filled($data['code'] ?? null) ? 'embedded_signup' : 'manual_token',
+                    'source' => $source,
                 ],
-                'webhook_verify_token' => $this->settings->get('meta_social_default_verify_token') ?: Str::random(40),
+                'webhook_verify_token' => $this->settings->get('meta_social_default_verify_token') ?: ($existingVerifyToken ?: Str::random(40)),
                 'provider_phone_id' => $data['page_id'] ?? null,
                 'provider_display_id' => $displayId,
                 'settings' => array_filter([
                     'inbox_active' => true,
-                    'embedded_signup' => filled($data['code'] ?? null),
+                    'embedded_signup' => in_array($source, ['embedded_signup', 'meta_business'], true),
                     'page_id' => $data['page_id'] ?? null,
                     'page_name' => $data['page_name'] ?? null,
                     'instagram_account_id' => $data['instagram_account_id'] ?? null,
@@ -166,6 +329,49 @@ class MetaSocialSetupService
                 'last_synced_at' => now(),
             ]
         );
+
+        if ($status === ChannelAccountStatus::Connected) {
+            $this->subscribePage($channel, $token);
+        }
+
+        return $channel;
+    }
+
+    /**
+     * Page webhooks are only delivered for Pages subscribed to the app, so subscribe on connect
+     * and surface a failure on the channel instead of silently missing messages.
+     */
+    protected function subscribePage(ChannelAccount $channel, string $token): void
+    {
+        $pageId = $this->firstFilled(data_get($channel->settings, 'page_id'), $channel->provider_phone_id, $channel->provider === 'messenger' ? $channel->provider_account_id : null);
+
+        if (! $pageId) {
+            return;
+        }
+
+        try {
+            $response = $this->client->subscribePage($pageId, $token, self::PAGE_WEBHOOK_FIELDS);
+            $error = $response->successful() ? null : app(MetaErrorTranslator::class)->summary($response->json(), __('Meta rejected the request.'));
+        } catch (\Throwable $exception) {
+            $error = $exception->getMessage();
+        }
+
+        $settings = $channel->settings ?? [];
+
+        if ($error === null) {
+            $channel->update(['settings' => array_merge($settings, ['webhook_subscribed_at' => now()->toIso8601String()])]);
+
+            return;
+        }
+
+        Log::warning('Meta Page webhook subscription failed.', ['channel_account_id' => $channel->id, 'error' => $error]);
+
+        $channel->update([
+            'status' => ChannelAccountStatus::Error->value,
+            'settings' => array_merge($settings, [
+                'last_error' => Str::limit(__('Webhook subscription failed: :error', ['error' => $error]), 1000),
+            ]),
+        ]);
     }
 
     public function disconnect(?User $user, ChannelAccount $channel): void
@@ -201,13 +407,9 @@ class MetaSocialSetupService
             ->each(fn (ChannelAccount $account) => $account->setAttribute('webhook_url', $this->webhookUrl($account)));
     }
 
-    protected function accessToken(array $data): string
+    protected function accessToken(string $code): string
     {
-        if (filled($data['access_token'] ?? null)) {
-            return (string) $data['access_token'];
-        }
-
-        $response = $this->client->exchangeEmbeddedSignupCode((string) ($data['code'] ?? ''));
+        $response = $this->client->exchangeEmbeddedSignupCode($code);
 
         if (! $response->successful() || ! $response->json('access_token')) {
             throw ValidationException::withMessages([
@@ -232,37 +434,6 @@ class MetaSocialSetupService
         return $response->successful() && filled($response->json('access_token'))
             ? (string) $response->json('access_token')
             : $token;
-    }
-
-    /**
-     * Page tokens made from a long-lived user token do not expire, so prefer the connected Page's own token.
-     */
-    protected function pageAccessToken(string $provider, string $accountId, string $userToken): string
-    {
-        try {
-            $response = $this->client->pageAccounts($userToken);
-        } catch (\Throwable) {
-            return $userToken;
-        }
-
-        if (! $response->successful()) {
-            return $userToken;
-        }
-
-        $page = collect($response->json('data', []))->first(fn (array $page): bool => $provider === 'instagram'
-            ? (string) data_get($page, 'instagram_business_account.id') === $accountId
-            : (string) data_get($page, 'id') === $accountId);
-
-        return filled(data_get($page, 'access_token')) ? (string) $page['access_token'] : $userToken;
-    }
-
-    protected function providerAccountId(string $provider, array $data): ?string
-    {
-        if ($provider === 'instagram') {
-            return $this->firstFilled($data['instagram_account_id'] ?? null, $data['provider_account_id'] ?? null);
-        }
-
-        return $this->firstFilled($data['page_id'] ?? null, $data['provider_account_id'] ?? null);
     }
 
     protected function displayName(string $provider, array $data): string
@@ -299,7 +470,7 @@ class MetaSocialSetupService
             return [
                 'ok' => false,
                 'payload' => $response->json(),
-                'error' => (string) data_get($response->json(), 'error.message', __('Meta credential validation failed.')),
+                'error' => app(MetaErrorTranslator::class)->summary($response->json(), __('Meta credential validation failed.')),
             ];
         }
 

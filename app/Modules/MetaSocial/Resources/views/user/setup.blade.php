@@ -1,22 +1,20 @@
 <x-layouts.user :title="__('Social Channels')">
     @php
-        $validationErrors = $errors ?? session('errors');
-        $threadsFields = config('marketing-channels.providers.threads.fields', []);
         $beforeYouStart = [
             'messenger' => [
                 __('Admin access to the Facebook Page you want to connect.'),
-                __('The Facebook Page ID from Page settings.'),
-                __('A Page access token, or Embedded Signup enabled by an administrator.'),
+                __('Use "Connect with Meta" on the Channels page and select the Page in the Meta window.'),
+                __('No Page IDs or tokens needed. Meta shares access securely.'),
             ],
             'instagram' => [
                 __('An Instagram Business or Creator account linked to a Facebook Page.'),
-                __('The Instagram account ID from Meta Business settings.'),
-                __('A Page access token with Instagram messaging permissions.'),
+                __('Use "Connect with Meta" on the Channels page and select both the Page and the Instagram account.'),
+                __('No account IDs or tokens needed. Meta shares access securely.'),
             ],
             'threads' => [
-                __('A Threads account with API access enabled.'),
-                __('The Threads account ID and the handle you publish under.'),
-                __('A long-lived Threads access token.'),
+                __('The Threads account you publish under.'),
+                __('Use "Connect with Threads" and approve access on Threads.'),
+                __('No account IDs or tokens needed.'),
             ],
         ];
     @endphp
@@ -59,6 +57,7 @@
                 $signup = $section['signup'];
                 $isThreads = $provider === 'threads';
                 $threadsAccount = $isThreads ? $section['primary'] : null;
+                $pendingAccounts = ($pendingSelection['provider'] ?? null) === $provider ? $pendingSelection['accounts'] : [];
             @endphp
 
             <section id="{{ $provider }}" class="section-card scroll-mt-24" data-social-section="{{ $provider }}">
@@ -75,13 +74,6 @@
                             <p class="mt-0.5 text-sm text-body">{{ __($config['description']) }}</p>
                         </div>
                     </div>
-                    @if ($signup)
-                        @if ($signup['enabled'])
-                            <span class="badge badge-soft">{{ __('Embedded Signup ready') }}</span>
-                        @else
-                            <span class="badge badge-warning">{{ __('Admin setup required') }}</span>
-                        @endif
-                    @endif
                 </div>
 
                 <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -124,98 +116,70 @@
                                     </form>
                                 </x-slot:actions>
                             </x-marketing-channels::connected-summary>
+
+                            <x-marketing-channels::readiness-checklist :report="data_get($account->settings, 'readiness')" :channel="$account" />
                         @endforeach
 
-                        <x-marketing-channels::credentials-panel
-                            :open="$accounts->isEmpty() || $validationErrors?->any()"
-                            :title="$accounts->isNotEmpty() ? __('Connect another account') : __('Connect :channel', ['channel' => __($config['label'])])"
-                        >
-                            @if ($isThreads)
-                                <form class="space-y-4" method="POST" action="{{ route('user.whatsapp-cloud.channel-setup.store-generic') }}">
+                        @if ($pendingAccounts !== [])
+                            <div class="rounded-md border border-primary/30 bg-primary/5 p-4" data-meta-social-picker="{{ $provider }}">
+                                <p class="text-sm font-semibold text-heading">{{ $provider === 'instagram' ? __('Choose Instagram accounts to connect') : __('Choose Facebook Pages to connect') }}</p>
+                                <p class="mt-0.5 text-xs text-body">{{ __('Meta shared these accounts with us. Each one becomes its own channel in the shared inbox.') }}</p>
+                                <form method="POST" action="{{ route('user.meta-social.setup.select', $provider) }}" class="mt-3 space-y-2">
                                     @csrf
-                                    <input type="hidden" name="provider" value="threads">
-                                    <div class="grid gap-4 sm:grid-cols-2">
-                                        @foreach ($threadsFields as $field)
-                                            @php
-                                                $fieldName = $field['name'];
-                                                $type = $field['type'] ?? 'text';
-                                                $current = match ($fieldName) {
-                                                    'name' => $threadsAccount?->name,
-                                                    'provider_account_id' => $threadsAccount?->provider_account_id,
-                                                    'provider_display_id' => $threadsAccount?->provider_display_id,
-                                                    default => null,
-                                                };
-                                            @endphp
-                                            <label class="block {{ $type === 'password' ? 'sm:col-span-2' : '' }}">
-                                                <span class="form-label">{{ __($field['label']) }} @if ($field['required'] ?? false)<span class="text-error">*</span>@endif</span>
-                                                <input
-                                                    name="{{ $fieldName }}"
-                                                    type="{{ $type }}"
-                                                    class="form-input mt-1"
-                                                    value="{{ $type === 'password' ? '' : old($fieldName, $current) }}"
-                                                    placeholder="{{ $type === 'password' && $threadsAccount ? __('Saved (enter to change)') : __($field['placeholder'] ?? '') }}"
-                                                    @if ($field['required'] ?? false) required @endif
-                                                    @if ($type === 'password') autocomplete="off" @endif
-                                                >
-                                            </label>
-                                        @endforeach
-                                        <label class="block sm:col-span-2">
-                                            <span class="form-label">{{ __('Webhook Verify Token') }}</span>
-                                            <input name="webhook_verify_token" type="text" class="form-input mt-1" value="{{ old('webhook_verify_token', $threadsAccount?->webhook_verify_token) }}" placeholder="{{ __('Choose a private random token') }}">
+                                    @foreach ($pendingAccounts as $pendingAccount)
+                                        <label class="flex cursor-pointer items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950">
+                                            <input type="checkbox" name="account_ids[]" value="{{ $pendingAccount['id'] }}" class="form-checkbox" checked>
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-sm font-medium text-heading">{{ $provider === 'instagram' && filled($pendingAccount['username'] ?? null) ? '@'.$pendingAccount['username'] : $pendingAccount['name'] }}</span>
+                                                @if ($provider === 'instagram')
+                                                    <span class="block truncate text-xs text-body">{{ __('Linked Page: :page', ['page' => $pendingAccount['page_name']]) }}</span>
+                                                @endif
+                                            </span>
                                         </label>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="ph ph-threads-logo text-base"></i>
-                                        {{ $threadsAccount ? __('Update Threads') : __('Connect Threads') }}
-                                    </button>
-                                </form>
-                            @else
-                                <form class="space-y-4" method="POST" action="{{ route('user.meta-social.setup.embedded', $provider) }}">
-                                    @csrf
-                                    <input type="hidden" name="code" value="">
-                                    <div class="grid gap-4 sm:grid-cols-2">
-                                        @if ($provider === 'messenger')
-                                            <label class="block">
-                                                <span class="form-label">{{ __('Facebook Page ID') }}</span>
-                                                <input class="form-input mt-1" name="page_id" value="{{ old('page_id') }}" placeholder="e.g. 1122334455">
-                                            </label>
-                                            <label class="block">
-                                                <span class="form-label">{{ __('Page Name') }}</span>
-                                                <input class="form-input mt-1" name="page_name" value="{{ old('page_name') }}" placeholder="WaPro Support">
-                                            </label>
-                                        @else
-                                            <label class="block">
-                                                <span class="form-label">{{ __('Instagram Account ID') }}</span>
-                                                <input class="form-input mt-1" name="instagram_account_id" value="{{ old('instagram_account_id') }}" placeholder="e.g. 17841400000000000">
-                                            </label>
-                                            <label class="block">
-                                                <span class="form-label">{{ __('Username') }}</span>
-                                                <input class="form-input mt-1" name="username" value="{{ old('username') }}" placeholder="wapro.app">
-                                            </label>
-                                        @endif
-                                        <label class="block sm:col-span-2">
-                                            <span class="form-label">{{ __('Page access token') }}</span>
-                                            <input class="form-input mt-1" name="access_token" type="password" placeholder="{{ __('Stored encrypted and never displayed') }}" autocomplete="off">
-                                            <span class="form-hint">{{ __('Embedded Signup can post a Meta code here later; a manual token keeps testing possible.') }}</span>
-                                        </label>
-                                    </div>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <button class="btn btn-primary" type="submit">
+                                    @endforeach
+                                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                                        <button type="submit" class="btn btn-primary">
                                             <i class="ph ph-plugs-connected text-base"></i>
-                                            {{ __('Connect :channel', ['channel' => __($config['label'])]) }}
+                                            {{ __('Connect selected') }}
                                         </button>
-                                        <span class="text-xs text-body"
-                                              data-meta-social-config
-                                              data-provider="{{ $provider }}"
-                                              data-app-id="{{ $signup['app_id'] }}"
-                                              data-config-id="{{ $signup['config_id'] }}"
-                                              data-graph-api-version="{{ $signup['graph_api_version'] }}">
-                                            {{ $signup['enabled'] ? __('Meta SDK configuration available.') : __('Configure Meta app settings in admin first.') }}
-                                        </span>
                                     </div>
                                 </form>
-                            @endif
-                        </x-marketing-channels::credentials-panel>
+                                <form method="POST" action="{{ route('user.meta-social.setup.selection.cancel') }}" class="mt-2">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn-sm btn-outline">{{ __('Cancel') }}</button>
+                                </form>
+                            </div>
+                        @endif
+
+                        @if ($isThreads)
+                            <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-heading">{{ $accounts->isNotEmpty() ? __('Reconnect Threads') : __('Connect with Threads') }}</p>
+                                    <p class="mt-0.5 text-xs text-body">{{ $threadsLoginReady ? __('Sign in on Threads and approve access. No IDs or tokens needed.') : __('Ask an administrator to add the Threads App ID and secret in Meta App settings.') }}</p>
+                                </div>
+                                @if ($threadsLoginReady)
+                                    <form method="POST" action="{{ route('user.threads.connect') }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-primary" data-threads-connect>
+                                            <i class="ph ph-threads-logo text-base"></i>
+                                            {{ __('Connect with Threads') }}
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @else
+                            <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 p-4 dark:border-gray-800" data-social-connect-link="{{ $provider }}">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-heading">{{ $accounts->isNotEmpty() ? __('Add or reconnect :channel accounts', ['channel' => __($config['label'])]) : __('Connect :channel with Meta', ['channel' => __($config['label'])]) }}</p>
+                                    <p class="mt-0.5 text-xs text-body">{{ __('WhatsApp, Messenger and Instagram connect together from the Channels page with one Meta login.') }}</p>
+                                </div>
+                                <a href="{{ route('user.channels.index') }}#meta-connect" class="btn {{ $accounts->isNotEmpty() ? 'btn-outline' : 'btn-primary' }}">
+                                    <i class="ph-fill ph-meta-logo text-base"></i>
+                                    {{ $accounts->isNotEmpty() ? __('Reconnect with Meta') : __('Connect with Meta') }}
+                                </a>
+                            </div>
+                        @endif
                     </div>
 
                     <aside class="space-y-4">

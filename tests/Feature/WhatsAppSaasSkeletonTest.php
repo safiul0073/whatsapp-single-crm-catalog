@@ -91,12 +91,12 @@ it('shows embedded signup as the recommended channel setup path when admin setti
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
+        ->get(route('user.channels.index'))
         ->assertOk()
-        ->assertSee('Manual setup')
+        ->assertDontSee('Manual setup')
         ->assertSee('Connect with Meta')
-        ->assertSee('Recommended')
-        ->assertDontSee('Admin setup required')
+        ->assertSee('Add a WhatsApp number')
+        ->assertDontSee('Connecting with Meta is not available yet')
         ->assertSee('data-app-id="123456789"', false)
         ->assertSee('data-config-id="config-123"', false)
         ->assertSee(route('user.whatsapp-cloud.channel-setup.embedded'));
@@ -107,8 +107,12 @@ it('updates WhatsApp Cloud admin settings without an unused default rate limit',
 
     $this->actingAs($admin, 'admin')
         ->get(route('admin.whatsapp-cloud.settings.index'))
+        ->assertRedirect(route('admin.meta-app.settings.index'));
+
+    $this->actingAs($admin, 'admin')
+        ->get(route('admin.meta-app.settings.index'))
         ->assertOk()
-        ->assertSee('WhatsApp Cloud Settings')
+        ->assertSee('Meta App Settings')
         ->assertDontSee('Default Rate Limit / Minute')
         ->assertDontSee('whatsapp_default_rate_limit_per_minute');
 
@@ -133,55 +137,36 @@ it('updates WhatsApp Cloud admin settings without an unused default rate limit',
         ->and(Setting::query()->where('key', 'whatsapp_default_rate_limit_per_minute')->exists())->toBeFalse();
 });
 
-it('connects a WhatsApp channel manually', function (): void {
+it('keeps WhatsApp credentials encrypted and verifies the provider webhook', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
 
-    Http::fake([
-        'https://graph.facebook.com/v20.0/102938475610293/phone_numbers*' => Http::response([
-            'data' => [[
-                'id' => '1069382741050193',
-                'display_phone_number' => '+1 503 555 0119',
-                'verified_name' => 'WaPro Coffee Co.',
-            ]],
-        ]),
+    $channel = ChannelAccount::query()->create([
+        'workspace_id' => app(WorkspaceResolver::class)->current($user)->id,
+        'provider' => 'whatsapp',
+        'name' => 'WaPro Coffee Co.',
+        'status' => 'connected',
+        'provider_account_id' => '102938475610293',
+        'provider_phone_id' => '1069382741050193',
+        'credentials' => ['access_token' => 'EAA-embedded-token', 'source' => 'embedded_signup'],
+        'webhook_verify_token' => 'verify-embedded-token',
+        'connected_at' => now(),
     ]);
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store'), [
-            'name' => 'WaPro Coffee Co.',
-            'waba_id' => '102938475610293',
-            'business_id' => '784512309876543',
-            'phone_number_id' => '1069382741050193',
-            'access_token' => 'EAA-manual-token',
-            'webhook_verify_token' => 'verify-manual-token',
-        ])
-        ->assertRedirect();
-
-    $channel = ChannelAccount::query()->where('provider_phone_id', '1069382741050193')->firstOrFail();
     $rawCredentials = DB::table('channel_accounts')->where('id', $channel->id)->value('credentials');
 
-    expect($channel->credential('access_token'))->toBe('EAA-manual-token')
-        ->and($rawCredentials)->not->toContain('EAA-manual-token')
-        ->and($channel->provider_account_id)->toBe('102938475610293')
-        ->and($channel->provider_display_id)->toBe('+1 503 555 0119')
-        ->and(data_get($channel->settings, 'business_id'))->toBe('784512309876543')
-        ->and(data_get($channel->settings, 'verified_name'))->toBe('WaPro Coffee Co.')
-        ->and($channel->webhook_verify_token)->toBe('verify-manual-token');
+    expect($channel->credential('access_token'))->toBe('EAA-embedded-token')
+        ->and($rawCredentials)->not->toContain('EAA-embedded-token');
 
     $this->withoutMiddleware()
         ->actingAs($user)
         ->get(route('user.whatsapp-cloud.channel-setup'))
         ->assertOk()
-        ->assertSee('verify-manual-token')
-        ->assertSee(route('webhooks.channels.receive', 'whatsapp'))
-        ->assertDontSee('/webhooks/channels/'.$channel->id)
-        ->assertDontSee('EAA-manual-token');
+        ->assertSee('verify-embedded-token')
+        ->assertDontSee('EAA-embedded-token');
 
     $this->get(route('webhooks.channels.verify', [
         'provider' => 'whatsapp',
         'hub.mode' => 'subscribe',
-        'hub.verify_token' => 'verify-manual-token',
+        'hub.verify_token' => 'verify-embedded-token',
         'hub.challenge' => 'challenge-token',
     ]))
         ->assertOk()
@@ -350,43 +335,6 @@ it('verifies provider webhooks by provider name and verify token', function (): 
         ->assertSee('telegram-challenge');
 });
 
-it('saves manual WhatsApp credentials with an error when Meta validation fails', function (): void {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    Http::fake([
-        'https://graph.facebook.com/v20.0/102938475610293/phone_numbers*' => Http::response([
-            'error' => ['message' => 'Invalid OAuth access token.'],
-        ], 401),
-    ]);
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->from(route('user.whatsapp-cloud.channel-setup'))
-        ->post(route('user.whatsapp-cloud.channel-setup.store'), [
-            'name' => 'WaPro Coffee Co.',
-            'waba_id' => '102938475610293',
-            'business_id' => '784512309876543',
-            'phone_number_id' => '1069382741050193',
-            'access_token' => 'bad-token',
-            'webhook_verify_token' => 'verify-manual-token',
-        ])
-        ->assertRedirect(route('user.whatsapp-cloud.channel-setup'))
-        ->assertSessionHas('status');
-
-    $channel = ChannelAccount::query()->where('provider_phone_id', '1069382741050193')->firstOrFail();
-
-    expect($channel->status->value)->toBe('error')
-        ->and(data_get($channel->settings, 'last_error'))->toBe('Meta rejected these credentials. Check the WABA ID and access token.')
-        ->and($channel->credential('access_token'))->toBe('bad-token');
-
-    $this->withoutMiddleware()
-        ->actingAs($user)
-        ->get(route('user.whatsapp-cloud.channel-setup'))
-        ->assertOk()
-        ->assertSee('Meta rejected these credentials. Check the WABA ID and access token.')
-        ->assertDontSee('bad-token');
-});
-
 it('connects a WhatsApp channel from embedded signup', function (): void {
     app(WhatsAppSettingsService::class)->update([
         'whatsapp_graph_api_version' => 'v20.0',
@@ -542,10 +490,14 @@ it('serves converted WhatsApp HTML user app pages', function (): void {
 
 it('accepts WhatsApp Cloud API webhook verification and delivery payloads', function (): void {
     Queue::fake();
+    app(WhatsAppSettingsService::class)->update(['whatsapp_default_verify_token' => 'abc']);
 
     $this->get('/webhooks/whatsapp/demo?hub.mode=subscribe&hub.verify_token=abc&hub.challenge=challenge-token')
         ->assertOk()
         ->assertSee('challenge-token');
+
+    $this->get('/webhooks/whatsapp/demo?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=challenge-token')
+        ->assertForbidden();
 
     $this->postJson('/webhooks/whatsapp/demo', [
         'object' => 'whatsapp_business_account',
@@ -583,8 +535,19 @@ it('deletes existing whatsapp templates when updating to a new account', functio
     // Verify template exists
     expect(MessageTemplate::query()->where('workspace_id', $workspace->id)->count())->toBe(1);
 
-    // 3. Connect a new WhatsApp account via manual setup route
+    // 3. Connect a new WhatsApp account through Embedded Signup
+    app(WhatsAppSettingsService::class)->update([
+        'whatsapp_graph_api_version' => 'v20.0',
+        'whatsapp_embedded_signup_enabled' => true,
+        'whatsapp_meta_app_id' => '123456789',
+        'whatsapp_meta_app_secret' => 'secret',
+        'whatsapp_embedded_signup_config_id' => 'config-123',
+        'whatsapp_auto_sync_templates' => false,
+    ]);
+
     Http::fake([
+        'https://graph.facebook.com/v20.0/oauth/access_token*' => Http::response(['access_token' => 'EAA-new-token']),
+        'https://graph.facebook.com/v20.0/new-waba-id/subscribed_apps' => Http::response(['success' => true]),
         'https://graph.facebook.com/v20.0/new-waba-id/phone_numbers*' => Http::response([
             'data' => [[
                 'id' => 'new-phone-id',
@@ -596,13 +559,11 @@ it('deletes existing whatsapp templates when updating to a new account', functio
 
     $this->withoutMiddleware()
         ->actingAs($user)
-        ->post(route('user.whatsapp-cloud.channel-setup.store'), [
-            'name' => 'New Coffee Co.',
+        ->post(route('user.whatsapp-cloud.channel-setup.embedded'), [
+            'code' => 'embedded-code',
             'waba_id' => 'new-waba-id',
             'business_id' => '784512309876544',
             'phone_number_id' => 'new-phone-id',
-            'access_token' => 'EAA-new-token',
-            'webhook_verify_token' => 'verify-new-token',
         ])
         ->assertRedirect();
 

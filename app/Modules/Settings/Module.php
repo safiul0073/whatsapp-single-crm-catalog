@@ -31,8 +31,7 @@ class Module extends BasePanelModule
             ->permission('settings.view')
             ->children([
                 ['label' => 'General Settings', 'route' => 'admin.settings.index'],
-                ['label' => 'WhatsApp Cloud', 'route' => 'admin.whatsapp-cloud.settings.*', 'permission' => 'whatsapp-cloud.settings.view'],
-                ['label' => 'Meta Social', 'route' => 'admin.meta-social.settings.*', 'permission' => 'meta-social.settings.view'],
+                ['label' => 'Meta App', 'route' => 'admin.meta-app.settings.*', 'permission' => 'meta-social.settings.view'],
                 ['label' => 'AI Settings', 'route' => 'admin.ai-settings.*', 'permission' => 'ai-settings.view'],
                 ['label' => 'Vector Database', 'route' => 'admin.ai-settings.vector-database.*', 'permission' => 'ai-settings.view'],
                 ['label' => 'Place API Settings', 'route' => 'admin.place-api-settings.*', 'permission' => 'place-api-settings.view'],
