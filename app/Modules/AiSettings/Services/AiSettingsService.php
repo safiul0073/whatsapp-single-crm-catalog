@@ -156,6 +156,16 @@ class AiSettingsService
     }
 
     /**
+     * Gemini endpoints are "{base}/{model}:generateContent", so a base ending at the API version needs "/models".
+     */
+    public function normalizeGeminiUrl(string $url): string
+    {
+        $url = rtrim(trim($url), '/');
+
+        return preg_match('#/v1(beta)?$#', $url) ? $url.'/models' : $url;
+    }
+
+    /**
      * Build the provider config array for the Laravel AI SDK.
      *
      * Reads enabled providers from DB settings and returns an array
@@ -213,7 +223,7 @@ class AiSettingsService
 
             $baseUrl = $this->get("{$slug}_base_url");
             if ($baseUrl) {
-                $providerConfig['url'] = $baseUrl;
+                $providerConfig['url'] = $groupKey === 'gemini' ? $this->normalizeGeminiUrl((string) $baseUrl) : $baseUrl;
             }
 
             // Azure OpenAI specific fields

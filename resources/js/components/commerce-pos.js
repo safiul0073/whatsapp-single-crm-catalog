@@ -20,6 +20,7 @@ Alpine.data('commercePos', () => {
         init() {
             'use strict';
             this.config = JSON.parse(this.$el.dataset.config);
+            this.mode = this.config.mode || 'retail';
             this.submission = crypto.randomUUID();
             this.resetPayments();
             this.$watch('address', () => this.invalidate(), { deep: true });

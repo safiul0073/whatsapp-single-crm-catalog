@@ -47,6 +47,7 @@ class PosController extends Controller
             'canDiscount' => $request->user()->can('commerce.orders.update'),
             'paymentMethods' => $this->pos->paymentMethods($workspace->id),
             'wholesaleEnabled' => StoreFeatures::wholesaleEnabled($workspace->id),
+            'retailEnabled' => StoreFeatures::retailEnabled($workspace->id),
         ]);
     }
 
@@ -66,7 +67,9 @@ class PosController extends Controller
 
         $matchedVariant = $code !== '' ? $products->flatMap->variants->first(fn ($variant): bool => $variant->sku === $code || $variant->meta_retailer_id === $code) : null;
 
-        return response()->json(['matched_variant_id' => $matchedVariant?->id, 'data' => $products->map(function (Product $product) use ($held): array {
+        $retailEnabled = StoreFeatures::retailEnabled($workspace->id);
+
+        return response()->json(['matched_variant_id' => $matchedVariant?->id, 'data' => $products->map(function (Product $product) use ($held, $retailEnabled): array {
             $variants = $product->variants->map(fn ($variant): array => [
                 'id' => $variant->id,
                 'name' => $variant->sku.' · '.($variant->size ?: ($variant->attributes['size'] ?? __('One size'))),
@@ -95,7 +98,7 @@ class PosController extends Controller
                 'sku' => $product->sku,
                 'single_piece_price' => $product->single_piece_price,
                 'wholesale_price' => $product->wholesale_price,
-                'mode' => $product->selling_mode,
+                'mode' => $retailEnabled ? $product->selling_mode : 'wholesale',
                 'wholesale_enabled' => $product->isWholesaleEnabled(),
                 'image_url' => $primaryImage,
                 'gallery' => $gallery->values(),

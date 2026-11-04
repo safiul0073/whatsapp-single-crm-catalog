@@ -16,6 +16,7 @@
         'password_login' => false,
         'app_download_enabled' => true,
         'wholesale_enabled' => true,
+        'retail_enabled' => true,
         'app_download_title' => 'Experience On Mobile',
         'app_download_subtitle' => 'Download our mobile apps for faster checkout and exclusive drops.',
         'app_ios_url' => '',
@@ -224,10 +225,22 @@
             password_login: {{ Illuminate\Support\Js::from((bool) ($cfg['password_login'] ?? false)) }},
             app_download_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['app_download_enabled'] ?? true)) }},
             wholesale_enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['wholesale_enabled'] ?? true)) }},
+            retail_enabled: {{ Illuminate\Support\Js::from(! ($cfg['wholesale_enabled'] ?? true) || (bool) ($cfg['retail_enabled'] ?? true)) }},
             app_download_title: {{ Illuminate\Support\Js::from($cfg['app_download_title'] ?? 'Experience On Mobile') }},
             app_download_subtitle: {{ Illuminate\Support\Js::from($cfg['app_download_subtitle'] ?? 'Download our mobile apps for faster checkout and exclusive drops.') }},
             app_ios_url: {{ Illuminate\Support\Js::from($cfg['app_ios_url'] ?? '') }},
-            app_android_url: {{ Illuminate\Support\Js::from($cfg['app_android_url'] ?? '') }}
+            app_android_url: {{ Illuminate\Support\Js::from($cfg['app_android_url'] ?? '') }},
+            pwa: {
+                enabled: {{ Illuminate\Support\Js::from((bool) ($cfg['pwa']['enabled'] ?? true)) }},
+                name: {{ Illuminate\Support\Js::from($cfg['pwa']['name'] ?? '') }},
+                short_name: {{ Illuminate\Support\Js::from($cfg['pwa']['short_name'] ?? '') }},
+                icon: {{ Illuminate\Support\Js::from($cfg['pwa']['icon'] ?? '') }},
+                theme_color: {{ Illuminate\Support\Js::from($cfg['pwa']['theme_color'] ?? ($cfg['primary'] ?? '#0866FF')) }},
+                background_color: {{ Illuminate\Support\Js::from($cfg['pwa']['background_color'] ?? '#F0F2F5') }},
+                offline_title: {{ Illuminate\Support\Js::from($cfg['pwa']['offline_title'] ?? '') }},
+                offline_message: {{ Illuminate\Support\Js::from($cfg['pwa']['offline_message'] ?? '') }},
+                offline_images: {{ Illuminate\Support\Js::from(array_values(array_slice((array) ($cfg['pwa']['offline_images'] ?? []), 0, 3))) }}
+            }
         },
         initialLogoUrl: {{ Illuminate\Support\Js::from($initialLogoUrl) }},
         initialFaviconUrl: {{ Illuminate\Support\Js::from($initialFaviconUrl) }},
@@ -325,6 +338,32 @@
                 window.openMediaLibrary((media) => {
                     if (media && media.url) {
                         this.form.favicon = media.url;
+                    }
+                }, { type: 'image' });
+            }
+        },
+
+        mediaPreviewUrl(path) {
+            if (!path) return '';
+            if (/^(https?:)?\/\//.test(path)) return path;
+            return '/storage/' + path.replace(/^\/+/, '').replace(/^storage\//, '');
+        },
+
+        openGalleryForPwaIcon() {
+            if (typeof window.openMediaLibrary === 'function') {
+                window.openMediaLibrary((media) => {
+                    if (media && media.url) {
+                        this.form.pwa.icon = media.url;
+                    }
+                }, { type: 'image' });
+            }
+        },
+
+        openGalleryForOfflineImage() {
+            if (typeof window.openMediaLibrary === 'function' && this.form.pwa.offline_images.length < 3) {
+                window.openMediaLibrary((media) => {
+                    if (media && media.url && this.form.pwa.offline_images.length < 3) {
+                        this.form.pwa.offline_images.push(media.url);
                     }
                 }, { type: 'image' });
             }
@@ -1201,6 +1240,37 @@
 
                 @include('commerce::user.partials.storefront-seo-card')
 
+                {{-- Retail Selling Card --}}
+                <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-2.5">
+                            <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <i class="ph ph-t-shirt text-lg"></i>
+                            </span>
+                            <div>
+                                <h2 class="heading-4 text-title text-base font-semibold">{{ __('Retail Selling') }}</h2>
+                                <p class="text-xs text-body">{{ __('When off, the store sells wholesale only. Single-piece buying, retail filters and retail options are hidden on the dashboard, storefront and mobile app. Retail and Wholesale cannot both be off.') }}</p>
+                                @error('config.retail_enabled')
+                                    <p class="mt-1 text-[11px] text-rose-500">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="hidden" name="config[retail_enabled]" value="0">
+                            <label class="relative inline-flex cursor-pointer items-center" :class="!form.wholesale_enabled && 'pointer-events-none opacity-50'" :title="!form.wholesale_enabled ? @js(__('Turn Wholesale on first. At least one selling mode must stay on.')) : ''">
+                                <input
+                                    type="checkbox"
+                                    name="config[retail_enabled]"
+                                    value="1"
+                                    x-model="form.retail_enabled"
+                                    class="peer sr-only"
+                                >
+                                <div class="peer h-6 w-11 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- 5. Mobile App Downloads (iOS & Android) Card --}}
                 <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div class="flex items-center justify-between gap-4">
@@ -1215,7 +1285,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <input type="hidden" name="config[wholesale_enabled]" value="0">
-                            <label class="relative inline-flex cursor-pointer items-center">
+                            <label class="relative inline-flex cursor-pointer items-center" :class="!form.retail_enabled && 'pointer-events-none opacity-50'" :title="!form.retail_enabled ? @js(__('Turn Retail on first. At least one selling mode must stay on.')) : ''">
                                 <input
                                     type="checkbox"
                                     name="config[wholesale_enabled]"
@@ -1225,6 +1295,127 @@
                                 >
                                 <div class="peer h-6 w-11 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
                             </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900 space-y-5">
+                    <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <i class="ph ph-app-window text-lg"></i>
+                            </span>
+                            <div>
+                                <h2 class="heading-4 text-title text-base font-semibold">{{ __('Installable App (PWA)') }}</h2>
+                                <p class="text-xs text-body">{{ __('Let shoppers install your storefront on their home screen and see a branded page when they are offline.') }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="hidden" name="config[pwa][enabled]" value="0">
+                            <label class="relative inline-flex cursor-pointer items-center">
+                                <input type="checkbox" name="config[pwa][enabled]" value="1" x-model="form.pwa.enabled" class="peer sr-only">
+                                <div class="peer h-6 w-11 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- Keep values submitted even when the section is collapsed. --}}
+                    <div x-show="form.pwa.enabled" class="space-y-5">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_name">{{ __('App Name') }}</label>
+                                <input id="pwa_name" type="text" name="config[pwa][name]" x-model="form.pwa.name" maxlength="60" class="form-input text-xs" :placeholder="form.name">
+                                <p class="form-hint">{{ __('Shown on the install prompt and splash screen. Defaults to the store name.') }}</p>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_short_name">{{ __('Short Name') }}</label>
+                                <input id="pwa_short_name" type="text" name="config[pwa][short_name]" x-model="form.pwa.short_name" maxlength="12" class="form-input text-xs" :placeholder="(form.name || '').slice(0, 12)">
+                                <p class="form-hint">{{ __('Label under the home-screen icon (max 12 characters).') }}</p>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_theme_color">{{ __('Theme Colour') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" x-model="form.pwa.theme_color" class="h-9 w-12 cursor-pointer rounded-lg border border-neutral-200 dark:border-neutral-700" aria-label="{{ __('Pick theme colour') }}">
+                                    <input id="pwa_theme_color" type="text" name="config[pwa][theme_color]" x-model="form.pwa.theme_color" maxlength="7" class="form-input text-xs font-mono">
+                                </div>
+                                <p class="form-hint">{{ __('Colours the status bar and title bar of the installed app.') }}</p>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_background_color">{{ __('Splash Background') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" x-model="form.pwa.background_color" class="h-9 w-12 cursor-pointer rounded-lg border border-neutral-200 dark:border-neutral-700" aria-label="{{ __('Pick splash background') }}">
+                                    <input id="pwa_background_color" type="text" name="config[pwa][background_color]" x-model="form.pwa.background_color" maxlength="7" class="form-input text-xs font-mono">
+                                </div>
+                                <p class="form-hint">{{ __('Shown behind your icon while the app launches.') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-950/40">
+                            <div class="flex flex-col items-center gap-4 sm:flex-row">
+                                <div class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-700 dark:bg-neutral-900">
+                                    <template x-if="mediaPreviewUrl(form.pwa.icon) || getPreviewFavicon() || getPreviewLogo()">
+                                        <img :src="mediaPreviewUrl(form.pwa.icon) || getPreviewFavicon() || getPreviewLogo()" alt="" class="h-12 w-12 object-contain">
+                                    </template>
+                                    <template x-if="!(mediaPreviewUrl(form.pwa.icon) || getPreviewFavicon() || getPreviewLogo())">
+                                        <i class="ph ph-app-window text-2xl text-neutral-400"></i>
+                                    </template>
+                                </div>
+                                <div class="flex-1 space-y-2 text-center sm:text-left">
+                                    <div class="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                                        <button type="button" @click="openGalleryForPwaIcon()" class="btn btn-primary btn-sm flex items-center gap-1.5 rounded-lg text-xs font-semibold shadow-2xs">
+                                            <i class="ph ph-images text-base"></i>
+                                            <span>{{ __('Choose App Icon') }}</span>
+                                        </button>
+                                        <button type="button" x-show="form.pwa.icon" @click="form.pwa.icon = ''" class="btn btn-outline btn-sm flex items-center gap-1 rounded-lg text-xs text-red-600 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/40">
+                                            <i class="ph ph-trash text-sm"></i>
+                                            <span>{{ __('Remove') }}</span>
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-neutral-500">{{ __('Square PNG, at least 512×512px. If empty, the favicon or logo is used.') }}</p>
+                                </div>
+                            </div>
+                            <input type="hidden" name="config[pwa][icon]" :value="form.pwa.icon">
+                        </div>
+
+                        <div class="space-y-4 border-t border-neutral-100 pt-5 dark:border-neutral-800">
+                            <div>
+                                <h3 class="text-sm font-semibold text-title">{{ __('Offline Page') }}</h3>
+                                <p class="text-xs text-body">{{ __('Shown when a shopper opens your store without an internet connection.') }}</p>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_offline_title">{{ __('Heading') }}</label>
+                                <input id="pwa_offline_title" type="text" name="config[pwa][offline_title]" x-model="form.pwa.offline_title" maxlength="80" class="form-input text-xs" placeholder="{{ __("You're offline") }}">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-semibold" for="pwa_offline_message">{{ __('Message') }}</label>
+                                <textarea id="pwa_offline_message" name="config[pwa][offline_message]" x-model="form.pwa.offline_message" maxlength="250" rows="2" class="form-input text-xs" placeholder="{{ __('Check your connection. Your cart is safe, and we will pick up right where you left off.') }}"></textarea>
+                            </div>
+                            <div>
+                                <div class="mb-2 flex items-center justify-between">
+                                    <span class="form-label mb-0 text-xs font-semibold">{{ __('Images (up to 3)') }}</span>
+                                    <button type="button" x-show="form.pwa.offline_images.length < 3" @click="openGalleryForOfflineImage()" class="btn btn-outline btn-sm flex items-center gap-1 rounded-lg text-xs">
+                                        <i class="ph ph-plus text-sm"></i>
+                                        <span>{{ __('Add Image') }}</span>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <template x-for="(img, i) in form.pwa.offline_images" :key="img + i">
+                                        <div class="group relative aspect-[4/5] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+                                            <img :src="mediaPreviewUrl(img)" alt="" class="h-full w-full object-cover">
+                                            <input type="hidden" :name="'config[pwa][offline_images][' + i + ']'" :value="img">
+                                            <button type="button" @click="form.pwa.offline_images.splice(i, 1)" class="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm" aria-label="{{ __('Remove image') }}">
+                                                <i class="ph ph-x text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template x-for="n in (3 - form.pwa.offline_images.length)" :key="'empty' + n">
+                                        <button type="button" @click="openGalleryForOfflineImage()" class="grid aspect-[4/5] place-items-center rounded-xl border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-primary hover:text-primary dark:border-neutral-700">
+                                            <i class="ph ph-image text-2xl"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                                <p class="form-hint">{{ __('If no images are chosen, featured category images are shown.') }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>

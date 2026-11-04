@@ -114,3 +114,17 @@ it('saves tracking settings, keeps them across general settings saves and reject
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['meta_pixel_id', 'tiktok_pixel_id']);
 });
+
+it('saves the retail switch and refuses to turn retail and wholesale both off', function (): void {
+    $base = ['name' => 'Store', 'primary' => '#123456', 'hover' => '#123456', 'footer_color' => '#123456'];
+
+    $this->put('/dashboard/commerce/storefront/settings', ['config' => [...$base, 'retail_enabled' => '0', 'wholesale_enabled' => '1']])->assertSessionHasNoErrors();
+    expect(StorefrontSetting::query()->first()->config)->toMatchArray(['retail_enabled' => false, 'wholesale_enabled' => true]);
+
+    $this->put('/dashboard/commerce/storefront/settings', ['config' => [...$base, 'wholesale_enabled' => '0']])->assertSessionHasErrors('config.retail_enabled');
+    $this->put('/dashboard/commerce/storefront/settings', ['config' => [...$base, 'retail_enabled' => '0', 'wholesale_enabled' => '0']])->assertSessionHasErrors('config.retail_enabled');
+    expect(StorefrontSetting::query()->first()->config)->toMatchArray(['retail_enabled' => false, 'wholesale_enabled' => true]);
+
+    $this->put('/dashboard/commerce/storefront/settings', ['config' => [...$base, 'retail_enabled' => '1', 'wholesale_enabled' => '0']])->assertSessionHasNoErrors();
+    expect(StorefrontSetting::query()->first()->config)->toMatchArray(['retail_enabled' => true, 'wholesale_enabled' => false]);
+});

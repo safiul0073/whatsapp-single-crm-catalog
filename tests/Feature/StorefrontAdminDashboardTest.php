@@ -192,6 +192,66 @@ it('saves SEO settings, keeps them when omitted and exposes them to the storefro
     ])->assertSessionHasErrors('config.seo.google_verification');
 });
 
+it('saves PWA settings, keeps them when omitted and exposes defaults to the storefront', function (): void {
+    $user = User::query()->create([
+        'id' => 4,
+        'name' => 'Store Owner 4',
+        'email' => 'owner4@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+    $workspace = Workspace::query()->create([
+        'name' => 'PWA Workspace',
+        'slug' => 'pwa-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    $base = ['name' => 'PWA Store Long Name', 'primary' => '#1FAA53', 'hover' => '#178A43', 'footer_color' => '#075E54'];
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', ['config' => $base])->assertSessionHasNoErrors();
+    $pwa = app(CmsService::class)->settings($workspace->id)['pwa'];
+    expect($pwa['enabled'])->toBeTrue()
+        ->and($pwa['name'])->toBe('PWA Store Long Name')
+        ->and($pwa['short_name'])->toBe('PWA Store Lo')
+        ->and($pwa['theme_color'])->toBe('#1FAA53')
+        ->and($pwa['offline_images'])->toBe([]);
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'config' => $base + ['pwa' => [
+            'enabled' => '0',
+            'short_name' => 'PWA',
+            'icon' => 'media/icon.png',
+            'background_color' => '#ffffff',
+            'offline_title' => 'No signal',
+            'offline_images' => ['media/a.jpg', '', 'https://cdn.example.com/b.jpg'],
+        ]],
+    ])->assertSessionHasNoErrors();
+
+    $pwa = app(CmsService::class)->settings($workspace->id)['pwa'];
+    expect($pwa['enabled'])->toBeFalse()
+        ->and($pwa['short_name'])->toBe('PWA')
+        ->and($pwa['icon'])->toEndWith('/storage/media/icon.png')
+        ->and($pwa['background_color'])->toBe('#FFFFFF')
+        ->and($pwa['offline_title'])->toBe('No signal')
+        ->and($pwa['offline_images'])->toHaveCount(2)
+        ->and($pwa['offline_images'][0])->toEndWith('/storage/media/a.jpg')
+        ->and($pwa['offline_images'][1])->toBe('https://cdn.example.com/b.jpg');
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', ['config' => $base])->assertSessionHasNoErrors();
+    expect(app(CmsService::class)->settings($workspace->id)['pwa']['offline_title'])->toBe('No signal');
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'config' => $base + ['pwa' => ['theme_color' => 'red', 'short_name' => 'Way too long name', 'offline_images' => ['a', 'b', 'c', 'd']]],
+    ])->assertSessionHasErrors(['config.pwa.theme_color', 'config.pwa.short_name', 'config.pwa.offline_images']);
+});
+
 it('renders media library integration for logo and hero slider slides without icon overlaps', function (): void {
     $user = User::query()->create([
         'id' => 2,

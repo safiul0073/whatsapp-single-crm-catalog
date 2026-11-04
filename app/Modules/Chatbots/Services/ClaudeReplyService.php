@@ -17,6 +17,8 @@ use Throwable;
 
 class ClaudeReplyService
 {
+    public const CUSTOMER_FALLBACK_REPLY = 'Thanks for your message! Our team will get back to you shortly.';
+
     public function __construct(
         protected AiSettingsService $settings,
         protected KnowledgeBaseSearchService $knowledgeBases,
@@ -31,7 +33,7 @@ class ClaudeReplyService
         $chatbot = $context['chatbot'] ?? null;
 
         if (! $chatbot instanceof Chatbot) {
-            return $this->fallback($message, $context, null, null, 'No chatbot was selected for this test.');
+            return $this->fallback($message, $context, null, null, $this->customerFallback(null));
         }
 
         $chatbot->loadMissing('knowledgeBases');
@@ -40,7 +42,13 @@ class ClaudeReplyService
         $search = $this->knowledgeBases->search($chatbot, $message);
 
         if (! app()->runningUnitTests() && ! $this->settings->hasConfiguredProvider($provider)) {
-            return $this->fallback($message, $context, $provider, $model, 'Platform AI is not configured for text generation.');
+            Log::warning('Chatbot AI is not configured.', [
+                'chatbot_id' => $chatbot->id,
+                'provider' => $provider,
+                'model' => $model,
+            ]);
+
+            return $this->fallback($message, $context, $provider, $model, $this->customerFallback($chatbot));
         }
 
         if ($this->isGreeting($message)) {
@@ -124,7 +132,7 @@ class ClaudeReplyService
                 'message' => $exception->getMessage(),
             ]);
 
-            return $this->fallback($message, $context, $provider, $model, 'Platform AI could not generate a reply. Check AI Settings and try again.');
+            return $this->fallback($message, $context, $provider, $model, $this->customerFallback($chatbot));
         }
     }
 
@@ -167,6 +175,16 @@ PROMPT);
      * @param  array<string, mixed>  $context
      * @return array{provider: ?string, model: ?string, reply: string, confidence: float, handoff: bool, context: array<string, mixed>, input: string}
      */
+    /**
+     * Customer-facing reply used when AI is unavailable; never exposes setup or provider details.
+     */
+    protected function customerFallback(?Chatbot $chatbot): string
+    {
+        $handoff = trim((string) data_get($chatbot?->handoff_rules, 'message'));
+
+        return $handoff !== '' ? $handoff : self::CUSTOMER_FALLBACK_REPLY;
+    }
+
     protected function fallback(string $message, array $context, ?string $provider, ?string $model, string $reply): array
     {
         return [

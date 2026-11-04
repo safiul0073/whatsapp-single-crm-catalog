@@ -119,6 +119,7 @@ class AdminController extends Controller
         $newConfig = $r->validated('config');
         unset($newConfig['chat_channels']);
         $newConfig['wholesale_enabled'] = (bool) ($newConfig['wholesale_enabled'] ?? $existing['wholesale_enabled'] ?? true);
+        $newConfig['retail_enabled'] = (bool) ($newConfig['retail_enabled'] ?? $existing['retail_enabled'] ?? true);
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
         }
@@ -126,6 +127,12 @@ class AdminController extends Controller
             $newConfig['seo']['noindex'] = (bool) ($newConfig['seo']['noindex'] ?? false);
         } elseif (isset($existing['seo'])) {
             $newConfig['seo'] = $existing['seo'];
+        }
+        if (isset($newConfig['pwa'])) {
+            $newConfig['pwa']['enabled'] = (bool) ($newConfig['pwa']['enabled'] ?? false);
+            $newConfig['pwa']['offline_images'] = array_values(array_filter((array) ($newConfig['pwa']['offline_images'] ?? [])));
+        } elseif (isset($existing['pwa'])) {
+            $newConfig['pwa'] = $existing['pwa'];
         }
         if (isset($existing['tracking'])) {
             $newConfig['tracking'] = $existing['tracking'];

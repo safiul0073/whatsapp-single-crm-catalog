@@ -96,3 +96,12 @@ it('tests qdrant connection from admin settings', function (): void {
         ->assertRedirect(route('admin.ai-settings.vector-database.index'))
         ->assertSessionHas('success', 'Qdrant connection successful.');
 });
+
+it('appends /models to a gemini base url that stops at the api version', function (string $input, string $expected): void {
+    expect(app(AiSettingsService::class)->normalizeGeminiUrl($input))->toBe($expected);
+})->with([
+    ['https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1beta/models'],
+    ['https://generativelanguage.googleapis.com/v1beta/', 'https://generativelanguage.googleapis.com/v1beta/models'],
+    ['https://generativelanguage.googleapis.com/v1beta/models', 'https://generativelanguage.googleapis.com/v1beta/models'],
+    ['https://proxy.example.com/gemini', 'https://proxy.example.com/gemini'],
+]);
