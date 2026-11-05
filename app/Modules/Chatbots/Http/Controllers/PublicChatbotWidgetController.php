@@ -59,6 +59,7 @@ class PublicChatbotWidgetController extends Controller
         $validated = $request->validate([
             'session_token' => ['required', 'string', 'max:100'],
             'message' => ['nullable', 'required_without:attachment', 'string', 'min:1', 'max:1000'],
+            'page_url' => ['nullable', 'url', 'max:500'],
             'attachment' => ['nullable', 'file', 'max:16384', 'mimetypes:image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,audio/mpeg,audio/mp4,audio/ogg,audio/wav,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
         ]);
         $session = ChatbotWidgetSession::query()
@@ -67,7 +68,7 @@ class PublicChatbotWidgetController extends Controller
             ->firstOrFail();
 
         return $this->cors(response()->json(
-            $widgets->receiveMessage($widget, $session, (string) ($validated['message'] ?? ''), $request->file('attachment'))
+            $widgets->receiveMessage($widget, $session, (string) ($validated['message'] ?? ''), $request->file('attachment'), $validated['page_url'] ?? null)
         ), $request);
     }
 

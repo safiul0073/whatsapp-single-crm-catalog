@@ -1,13 +1,13 @@
 <?php
 
+use App\Modules\Chatbots\Http\Controllers\User\ChannelAiSettingsController;
 use App\Modules\Chatbots\Http\Controllers\User\ChatbotController;
 use App\Modules\Chatbots\Http\Controllers\User\ChatbotWidgetController;
-use App\Modules\Chatbots\Http\Controllers\User\WhatsAppAiSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['can:chatbots.manage'])->group(function () {
-    Route::get('chatbots/whatsapp-ai', [WhatsAppAiSettingsController::class, 'edit'])->name('chatbots.whatsapp-ai.edit');
-    Route::put('chatbots/whatsapp-ai', [WhatsAppAiSettingsController::class, 'update'])->name('chatbots.whatsapp-ai.update');
+    Route::get('chatbots/ai-auto-reply', [ChannelAiSettingsController::class, 'edit'])->name('chatbots.channel-ai.edit');
+    Route::put('chatbots/ai-auto-reply', [ChannelAiSettingsController::class, 'update'])->name('chatbots.channel-ai.update');
 
     Route::get('chatbots', [ChatbotController::class, 'index'])->name('chatbots.index');
     Route::get('chatbots/create', [ChatbotController::class, 'create'])->name('chatbots.create');

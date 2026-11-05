@@ -159,3 +159,22 @@ it('indexes permitted navigation destinations in global search', function (): vo
             'url' => route('user.tags.index'),
         ]);
 });
+
+it('organizes the commerce module into functional groups', function (): void {
+    $owner = User::factory()->create();
+    createNavigationWorkspace($owner);
+
+    $this->actingAs($owner);
+
+    $navigation = app(WorkspaceNavigationRegistry::class)->forUser($owner);
+    $commerce = collect($navigation['modules'])->firstWhere('id', 'commerce');
+
+    $labels = array_column($commerce['groups'], 'label');
+
+    expect(array_slice($labels, 0, 4))->toBe(['Sales', 'Catalog', 'Customers', 'Storefront & Growth'])
+        ->and($labels)->toContain('Shipping Management');
+
+    $sales = collect($commerce['groups'])->firstWhere('label', 'Sales');
+
+    expect(array_column($sales['items'], 'label'))->toContain('POS', 'Orders', 'Payment services', 'Order settings');
+});

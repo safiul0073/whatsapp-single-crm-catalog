@@ -19,6 +19,7 @@ use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MarketingChannels\Services\InboundMessageAttachmentService;
+use App\Modules\MarketingChannels\Services\MetaErrorTranslator;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
 use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
@@ -26,6 +27,7 @@ use App\Modules\MessageTemplates\Services\MessageTemplateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -218,7 +220,25 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
             $this->forgetTemplatesRemovedOnMeta($account, $keptTemplateIds);
         }
 
-        $account->update(['last_synced_at' => now(), 'status' => $isComplete ? ChannelAccountStatus::Connected->value : ChannelAccountStatus::Error->value]);
+        $settings = $account->settings ?? [];
+        $status = $account->status;
+        if ($isComplete) {
+            unset($settings['last_error']);
+            $status = ChannelAccountStatus::Connected;
+        } else {
+            $payload = (array) ($response?->json() ?? []);
+            $settings['last_error'] = Str::limit(app(MetaErrorTranslator::class)->summary($payload, __('Template sync failed.')), 1000);
+            Log::warning('WhatsApp template sync failed.', [
+                'channel_account_id' => $account->id,
+                'http_status' => $response?->status(),
+                'error' => data_get($payload, 'error'),
+            ]);
+            if ($this->isAccessLost($response?->status(), $payload)) {
+                $status = ChannelAccountStatus::Error;
+            }
+        }
+
+        $account->update(['last_synced_at' => now(), 'status' => $status instanceof ChannelAccountStatus ? $status->value : $status, 'settings' => $settings]);
 
         return ['ok' => $isComplete, 'synced' => $synced, 'response' => $response?->json()];
     }
@@ -251,6 +271,21 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
     /**
      * @param  array<string, mixed>  $template
      */
+    /**
+     * Auth or permission failures mean the channel really lost access; temporary Meta errors do not.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isAccessLost(?int $httpStatus, array $payload): bool
+    {
+        $code = (int) data_get($payload, 'error.code');
+        $subcode = (int) data_get($payload, 'error.error_subcode');
+
+        return in_array($httpStatus, [401, 403], true)
+            || in_array($code, [10, 190, 200], true)
+            || ($code === 100 && $subcode === 33);
+    }
+
     protected function syncedBody(array $template): string
     {
         $body = collect($template['components'] ?? [])->firstWhere('type', 'BODY');
