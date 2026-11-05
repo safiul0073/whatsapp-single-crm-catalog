@@ -10,12 +10,12 @@
                 @if($canViewPayments)<span class="badge badge-soft">{{ __('Payment') }}: {{ str($order->payment_state)->replace('_', ' ')->title() }}</span>@endif
             </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-stretch gap-2">
             @if($primaryAction)
                 <a href="{{ $primaryAction['href'] }}" class="btn btn-primary btn-sm"><i class="ph {{ $primaryAction['icon'] }}"></i> {{ $primaryAction['label'] }}</a>
             @endif
-            <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
-                <button type="button" class="btn btn-outline btn-sm" @click="open = !open" :aria-expanded="open" aria-haspopup="menu"><i class="ph ph-files"></i> {{ __('Documents') }} <i class="ph ph-caret-down text-xs"></i></button>
+            <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+                <button type="button" class="btn btn-outline btn-sm h-full" @click="open = !open" :aria-expanded="open" aria-haspopup="menu"><i class="ph ph-files"></i> {{ __('Documents') }} <i class="ph ph-caret-down text-xs"></i></button>
                 <div x-show="open" x-cloak class="order-menu" role="menu">
                     <a class="order-menu-item" role="menuitem" href="{{ route('user.commerce.orders.invoice.print', $order) }}" target="_blank" rel="noopener"><i class="ph ph-printer"></i> {{ __('Print invoice') }}</a>
                     <a class="order-menu-item" role="menuitem" href="{{ route('user.commerce.orders.invoice.print', ['order' => $order, 'format' => 'receipt']) }}" target="_blank" rel="noopener"><i class="ph ph-receipt"></i> {{ __('Print receipt (80mm)') }}</a>
@@ -32,8 +32,8 @@
                 </div>
             </div>
             @if($canCancel || $canDeleteOrders)
-                <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
-                    <button type="button" class="btn btn-outline btn-sm" @click="open = !open" :aria-expanded="open" aria-haspopup="menu" aria-label="{{ __('More actions') }}"><i class="ph ph-dots-three-vertical"></i></button>
+                <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+                    <button type="button" class="btn btn-outline btn-sm h-full" @click="open = !open" :aria-expanded="open" aria-haspopup="menu" aria-label="{{ __('More actions') }}"><i class="ph ph-dots-three-vertical text-base"></i></button>
                     <div x-show="open" x-cloak class="order-menu" role="menu">
                         @if($canCancel)
                         <form method="POST" action="{{ route('user.commerce.orders.transition', $order) }}">

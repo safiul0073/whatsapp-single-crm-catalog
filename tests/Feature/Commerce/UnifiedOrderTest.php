@@ -346,8 +346,10 @@ it('renders summaries packing slips and currency settings', function () {
     $c = unifiedContext();
     $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
     $this->actingAs($c['user'])->get(route('user.commerce.orders.show', $order))->assertOk()->assertDontSee('BOX-1')
-        ->assertDontSee('Pack 1 of 3')->assertSee('Color: Red')->assertDontSee('Ordered items')->assertSeeInOrder(['>S<', '>M<', '>L<'], false);
-    $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Cotton shirt');
+        ->assertDontSee('Pack 1 of 3')->assertSee('Red')->assertDontSee('Ordered items')->assertSee('S–L', false);
+    $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->assertSee('Cotton shirt')
+        ->assertSee('packing-tile', false)->assertSee('Red')->assertSee('S–L', false)
+        ->assertDontSee('style="', false);
     $this->get(route('user.commerce.orders.settings'))->assertOk()->assertSee('Store order settings');
 });
 
