@@ -35,6 +35,26 @@
   @apply border-b border-border-soft px-2 py-2.5 align-top;
 }
 
+.packing-grid {
+  @apply grid grid-cols-4 gap-2 print:gap-1.5;
+}
+
+.packing-tile {
+  @apply space-y-0.5 break-inside-avoid;
+}
+
+.packing-thumb {
+  @apply relative block min-h-16 w-full overflow-hidden rounded-md border border-border-soft bg-section print:rounded-sm;
+}
+
+.packing-state {
+  @apply absolute right-1 top-1 rounded-sm bg-white/90 px-0.5 text-sm leading-none;
+}
+
+.packing-meta {
+  @apply text-[10px] leading-tight text-body;
+}
+
 .document-stamp {
   @apply inline-flex rounded-md border border-primary px-3 py-1 text-sm font-semibold uppercase tracking-wide text-primary;
 }

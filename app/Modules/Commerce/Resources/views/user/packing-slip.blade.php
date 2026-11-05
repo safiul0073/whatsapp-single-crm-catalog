@@ -6,86 +6,85 @@
         $sizeOrder = array_flip(\App\Modules\Commerce\Services\OrderDocumentPresenter::SIZE_ORDER);
         $customerName = $customer['name'] ?? __('Customer');
         $customerPhone = $customer['phone'];
-        $addressLines = $shipTo;
+        $addressLine = collect($shipTo)->filter()->implode(', ');
     @endphp
-        <header class="flex items-start justify-between gap-4 border-b border-border-default pb-3">
+        <header class="flex items-start justify-between gap-4 border-b border-border-default pb-2">
             <div>
                 <p class="text-xs text-body">{{ $brand['name'] }}</p>
-                <h1 class="text-xl font-semibold">{{ __('Packing slip') }}</h1>
-                <p class="text-sm text-body">{{ $order->created_at->format('M j, Y · g:i A') }} · {{ str($order->source)->replace('_', ' ')->title() }}</p>
+                <h1 class="text-lg font-semibold leading-tight">{{ __('Packing slip') }}</h1>
+                <p class="text-xs text-body">{{ $order->created_at->format('M j, Y · g:i A') }} · {{ str($order->source)->replace('_', ' ')->title() }}</p>
             </div>
-            <div class="text-right text-sm">
-                <p class="font-medium">{{ $order->number }}</p>
+            <div class="text-right text-xs">
+                <p class="text-base font-semibold">{{ $order->number }}</p>
                 <p class="text-body">{{ str($order->status)->replace('_', ' ')->title() }} · {{ __('Payment') }}: {{ str($order->payment_state)->replace('_', ' ')->title() }}</p>
             </div>
         </header>
 
-        <section class="grid grid-cols-3 gap-4 text-sm">
+        <section class="grid grid-cols-3 gap-3 text-xs">
             <div>
-                <p class="text-xs uppercase tracking-wide text-body">{{ __('Customer') }}</p>
-                <p class="mt-1 font-medium">{{ $customerName }}</p>
+                <p class="document-label">{{ __('Customer') }}</p>
+                <p class="font-medium">{{ $customerName }}</p>
                 @if($customerPhone)<p class="text-body">{{ $customerPhone }}</p>@endif
             </div>
             <div>
-                <p class="text-xs uppercase tracking-wide text-body">{{ __('Ship to') }}</p>
-                @forelse($addressLines as $line)
-                    <p class="{{ $loop->first ? 'mt-1' : '' }} text-body">{{ $line }}</p>
-                @empty
-                    <p class="mt-1 text-body">{{ __('Counter pickup') }}</p>
-                @endforelse
+                <p class="document-label">{{ __('Ship to') }}</p>
+                <p class="text-body">{{ $addressLine !== '' ? $addressLine : __('Counter pickup') }}</p>
             </div>
             <div class="text-right">
-                <p class="text-xs uppercase tracking-wide text-body">{{ __('Packing') }}</p>
-                <p class="mt-1 font-medium">{{ $boxes->count() }} {{ __('boxes') }} · {{ $totalPieces }} {{ __('pcs') }}</p>
+                <p class="document-label">{{ __('Packing') }}</p>
+                <p class="font-medium">{{ $boxes->count() }} {{ __('boxes') }} · {{ $totalPieces }} {{ __('pcs') }}</p>
                 <p class="text-body">{{ $packedCount }} / {{ $boxes->count() }} {{ __('packed') }}</p>
             </div>
         </section>
 
-        <section class="space-y-2.5">
-            @forelse($boxes as $index => $box)
-                @foreach($box->contents->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? '')) as $contents)
-                    @php
-                        $contents = $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)->values();
-                        $item = $contents->first()->item;
-                        $image = $item->productImages()[0] ?? null;
-                    @endphp
-                    <article class="flex gap-3 rounded-md border border-border-default p-3 break-inside-avoid print:rounded-none print:border-x-0 print:border-t-0 print:px-0">
-                        <div class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-sm bg-section print:size-12">
-                            @if($image)
-                                <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="h-full w-full object-contain p-1">
-                            @else
-                                <i class="ph ph-image text-xl text-body" aria-hidden="true"></i>
-                            @endif
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium leading-snug">{{ $item->product_name }}</p>
-                                    <p class="text-xs text-body">
-                                        {{ __('Box') }} {{ $index + 1 }}/{{ $boxes->count() }} · {{ $box->label }}@if(filled($item->attributes['color'] ?? null)) · {{ __('Color') }}: {{ $item->attributes['color'] }}@endif · {{ $contents->sum('quantity') }} {{ __('pcs') }}
-                                    </p>
+        @php
+            $packs = $boxes->flatMap(fn ($box) => $box->contents
+                ->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))
+                ->map(fn ($contents) => ['box' => $box, 'index' => $boxes->search($box) + 1, 'contents' => $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)->values()]))
+                ->groupBy(fn ($pack) => $pack['contents']->first()->item->product_name);
+        @endphp
+        @if($packs->isEmpty())
+            <p class="rounded-md bg-section p-4 text-center text-sm text-body">{{ __('No boxes have been created for this order yet.') }}</p>
+        @else
+            @foreach($packs as $productName => $productPacks)
+                <section class="space-y-1.5 break-inside-avoid-page">
+                    <h2 class="flex items-baseline justify-between gap-3 border-b border-border-default pb-1 text-sm font-semibold">
+                        <span>{{ $productName }}</span>
+                        <span class="text-xs font-normal text-body">{{ $productPacks->count() }} {{ __('packs') }} · {{ $productPacks->sum(fn ($pack) => $pack['contents']->sum('quantity')) }} {{ __('pcs') }}</span>
+                    </h2>
+                    <div class="packing-grid">
+                        @foreach($productPacks as $pack)
+                            @php
+                                $contents = $pack['contents'];
+                                $item = $contents->first()->item;
+                                $image = $item->productImages()[0] ?? null;
+                                $color = $item->attributes['color'] ?? null;
+                                $sizes = $contents->map(fn ($content) => $content->item->attributes['size'] ?? '—');
+                            @endphp
+                            <article class="packing-tile">
+                                <div class="packing-thumb">
+                                    @if($image)
+                                        <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="block h-auto w-full">
+                                    @else
+                                        <i class="ph ph-image grid aspect-square place-items-center text-2xl text-body" aria-hidden="true"></i>
+                                    @endif
+                                    <span class="packing-state {{ $pack['box']->packed_at ? 'text-primary' : 'text-body' }}">
+                                        <i class="ph {{ $pack['box']->packed_at ? 'ph-check-square' : 'ph-square' }}" aria-hidden="true"></i>
+                                    </span>
                                 </div>
-                                <span class="shrink-0 text-xs {{ $box->packed_at ? 'text-primary' : 'text-body' }}">
-                                    <i class="ph {{ $box->packed_at ? 'ph-check-square' : 'ph-square' }}" aria-hidden="true"></i>
-                                    {{ $box->packed_at ? __('Packed') : __('To pack') }}
-                                </span>
-                            </div>
-                            <table class="mt-2 w-full text-center text-xs" aria-label="{{ $box->label }} {{ __('contents') }}">
-                                <tbody>
-                                    <tr class="bg-section"><th scope="row" class="px-2 py-1 text-left font-normal text-body">{{ __('Size') }}</th>@foreach($contents as $content)<td class="px-2 py-1 font-medium">{{ $content->item->attributes['size'] ?? '—' }}</td>@endforeach</tr>
-                                    <tr><th scope="row" class="px-2 py-1 text-left font-normal text-body">{{ __('Qty') }}</th>@foreach($contents as $content)<td class="px-2 py-1 tabular-nums">{{ $content->quantity }}</td>@endforeach</tr>
-                                    <tr class="border-t border-border-default"><th scope="row" class="px-2 py-1 text-left font-normal text-body">{{ __('Check') }}</th>@foreach($contents as $content)<td class="px-2 py-1"><span class="inline-block size-3.5 rounded-sm border border-border-strong" aria-hidden="true"></span></td>@endforeach</tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </article>
-                @endforeach
-            @empty
-                <p class="rounded-md bg-section p-4 text-center text-sm text-body">{{ __('No boxes have been created for this order yet.') }}</p>
-            @endforelse
-        </section>
+                                <p class="packing-meta">
+                                    <strong class="font-semibold">{{ filled($color) ? $color : __('No color') }}</strong>
+                                    · {{ $pack['index'] }}/{{ $boxes->count() }} · {{ $contents->sum('quantity') }} {{ __('pcs') }}
+                                </p>
+                                <p class="packing-meta">{{ $sizes->first() }}–{{ $sizes->last() }} · {{ $contents->pluck('quantity')->implode(':') }}</p>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endforeach
+        @endif
 
-        <footer class="grid grid-cols-2 gap-6 border-t border-border-default pt-6 text-xs text-body">
+        <footer class="grid grid-cols-2 gap-6 pt-3 text-xs text-body break-inside-avoid">
             <p class="border-t border-border-strong pt-1">{{ __('Packed by') }}</p>
             <p class="border-t border-border-strong pt-1">{{ __('Checked by') }}</p>
         </footer>
