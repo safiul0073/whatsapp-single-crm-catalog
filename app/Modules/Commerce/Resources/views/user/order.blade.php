@@ -40,11 +40,11 @@
         };
     @endphp
 
-    <div class="space-y-5" x-data="commerceProductGallery">
+    <div class="order-compact" x-data="commerceProductGallery">
         @include('commerce::user.partials.order.header')
         @include('commerce::user.partials.order.attention')
 
-        <div class="grid gap-6 lg:grid-cols-3">
+        <div class="order-layout grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 @if($order->boxes->isNotEmpty())@include('commerce::user.partials.order.packing')@endif
                 @if($unpackedItems->isNotEmpty())@include('commerce::user.partials.order.items')@endif

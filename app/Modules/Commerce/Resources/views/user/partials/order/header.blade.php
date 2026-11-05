@@ -1,4 +1,4 @@
-<header class="section-card relative z-10 space-y-4 !overflow-visible">
+<header class="section-card relative z-10 space-y-2 !overflow-visible">
     <a href="{{ route('user.commerce.orders.index') }}" class="inline-flex items-center gap-1 text-sm text-body hover:text-title"><i class="ph ph-arrow-left"></i> {{ __('Orders') }}</a>
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0 space-y-1">
