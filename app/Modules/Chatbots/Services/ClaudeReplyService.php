@@ -5,19 +5,25 @@ namespace App\Modules\Chatbots\Services;
 use App\Modules\AiSettings\Services\AiSettingsService;
 use App\Modules\AiSettings\Services\AiUsageLogger;
 use App\Modules\Chatbots\Models\Chatbot;
-use App\Modules\Commerce\AiTools\SearchProductsTool;
-use App\Modules\KnowledgeBases\Models\KnowledgeBaseChunk;
+use App\Modules\Commerce\AiAgents\StoreAssistantAgent;
+use App\Modules\Commerce\AiTools\ChatbotProductPresenter;
+use App\Modules\Commerce\AiTools\ProductShowcaseCollector;
+use App\Modules\Commerce\Models\Product;
+use App\Modules\Commerce\Services\StorefrontUrl;
+use App\Modules\Inbox\Models\Message;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchResult;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Laravel\Ai\AnonymousAgent;
+use Laravel\Ai\Messages\AssistantMessage;
+use Laravel\Ai\Messages\UserMessage;
 use Throwable;
 
 class ClaudeReplyService
 {
     public const CUSTOMER_FALLBACK_REPLY = 'Thanks for your message! Our team will get back to you shortly.';
+
+    public const HISTORY_LIMIT = 10;
 
     public function __construct(
         protected AiSettingsService $settings,
@@ -26,11 +32,15 @@ class ClaudeReplyService
     ) {}
 
     /**
-     * @return array{provider: ?string, model: ?string, reply: string, confidence: float, handoff: bool, context: array<string, mixed>, input: string}
+     * Context keys: chatbot (required), conversation_id, inbound_message_id, page_url, channel.
+     *
+     * @return array{provider: ?string, model: ?string, reply: string, confidence: float, handoff: bool, context: array<string, mixed>, input: string, products: list<array<string, mixed>>}
      */
     public function draftReply(string $message, array $context = []): array
     {
         $chatbot = $context['chatbot'] ?? null;
+        $showcase = app(ProductShowcaseCollector::class);
+        $showcase->clear();
 
         if (! $chatbot instanceof Chatbot) {
             return $this->fallback($message, $context, null, null, $this->customerFallback(null));
@@ -60,6 +70,7 @@ class ClaudeReplyService
                 'handoff' => false,
                 'context' => $this->contextWithSearch($context, $search),
                 'input' => $message,
+                'products' => [],
             ];
         }
 
@@ -67,7 +78,7 @@ class ClaudeReplyService
             return $this->fallback($message, $this->contextWithSearch($context, $search), $provider, $model, data_get($chatbot->handoff_rules, 'message') ?: 'I could not find this in the selected knowledge base. I will connect you with a team member.');
         }
 
-        if (app()->runningUnitTests()) {
+        if (app()->runningUnitTests() && ! StoreAssistantAgent::isFaked()) {
             $knowledgeReply = $search->isNotEmpty()
                 ? 'Test reply generated from knowledge context: '.Str::limit($search->first()->content, 220, '')
                 : 'Test reply generated from the saved chatbot configuration.';
@@ -80,16 +91,18 @@ class ClaudeReplyService
                 'handoff' => false,
                 'context' => $this->contextWithSearch($context, $search),
                 'input' => $message,
+                'products' => [],
             ];
         }
 
         try {
-            $agent = new AnonymousAgent(
-                instructions: $this->instructions($chatbot, $search->chunks),
-                messages: [],
-                tools: [
-                    new SearchProductsTool($chatbot->workspace_id),
-                ],
+            $currentProduct = $this->currentProduct($chatbot, $context['page_url'] ?? null);
+            $agent = new StoreAssistantAgent(
+                chatbot: $chatbot,
+                knowledge: $search->chunks,
+                history: $this->history($context, $message),
+                currentProduct: $currentProduct,
+                channel: (string) ($context['channel'] ?? 'widget'),
             );
 
             $response = $this->usageLogger->measure(
@@ -104,24 +117,28 @@ class ClaudeReplyService
                         'source' => 'platform',
                         'knowledge_context_count' => $search->count(),
                         'search_mode' => $search->mode,
+                        'current_product_id' => $currentProduct?->id,
                     ],
                 ],
                 fn () => $agent->prompt(
                     prompt: $message,
                     provider: $provider,
                     model: $model,
-                    timeout: 20,
+                    timeout: 30,
                 ),
             );
+            $reply = trim((string) $response->text);
+            $this->showCurrentProduct($chatbot, $currentProduct, $reply, $context['conversation_id'] ?? null);
 
             return [
                 'provider' => $provider,
                 'model' => $model,
-                'reply' => trim((string) $response->text),
+                'reply' => $reply,
                 'confidence' => 0.8,
                 'handoff' => false,
                 'context' => $this->contextWithSearch($context, $search),
                 'input' => $message,
+                'products' => $showcase->all(),
             ];
         } catch (Throwable $exception) {
             Log::warning('Chatbot AI reply generation failed.', [
@@ -137,38 +154,85 @@ class ClaudeReplyService
     }
 
     /**
-     * @param  Collection<int, KnowledgeBaseChunk>  $matches
+     * The product on the storefront page the shopper is viewing, when it is sellable in this store.
      */
-    protected function instructions(Chatbot $chatbot, Collection $matches): string
+    protected function currentProduct(Chatbot $chatbot, mixed $pageUrl): ?Product
     {
-        $knowledgeBases = $chatbot->knowledgeBases
-            ->map(fn ($knowledgeBase): string => '- '.$knowledgeBase->name.($knowledgeBase->description ? ': '.$knowledgeBase->description : ''))
-            ->implode(PHP_EOL);
-        $knowledgeContext = $matches
-            ->map(fn (KnowledgeBaseChunk $chunk): string => "- {$chunk->source?->title}: {$chunk->content}")
-            ->implode(PHP_EOL);
+        $slug = StorefrontUrl::productSlugFromUrl(is_string($pageUrl) ? $pageUrl : null);
 
-        $handoffMessage = data_get($chatbot->handoff_rules, 'message') ?: 'I will connect you with a team member.';
+        return $slug ? app(ChatbotProductPresenter::class, ['workspaceId' => (int) $chatbot->workspace_id])->find($slug) : null;
+    }
 
-        return trim(<<<PROMPT
-You are {$chatbot->name}, a workspace chatbot.
+    /**
+     * Earlier text turns of this conversation, oldest first, excluding the message being answered.
+     *
+     * @param  array<string, mixed>  $context
+     * @return list<UserMessage|AssistantMessage>
+     */
+    protected function history(array $context, string $message): array
+    {
+        $conversationId = $context['conversation_id'] ?? null;
+        if (! $conversationId) {
+            return [];
+        }
 
-Persona and rules:
-{$chatbot->persona}
+        $messages = Message::query()
+            ->where('conversation_id', $conversationId)
+            ->whereIn('direction', ['inbound', 'outbound'])
+            ->whereNotNull('body')
+            ->where('body', '!=', '')
+            ->when($context['inbound_message_id'] ?? null, fn ($query, $id) => $query->where('id', '<', $id))
+            ->orderByDesc('id')
+            ->limit(self::HISTORY_LIMIT + 1)
+            ->get(['id', 'direction', 'body', 'type'])
+            ->reverse()
+            ->values();
 
-Greeting:
-{$chatbot->greeting}
+        if (! isset($context['inbound_message_id']) && $messages->last()?->direction === 'inbound' && trim((string) $messages->last()->body) === trim($message)) {
+            $messages->pop();
+        }
 
-Available knowledge bases:
-{$knowledgeBases}
+        return $messages
+            ->take(-self::HISTORY_LIMIT)
+            ->map(fn (Message $item): UserMessage|AssistantMessage => $item->direction === 'inbound'
+                ? new UserMessage(Str::limit((string) $item->body, 1500, ''))
+                : new AssistantMessage(Str::limit((string) $item->body, 1500, '')))
+            ->values()
+            ->all();
+    }
 
-Knowledge context:
-{$knowledgeContext}
+    /**
+     * Shoppers on a product page get that product's color photos automatically: the first time in a
+     * conversation, and again whenever the reply names it. Skipped when the assistant showed other products.
+     */
+    protected function showCurrentProduct(Chatbot $chatbot, ?Product $product, string $reply, mixed $conversationId): void
+    {
+        $showcase = app(ProductShowcaseCollector::class);
+        if (! $product || $reply === '' || $showcase->has($product->id)) {
+            return;
+        }
 
-Keep replies concise and helpful. If the customer asks for a human or the answer is outside your knowledge, reply with: {$handoffMessage}
+        $mentioned = Str::contains(Str::lower($reply), [Str::lower($product->name), '/products/'.Str::lower($product->slug)]);
+        $firstTime = $showcase->all() === [] && ! $this->alreadyShowcased($product->id, $conversationId);
 
-If you recommend products, always format them as exact Markdown links like this: `[Product Name](URL)` so the widget can render them properly.
-PROMPT);
+        if ($mentioned || $firstTime) {
+            $showcase->add(app(ChatbotProductPresenter::class, ['workspaceId' => (int) $chatbot->workspace_id])->showcase($product));
+        }
+    }
+
+    protected function alreadyShowcased(int $productId, mixed $conversationId): bool
+    {
+        if (! $conversationId) {
+            return false;
+        }
+
+        return Message::query()
+            ->where('conversation_id', $conversationId)
+            ->where('direction', 'outbound')
+            ->orderByDesc('id')
+            ->limit(self::HISTORY_LIMIT)
+            ->get(['id', 'payload'])
+            ->contains(fn (Message $message): bool => collect(data_get($message->payload, 'products', []))->contains('product_id', $productId));
     }
 
     /**
@@ -195,6 +259,7 @@ PROMPT);
             'handoff' => true,
             'context' => $context,
             'input' => $message,
+            'products' => [],
         ];
     }
 

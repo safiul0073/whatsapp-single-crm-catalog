@@ -2,11 +2,13 @@
 
 namespace App\Modules\Commerce\Providers;
 
+use App\Modules\Commerce\AiTools\ProductShowcaseCollector;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductColor;
 use App\Modules\Commerce\Models\ProductMedia;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Services\StorefrontUrl;
 use App\Modules\Commerce\Storefront\Console\ImportLegacy;
 use App\Modules\Commerce\Storefront\Console\ProvisionStore;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
@@ -58,6 +60,7 @@ class CommerceServiceProvider extends BasePanelModuleProvider
 
     public function register(): void
     {
-        //
+        $this->app->scoped(ProductShowcaseCollector::class);
+        $this->app->scoped(StorefrontUrl::class);
     }
 }

@@ -5,8 +5,8 @@ namespace App\Modules\Chatbots\Services;
 use App\Models\User;
 use App\Modules\Chatbots\Models\Chatbot;
 use App\Modules\Chatbots\Models\ChatbotWidget;
-use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Chatbots\Models\ChatbotWidgetSession;
+use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Enums\ContactSource;
 use App\Modules\Contacts\Models\Contact;
@@ -131,9 +131,13 @@ class ChatbotWidgetService
         return $session->fresh(['conversation', 'contact', 'widget.chatbot']);
     }
 
-    public function receiveMessage(ChatbotWidget $widget, ChatbotWidgetSession $session, string $body, ?UploadedFile $attachment = null): array
+    public function receiveMessage(ChatbotWidget $widget, ChatbotWidgetSession $session, string $body, ?UploadedFile $attachment = null, ?string $pageUrl = null): array
     {
         $this->assertSession($widget, $session);
+        if (filled($pageUrl)) {
+            $session->visitor_metadata = array_merge($session->visitor_metadata ?? [], ['page_url' => $pageUrl]);
+        }
+        $pageUrl = $pageUrl ?: data_get($session->visitor_metadata, 'page_url');
 
         $body = trim($body);
         $attachmentMeta = $attachment ? $this->storeAttachment((int) $widget->workspace_id, $attachment) : null;
@@ -197,6 +201,9 @@ class ChatbotWidgetService
 
         $draft = $this->replies->draftReply($body, [
             'chatbot' => $chatbot,
+            'channel' => 'widget',
+            'page_url' => $pageUrl,
+            'inbound_message_id' => $inbound->id,
             'widget_id' => $widget->id,
             'widget_session_id' => $session->id,
             'conversation_id' => $conversation->id,
@@ -215,6 +222,7 @@ class ChatbotWidgetService
                 'widget_id' => $widget->id,
                 'session_id' => $session->id,
                 'chatbot_id' => $chatbot->id,
+                'products' => $draft['products'] ?? [],
                 'chatbot_reply' => [
                     'provider' => $draft['provider'] ?? null,
                     'model' => $draft['model'] ?? null,
@@ -428,6 +436,7 @@ class ChatbotWidgetService
             'type' => $message->type,
             'body' => $message->body,
             'attachment' => $this->messageAttachment($message),
+            'products' => $this->messageProducts($message),
             'status' => $message->status?->value ?? (string) $message->status,
             'created_at' => optional($message->created_at)->toIso8601String(),
         ];
@@ -457,6 +466,18 @@ class ChatbotWidgetService
             str_starts_with($mimeType, 'audio/') => 'audio',
             default => 'document',
         };
+    }
+
+    /**
+     * Product cards (name, link and color photos) the assistant attached to a reply.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function messageProducts(Message $message): array
+    {
+        $products = data_get($message->payload, 'products');
+
+        return is_array($products) ? array_values($products) : [];
     }
 
     protected function messageAttachment(Message $message): ?array

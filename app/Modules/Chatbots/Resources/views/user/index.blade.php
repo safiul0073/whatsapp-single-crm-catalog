@@ -13,9 +13,9 @@
                 <i class="ph ph-browser text-base"></i>
                 {{ __('Website widgets') }}
             </a>
-            <a href="{{ route('user.chatbots.whatsapp-ai.edit') }}" class="btn-sm btn-outline">
-                <i class="ph ph-whatsapp-logo text-base"></i>
-                {{ __('WhatsApp AI reply') }}
+            <a href="{{ route('user.chatbots.channel-ai.edit') }}" class="btn-sm btn-outline">
+                <i class="ph ph-robot text-base"></i>
+                {{ __('AI auto-reply') }}
             </a>
             <a href="{{ route('user.chatbots.create') }}" class="btn-sm btn-primary">
                 <i class="ph ph-plus text-base"></i>

@@ -221,3 +221,32 @@ it('stores an authentication template from the form without body, header or foot
     expect(collect($template->components)->pluck('type')->all())->toBe(['BODY', 'FOOTER', 'BUTTONS'])
         ->and(data_get($template->components, '1.code_expiration_minutes'))->toBe(5);
 });
+
+it('marks the channel as error with the reason only when Meta access is lost during template sync', function () {
+    [, , $channel] = templateOwner();
+    Http::fake(['https://graph.facebook.com/*' => Http::response(['error' => ['message' => 'Unsupported get request. Object does not exist, cannot be loaded due to missing permissions', 'type' => 'GraphMethodException', 'code' => 100, 'error_subcode' => 33]], 400)]);
+
+    app(WhatsAppCloudDriver::class)->syncTemplates($channel);
+
+    $channel->refresh();
+    expect($channel->status->value)->toBe('error')
+        ->and(data_get($channel->settings, 'last_error'))->not->toBeEmpty();
+});
+
+it('keeps the channel connected on a temporary Meta error but records the reason, and clears it after a good sync', function () {
+    [, , $channel] = templateOwner();
+    $channel->update(['status' => 'connected']);
+    Http::fakeSequence('https://graph.facebook.com/*')
+        ->push(['error' => ['message' => 'Temporarily unavailable', 'code' => 2]], 500)
+        ->push(['data' => []]);
+
+    app(WhatsAppCloudDriver::class)->syncTemplates($channel);
+    $channel->refresh();
+    expect($channel->status->value)->toBe('connected')
+        ->and(data_get($channel->settings, 'last_error'))->not->toBeEmpty();
+
+    app(WhatsAppCloudDriver::class)->syncTemplates($channel);
+    $channel->refresh();
+    expect($channel->status->value)->toBe('connected')
+        ->and(data_get($channel->settings, 'last_error'))->toBeNull();
+});

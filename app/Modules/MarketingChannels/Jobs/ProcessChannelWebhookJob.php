@@ -2,13 +2,13 @@
 
 namespace App\Modules\MarketingChannels\Jobs;
 
-use App\Modules\Chatbots\Jobs\GenerateAiReplyJob;
-use App\Modules\Chatbots\Services\WhatsAppAiReplyService;
 use App\Modules\Automations\Services\AutomationDispatcher;
 use App\Modules\AutoReplies\Services\AutoReplyService;
 use App\Modules\Campaigns\Enums\CampaignRecipientStatus;
 use App\Modules\Campaigns\Jobs\UpdateCampaignStatsJob;
 use App\Modules\Campaigns\Models\CampaignRecipient;
+use App\Modules\Chatbots\Jobs\GenerateAiReplyJob;
+use App\Modules\Chatbots\Services\ChannelAiReplyService;
 use App\Modules\Commerce\Services\OrderIntakeService;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
@@ -269,7 +269,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
 
         $ruleReply = $autoReplies->replyToInbound($account, $conversation->fresh(['contact', 'channelAccount.workspace']), $message);
 
-        if (! $ruleReply && $account->provider === 'whatsapp' && $message->wasRecentlyCreated && app(WhatsAppAiReplyService::class)->enabledFor((int) $account->workspace_id)) {
+        if (! $ruleReply && $message->wasRecentlyCreated && app(ChannelAiReplyService::class)->enabledFor((int) $account->workspace_id, (string) $account->provider)) {
             GenerateAiReplyJob::dispatch($message->id);
         }
 

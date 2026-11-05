@@ -31,6 +31,7 @@
     .wapro-row{display:flex;gap:8px}.wapro-row .wapro-text{flex:1}.wapro-note{font-size:12px;color:#647067}.wapro-file-input{display:none}.wapro-file-pill{display:none;align-items:center;justify-content:space-between;gap:8px;border:1px solid #d8e2dc;border-radius:12px;background:#f6faf7;padding:8px 10px;font-size:12px;color:#17211b}.wapro-file-pill.visible{display:flex}.wapro-file-clear{border:0;background:transparent;color:#647067;cursor:pointer;font-size:16px}
     .wapro-attachment{display:block;margin-bottom:7px;overflow:hidden;border-radius:12px;color:inherit;text-decoration:none}.wapro-attachment img{display:block;max-width:100%;max-height:220px;object-fit:cover}.wapro-file-card{display:flex;align-items:center;gap:10px;border:1px solid #e3ebe6;background:rgba(255,255,255,.35);padding:10px}.wapro-file-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:rgba(22,163,74,.12);font-weight:900}.wapro-file-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}.wapro-file-size{display:block;font-size:11px;opacity:.72}
     .wapro-product-link{display:inline-block;margin-top:4px;padding:6px 12px;background:rgba(255,255,255,0.2);border:1px solid currentColor;border-radius:6px;text-decoration:none;font-weight:bold;color:inherit;font-size:13px;transition:opacity 0.2s;}.wapro-msg.outbound .wapro-product-link{background:var(--wapro-primary,#16a34a);color:#fff;border-color:transparent;}
+    .wapro-products{display:grid;gap:8px;margin-top:8px}.wapro-product-card{border:1px solid #e3ebe6;border-radius:12px;background:#fff;color:#14231b;overflow:hidden}.wapro-product-title{display:block;padding:8px 10px 4px;font-weight:800;font-size:13px;color:inherit;text-decoration:none}.wapro-product-colors{display:flex;gap:6px;overflow-x:auto;padding:4px 10px 8px}.wapro-product-color{flex:0 0 auto;width:92px;color:inherit;text-decoration:none;font-size:11px}.wapro-product-color img{display:block;width:92px;height:92px;object-fit:cover;border-radius:8px;background:#f2f5f3}.wapro-product-color span{display:block;margin-top:3px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wapro-product-price{padding:0 10px 6px;font-size:12px;opacity:.8}.wapro-product-cta{display:block;margin:0 10px 10px;padding:7px 10px;border-radius:8px;background:var(--wapro-primary,#16a34a);color:#fff;text-align:center;font-weight:800;font-size:12px;text-decoration:none}
     .wapro-msg.pending{opacity:.75}
     .wapro-typing{align-self:flex-start;display:flex;gap:4px;align-items:center;background:#fff;border:1px solid #e3ebe6;border-radius:14px;border-bottom-left-radius:4px;padding:12px 14px}
     .wapro-typing span{width:7px;height:7px;border-radius:50%;background:#9aa8a0;animation:wapro-bounce 1.2s infinite ease-in-out}
@@ -116,17 +117,75 @@
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="wapro-product-link">$1</a>')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)"']+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="wapro-product-link">$1</a>')
         .replace(/\n/g, '<br>');
 
       text.innerHTML = bodyHtml;
       bubble.appendChild(text);
     }
+    if (Array.isArray(message.products) && message.products.length) bubble.appendChild(renderProducts(message.products));
     const typing = messages.querySelector(".wapro-typing");
     if (typing) messages.insertBefore(bubble, typing); else messages.appendChild(bubble);
     if (!Number.isNaN(Number(message.id))) lastMessageId = Math.max(lastMessageId, Number(message.id));
     scrollToEnd();
     return bubble;
+  }
+
+  function safeUrl(value) {
+    try {
+      const url = new URL(String(value || ""), location.href);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch { return null; }
+  }
+
+  function renderProducts(products) {
+    const list = document.createElement("div");
+    list.className = "wapro-products";
+    products.slice(0, 3).forEach((product) => {
+      const href = safeUrl(product.url);
+      const card = document.createElement("div");
+      card.className = "wapro-product-card";
+      const title = document.createElement(href ? "a" : "span");
+      title.className = "wapro-product-title";
+      title.textContent = product.name || "";
+      if (href) { title.href = href; title.target = "_blank"; title.rel = "noopener"; }
+      card.appendChild(title);
+      const colors = document.createElement("div");
+      colors.className = "wapro-product-colors";
+      (product.colors || []).forEach((color) => {
+        const image = safeUrl(color.image_url);
+        if (!image) return;
+        const tile = document.createElement(href ? "a" : "span");
+        tile.className = "wapro-product-color";
+        if (href) { tile.href = href; tile.target = "_blank"; tile.rel = "noopener"; }
+        const img = document.createElement("img");
+        img.src = image;
+        img.alt = `${product.name || ""} ${color.color || ""}`.trim();
+        img.loading = "lazy";
+        const label = document.createElement("span");
+        label.textContent = color.color || "";
+        tile.appendChild(img);
+        tile.appendChild(label);
+        colors.appendChild(tile);
+      });
+      if (colors.childElementCount) card.appendChild(colors);
+      const priceLine = (product.colors || []).find((color) => color.price_line)?.price_line;
+      if (priceLine) {
+        const price = document.createElement("div");
+        price.className = "wapro-product-price";
+        price.textContent = priceLine + (product.more_colors ? ` · +${product.more_colors} more colors` : "");
+        card.appendChild(price);
+      }
+      if (href) {
+        const cta = document.createElement("a");
+        cta.className = "wapro-product-cta";
+        cta.href = href; cta.target = "_blank"; cta.rel = "noopener";
+        cta.textContent = "View & order";
+        card.appendChild(cta);
+      }
+      list.appendChild(card);
+    });
+    return list;
   }
 
   function renderAttachment(attachment) {
@@ -267,6 +326,7 @@
       const payload = new FormData();
       payload.append("session_token", session.session_token);
       payload.append("message", text);
+      payload.append("page_url", location.href);
       if (selectedAttachment) payload.append("attachment", selectedAttachment);
       const data = await fetch(`${baseUrl}/widgets/chatbot/${token}/messages`, {
         method: "POST",
