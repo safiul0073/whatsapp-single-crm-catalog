@@ -124,7 +124,7 @@ class WhatsAppReadinessChecker implements ReadinessChecker
         $status = strtoupper((string) ($p['name_status'] ?? ''));
 
         [$state, $detail, $how] = match ($status) {
-            'APPROVED', 'AVAILABLE_WITHOUT_REVIEW', '' => ['done', null, []],
+            'APPROVED', 'AVAILABLE_WITHOUT_REVIEW', 'NON_EXISTS', '' => ['done', null, []],
             'PENDING_REVIEW' => ['waiting', __('Meta is reviewing the display name. This usually takes 1–2 business days.'), [__('Nothing to do. Press Re-check later.')]],
             'DECLINED' => ['action', __('Meta declined the display name.'), [
                 __('Open WhatsApp Manager → Phone numbers → your number → Profile.'),
@@ -186,7 +186,7 @@ class WhatsAppReadinessChecker implements ReadinessChecker
             __('Meta checks the app, the business, the WhatsApp account and the number. All of them must be in good standing.'),
             $state === 'done' ? [] : ($problems ?: [__('Open WhatsApp Manager and follow the warning shown for this number.')]),
             $state === 'done' ? null : self::WHATSAPP_MANAGER,
-            ['send', 'templates', 'campaigns'],
+            $state === 'action' ? ['campaigns'] : ['send', 'templates', 'campaigns'],
             $overall === 'LIMITED' ? __('Meta is limiting how much this number can send.') : null,
         );
     }

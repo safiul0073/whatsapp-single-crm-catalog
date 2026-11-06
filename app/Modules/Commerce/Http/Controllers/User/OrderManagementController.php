@@ -51,7 +51,7 @@ class OrderManagementController extends Controller
         }
         $wholesaleEnabled = StoreFeatures::wholesaleEnabled($workspace->id);
         $retailEnabled = StoreFeatures::retailEnabled($workspace->id);
-        $products = Product::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('visibility', 'published')->with(['variants', 'colors'])->get()
+        $products = Product::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('visibility', 'published')->with(['variants.color', 'colors.swatchMedia'])->get()
             ->when(! $retailEnabled, fn ($items) => $items->filter(fn (Product $product): bool => $product->isWholesaleEnabled())->values())
             ->map(fn ($product) => [
                 'id' => $product->id, 'name' => $product->name, 'mode' => match (true) {
@@ -59,12 +59,27 @@ class OrderManagementController extends Controller
                     ! $retailEnabled => 'wholesale',
                     default => $product->selling_mode,
                 },
-                'variants' => $product->variants->where('status', 'active')->map(fn ($variant) => ['id' => $variant->id, 'name' => $variant->sku.' · '.$variant->size, 'stock' => $variant->stock_quantity])->values(),
-                'colors' => $product->colors->map(fn ($color) => ['id' => $color->id, 'name' => $color->name]),
+                'price' => $product->variants->where('status', 'active')->min('price'),
+                'variants' => $product->variants->where('status', 'active')->map(fn ($variant) => [
+                    'id' => $variant->id,
+                    'name' => collect([$variant->color?->name, $variant->size])->filter()->implode(' / ') ?: $variant->sku,
+                    'color_id' => $variant->color_id,
+                    'size' => $variant->size ?: $variant->sku,
+                    'sku' => $variant->sku,
+                    'price' => $variant->price,
+                    'stock' => (int) $variant->stock_quantity,
+                ])->values(),
+                'colors' => $product->colors->map(fn ($color) => [
+                    'id' => $color->id,
+                    'name' => $color->name,
+                    'hex_code' => $color->hex_code,
+                    'swatch_image_url' => $color->swatchMedia?->isImage() ? $color->swatchMedia->url : null,
+                    'stock' => (int) $product->variants->where('status', 'active')->where('color_id', $color->id)->sum('stock_quantity'),
+                ]),
                 'ratios' => $product->getEffectiveSizeRatios(), 'multiplier' => $product->ws_ratio_multiplier ?? 1, 'minimum' => $product->ws_main_moq ?? 1,
             ]);
 
-        return view('commerce::user.create-order', ['wholesaleEnabled' => $wholesaleEnabled, 'retailEnabled' => $retailEnabled, 'completingOrder' => $order, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id)]);
+        return view('commerce::user.create-order', ['wholesaleEnabled' => $wholesaleEnabled, 'retailEnabled' => $retailEnabled, 'completingOrder' => $order, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id), 'workspaceId' => $workspace->id]);
     }
 
     public function preview(CreateUnifiedOrderRequest $request, UnifiedOrderService $orders): JsonResponse

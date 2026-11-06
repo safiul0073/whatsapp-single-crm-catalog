@@ -103,6 +103,19 @@ it('explains what blocks sending on a new WhatsApp number', function (): void {
         ->and($report['headline'])->toContain('will not work until');
 });
 
+it('does not block sending for a coexistence number that Meta only limits', function (): void {
+    fakeWhatsAppReadiness(['name_status' => 'NON_EXISTS', 'health_status' => ['can_send_message' => 'LIMITED', 'entities' => []]]);
+    $channel = readinessChannel('whatsapp');
+    MessageTemplate::query()->create(['workspace_id' => $channel->workspace_id, 'provider' => 'whatsapp', 'name' => 'hello', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved']);
+
+    $report = app(ChannelReadinessService::class)->check($channel);
+
+    expect(readinessItem($report, 'display_name')['state'])->toBe('done')
+        ->and(readinessItem($report, 'can_send')['state'])->toBe('action')
+        ->and($report['blocked_features'])->not->toContain('send')
+        ->and($report['blocked_features'])->not->toContain('templates');
+});
+
 it('shows Meta\'s own fix when a WhatsApp number is blocked', function (): void {
     fakeWhatsAppReadiness(['health_status' => [
         'can_send_message' => 'BLOCKED',

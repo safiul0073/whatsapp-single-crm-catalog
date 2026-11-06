@@ -103,6 +103,27 @@
   @apply border-primary ring-2 ring-primary/30;
 }
 
+/* Create Order colour and size pickers */
+.order-chip {
+  @apply inline-flex items-center gap-2 rounded-full border border-border-default bg-bg-elevated py-1.5 pr-3.5 pl-1.5 text-sm font-medium text-title transition hover:border-primary/60 hover:bg-section focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40;
+}
+
+.order-chip-swatch {
+  @apply size-6 shrink-0 rounded-full border border-black/10 bg-cover bg-center shadow-inner;
+}
+
+.order-size-chip {
+  @apply inline-flex min-w-11 items-center justify-center rounded-lg border border-border-default bg-bg-elevated px-3 py-2 text-sm font-semibold text-title transition hover:border-primary/60 hover:bg-section focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40;
+}
+
+.order-chip-active {
+  @apply border-primary bg-primary/10 ring-2 ring-primary/25;
+}
+
+.order-chip-disabled {
+  @apply cursor-not-allowed opacity-40 line-through hover:border-border-default hover:bg-bg-elevated;
+}
+
 .pos-dialog {
   @apply m-auto max-h-[92dvh] w-[calc(100%_-_1rem)] overflow-y-auto rounded-lg border border-border-default bg-bg-elevated p-5 text-title shadow-xl backdrop:bg-black/60 sm:w-[calc(100%_-_2rem)];
 }
