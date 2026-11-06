@@ -120,6 +120,7 @@ it('records click-to-Messenger ad referrals', function (): void {
             ]],
         ]],
     ], JSON_THROW_ON_ERROR)), $channel);
+    app()->terminate();
 
     $referral = MetaAdReferral::query()->sole();
 

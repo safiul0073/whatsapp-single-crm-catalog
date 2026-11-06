@@ -3,6 +3,8 @@
 namespace App\Modules\Inbox\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Inbox\Http\Requests\ConversationAiPauseRequest;
+use App\Modules\Inbox\Http\Requests\ConversationMessengerOffersRequest;
 use App\Modules\Inbox\Http\Requests\SendInboxMessageRequest;
 use App\Modules\Inbox\Services\InboxAiReplyService;
 use App\Modules\Inbox\Services\InboxService;
@@ -53,6 +55,20 @@ class MobileInboxController extends Controller
         $result = $inbox->sendMessage($request->user(), $conversationId, (string) $request->validated('body', ''), $request->file('attachment'));
 
         return response()->json($result, ($result['ok'] ?? false) ? 201 : 422);
+    }
+
+    public function aiPause(ConversationAiPauseRequest $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse
+    {
+        $conversationId = (string) ($request->route('conversation') ?? $conversation);
+
+        return response()->json($inbox->updateAiPause($request->user(), $conversationId, $request->boolean('paused')));
+    }
+
+    public function messengerOffers(ConversationMessengerOffersRequest $request, InboxService $inbox, string $workspace, string $conversation): JsonResponse
+    {
+        $conversationId = (string) ($request->route('conversation') ?? $conversation);
+
+        return response()->json($inbox->requestMessengerOffers($request->user(), $conversationId));
     }
 
     public function aiReply(

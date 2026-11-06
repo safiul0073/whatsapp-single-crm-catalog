@@ -22,7 +22,7 @@ class MetaSocialSetupService
     /**
      * Page webhook fields needed for Messenger and Instagram DMs to reach the shared inbox.
      */
-    public const PAGE_WEBHOOK_FIELDS = 'messages,messaging_postbacks,message_deliveries,message_reads,messaging_referrals';
+    public const PAGE_WEBHOOK_FIELDS = 'messages,messaging_postbacks,message_deliveries,message_reads,messaging_referrals,messaging_optins';
 
     public function __construct(
         protected WorkspaceResolver $workspaces,
@@ -404,7 +404,15 @@ class MetaSocialSetupService
             ->where('provider', $provider)
             ->latest()
             ->get()
-            ->each(fn (ChannelAccount $account) => $account->setAttribute('webhook_url', $this->webhookUrl($account)));
+            ->each(function (ChannelAccount $account) use ($provider): void {
+                $account->setAttribute('webhook_url', $this->webhookUrl($account));
+
+                if ($provider === 'messenger') {
+                    $offers = app(MessengerMarketingService::class);
+                    $account->setAttribute('offer_settings', $offers->settings($account));
+                    $account->setAttribute('offer_subscribers', $offers->subscriberCount($account));
+                }
+            });
     }
 
     protected function accessToken(string $code): string

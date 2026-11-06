@@ -150,13 +150,13 @@ class InvoiceService
             return [[]];
         }
 
-        $singlePageMaxRows = 7;
+        $singlePageMaxRows = 5;
         if ($totalRows <= $singlePageMaxRows) {
             return [$rows];
         }
 
-        $page1MaxRows = 7;
-        $otherPageMaxRows = 9;
+        $page1MaxRows = 5;
+        $otherPageMaxRows = 7;
 
         $pages = [];
         $pages[] = array_slice($rows, 0, $page1MaxRows);
@@ -394,7 +394,7 @@ class InvoiceService
             return null;
         }
 
-        $targetSize = 100;
+        $targetSize = 200;
         $canvas = imagecreatetruecolor($targetSize, $targetSize);
         if (! $canvas) {
             imagedestroy($src);
@@ -632,7 +632,7 @@ class InvoiceService
 
         foreach ($rows as $idx => $row) {
             $hasBreakdown = $row['breakdown'] !== '';
-            $rowHeight = $hasBreakdown ? 52 : 44;
+            $rowHeight = $hasBreakdown ? 76 : 68;
             $nextY = $y - $rowHeight;
 
             if ($idx % 2 === 1) {
@@ -640,9 +640,9 @@ class InvoiceService
             }
             $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 '.$nextY.' 515 '.$rowHeight.' re S';
 
-            // Thumbnail image (36x36) centered vertically in the row
+            // Thumbnail image (64x64) centered vertically in the row
             $imgX = 48;
-            $imgSize = 36;
+            $imgSize = 64;
             $imgY = $nextY + (int) round(($rowHeight - $imgSize) / 2);
             $imgUrl = $row['image_url'] ?? null;
             $imgName = $imgUrl ? ($imageUrlToName[$imgUrl] ?? null) : null;
@@ -653,18 +653,25 @@ class InvoiceService
             } else {
                 $ops[] = '0.94 0.95 0.97 rg 0.82 0.85 0.90 RG 0.5 w '.$imgX.' '.$imgY.' '.$imgSize.' '.$imgSize.' re B';
                 $lbl = $hasBreakdown ? 'PACK' : 'ITEM';
-                $ops[] = $this->text($imgX + 7, $imgY + 14, $lbl, 'F2', 7, [0.55, 0.60, 0.70]);
+                $ops[] = $this->text($imgX + 20, $imgY + 29, $lbl, 'F2', 8, [0.55, 0.60, 0.70]);
             }
 
-            // Product text starting at X = 92
-            $textX = 92;
+            // Product text starting right of the thumbnail
+            $textX = 120;
+            $textLines = [];
+            foreach (array_slice(explode("\n", wordwrap((string) $row['title'], 38, "\n", true)), 0, 2) as $titleLine) {
+                $textLines[] = [$titleLine, 'F2', 8.5, [0.07, 0.09, 0.15]];
+            }
+            $textLines[] = [$this->truncate($row['subtitle'], 52), 'F1', 7.5, [0.32, 0.37, 0.46]];
             if ($hasBreakdown) {
-                $ops[] = $this->text($textX, $y - 14, $this->truncate($row['title'], 44), 'F2', 9.5, [0.07, 0.09, 0.15]);
-                $ops[] = $this->text($textX, $y - 27, $this->truncate($row['subtitle'], 58), 'F1', 8, [0.32, 0.37, 0.46]);
-                $ops[] = $this->text($textX, $y - 40, $this->truncate($row['breakdown'], 62), 'F2', 7.5, [0.15, 0.25, 0.45]);
-            } else {
-                $ops[] = $this->text($textX, $y - 16, $this->truncate($row['title'], 44), 'F2', 9.5, [0.07, 0.09, 0.15]);
-                $ops[] = $this->text($textX, $y - 30, $this->truncate($row['subtitle'], 58), 'F1', 8, [0.32, 0.37, 0.46]);
+                foreach (array_slice(explode("\n", wordwrap((string) $row['breakdown'], 44, "\n", true)), 0, 2) as $breakdownLine) {
+                    $textLines[] = [$breakdownLine, 'F2', 7, [0.15, 0.25, 0.45]];
+                }
+            }
+            $lineY = $y - (($rowHeight - count($textLines) * 11) / 2) - 8;
+            foreach ($textLines as [$lineText, $lineFont, $lineSize, $lineColor]) {
+                $ops[] = $this->text($textX, $lineY, $lineText, $lineFont, $lineSize, $lineColor);
+                $lineY -= 11;
             }
 
             // Columns 2-5 vertically centered

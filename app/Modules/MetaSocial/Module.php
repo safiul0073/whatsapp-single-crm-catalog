@@ -21,6 +21,7 @@ class Module extends BasePanelModule
             ],
             'web' => [
                 'meta-social.manage' => 'Manage Messenger and Instagram channels',
+                'meta-social.publish' => 'Publish and schedule Facebook Page and Instagram posts',
             ],
         ];
     }

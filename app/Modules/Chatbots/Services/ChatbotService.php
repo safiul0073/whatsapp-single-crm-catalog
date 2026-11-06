@@ -108,6 +108,7 @@ class ChatbotService
                 'on_unsure' => (bool) ($data['handoff_on_unsure'] ?? false),
                 'off_hours' => (bool) ($data['handoff_off_hours'] ?? false),
                 'message' => $data['handoff_message'] ?? null,
+                'configured' => true,
             ],
             'is_active' => (bool) ($data['is_active'] ?? false),
         ];

@@ -24,6 +24,21 @@
         @endif
 
         @if ($product->status === 'active')
+            @can('meta-ads.manage')
+                <a href="{{ route('user.meta-ads.ads.create', ['product_id' => $product->id]) }}" class="floating-dropdown-item" data-promote-product>
+                    <i class="ph ph-megaphone"></i> {{ __('Promote with a Facebook ad') }}
+                </a>
+            @endcan
+            @can('tiktok.manage')
+                <a href="{{ route('user.tiktok.posts.create', ['product_id' => $product->id]) }}" class="floating-dropdown-item" data-tiktok-product>
+                    <i class="ph ph-tiktok-logo"></i> {{ __('Post a video to TikTok') }}
+                </a>
+            @endcan
+            @can('meta-social.publish')
+                <a href="{{ route('user.meta-social.posts.create', ['product_id' => $product->id]) }}" class="floating-dropdown-item" data-post-product>
+                    <i class="ph ph-note-pencil"></i> {{ __('Post to Facebook / Instagram') }}
+                </a>
+            @endcan
             @forelse ($metaCatalogs as $metaCatalog)
                 <form method="POST" action="{{ route('user.commerce.products.catalog.sync', $product) }}">
                     @csrf

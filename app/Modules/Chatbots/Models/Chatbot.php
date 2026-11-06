@@ -35,6 +35,19 @@ class Chatbot extends Model
         ];
     }
 
+    /**
+     * Whether a handoff rule (on_request, on_unsure) is on. Rules count as on until the owner saves them,
+     * because older chatbot forms stored them as false without ever showing them.
+     */
+    public function handoffEnabled(string $rule): bool
+    {
+        if (data_get($this->handoff_rules, 'configured') !== true) {
+            return true;
+        }
+
+        return (bool) data_get($this->handoff_rules, $rule, false);
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);

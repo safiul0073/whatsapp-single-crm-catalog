@@ -3,11 +3,9 @@
 namespace App\Modules\MarketingChannels\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
-use App\Modules\MarketingChannels\Jobs\ProcessChannelWebhookJob;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
-use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelWebhookIntake;
 use App\Modules\MarketingChannels\Services\WebhookSignatureVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -58,29 +56,7 @@ class WebhookController extends Controller
         }
 
         try {
-            $payload = $request->all();
-            $hash = sha1(json_encode($payload).$account->id);
-
-            $event = ChannelWebhookEvent::query()->firstOrCreate(
-                ['payload_hash' => $hash],
-                [
-                    'channel_account_id' => $account->id,
-                    'workspace_id' => $account->workspace_id,
-                    'provider' => $provider,
-                    'event_type' => $this->detectEventType($payload),
-                    'payload' => $payload,
-                    'headers' => $request->headers->all(),
-                    'status' => ChannelWebhookEventStatus::Pending->value,
-                ]
-            );
-
-            if (! $event->processed_at && ! $event->failed_at) {
-                if ($provider === 'telegram') {
-                    ProcessChannelWebhookJob::dispatchSync($event->id);
-                } else {
-                    ProcessChannelWebhookJob::dispatchAfterResponse($event->id);
-                }
-            }
+            app(ChannelWebhookIntake::class)->accept($account, $provider, $request->all(), $request->headers->all());
         } catch (InvalidArgumentException $exception) {
             Log::warning('Channel webhook driver is not registered.', [
                 'provider' => $provider,
@@ -198,18 +174,5 @@ class WebhookController extends Controller
         }
 
         return (clone $query)->latest()->first();
-    }
-
-    protected function detectEventType(array $payload): string
-    {
-        if (filled(data_get($payload, 'entry.0.changes.0.value.messages')) || filled(data_get($payload, 'message'))) {
-            return 'message.received';
-        }
-
-        if (filled(data_get($payload, 'entry.0.changes.0.value.statuses')) || filled(data_get($payload, 'delivery.mids'))) {
-            return 'message.status';
-        }
-
-        return 'unknown';
     }
 }

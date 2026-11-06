@@ -6,6 +6,7 @@ use App\Modules\Contacts\Models\Contact;
 use App\Modules\Contacts\Models\ContactGroup;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\Contacts\Services\ContactGroupService;
+use App\Modules\MetaSocial\Models\MessengerMarketingOptin;
 use App\Modules\Segments\Models\Segment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -69,6 +70,10 @@ class AudienceResolver
 
         if ($provider === 'telegram' && ! $this->hasProviderIdentity($contact, $provider)) {
             return 'telegram_opt_in_missing';
+        }
+
+        if ($provider === 'messenger' && ! MessengerMarketingOptin::query()->usable()->where('contact_id', $contact->id)->exists()) {
+            return 'messenger_optin_missing';
         }
 
         return null;

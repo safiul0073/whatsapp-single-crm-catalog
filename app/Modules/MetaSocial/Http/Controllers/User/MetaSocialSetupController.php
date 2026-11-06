@@ -5,8 +5,11 @@ namespace App\Modules\MetaSocial\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MetaSocial\Http\Requests\ConnectMetaSocialChannelRequest;
 use App\Modules\MetaSocial\Http\Requests\SelectMetaSocialAccountsRequest;
+use App\Modules\MetaSocial\Http\Requests\UpdateMessengerOffersRequest;
+use App\Modules\MetaSocial\Services\MessengerMarketingService;
 use App\Modules\MetaSocial\Services\MetaSocialSetupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -64,6 +67,18 @@ class MetaSocialSetupController extends Controller
         return redirect()->route('user.meta-social.setup')->with($failed->isNotEmpty() ? 'error' : 'status', $failed->isNotEmpty()
             ? __(':channels saved, but some need attention. Check the channel warning.', ['channels' => $failed->pluck('name')->implode(', ')])
             : __(':channels connected successfully.', ['channels' => $names]));
+    }
+
+    public function offers(UpdateMessengerOffersRequest $request, ChannelAccount $channel, MessengerMarketingService $offers, WorkspaceResolver $workspaces): RedirectResponse
+    {
+        abort_unless($channel->workspace_id === $workspaces->current($request->user())->id && $channel->provider === 'messenger', 404);
+
+        $offers->updateSettings($channel, [
+            'auto_request' => $request->boolean('auto_request'),
+            'title' => (string) $request->validated('title'),
+        ]);
+
+        return back()->with('status', __('Messenger offer settings saved.'));
     }
 
     public function disconnect(ChannelAccount $channel): RedirectResponse

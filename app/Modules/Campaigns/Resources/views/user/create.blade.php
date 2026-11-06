@@ -11,7 +11,7 @@
         $campaign = $campaign ?? null;
         $errors = $errors ?? new \Illuminate\Support\ViewErrorBag;
         $isEdit = $campaign !== null;
-        $initialChannel = old('channel_account_id', $campaign?->channel_account_id);
+        $initialChannel = old('channel_account_id', $campaign?->channel_account_id ?? (request()->integer('channel_account_id') ?: null));
         $initialMode = old('message_type', $campaign?->message_type ?? ($campaign?->message_template_id ? 'template' : 'custom'));
         $initialAudience = old('audience_type', in_array($campaign?->audience_type, ['contacts', 'groups', 'tags'], true) ? $campaign?->audience_type : 'groups');
         $initialSchedule = old('schedule', $campaign?->status?->value === 'scheduled' ? 'later' : ($campaign?->status?->value === 'draft' ? 'draft' : 'now'));
@@ -262,6 +262,7 @@
                         <p class="form-hint" x-show="provider === 'telegram'">{{ __('Telegram campaigns send only to contacts who have started your bot or shared their Telegram contact.') }}</p>
                         <p class="form-hint" x-show="provider === 'email'">{{ __('Email content supports HTML and an unsubscribe footer by default.') }}</p>
                         <p class="form-hint" x-show="provider === 'whatsapp'">{{ __('Custom WhatsApp sends use a text message payload.') }}</p>
+                        <p class="form-hint" x-show="provider === 'messenger'">{{ __('Messenger offers go only to customers who tapped "Get messages" in a chat with your Page. Everyone else in the audience is skipped.') }}</p>
                     </div>
 
                     <div class="flex items-center gap-2.5" x-show="provider === 'email'">

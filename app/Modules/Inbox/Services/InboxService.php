@@ -19,11 +19,13 @@ use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MetaSocial\Services\MessengerMarketingService;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use App\Modules\Telegram\Services\TelegramOptInService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -362,6 +364,10 @@ class InboxService
             }
         }
 
+        if (in_array($provider, ['messenger', 'instagram'], true) && blank($payload['reply_to_comment_id'] ?? null) && $this->outsideStandardMessagingWindow($conversation)) {
+            $payload['human_agent'] = true;
+        }
+
         try {
             $result = $this->channels->sendMessage($account, ['to' => $recipient, 'provider_contact_id' => $recipient], $payload);
         } catch (\Throwable $exception) {
@@ -405,6 +411,39 @@ class InboxService
             'error' => ($result['ok'] ?? false) ? null : ($result['error'] ?? data_get($result, 'response.error.message', __('Message failed to send.'))),
             'error_detail' => ($result['ok'] ?? false) ? null : ($result['error_detail'] ?? null),
         ];
+    }
+
+    /**
+     * Human takeover: stop (or resume) AI chatbot replies for this one conversation.
+     */
+    public function updateAiPause(?User $user, string|int $conversationId, bool $paused): array
+    {
+        $conversation = $this->conversationModelForUser($user, $conversationId);
+
+        if ($paused) {
+            if (! $conversation->isAiPaused()) {
+                $conversation->pauseAi(Conversation::AI_PAUSE_MANUAL, $user?->id);
+            }
+        } else {
+            $conversation->resumeAi();
+        }
+
+        return $this->threadPayload($conversation->fresh(['contact.tags', 'channelAccount']));
+    }
+
+    /**
+     * Sends Meta's "Get messages" request so the Messenger customer can subscribe to offer broadcasts.
+     */
+    public function requestMessengerOffers(?User $user, string|int $conversationId): array
+    {
+        $conversation = $this->conversationModelForUser($user, $conversationId);
+        $result = app(MessengerMarketingService::class)->requestOptin($conversation);
+
+        if (! $result['ok']) {
+            throw ValidationException::withMessages(['messenger_offers' => $result['error'] ?? __('Could not send the request.')]);
+        }
+
+        return $this->threadPayload($conversation->fresh(['contact.tags', 'channelAccount']));
     }
 
     public function updateAutomation(?User $user, string|int $conversationId, bool $enabled): array
@@ -656,6 +695,13 @@ class InboxService
             'can_reply' => $this->canReply($conversation),
             'reply_disabled_reason' => $this->replyDisabledReason($conversation),
             'automated_reply_enabled' => $this->automatedReplyEnabled($conversation),
+            'ai_supported' => in_array((string) $conversation->provider, ['website_widget', 'whatsapp', 'messenger', 'instagram'], true),
+            'ai_paused' => $conversation->isAiPaused(),
+            'ai_pause_reason' => $conversation->ai_pause_reason,
+            'ai_paused_at' => optional($conversation->ai_paused_at)->toIso8601String(),
+            'messenger_offers' => $conversation->provider === 'messenger'
+                ? ['subscribed' => app(MessengerMarketingService::class)->isSubscribed($conversation)]
+                : null,
             'attachment_supported' => $this->supportsAttachments((string) $conversation->provider),
             'last_message' => $latestMessage ? $this->lastMessageSnippet($latestMessage) : __('No messages yet.'),
             'last_message_direction' => $latestMessage?->direction,
@@ -1154,6 +1200,20 @@ class InboxService
             ->keys()
             ->values()
             ->all();
+    }
+
+    /**
+     * Messenger and Instagram accept free replies for 24 hours after the customer's last message.
+     * A team member can answer for up to 7 days with Meta's HUMAN_AGENT tag.
+     */
+    protected function outsideStandardMessagingWindow(Conversation $conversation): bool
+    {
+        $lastInboundAt = Message::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('direction', 'inbound')
+            ->max('created_at');
+
+        return $lastInboundAt !== null && Carbon::parse($lastInboundAt)->lt(now()->subDay());
     }
 
     protected function initials(string $name): string

@@ -118,6 +118,7 @@
                   </template>
                   <span class="badge badge-neutral" x-show="conversation.status === 'resolved'">{{ __('Resolved') }}</span>
                   <span class="badge badge-warning" x-show="conversation.last_message_status === 'failed'">{{ __('Failed') }}</span>
+                  <span class="badge badge-warning" x-show="conversation.ai_paused" x-cloak><i class="ph ph-user-switch text-xs"></i> {{ __('Needs human') }}</span>
                 </div>
               </div>
             </li>
@@ -183,22 +184,43 @@
             <button type="button" class="row-action" x-show="activeConversation.provider === 'whatsapp' && routes.commerceCatalog" @click="openCommerceDrawer()" :disabled="sending" aria-label="{{ __('Open WhatsApp products') }}">
               <i class="ph ph-shopping-bag-open text-base"></i>
             </button>
-            <div class="flex items-center gap-2 rounded-md border border-neutral-200 bg-section px-2.5 py-1.5" x-show="activeConversation.provider === 'website_widget'" x-cloak>
-              <span class="hidden text-xs font-semibold text-body sm:inline">{{ __('Auto reply') }}</span>
+            <span class="hidden items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-semibold text-success sm:inline-flex" x-show="activeConversation.messenger_offers?.subscribed" x-cloak>
+              <i class="ph ph-megaphone text-sm"></i>
+              {{ __('Gets offers') }}
+            </span>
+            <button
+              type="button"
+              class="btn-sm btn-outline"
+              x-show="activeConversation.messenger_offers && !activeConversation.messenger_offers.subscribed && routes.messengerOffers"
+              x-cloak
+              :disabled="messengerOffersSending"
+              title="{{ __('Send the Get messages button so this customer can receive your offer broadcasts on Messenger.') }}"
+              @click="requestMessengerOffers()"
+            >
+              <i class="ph ph-megaphone text-base"></i>
+              <span class="hidden md:inline">{{ __('Ask to get offers') }}</span>
+            </button>
+            <div class="flex items-center gap-2 rounded-md border px-2.5 py-1.5" :class="activeConversation.ai_paused ? 'border-warning/40 bg-warning/10' : 'border-neutral-200 bg-section'" x-show="activeConversation.ai_supported" x-cloak>
+              <span class="hidden text-xs font-semibold text-body sm:inline">{{ __('Human takeover') }}</span>
               <button
                 type="button"
                 role="switch"
                 class="relative h-6 w-11 rounded-full transition"
-                :aria-checked="activeConversation.automated_reply_enabled ? 'true' : 'false'"
-                :class="activeConversation.automated_reply_enabled ? 'bg-primary' : 'bg-neutral-300'"
-                :disabled="automationUpdating"
-                @click="toggleAutomatedReply(!activeConversation.automated_reply_enabled)"
+                :aria-checked="activeConversation.ai_paused ? 'true' : 'false'"
+                :class="activeConversation.ai_paused ? 'bg-warning' : 'bg-neutral-300'"
+                :disabled="aiPauseUpdating"
+                :title="activeConversation.ai_paused ? '{{ __('AI replies are off for this chat. Switch off to let the chatbot answer again.') }}' : '{{ __('Switch on to stop the AI chatbot replying in this chat.') }}'"
+                @click="toggleHumanTakeover(!activeConversation.ai_paused)"
               >
-                <span class="sr-only">{{ __('Toggle automated chatbot replies') }}</span>
-                <span class="absolute top-1 left-1 h-4 w-4 rounded-full bg-neutral-0 shadow transition" :class="activeConversation.automated_reply_enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                <span class="sr-only">{{ __('Toggle human takeover (stop AI replies in this chat)') }}</span>
+                <span class="absolute top-1 left-1 h-4 w-4 rounded-full bg-neutral-0 shadow transition" :class="activeConversation.ai_paused ? 'translate-x-5' : 'translate-x-0'"></span>
               </button>
             </div>
           </header>
+          <div class="flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 text-xs font-semibold text-title" x-show="activeConversation.ai_supported && activeConversation.ai_paused" x-cloak role="status">
+            <i class="ph ph-user-switch text-sm"></i>
+            <span x-text="{ customer_request: '{{ __('AI is off for this chat: the customer asked for a team member.') }}', bot_unsure: '{{ __('AI is off for this chat: the chatbot could not answer.') }}' }[activeConversation.ai_pause_reason] || '{{ __('AI is off for this chat. A team member is handling it.') }}'"></span>
+          </div>
 
           <div
             id="messagesPane"

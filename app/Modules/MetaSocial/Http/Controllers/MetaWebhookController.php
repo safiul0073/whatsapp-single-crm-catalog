@@ -5,6 +5,7 @@ namespace App\Modules\MetaSocial\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MarketingChannels\Services\ChannelWebhookIntake;
 use App\Modules\MarketingChannels\Services\WebhookSignatureVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -20,7 +21,7 @@ class MetaWebhookController extends Controller
         return response((string) ($request->query('hub_challenge') ?? $request->query('hub.challenge') ?? ''), 200);
     }
 
-    public function receive(Request $request, string $token, ChannelManager $channels): Response
+    public function receive(Request $request, string $token): Response
     {
         $accounts = ChannelAccount::query()
             ->whereIn('provider', ['messenger', 'instagram'])
@@ -35,7 +36,7 @@ class MetaWebhookController extends Controller
             return $rejection;
         }
 
-        $channels->handleWebhook($request, $account);
+        app(ChannelWebhookIntake::class)->accept($account, (string) $account->provider, $request->all(), $request->headers->all());
 
         return response('', 200);
     }

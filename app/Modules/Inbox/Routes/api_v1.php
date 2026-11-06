@@ -10,4 +10,6 @@ Route::prefix('mobile/workspaces/{workspace}/inbox')->middleware(['auth:sanctum'
     Route::post('conversations/{conversation}/read', [MobileInboxController::class, 'markRead']);
     Route::post('conversations/{conversation}/messages', [MobileInboxController::class, 'store']);
     Route::post('conversations/{conversation}/ai-reply', [MobileInboxController::class, 'aiReply']);
+    Route::post('conversations/{conversation}/ai-pause', [MobileInboxController::class, 'aiPause']);
+    Route::post('conversations/{conversation}/messenger-offers', [MobileInboxController::class, 'messengerOffers']);
 });

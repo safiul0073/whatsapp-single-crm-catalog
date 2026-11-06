@@ -32,6 +32,7 @@ class ChatbotWidgetService
         protected WorkspaceResolver $workspaces,
         protected ClaudeReplyService $replies,
         protected SubscriptionAccessService $subscriptions,
+        protected HumanHandoffService $handoff,
     ) {}
 
     public function listForUser(?User $user): LengthAwarePaginator
@@ -191,7 +192,7 @@ class ChatbotWidgetService
             ];
         }
 
-        if (! $chatbot?->is_active) {
+        if (! $chatbot?->is_active || $conversation->isAiPaused()) {
             return [
                 'message' => $this->formatMessage($inbound),
                 'reply' => null,
@@ -228,6 +229,7 @@ class ChatbotWidgetService
                     'model' => $draft['model'] ?? null,
                     'confidence' => $draft['confidence'] ?? null,
                     'handoff' => $draft['handoff'] ?? false,
+                    'handoff_reason' => $draft['handoff_reason'] ?? null,
                     'knowledge_context_count' => data_get($draft, 'context.knowledge_context_count', 0),
                     'search_mode' => data_get($draft, 'context.search_mode'),
                     'sources_used' => data_get($draft, 'context.sources_used', []),
@@ -237,6 +239,11 @@ class ChatbotWidgetService
         ]);
 
         $conversation->forceFill(['last_message_at' => now()])->save();
+
+        $handoffReason = $draft['handoff_reason'] ?? null;
+        if (($draft['handoff'] ?? false) && $this->handoff->shouldHandOff($chatbot, $handoffReason)) {
+            $this->handoff->handOff($conversation, $chatbot, (string) $handoffReason, $body);
+        }
 
         return [
             'message' => $this->formatMessage($inbound),

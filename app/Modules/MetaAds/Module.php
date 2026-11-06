@@ -17,6 +17,7 @@ class Module extends BasePanelModule
         return [
             'web' => [
                 'meta-ads.view' => 'View Meta Ads performance and ad-started conversations',
+                'meta-ads.manage' => 'Create, start, pause and delete Facebook and Instagram ads',
             ],
         ];
     }

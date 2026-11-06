@@ -76,7 +76,10 @@
                 <div class="grid gap-3 sm:grid-cols-2">
                     <label class="flex items-center gap-2.5">
                         <input type="checkbox" name="is_active" value="1" class="app-checkbox" @checked(old('is_active', $chatbot?->is_active ?? true))>
-                        <span class="text-sm text-body">{{ __('Bot is on') }}</span>
+                        <span class="text-sm text-body">
+                            <span class="block">{{ __('AI replies are on') }}</span>
+                            <span class="block text-xs text-neutral-400">{{ __('Untick to stop this bot replying on every channel (widget, WhatsApp, Messenger, Instagram).') }}</span>
+                        </span>
                     </label>
                     <label class="flex items-center gap-2.5">
                         <input type="checkbox" name="fallback_only_knowledge_base" value="1" class="app-checkbox" @checked(old('fallback_only_knowledge_base', $chatbot?->fallback_only_knowledge_base ?? true))>
@@ -117,6 +120,24 @@
             <section class="app-card p-5 sm:p-6">
                 <label for="handoff_message" class="form-label">{{ __("Message when the bot can't answer") }}</label>
                 <input id="handoff_message" name="handoff_message" type="text" value="{{ old('handoff_message', data_get($handoffRules, 'message')) }}" class="form-input" placeholder="{{ __('I am not sure. A team member will reply soon.') }}">
+
+                <div class="mt-4 grid gap-3">
+                    <p class="text-sm font-semibold text-title">{{ __('Human handoff') }}</p>
+                    <label class="flex items-start gap-2.5">
+                        <input type="checkbox" name="handoff_on_request" value="1" class="app-checkbox mt-0.5" @checked(old('handoff_on_request', $chatbot ? $chatbot->handoffEnabled('on_request') : true))>
+                        <span class="text-sm text-body">
+                            <span class="block">{{ __('Hand off when the customer asks for a person') }}</span>
+                            <span class="block text-xs text-neutral-400">{{ __('The bot sends the message above, switches on Human takeover for that chat and notifies you.') }}</span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-2.5">
+                        <input type="checkbox" name="handoff_on_unsure" value="1" class="app-checkbox mt-0.5" @checked(old('handoff_on_unsure', $chatbot ? $chatbot->handoffEnabled('on_unsure') : true))>
+                        <span class="text-sm text-body">
+                            <span class="block">{{ __("Hand off when the bot can't answer") }}</span>
+                            <span class="block text-xs text-neutral-400">{{ __('Same as above when the answer is not in its knowledge. Turn the bot back on for a chat with the Human takeover switch in the Inbox.') }}</span>
+                        </span>
+                    </label>
+                </div>
 
                 <details class="mt-5">
                     <summary class="cursor-pointer text-sm font-semibold text-neutral-500">{{ __('Advanced settings') }}</summary>

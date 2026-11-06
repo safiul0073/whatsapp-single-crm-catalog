@@ -14,4 +14,6 @@ Route::middleware(['can:inbox.reply'])->group(function () {
     Route::post('inbox/conversations/{conversation}/messages', [InboxController::class, 'storeMessage'])->name('inbox.conversations.messages.store');
     Route::post('inbox/conversations/{conversation}/ai-reply', [InboxController::class, 'aiReply'])->name('inbox.conversations.ai-reply');
     Route::post('inbox/conversations/{conversation}/automation', [InboxController::class, 'automation'])->name('inbox.conversations.automation');
+    Route::post('inbox/conversations/{conversation}/ai-pause', [InboxController::class, 'aiPause'])->name('inbox.conversations.ai-pause');
+    Route::post('inbox/conversations/{conversation}/messenger-offers', [InboxController::class, 'messengerOffers'])->name('inbox.conversations.messenger-offers');
 });

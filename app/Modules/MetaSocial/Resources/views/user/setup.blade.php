@@ -118,6 +118,13 @@
                             </x-marketing-channels::connected-summary>
 
                             <x-marketing-channels::readiness-checklist :report="data_get($account->settings, 'readiness')" :channel="$account" />
+
+                            @if ($provider === 'messenger')
+                                <div class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 p-4">
+                                    <p class="text-sm text-body">{{ __('Offers on Messenger: :count subscribed customers', ['count' => $account->offer_subscribers]) }}</p>
+                                    <a href="{{ route('user.meta-social.offers.index') }}" class="btn-sm btn-outline">{{ __('Manage offer subscribers') }}</a>
+                                </div>
+                            @endif
                         @endforeach
 
                         @if ($pendingAccounts !== [])

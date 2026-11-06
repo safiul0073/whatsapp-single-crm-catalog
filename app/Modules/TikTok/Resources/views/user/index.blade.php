@@ -4,7 +4,10 @@
     <div class="mx-auto max-w-4xl space-y-6">
         <div>
             <h1 class="heading-4 text-title">{{ __('TikTok') }}</h1>
-            <p class="mt-1 text-sm text-body">{{ __('Connect your TikTok account. Messaging and shop sync are not available through TikTok yet.') }}</p>
+            <p class="mt-1 text-sm text-body">{{ __('Connect your TikTok account to post videos from this dashboard. Messaging and shop sync are not available through TikTok yet.') }}</p>
+            @if ($accounts->isNotEmpty())
+                <a href="{{ route('user.tiktok.posts.index') }}" class="btn-sm btn-primary mt-3" data-tiktok-posts-link><i class="ph ph-video-camera text-base"></i> {{ __('Post a video') }}</a>
+            @endif
         </div>
 
         <section class="section-card">

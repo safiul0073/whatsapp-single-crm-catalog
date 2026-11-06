@@ -7,11 +7,14 @@ use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\StorefrontPageView;
 use App\Modules\Commerce\Storefront\Models\StorefrontVisitor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class VisitorTrackingService
 {
+    public function __construct(protected UserAgentParser $agents) {}
+
     /**
      * @param  array{visitor_key: string, path: string, referrer?: string|null}  $data
      */
@@ -21,6 +24,8 @@ class VisitorTrackingService
         $agent = Str::limit((string) ($request->header('X-Client-User-Agent') ?: $request->userAgent()), 495, '');
         $country = strtoupper((string) $request->header('X-Client-Country'));
         $country = preg_match('/^[A-Z]{2}$/', $country) && ! in_array($country, ['XX', 'T1'], true) ? $country : null;
+        $city = $this->place($request->header('X-Client-City'));
+        $region = $this->place($request->header('X-Client-Region'));
         $customerId = $this->customerId($request, $workspaceId);
         $now = now();
 
@@ -29,7 +34,9 @@ class VisitorTrackingService
         $visitor->fill([
             'ip' => $ip,
             'user_agent' => $agent ?: null,
-            'device' => $this->device($agent),
+            'device' => $this->agents->device($agent),
+            'os' => $this->agents->os($agent),
+            'browser' => $this->agents->browser($agent),
             'last_seen_at' => $now,
         ]);
         if (! $visitor->exists) {
@@ -41,6 +48,10 @@ class VisitorTrackingService
         if ($country) {
             $visitor->country_code = $country;
         }
+        if ($city) {
+            $visitor->city = $city;
+            $visitor->region = $region ?? $visitor->region;
+        }
         $visitor->save();
 
         StorefrontPageView::query()->create([
@@ -51,14 +62,28 @@ class VisitorTrackingService
             'referrer' => isset($data['referrer']) ? Str::limit($data['referrer'], 495, '') : null,
             'ip' => $ip,
             'country_code' => $visitor->country_code,
+            'city' => $visitor->city,
+            'region' => $visitor->region,
+            'device' => $visitor->device,
+            'os' => $visitor->os,
+            'browser' => $visitor->browser,
             'viewed_at' => $now,
         ]);
 
-        if ($ip && $ipChanged) {
+        $retryGeo = ! $visitor->city && Cache::add('commerce:geoip:retry:'.$visitor->id, true, now()->addHour());
+        if ($ip && ($ipChanged || $retryGeo)) {
             ResolveVisitorGeo::dispatch($visitor->id, $ip);
         }
 
         return $visitor;
+    }
+
+    /** Normalises a geo header forwarded by the storefront edge (Cloudflare / Vercel, possibly URL-encoded). */
+    private function place(?string $value): ?string
+    {
+        $value = trim(strip_tags(rawurldecode((string) $value)));
+
+        return $value === '' || mb_strlen($value) > 120 || ! preg_match('/^[\p{L}\p{M}\p{N} .,\'()-]+$/u', $value) ? null : $value;
     }
 
     private function clientIp(Request $request): ?string
@@ -82,20 +107,5 @@ class VisitorTrackingService
         $customer = $token->tokenable;
 
         return $customer instanceof Customer && $customer->workspace_id === $workspaceId ? $customer->id : null;
-    }
-
-    private function device(string $agent): ?string
-    {
-        if ($agent === '') {
-            return null;
-        }
-        if (preg_match('/bot|crawl|spider|slurp|facebookexternalhit/i', $agent)) {
-            return 'bot';
-        }
-        if (preg_match('/ipad|tablet/i', $agent)) {
-            return 'tablet';
-        }
-
-        return preg_match('/mobi|android|iphone/i', $agent) ? 'mobile' : 'desktop';
     }
 }

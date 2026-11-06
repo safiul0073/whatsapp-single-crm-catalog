@@ -16,6 +16,9 @@
             </p>
         </div>
         <nav class="flex flex-wrap gap-2" data-meta-ads-periods>
+            @can('meta-ads.manage')
+                <a href="{{ route('user.meta-ads.ads.index') }}" class="btn-sm btn-outline" data-meta-ads-manage><i class="ph ph-megaphone text-base"></i> {{ __('My ads') }}</a>
+            @endcan
             @foreach ($periods as $period)
                 <a href="{{ route('user.meta-ads.index', ['period' => $period]) }}" class="btn-sm {{ $report['period'] === $period ? 'btn-primary' : 'btn-outline' }}">{{ $periodLabels[$period] ?? $period }}</a>
             @endforeach

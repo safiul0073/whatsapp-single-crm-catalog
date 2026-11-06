@@ -125,13 +125,17 @@ class Contact extends Model
         return mb_substr(trim($plain), 0, 100);
     }
 
-    protected function hasPlaceholderName(): bool
+    /**
+     * True for names the platform made up: empty, the phone number, or "<Channel> 880…" such as
+     * "Whatsapp 880…", "Messenger 2468…" or "Instagram 1357…".
+     */
+    public function hasPlaceholderName(): bool
     {
         $name = trim((string) $this->name);
 
         return $name === ''
             || $name === (string) $this->phone
             || preg_match('/^[+\d\s().-]+$/', $name) === 1
-            || preg_match('/^whatsapp\s+[+\d]+$/i', $name) === 1;
+            || preg_match('/^(whatsapp|messenger|instagram)\s+[+\d]+$/i', $name) === 1;
     }
 }

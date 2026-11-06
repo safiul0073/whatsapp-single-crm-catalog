@@ -789,7 +789,7 @@
                                         <td class="px-4 py-3">
                                             <div class="flex items-center gap-2.5">
                                                 <label class="relative h-6 w-6 rounded-full border border-neutral-300 shadow-2xs shrink-0 cursor-pointer overflow-hidden block transition hover:scale-105" :style="`background-color: ${col.hex_code || '#2563EB'}`" title="{{ __('Click to choose color') }}">
-                                                    <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" :value="col.hex_code && col.hex_code.startsWith('#') && col.hex_code.length === 7 ? col.hex_code : '#2563EB'" @input="col.hex_code = $event.target.value.toUpperCase(); dirty = true;">
+                                                    <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" :value="col.hex_code && col.hex_code.startsWith('#') && col.hex_code.length === 7 ? col.hex_code : '#2563EB'" @input="setColorHex(col, $event.target.value)">
                                                 </label>
                                                 <input type="text" class="form-input text-xs font-semibold h-9" x-model="col.name" placeholder="{{ __('Light Blue') }}">
                                             </div>
@@ -802,7 +802,7 @@
                                                 class="form-input text-xs font-mono uppercase h-9"
                                                 x-model="col.hex_code"
                                                 placeholder="#87CEEB"
-                                                @blur="col.hex_code = normalizeHex(col.hex_code)"
+                                                @blur="setColorHex(col, col.hex_code)"
                                             >
                                         </td>
 

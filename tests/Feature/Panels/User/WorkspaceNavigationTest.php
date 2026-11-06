@@ -38,7 +38,7 @@ function createNavigationWorkspace(User $owner): Workspace
     return $workspace;
 }
 
-it('resolves all seven top-level modules for a workspace owner', function (): void {
+it('resolves all eight top-level modules for a workspace owner', function (): void {
     $owner = User::factory()->create();
     createNavigationWorkspace($owner);
 
@@ -52,6 +52,7 @@ it('resolves all seven top-level modules for a workspace owner', function (): vo
         'inbox',
         'crm',
         'marketing',
+        'meta',
         'automation',
         'commerce',
         'channels',
