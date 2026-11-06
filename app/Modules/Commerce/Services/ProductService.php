@@ -12,6 +12,7 @@ use App\Modules\Commerce\Models\ProductMedia;
 use App\Modules\Commerce\Models\ProductOption;
 use App\Modules\Commerce\Models\ProductTierPrice;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Storefront\Models\CartItem;
 use App\Modules\Media\Models\Media;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -445,7 +446,15 @@ class ProductService
 
         $removed = $product->variants()->whereNotIn('id', $retained ?: [0])->get();
         foreach ($removed as $variant) {
-            $variant->orderItems()->exists() ? $variant->update(['status' => 'archived']) : $variant->delete();
+            if ($variant->orderItems()->exists()) {
+                $variant->update(['status' => 'archived']);
+
+                continue;
+            }
+
+            // A removed variant can no longer be bought, so drop it from shopping carts first.
+            CartItem::query()->where('variant_id', $variant->id)->delete();
+            $variant->delete();
         }
     }
 

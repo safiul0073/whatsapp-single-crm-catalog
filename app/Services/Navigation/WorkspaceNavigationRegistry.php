@@ -436,6 +436,104 @@ class WorkspaceNavigationRegistry
                 ],
             ],
             [
+                'id' => 'meta',
+                'label' => __('Facebook & Instagram'),
+                'short_label' => __('Meta'),
+                'icon' => 'ph-meta-logo',
+                'route_patterns' => [
+                    'user.meta-ads.*',
+                    'user.meta-social.posts.*',
+                    'user.meta-social.offers.*',
+                    'user.meta-social.business.*',
+                ],
+                'groups' => [
+                    [
+                        'label' => __('Ads'),
+                        'items' => [
+                            [
+                                'label' => __('Ad results'),
+                                'route' => 'user.meta-ads.index',
+                                'active' => 'user.meta-ads.index',
+                                'icon' => 'ph-chart-line-up',
+                                'permission' => 'meta-ads.view',
+                                'keywords' => 'facebook instagram ads results spend roas report',
+                            ],
+                            [
+                                'label' => __('My ads'),
+                                'route' => 'user.meta-ads.ads.index',
+                                'active' => 'user.meta-ads.ads.index',
+                                'icon' => 'ph-megaphone',
+                                'permission' => 'meta-ads.manage',
+                                'keywords' => 'facebook instagram ads start pause delete budget',
+                            ],
+                            [
+                                'label' => __('Create ad'),
+                                'route' => 'user.meta-ads.ads.create',
+                                'active' => 'user.meta-ads.ads.create',
+                                'icon' => 'ph-plus-circle',
+                                'permission' => 'meta-ads.manage',
+                                'keywords' => 'create ad promote product boost post partnership creator branded content',
+                            ],
+                        ],
+                    ],
+                    [
+                        'label' => __('Posts'),
+                        'items' => [
+                            [
+                                'label' => __('Page & Instagram posts'),
+                                'route' => 'user.meta-social.posts.index',
+                                'active' => 'user.meta-social.posts.*',
+                                'icon' => 'ph-note-pencil',
+                                'permission' => 'meta-social.publish',
+                                'keywords' => 'facebook page instagram post publish schedule',
+                            ],
+                            [
+                                'label' => __('Facebook Live'),
+                                'route' => 'user.commerce.storefront.live',
+                                'active' => 'user.commerce.storefront.live*',
+                                'icon' => 'ph-broadcast',
+                                'permission' => 'commerce.storefront.settings|commerce.storefront.marketing',
+                                'keywords' => 'facebook live video stream',
+                            ],
+                        ],
+                    ],
+                    [
+                        'label' => __('Messenger'),
+                        'items' => [
+                            [
+                                'label' => __('Offer subscribers'),
+                                'route' => 'user.meta-social.offers.index',
+                                'active' => 'user.meta-social.offers.*',
+                                'icon' => 'ph-bell-ringing',
+                                'permission' => 'meta-social.manage',
+                                'keywords' => 'messenger offers marketing messages subscribers get messages broadcast',
+                            ],
+                        ],
+                    ],
+                    [
+                        'label' => __('Setup'),
+                        'items' => [
+                            [
+                                'label' => __('Meta Business connection'),
+                                'route' => 'user.meta-social.business.show',
+                                'active' => 'user.meta-social.business.*',
+                                'icon' => 'ph-plugs-connected',
+                                'permission' => 'meta-social.manage',
+                                'keywords' => 'meta business connect ad accounts pages instagram reconnect permissions',
+                            ],
+                            [
+                                'label' => __('Product catalog'),
+                                'route' => 'user.commerce.catalog',
+                                'active' => 'user.commerce.catalog*',
+                                'icon' => 'ph-storefront',
+                                'permission' => 'commerce.catalog.manage',
+                                'keywords' => 'meta catalog facebook shop instagram shopping product sync',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
                 'id' => 'automation',
                 'label' => __('Automation & AI'),
                 'short_label' => __('Automation'),
@@ -636,7 +734,7 @@ class WorkspaceNavigationRegistry
                                 'active' => 'user.commerce.visitors.*',
                                 'icon' => 'ph-globe-hemisphere-west',
                                 'permission' => 'commerce.customers.view',
-                                'keywords' => 'visitors traffic analytics country ip live storefront activity',
+                                'keywords' => 'visitors traffic analytics city cities country ip live storefront activity overview',
                             ],
                         ],
                     ],
@@ -708,7 +806,8 @@ class WorkspaceNavigationRegistry
                 'route_patterns' => [
                     'user.channels.*',
                     'user.whatsapp-cloud.*',
-                    'user.meta-social.*',
+                    'user.meta-social.setup*',
+                    'user.tiktok.*',
                     'user.telegram.*',
                     'user.email.*',
                     'user.sms.*',
@@ -745,7 +844,7 @@ class WorkspaceNavigationRegistry
                             [
                                 'label' => __('Social'),
                                 'route' => 'user.meta-social.setup',
-                                'active' => 'user.meta-social.*',
+                                'active' => 'user.meta-social.setup*',
                                 'icon' => 'ph-share-network',
                                 'permission' => 'meta-social.manage',
                                 'keywords' => 'facebook messenger instagram threads social',
@@ -761,10 +860,18 @@ class WorkspaceNavigationRegistry
                             [
                                 'label' => __('TikTok'),
                                 'route' => 'user.tiktok.index',
-                                'active' => 'user.tiktok.*',
+                                'active' => ['user.tiktok.index', 'user.tiktok.connect', 'user.tiktok.callback', 'user.tiktok.disconnect'],
                                 'icon' => 'ph-tiktok-logo',
                                 'permission' => 'tiktok.manage',
                                 'keywords' => 'tiktok shop account connect',
+                            ],
+                            [
+                                'label' => __('TikTok posts'),
+                                'route' => 'user.tiktok.posts.index',
+                                'active' => 'user.tiktok.posts.*',
+                                'icon' => 'ph-video-camera',
+                                'permission' => 'tiktok.manage',
+                                'keywords' => 'tiktok video post publish upload drafts',
                             ],
                             [
                                 'label' => __('Email'),

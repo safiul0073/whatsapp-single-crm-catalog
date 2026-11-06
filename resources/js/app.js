@@ -31,12 +31,15 @@ import './components/commerce-payment-gallery.js';
 import './components/commerce-order-packing.js';
 import './components/commerce-order-invoice.js';
 import './components/commerce-product-gallery.js';
+import './components/commerce-visitors.js';
 import './components/crm-board.js';
 import './components/social-widget-layout-picker.js';
 import './components/social-widget-editor.js';
 import './components/social-widget-library.js';
 import './components/image-color-picker.js';
 import './components/meta-connect.js';
+import './components/meta-ad-builder.js';
+import './components/tiktok-post-form.js';
 
 // Alpine.js components (register before Alpine.start())
 import './components/datatable.js';

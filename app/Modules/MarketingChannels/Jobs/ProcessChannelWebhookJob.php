@@ -22,6 +22,9 @@ use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MetaSocial\Services\MessengerMarketingService;
+use App\Modules\MetaSocial\Services\MetaSocialDriver;
+use App\Modules\MetaSocial\Services\MetaSocialProfileService;
 use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use App\Modules\Telegram\Services\TelegramOptInService;
@@ -108,7 +111,50 @@ class ProcessChannelWebhookJob implements ShouldQueue
             return $this->applyMessageEvent($account, $event, $autoReplies, $crmLeads);
         }
 
+        if ($type === 'comment') {
+            $this->applyCommentEvent($account, (array) ($event['payload'] ?? []));
+
+            return [];
+        }
+
+        if ($type === 'optin' && $account->provider === 'messenger') {
+            app(MessengerMarketingService::class)->recordOptin($account, (array) ($event['payload'] ?? []));
+        }
+
         return [];
+    }
+
+    /**
+     * Instagram comments land in the inbox (a reply posts a public comment reply) and alert the owner.
+     *
+     * @param  array<string, mixed>  $comment
+     */
+    protected function applyCommentEvent(ChannelAccount $account, array $comment): void
+    {
+        $driver = app(ChannelManager::class)->driver((string) $account->provider);
+
+        if (! $driver instanceof MetaSocialDriver) {
+            return;
+        }
+
+        $message = $driver->persistInboundComment($account, $comment);
+
+        if ($message?->wasRecentlyCreated) {
+            $this->alertOwner($account, (int) $message->conversation_id, 'New '.$account->provider.' comment', (string) $message->body);
+        }
+    }
+
+    protected function alertOwner(ChannelAccount $account, int $conversationId, string $title, string $body): void
+    {
+        $owner = Workspace::query()->find($account->workspace_id)?->owner;
+
+        if ($owner?->deviceTokens()->exists()) {
+            $owner->notify(new MobileAlert(
+                $title,
+                mb_strimwidth($body !== '' ? $body : 'New attachment', 0, 120),
+                ['type' => 'inbox', 'workspace_id' => $account->workspace_id, 'conversation_id' => $conversationId],
+            ));
+        }
     }
 
     protected function applyStatusEvent(ChannelAccount $account, array $event): array
@@ -203,6 +249,10 @@ class ProcessChannelWebhookJob implements ShouldQueue
             $identity->contact?->improveName($event['name'] ?? null);
         }
 
+        if (in_array($account->provider, MetaSocialProfileService::PROVIDERS, true)) {
+            app(MetaSocialProfileService::class)->enrich($account, $identity);
+        }
+
         $conversation = Conversation::query()->firstOrCreate(
             [
                 'workspace_id' => $account->workspace_id,
@@ -244,14 +294,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
         );
 
         if ($message->wasRecentlyCreated) {
-            $owner = Workspace::query()->find($account->workspace_id)?->owner;
-            if ($owner?->deviceTokens()->exists()) {
-                $owner->notify(new MobileAlert(
-                    'New '.$account->provider.' message',
-                    mb_strimwidth($body ?: 'New attachment', 0, 120),
-                    ['type' => 'inbox', 'workspace_id' => $account->workspace_id, 'conversation_id' => $conversation->id],
-                ));
-            }
+            $this->alertOwner($account, (int) $conversation->id, 'New '.$account->provider.' message', (string) $body);
         }
 
         $conversation->update([
@@ -271,6 +314,14 @@ class ProcessChannelWebhookJob implements ShouldQueue
 
         if (! $ruleReply && $message->wasRecentlyCreated && app(ChannelAiReplyService::class)->enabledFor((int) $account->workspace_id, (string) $account->provider)) {
             GenerateAiReplyJob::dispatch($message->id);
+        }
+
+        if ($account->provider === 'messenger' && $message->wasRecentlyCreated) {
+            try {
+                app(MessengerMarketingService::class)->maybeAutoRequest($account, $conversation);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
 
         $automationEvents = [[
@@ -383,7 +434,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
             $contactData['phone'] = $phone;
         }
 
-        if (in_array($account->provider, ['telegram', 'whatsapp'], true)) {
+        if (in_array($account->provider, ['telegram', 'whatsapp', 'messenger', 'instagram'], true)) {
             $contactData['opt_in_status'] = ContactOptInStatus::Subscribed->value;
             $contactData['opt_in_at'] = now();
         }

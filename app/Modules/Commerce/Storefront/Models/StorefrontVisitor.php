@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Storefront\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StorefrontVisitor extends Model
 {
@@ -28,5 +29,10 @@ class StorefrontVisitor extends Model
     public function pageViews(): HasMany
     {
         return $this->hasMany(StorefrontPageView::class, 'visitor_id');
+    }
+
+    public function latestPageView(): HasOne
+    {
+        return $this->hasOne(StorefrontPageView::class, 'visitor_id')->latestOfMany('viewed_at');
     }
 }

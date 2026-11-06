@@ -81,6 +81,19 @@ export function getClosestColorName(r, g, b) {
   return closestName;
 }
 
+/**
+ * Closest color name for a "#RGB" / "#RRGGBB" hex, or '' when the hex is invalid.
+ */
+export function colorNameFromHex(hex) {
+  let clean = String(hex || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(clean)) {
+    clean = clean.split('').map((c) => c + c).join('');
+  }
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return '';
+  const n = parseInt(clean, 16);
+  return getClosestColorName((n >> 16) & 255, (n >> 8) & 255, n & 255);
+}
+
 export function rgbToHex(r, g, b) {
   return '#' + [r, g, b].map(x => {
     const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
@@ -576,5 +589,6 @@ window.ImageColorPicker = {
   setGlobalInspectMode,
   openNativeEyeDropper,
   getClosestColorName,
+  colorNameFromHex,
   rgbToHex,
 };

@@ -12,6 +12,8 @@ use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\Media\Models\Media;
 use App\Modules\MessageTemplates\Enums\MessageTemplateStatus;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MetaSocial\Models\MessengerMarketingOptin;
+use App\Modules\MetaSocial\Services\MessengerMarketingService;
 use Illuminate\Support\Str;
 
 class CampaignRecipientService
@@ -67,6 +69,7 @@ class CampaignRecipientService
             'telegram' => $this->telegramPayload($campaign, $contact, $recipient),
             'email' => $this->emailPayload($campaign, $contact),
             'sms' => $this->smsPayload($campaign, $contact),
+            'messenger' => $this->messengerPayload($campaign, $contact),
             default => [],
         };
     }
@@ -89,7 +92,8 @@ class CampaignRecipientService
         return match ($campaign->provider) {
             'whatsapp', 'sms' => $contact->phone,
             'email' => $contact->email,
-            'telegram', 'messenger', 'instagram' => $identity?->address ?: $identity?->provider_contact_id,
+            'messenger' => $this->messengerOptinAddress($campaign, $contact),
+            'telegram', 'instagram' => $identity?->address ?: $identity?->provider_contact_id,
             default => null,
         };
     }
@@ -118,7 +122,11 @@ class CampaignRecipientService
             return CampaignRecipientStatus::SkippedPolicy;
         }
 
-        if (in_array($campaign->provider, ['messenger', 'instagram'], true) && blank($address)) {
+        if ($campaign->provider === 'messenger' && blank($address)) {
+            return CampaignRecipientStatus::SkippedPolicy;
+        }
+
+        if ($campaign->provider === 'instagram' && blank($address)) {
             return CampaignRecipientStatus::SkippedInvalid;
         }
 
@@ -127,6 +135,10 @@ class CampaignRecipientService
 
     protected function skipErrorCode(Campaign $campaign, CampaignRecipientStatus $status, ?ContactProviderIdentity $identity, ?string $address): ?string
     {
+        if ($campaign->provider === 'messenger' && blank($address)) {
+            return 'messenger_optin_missing';
+        }
+
         if ($campaign->provider === 'telegram' && blank($address)) {
             return 'telegram_opt_in_missing';
         }
@@ -143,6 +155,10 @@ class CampaignRecipientService
 
     protected function skipErrorMessage(Campaign $campaign, CampaignRecipientStatus $status, ?ContactProviderIdentity $identity, ?string $address): ?string
     {
+        if ($campaign->provider === 'messenger' && blank($address)) {
+            return 'Not subscribed to Messenger offers. Ask the customer to tap "Get messages" in a Messenger chat first.';
+        }
+
         if ($campaign->provider === 'telegram' && blank($address)) {
             return 'Telegram opt-in missing. Ask the contact to start the connected Telegram bot first.';
         }
@@ -186,6 +202,35 @@ class CampaignRecipientService
             'error_message' => $errorMessage,
             'failed_at' => now(),
         ]);
+    }
+
+    /**
+     * Messenger recipients are addressed by their marketing opt-in, never the PSID. The token itself is
+     * read at send time so a STOP that arrives after queueing is respected.
+     */
+    protected function messengerOptinAddress(Campaign $campaign, Contact $contact): ?string
+    {
+        $optinId = MessengerMarketingOptin::query()
+            ->usable()
+            ->where('channel_account_id', $campaign->channel_account_id)
+            ->where('contact_id', $contact->id)
+            ->value('id');
+
+        return $optinId ? 'optin:'.$optinId : null;
+    }
+
+    protected function messengerPayload(Campaign $campaign, Contact $contact): array
+    {
+        $body = $this->variables->map((string) $campaign->message_body, $contact, $campaign->variables ?? []);
+
+        return [
+            'type' => 'text',
+            'body' => $body,
+            'meta_payload' => [
+                'recipient' => ['notification_messages_token' => app(MessengerMarketingService::class)->tokenFor((int) $contact->id, (int) $campaign->channel_account_id)],
+                'message' => ['text' => $body],
+            ],
+        ];
     }
 
     protected function whatsappPayload(Campaign $campaign, Contact $contact): array

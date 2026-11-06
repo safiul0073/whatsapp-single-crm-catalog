@@ -88,7 +88,9 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('orders', [CommerceController::class, 'orders'])->middleware('permission:commerce.orders.view')->name('orders.index');
     Route::get('visitors', [VisitorController::class, 'index'])->middleware('permission:commerce.customers.view')->name('visitors.index');
     Route::get('visitors/live', [VisitorController::class, 'live'])->middleware('permission:commerce.customers.view')->name('visitors.live');
-    Route::get('visitors/{visitor}', [VisitorController::class, 'show'])->middleware('permission:commerce.customers.view')->name('visitors.show');
+    Route::get('visitors/now', [VisitorController::class, 'livePage'])->middleware('permission:commerce.customers.view')->name('visitors.live-page');
+    Route::get('visitors/all', [VisitorController::class, 'list'])->middleware('permission:commerce.customers.view')->name('visitors.list');
+    Route::get('visitors/{visitor}', [VisitorController::class, 'show'])->whereNumber('visitor')->middleware('permission:commerce.customers.view')->name('visitors.show');
     Route::get('customers', [CommerceController::class, 'customers'])->middleware('permission:commerce.customers.view')->name('customers.index');
     Route::get('customers/{customer}', [CommerceController::class, 'customer'])->middleware('permission:commerce.customers.view')->name('customers.show');
     $controller = OrderManagementController::class;

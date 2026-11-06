@@ -10,6 +10,7 @@ use App\Modules\Commerce\AiTools\ChatbotProductPresenter;
 use App\Modules\Commerce\AiTools\ProductShowcaseCollector;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\StorefrontUrl;
+use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchResult;
 use App\Modules\KnowledgeBases\Services\KnowledgeBaseSearchService;
@@ -25,6 +26,11 @@ class ClaudeReplyService
 
     public const HISTORY_LIMIT = 10;
 
+    public const HANDOFF_AI_UNAVAILABLE = 'ai_unavailable';
+
+    /** Phrases that mean "let me talk to a person" (English, Bangla and common romanised Bangla). */
+    protected const HUMAN_REQUEST_PATTERN = '/\b(talk|speak|chat|connect)\s+(to|with)\s+(a\s+|an\s+|the\s+|your\s+)?(human|person|agent|someone|somebody|representative|support|team|owner|manager)\b|\b(real|live)\s+(person|human|agent)\b|\bhuman\s+(agent|support|please)\b|\bcustomer\s+(service|care|support)\b|\bcall\s+me\b|\bi\s+(want|need)\s+(a\s+)?(human|person|agent)\b|^\s*(human|agent|operator)\s*[.!?]*\s*$|মানুষ|এজেন্ট|প্রতিনিধি|কথা\s*বলতে\s*চাই|manush(er)?\s+(sathe|shathe|sathe)|agent\s+lagbe/iu';
+
     public function __construct(
         protected AiSettingsService $settings,
         protected KnowledgeBaseSearchService $knowledgeBases,
@@ -34,7 +40,9 @@ class ClaudeReplyService
     /**
      * Context keys: chatbot (required), conversation_id, inbound_message_id, page_url, channel.
      *
-     * @return array{provider: ?string, model: ?string, reply: string, confidence: float, handoff: bool, context: array<string, mixed>, input: string, products: list<array<string, mixed>>}
+     * handoff_reason: customer_request | bot_unsure (switch on Human takeover) or ai_unavailable (technical, never pauses).
+     *
+     * @return array{provider: ?string, model: ?string, reply: string, confidence: float, handoff: bool, handoff_reason?: ?string, context: array<string, mixed>, input: string, products: list<array<string, mixed>>}
      */
     public function draftReply(string $message, array $context = []): array
     {
@@ -50,6 +58,10 @@ class ClaudeReplyService
         $provider = $this->settings->textProvider();
         $model = $this->settings->textModel();
         $search = $this->knowledgeBases->search($chatbot, $message);
+
+        if ($chatbot->handoffEnabled('on_request') && $this->asksForHuman($message)) {
+            return $this->fallback($message, $context, $provider, $model, $this->customerFallback($chatbot), Conversation::AI_PAUSE_CUSTOMER_REQUEST);
+        }
 
         if (! app()->runningUnitTests() && ! $this->settings->hasConfiguredProvider($provider)) {
             Log::warning('Chatbot AI is not configured.', [
@@ -75,7 +87,7 @@ class ClaudeReplyService
         }
 
         if ($chatbot->fallback_only_knowledge_base && $chatbot->knowledgeBases->isNotEmpty() && $search->isEmpty()) {
-            return $this->fallback($message, $this->contextWithSearch($context, $search), $provider, $model, data_get($chatbot->handoff_rules, 'message') ?: 'I could not find this in the selected knowledge base. I will connect you with a team member.');
+            return $this->fallback($message, $this->contextWithSearch($context, $search), $provider, $model, data_get($chatbot->handoff_rules, 'message') ?: 'I could not find this in the selected knowledge base. I will connect you with a team member.', Conversation::AI_PAUSE_BOT_UNSURE);
         }
 
         if (app()->runningUnitTests() && ! StoreAssistantAgent::isFaked()) {
@@ -128,17 +140,21 @@ class ClaudeReplyService
                 ),
             );
             $reply = trim((string) $response->text);
-            $this->showCurrentProduct($chatbot, $currentProduct, $reply, $context['conversation_id'] ?? null);
+            $handedOff = $this->isHandoffReply($chatbot, $reply);
+            if (! $handedOff) {
+                $this->showCurrentProduct($chatbot, $currentProduct, $reply, $context['conversation_id'] ?? null);
+            }
 
             return [
                 'provider' => $provider,
                 'model' => $model,
                 'reply' => $reply,
-                'confidence' => 0.8,
-                'handoff' => false,
+                'confidence' => $handedOff ? 0.0 : 0.8,
+                'handoff' => $handedOff,
+                'handoff_reason' => $handedOff ? Conversation::AI_PAUSE_BOT_UNSURE : null,
                 'context' => $this->contextWithSearch($context, $search),
                 'input' => $message,
-                'products' => $showcase->all(),
+                'products' => $handedOff ? [] : $showcase->all(),
             ];
         } catch (Throwable $exception) {
             Log::warning('Chatbot AI reply generation failed.', [
@@ -249,7 +265,7 @@ class ClaudeReplyService
         return $handoff !== '' ? $handoff : self::CUSTOMER_FALLBACK_REPLY;
     }
 
-    protected function fallback(string $message, array $context, ?string $provider, ?string $model, string $reply): array
+    protected function fallback(string $message, array $context, ?string $provider, ?string $model, string $reply, string $reason = self::HANDOFF_AI_UNAVAILABLE): array
     {
         return [
             'provider' => $provider,
@@ -257,10 +273,26 @@ class ClaudeReplyService
             'reply' => Str::limit($reply, 500, ''),
             'confidence' => 0.0,
             'handoff' => true,
+            'handoff_reason' => $reason,
             'context' => $context,
             'input' => $message,
             'products' => [],
         ];
+    }
+
+    public function asksForHuman(string $message): bool
+    {
+        return preg_match(self::HUMAN_REQUEST_PATTERN, $message) === 1;
+    }
+
+    /**
+     * The assistant is told to answer with the chatbot's handoff message when it cannot help.
+     */
+    protected function isHandoffReply(Chatbot $chatbot, string $reply): bool
+    {
+        $handoff = Str::lower(trim((string) data_get($chatbot->handoff_rules, 'message')));
+
+        return $handoff !== '' && Str::contains(Str::lower($reply), $handoff);
     }
 
     protected function isGreeting(string $message): bool

@@ -3,6 +3,8 @@
 namespace App\Modules\Inbox\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Inbox\Http\Requests\ConversationAiPauseRequest;
+use App\Modules\Inbox\Http\Requests\ConversationMessengerOffersRequest;
 use App\Modules\Inbox\Http\Requests\SendInboxMessageRequest;
 use App\Modules\Inbox\Services\InboxAiReplyService;
 use App\Modules\Inbox\Services\InboxService;
@@ -29,6 +31,8 @@ class InboxController extends Controller
                     'send' => route('user.inbox.conversations.messages.store', ['conversation' => '__CONVERSATION__']),
                     'aiReply' => route('user.inbox.conversations.ai-reply', ['conversation' => '__CONVERSATION__']),
                     'automation' => route('user.inbox.conversations.automation', ['conversation' => '__CONVERSATION__']),
+                    'aiPause' => route('user.inbox.conversations.ai-pause', ['conversation' => '__CONVERSATION__']),
+                    'messengerOffers' => route('user.inbox.conversations.messenger-offers', ['conversation' => '__CONVERSATION__']),
                     'contactConversation' => route('user.inbox.contacts.conversation', ['contact' => '__CONTACT__']),
                     'telegramOptIn' => route('user.telegram.contacts.opt-in-link', ['contact' => '__CONTACT__']),
                     'contacts' => route('user.contacts.index'),
@@ -86,6 +90,16 @@ class InboxController extends Controller
         $limits->consumePlatformAiCredits($conversationModel->workspace_id);
 
         return response()->json($draft);
+    }
+
+    public function aiPause(ConversationAiPauseRequest $request, InboxService $inbox, string $conversation): JsonResponse
+    {
+        return response()->json($inbox->updateAiPause($request->user(), $conversation, $request->boolean('paused')));
+    }
+
+    public function messengerOffers(ConversationMessengerOffersRequest $request, InboxService $inbox, string $conversation): JsonResponse
+    {
+        return response()->json($inbox->requestMessengerOffers($request->user(), $conversation));
     }
 
     public function automation(Request $request, InboxService $inbox, string $conversation): JsonResponse

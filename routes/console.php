@@ -9,7 +9,9 @@ use App\Modules\Commerce\Storefront\Models\StorefrontPageView;
 use App\Modules\Commerce\Storefront\Models\StorefrontVisitor;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
+use App\Modules\MetaSocial\Services\MetaPagePostService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
+use App\Modules\TikTok\Services\TikTokPostService;
 use App\Modules\TikTok\Services\TikTokTokenService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -42,3 +44,6 @@ Schedule::call(function (): void {
     StorefrontPageView::query()->where('viewed_at', '<', $cutoff)->delete();
     StorefrontVisitor::query()->where('last_seen_at', '<', $cutoff)->delete();
 })->name('commerce-prune-storefront-visits')->dailyAt('02:45')->withoutOverlapping();
+
+Schedule::call(fn () => app(MetaPagePostService::class)->publishDue())->name('meta-page-posts')->everyMinute()->withoutOverlapping();
+Schedule::call(fn () => app(TikTokPostService::class)->refreshPending())->name('tiktok-post-status')->everyMinute()->withoutOverlapping();

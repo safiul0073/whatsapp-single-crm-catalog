@@ -25,6 +25,7 @@ class ChannelAiReplyService
     public function __construct(
         protected ClaudeReplyService $replies,
         protected ChannelManager $channels,
+        protected HumanHandoffService $handoff,
     ) {}
 
     /**
@@ -103,7 +104,7 @@ class ChannelAiReplyService
         $settings = $workspace ? $this->channelSettings($workspace, $account->provider) : ['enabled' => false, 'chatbot_id' => null];
 
         // Human-handled conversations and expired WhatsApp 24h windows are never auto-answered.
-        if (! $settings['enabled'] || $conversation->assigned_to !== null
+        if (! $settings['enabled'] || $conversation->assigned_to !== null || $conversation->isAiPaused()
             || ($account->provider === 'whatsapp' && $conversation->session_expires_at && $conversation->session_expires_at->isPast())) {
             return null;
         }
@@ -123,9 +124,24 @@ class ChannelAiReplyService
             'contact_id' => $conversation->contact_id,
         ]);
 
-        // Low-confidence / knowledge-base misses are left for a human agent.
-        if (($draft['handoff'] ?? false) || blank($draft['reply'] ?? null)) {
+        if (blank($draft['reply'] ?? null)) {
             return null;
+        }
+
+        if ($draft['handoff'] ?? false) {
+            $reason = $draft['handoff_reason'] ?? null;
+
+            // Technical AI failures stay silent so a team member can answer; they never switch on Human takeover.
+            if (! in_array($reason, HumanHandoffService::PAUSING_REASONS, true)) {
+                return null;
+            }
+
+            $reply = $this->send($account, $conversation, $recipient, $chatbot, ['type' => 'text', 'body' => (string) $draft['reply']]);
+            if ($this->handoff->shouldHandOff($chatbot, $reason)) {
+                $this->handoff->handOff($conversation, $chatbot, $reason, $body);
+            }
+
+            return $reply;
         }
 
         $reply = $this->send($account, $conversation, $recipient, $chatbot, ['type' => 'text', 'body' => (string) $draft['reply']]);

@@ -11,7 +11,7 @@ class TikTokSettingsService
 {
     protected const CACHE_KEY = 'tiktok_settings';
 
-    public const DEFAULT_SCOPES = 'user.info.basic,video.upload';
+    public const DEFAULT_SCOPES = 'user.info.basic,video.upload,video.publish';
 
     protected array $defaults = [
         'tiktok_client_key' => '',

@@ -14,11 +14,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Conversation extends Model
 {
-    protected $fillable = ['workspace_id', 'channel_account_id', 'provider', 'provider_conversation_id', 'contact_id', 'assigned_to', 'status', 'last_message_at', 'session_expires_at', 'labels'];
+    protected $fillable = ['workspace_id', 'channel_account_id', 'provider', 'provider_conversation_id', 'contact_id', 'assigned_to', 'ai_paused_at', 'ai_paused_by', 'ai_pause_reason', 'status', 'last_message_at', 'session_expires_at', 'labels'];
+
+    public const AI_PAUSE_MANUAL = 'manual';
+
+    public const AI_PAUSE_CUSTOMER_REQUEST = 'customer_request';
+
+    public const AI_PAUSE_BOT_UNSURE = 'bot_unsure';
 
     protected function casts(): array
     {
-        return ['status' => ConversationStatus::class, 'labels' => 'array', 'last_message_at' => 'datetime', 'session_expires_at' => 'datetime'];
+        return ['status' => ConversationStatus::class, 'labels' => 'array', 'last_message_at' => 'datetime', 'session_expires_at' => 'datetime', 'ai_paused_at' => 'datetime'];
     }
 
     public function contact(): BelongsTo
@@ -34,6 +40,24 @@ class Conversation extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * Human takeover: the AI chatbot does not answer this conversation until a team member resumes it.
+     */
+    public function isAiPaused(): bool
+    {
+        return $this->ai_paused_at !== null;
+    }
+
+    public function pauseAi(string $reason, ?int $userId = null): void
+    {
+        $this->forceFill(['ai_paused_at' => now(), 'ai_paused_by' => $userId, 'ai_pause_reason' => $reason])->save();
+    }
+
+    public function resumeAi(): void
+    {
+        $this->forceFill(['ai_paused_at' => null, 'ai_paused_by' => null, 'ai_pause_reason' => null])->save();
     }
 
     public function messages(): HasMany

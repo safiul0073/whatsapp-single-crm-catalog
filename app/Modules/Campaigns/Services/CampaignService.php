@@ -598,6 +598,7 @@ class CampaignService
                     'sms' => 'SMS campaigns require a message body.',
                     'telegram' => 'Telegram campaigns require a message body.',
                     'whatsapp' => 'WhatsApp custom campaigns require a message body.',
+                    'messenger' => 'Messenger offer broadcasts require a message.',
                     default => 'Campaigns require a message body.',
                 },
             ]);

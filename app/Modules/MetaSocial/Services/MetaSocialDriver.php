@@ -12,12 +12,10 @@ use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Contracts\MarketingChannelDriver;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
-use App\Modules\MarketingChannels\Enums\ChannelWebhookEventStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
-use App\Modules\MarketingChannels\Models\ChannelWebhookEvent;
+use App\Modules\MarketingChannels\Services\ChannelWebhookIntake;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class MetaSocialDriver implements MarketingChannelDriver
@@ -52,6 +50,22 @@ class MetaSocialDriver implements MarketingChannelDriver
         }
 
         $metaPayload = $payload['meta_payload'] ?? $this->messagePayload($recipientId, $body, $payload);
+
+        if (array_key_exists('notification_messages_token', (array) ($metaPayload['recipient'] ?? [])) && blank($metaPayload['recipient']['notification_messages_token'])) {
+            return [
+                'ok' => false,
+                'provider' => $this->provider(),
+                'status' => MessageStatus::Failed->value,
+                'error_code' => 'messenger_optin_missing',
+                'error' => 'This customer is not subscribed to Messenger offers (or stopped them).',
+                'response' => [],
+            ];
+        }
+
+        if (($payload['human_agent'] ?? false) === true) {
+            $metaPayload['messaging_type'] = 'MESSAGE_TAG';
+            $metaPayload['tag'] = 'HUMAN_AGENT';
+        }
 
         $response = $this->provider === 'instagram'
             ? $this->client->sendInstagramMessage((string) $account->provider_account_id, $token, $metaPayload)
@@ -107,49 +121,15 @@ class MetaSocialDriver implements MarketingChannelDriver
             && hash_equals((string) $account->webhook_verify_token, (string) $token);
     }
 
+    /**
+     * Meta webhooks go through the shared pipeline (ProcessChannelWebhookJob) so inbox, push alerts,
+     * auto-replies, the AI bot, automations and campaign tracking all run.
+     */
     public function handleWebhook(Request $request, ChannelAccount $account): array
     {
-        $payload = $request->all();
-        $eventType = $this->eventType($payload);
-        $eventId = $this->eventId($payload);
+        $event = app(ChannelWebhookIntake::class)->accept($account, $this->provider(), $request->all(), $request->headers->all());
 
-        $event = ChannelWebhookEvent::query()->firstOrCreate(
-            ['provider' => $this->provider(), 'provider_event_id' => $eventId],
-            [
-                'channel_account_id' => $account->id,
-                'workspace_id' => $account->workspace_id,
-                'event_type' => $eventType,
-                'payload' => $payload,
-                'headers' => $request->headers->all(),
-                'status' => ChannelWebhookEventStatus::Pending->value,
-            ]
-        );
-
-        if ($event->processed_at) {
-            return ['ok' => true, 'duplicate' => true, 'event_id' => $event->id];
-        }
-
-        try {
-            foreach ($this->messagingEvents($payload) as $message) {
-                $this->persistInboundMessage($account, $message);
-            }
-
-            foreach ($this->deliveryEvents($payload) as $delivery) {
-                $this->persistDeliveryStatus($account, $delivery);
-            }
-
-            foreach ($this->commentEvents($payload) as $comment) {
-                $this->persistInboundComment($account, $comment);
-            }
-
-            $event->update(['status' => ChannelWebhookEventStatus::Processed->value, 'processed_at' => now()]);
-
-            return ['ok' => true, 'event_id' => $event->id, 'type' => $eventType];
-        } catch (\Throwable $exception) {
-            $event->update(['status' => ChannelWebhookEventStatus::Failed->value, 'error' => $exception->getMessage()]);
-
-            throw $exception;
-        }
+        return ['ok' => true, 'event_id' => $event->id, 'type' => $event->event_type];
     }
 
     public function syncTemplates(ChannelAccount $account): array
@@ -173,7 +153,9 @@ class MetaSocialDriver implements MarketingChannelDriver
     protected function messagingEvents(array $payload): array
     {
         return collect(Arr::flatten(data_get($payload, 'entry.*.messaging', []), 1))
-            ->filter(fn (mixed $event): bool => is_array($event) && (filled(data_get($event, 'message.text')) || filled(data_get($event, 'message.attachments'))))
+            ->filter(fn (mixed $event): bool => is_array($event)
+                && data_get($event, 'message.is_echo') !== true
+                && (filled(data_get($event, 'message.text')) || filled(data_get($event, 'message.attachments'))))
             ->values()
             ->all();
     }
@@ -182,6 +164,19 @@ class MetaSocialDriver implements MarketingChannelDriver
     {
         return collect(Arr::flatten(data_get($payload, 'entry.*.messaging', []), 1))
             ->filter(fn (mixed $event): bool => is_array($event) && (filled(data_get($event, 'delivery.mids')) || filled(data_get($event, 'read.watermark'))))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Marketing-messages opt-ins (and their STOP / RESUME changes) arrive as messaging items with "optin".
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function optinEvents(array $payload): array
+    {
+        return collect(Arr::flatten(data_get($payload, 'entry.*.messaging', []), 1))
+            ->filter(fn (mixed $event): bool => is_array($event) && filled(data_get($event, 'optin')) && filled(data_get($event, 'sender.id')))
             ->values()
             ->all();
     }
@@ -208,107 +203,12 @@ class MetaSocialDriver implements MarketingChannelDriver
             ->all();
     }
 
-    protected function eventType(array $payload): string
-    {
-        if ($this->messagingEvents($payload) !== []) {
-            return 'message.received';
-        }
-
-        if ($this->commentEvents($payload) !== []) {
-            return 'comment.received';
-        }
-
-        if ($this->deliveryEvents($payload) !== []) {
-            return 'message.status';
-        }
-
-        return data_get($payload, 'object', $this->provider().'.event');
-    }
-
-    protected function eventId(array $payload): string
-    {
-        return data_get($payload, 'entry.0.id', 'event').'-'.data_get($payload, 'entry.0.time', time()).'-'.sha1(json_encode($payload));
-    }
-
-    protected function persistInboundMessage(ChannelAccount $account, array $event): void
-    {
-        $senderId = (string) data_get($event, 'sender.id');
-        $messageId = (string) (data_get($event, 'message.mid') ?: Str::uuid());
-
-        if ($senderId === '') {
-            return;
-        }
-
-        $identity = ContactProviderIdentity::query()
-            ->where('workspace_id', $account->workspace_id)
-            ->where('provider', $this->provider())
-            ->where('provider_contact_id', $senderId)
-            ->first();
-
-        $contact = $identity?->contact ?: Contact::query()->create([
-            'workspace_id' => $account->workspace_id,
-            'name' => $this->providerLabel().' '.$senderId,
-            'phone' => null,
-            'opt_in_status' => ContactOptInStatus::Subscribed->value,
-            'opted_in_at' => now(),
-        ]);
-
-        ContactProviderIdentity::query()->updateOrCreate(
-            [
-                'workspace_id' => $account->workspace_id,
-                'provider' => $this->provider(),
-                'provider_contact_id' => $senderId,
-            ],
-            [
-                'contact_id' => $contact->id,
-                'channel_account_id' => $account->id,
-                'identity_type' => $this->provider() === 'instagram' ? 'instagram_user_id' : 'psid',
-                'metadata' => ['recipient_id' => data_get($event, 'recipient.id')],
-            ]
-        );
-
-        $conversation = Conversation::query()->firstOrCreate(
-            [
-                'workspace_id' => $account->workspace_id,
-                'contact_id' => $contact->id,
-                'channel_account_id' => $account->id,
-            ],
-            [
-                'provider' => $this->provider(),
-                'provider_conversation_id' => $senderId,
-                'status' => ConversationStatus::Open->value,
-                'labels' => [],
-            ]
-        );
-
-        Message::query()->updateOrCreate(
-            ['provider_message_id' => $messageId],
-            [
-                'workspace_id' => $account->workspace_id,
-                'conversation_id' => $conversation->id,
-                'contact_id' => $contact->id,
-                'channel_account_id' => $account->id,
-                'provider' => $this->provider(),
-                'direction' => 'inbound',
-                'type' => filled(data_get($event, 'message.attachments')) ? 'media' : 'text',
-                'body' => data_get($event, 'message.text'),
-                'payload' => $event,
-                'status' => MessageStatus::Received->value,
-            ]
-        );
-
-        $conversation->update(['last_message_at' => now()]);
-    }
-
-    /**
-     * Stores an Instagram comment as an inbound inbox message; replying to it posts a public comment reply.
-     */
-    protected function persistInboundComment(ChannelAccount $account, array $comment): void
+    public function persistInboundComment(ChannelAccount $account, array $comment): ?Message
     {
         $senderId = (string) data_get($comment, 'from.id');
 
         if ($senderId === '' || $senderId === (string) $account->provider_account_id) {
-            return;
+            return null;
         }
 
         $identity = ContactProviderIdentity::query()
@@ -353,7 +253,7 @@ class MetaSocialDriver implements MarketingChannelDriver
             ]
         );
 
-        Message::query()->updateOrCreate(
+        $message = Message::query()->updateOrCreate(
             ['provider_message_id' => (string) data_get($comment, 'id')],
             [
                 'workspace_id' => $account->workspace_id,
@@ -370,17 +270,8 @@ class MetaSocialDriver implements MarketingChannelDriver
         );
 
         $conversation->update(['last_message_at' => now()]);
-    }
 
-    protected function persistDeliveryStatus(ChannelAccount $account, array $event): void
-    {
-        foreach ((array) data_get($event, 'delivery.mids', []) as $messageId) {
-            Message::query()
-                ->where('workspace_id', $account->workspace_id)
-                ->where('provider', $this->provider())
-                ->where('provider_message_id', $messageId)
-                ->update(['status' => MessageStatus::Delivered->value]);
-        }
+        return $message;
     }
 
     protected function providerLabel(): string
@@ -443,6 +334,18 @@ class MetaSocialDriver implements MarketingChannelDriver
                 'provider_message_id' => data_get($event, 'message.mid'),
                 'provider_contact_id' => data_get($event, 'sender.id'),
                 'body' => data_get($event, 'message.text'),
+                'payload' => array_merge($event, ['type' => filled(data_get($event, 'message.attachments')) ? 'media' : 'text']),
+            ];
+        }
+
+        foreach ($this->commentEvents($payload) as $comment) {
+            $events[] = ['type' => 'comment', 'payload' => $comment];
+        }
+
+        foreach ($this->optinEvents($payload) as $event) {
+            $events[] = [
+                'type' => 'optin',
+                'provider_contact_id' => data_get($event, 'sender.id'),
                 'payload' => $event,
             ];
         }
@@ -475,8 +378,22 @@ class MetaSocialDriver implements MarketingChannelDriver
         return ['Inbox', 'Automation', 'Webhooks'];
     }
 
+    /**
+     * Messenger broadcasts go only to customers who opted in to marketing messages (one token each),
+     * so a custom-text broadcast is allowed there. Instagram has no opt-in broadcasts.
+     */
     public function validateCampaign(ChannelAccount $account, Campaign $campaign): void
     {
+        if ($this->provider() === 'messenger' && $campaign->type === 'broadcast') {
+            if ($campaign->message_type !== 'custom' || blank($campaign->message_body)) {
+                throw ValidationException::withMessages([
+                    'message_body' => 'Messenger offer broadcasts need a message. Templates are not used on Messenger.',
+                ]);
+            }
+
+            return;
+        }
+
         if ($campaign->type === 'broadcast') {
             throw ValidationException::withMessages([
                 'type' => 'Unrestricted bulk campaigns are not allowed for '.ucfirst($this->provider()).'. Use follow-up or automation campaigns only.',

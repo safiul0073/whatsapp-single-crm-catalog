@@ -4,7 +4,7 @@ it('declares the aligned provider capabilities used by campaigns inbox and publi
     $providers = collect(config('marketing-channels.providers'));
 
     expect($providers->where('campaign', true)->keys()->values()->all())
-        ->toBe(['whatsapp', 'telegram', 'email', 'sms'])
+        ->toBe(['whatsapp', 'telegram', 'email', 'sms', 'messenger'])
         ->and($providers->where('inbox', true)->keys()->values()->all())
         ->toBe(['whatsapp', 'telegram', 'messenger', 'instagram'])
         ->and($providers->where('publishing', true)->keys()->values()->all())

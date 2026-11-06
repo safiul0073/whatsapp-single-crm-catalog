@@ -544,26 +544,35 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     }
   },
 
+  /**
+   * Set a colour row's hex and auto-fill its name, unless the owner typed a custom name.
+   */
+  setColorHex(col, hex, name = '') {
+    if (!col) return;
+    col.hex_code = this.normalizeHex(hex);
+    const autoName = name || window.ImageColorPicker?.colorNameFromHex?.(col.hex_code) || '';
+    const current = (col.name || '').trim();
+    const replaceable = current === ''
+      || current.startsWith('Color #')
+      || ['Light Blue', 'New Color', 'Extracted Shade'].includes(current)
+      || (col._autoName && col._autoName === col.name);
+    if (autoName && replaceable) {
+      col.name = autoName;
+      col._autoName = autoName;
+    }
+    this.dirty = true;
+  },
+
   applyPickedColor(hex, name = '') {
-    const formattedHex = this.normalizeHex(hex);
     if (this.activeEyedropperRow !== null && this.colors[this.activeEyedropperRow]) {
       const col = this.colors[this.activeEyedropperRow];
-      col.hex_code = formattedHex;
-      if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
-        col.name = name;
-      }
-      this.dirty = true;
+      this.setColorHex(col, hex, name);
       if (window.showToast) {
-        window.showToast('Color Assigned', `Updated ${col.name || 'row'} to ${formattedHex}!`, 'success');
+        window.showToast('Color Assigned', `Updated ${col.name || 'row'} to ${col.hex_code}!`, 'success');
       }
       this.cancelRowEyedropper();
     } else if (this.editingColorIndex !== null && this.colors[this.editingColorIndex]) {
-      const col = this.colors[this.editingColorIndex];
-      col.hex_code = formattedHex;
-      if (!col.name || col.name.trim() === '' || col.name.startsWith('Color #') || col.name === 'Light Blue' || col.name === 'New Color') {
-        col.name = name;
-      }
-      this.dirty = true;
+      this.setColorHex(this.colors[this.editingColorIndex], hex, name);
     }
   },
 
@@ -624,6 +633,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.colors.unshift({
       id: '',
       name: name || 'Extracted Shade',
+      _autoName: name || '',
       hex_code: this.normalizeHex(hex),
       color_family: '',
       swatch_media_id: '',

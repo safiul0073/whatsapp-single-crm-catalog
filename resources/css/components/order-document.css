@@ -55,6 +55,22 @@
   @apply text-[10px] leading-tight text-body;
 }
 
+.document-table-compact {
+  @apply text-xs;
+}
+
+.document-table-compact th {
+  @apply py-1;
+}
+
+.document-table-compact td {
+  @apply py-1.5 align-middle;
+}
+
+.document-table-compact th.text-right {
+  @apply text-right;
+}
+
 .document-stamp {
   @apply inline-flex rounded-md border border-primary px-3 py-1 text-sm font-semibold uppercase tracking-wide text-primary;
 }

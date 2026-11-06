@@ -56,6 +56,17 @@ class MetaSocialClient
         ]);
     }
 
+    /**
+     * Reads the name and photo of someone who messaged the Page or Instagram account
+     * (needs the Business Asset User Profile Access feature).
+     */
+    public function userProfile(string $userId, string $token, string $provider): Response
+    {
+        return Http::withToken($token)->timeout(10)->get($this->graphUrl($userId), [
+            'fields' => $provider === 'instagram' ? 'name,username,profile_pic' : 'first_name,last_name,profile_pic',
+        ]);
+    }
+
     public function sendMessengerMessage(string $pageId, string $token, array $payload): Response
     {
         return Http::withToken($token)->post($this->graphUrl($pageId.'/messages'), $payload);
@@ -95,6 +106,63 @@ class MetaSocialClient
 
         return Http::withToken($token)->get($this->graphUrl($igUserId), [
             'fields' => 'business_discovery.username('.$username.'){'.$fields.'}',
+        ]);
+    }
+
+    /**
+     * A text or link post on the Page feed (pages_manage_posts).
+     */
+    public function publishPagePost(string $pageId, string $pageToken, string $message, ?string $link = null): Response
+    {
+        return Http::withToken($pageToken)->asForm()->timeout(30)->post($this->graphUrl($pageId.'/feed'), array_filter([
+            'message' => $message,
+            'link' => $link,
+        ]));
+    }
+
+    /**
+     * A photo post on the Page (pages_manage_posts).
+     */
+    public function publishPagePhoto(string $pageId, string $pageToken, string $imageUrl, string $caption): Response
+    {
+        return Http::withToken($pageToken)->asForm()->timeout(60)->post($this->graphUrl($pageId.'/photos'), [
+            'url' => $imageUrl,
+            'caption' => $caption,
+            'published' => 'true',
+        ]);
+    }
+
+    public function deletePagePost(string $postId, string $pageToken): Response
+    {
+        return Http::withToken($pageToken)->timeout(30)->delete($this->graphUrl($postId));
+    }
+
+    public function pagePublishedPosts(string $pageId, string $pageToken, int $limit = 12): Response
+    {
+        return Http::withToken($pageToken)->timeout(20)->get($this->graphUrl($pageId.'/published_posts'), [
+            'fields' => 'id,message,full_picture,permalink_url,created_time',
+            'limit' => $limit,
+        ]);
+    }
+
+    /**
+     * Step 1 of an Instagram post: a media container (instagram_content_publish).
+     */
+    public function createInstagramMedia(string $igUserId, string $token, string $imageUrl, string $caption): Response
+    {
+        return Http::withToken($token)->asForm()->timeout(60)->post($this->graphUrl($igUserId.'/media'), [
+            'image_url' => $imageUrl,
+            'caption' => $caption,
+        ]);
+    }
+
+    /**
+     * Step 2 of an Instagram post: publish the container.
+     */
+    public function publishInstagramMedia(string $igUserId, string $token, string $creationId): Response
+    {
+        return Http::withToken($token)->asForm()->timeout(60)->post($this->graphUrl($igUserId.'/media_publish'), [
+            'creation_id' => $creationId,
         ]);
     }
 

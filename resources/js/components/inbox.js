@@ -19,7 +19,8 @@ Alpine.data("liveInbox", (config) => ({
   nextMessagesBeforeId: null,
   sending: false,
   aiGenerating: false,
-  automationUpdating: false,
+  aiPauseUpdating: false,
+  messengerOffersSending: false,
   hasChannel: true,
   recipientReady: true,
   canReply: true,
@@ -580,28 +581,28 @@ Alpine.data("liveInbox", (config) => ({
     }
   },
 
-  async toggleAutomatedReply(enabled) {
-    if (this.automationUpdating || !this.activeConversation?.id || this.activeConversation.provider !== "website_widget") {
+  async toggleHumanTakeover(paused) {
+    if (this.aiPauseUpdating || !this.activeConversation?.id || !this.activeConversation.ai_supported) {
       return;
     }
 
-    if (!this.routes.automation) {
-      this.sendError = "Automation switching is not available on this page.";
+    if (!this.routes.aiPause) {
+      this.sendError = "Human takeover is not available on this page.";
       return;
     }
 
-    this.automationUpdating = true;
+    this.aiPauseUpdating = true;
     this.sendError = "";
 
     try {
-      const url = this.routes.automation.replace(
+      const url = this.routes.aiPause.replace(
         "__CONVERSATION__",
         this.activeConversation.id,
       );
 
       const response = await window.axios.post(
         url,
-        { automated_reply_enabled: enabled },
+        { paused },
         {
           headers: {
             Accept: "application/json",
@@ -618,9 +619,45 @@ Alpine.data("liveInbox", (config) => ({
       this.canReply = Boolean(response.data.conversation?.can_reply ?? true);
       await this.refreshConversations(true);
     } catch (error) {
-      this.sendError = this.errorMessage(error, "Unable to update automated replies.");
+      this.sendError = this.errorMessage(error, "Unable to update human takeover.");
     } finally {
-      this.automationUpdating = false;
+      this.aiPauseUpdating = false;
+    }
+  },
+
+  async requestMessengerOffers() {
+    if (this.messengerOffersSending || !this.activeConversation?.id || !this.routes.messengerOffers) {
+      return;
+    }
+
+    this.messengerOffersSending = true;
+    this.sendError = "";
+
+    try {
+      const url = this.routes.messengerOffers.replace(
+        "__CONVERSATION__",
+        this.activeConversation.id,
+      );
+
+      const response = await window.axios.post(
+        url,
+        {},
+        {
+          headers: {
+            Accept: "application/json",
+            "X-CSRF-TOKEN": this.csrfToken(),
+          },
+        },
+      );
+
+      this.activeConversation = response.data.conversation;
+      this.messages = this.decorateMessages(response.data.messages || this.messages);
+      this.updateMessagePage(response.data.messages_page);
+      await this.refreshConversations(true);
+    } catch (error) {
+      this.sendError = this.errorMessage(error, "Unable to send the offers request.");
+    } finally {
+      this.messengerOffersSending = false;
     }
   },
 
