@@ -29,6 +29,19 @@
             }))
             ->values()
             ->map(fn (array $tile, int $index): array => $tile + ['number' => $index + 1]);
+        $packNumbers = function ($numbers): string {
+            $ranges = [];
+            foreach ($numbers->sort()->values() as $number) {
+                $last = array_key_last($ranges);
+                if ($last !== null && $ranges[$last][1] + 1 === $number) {
+                    $ranges[$last][1] = $number;
+                } else {
+                    $ranges[] = [$number, $number];
+                }
+            }
+
+            return collect($ranges)->map(fn ($range) => $range[0] === $range[1] ? '#'.$range[0] : '#'.$range[0].'–'.$range[1])->implode(', ');
+        };
     @endphp
         <header class="flex items-start justify-between gap-4 border-b border-border-default pb-2">
             <div>
@@ -63,39 +76,42 @@
             <p class="rounded-md bg-section p-4 text-center text-sm text-body">{{ __('No boxes have been created for this order yet.') }}</p>
         @else
             @foreach($packTiles->groupBy(fn ($tile) => $tile['item']->product_name) as $productName => $productTiles)
-                <section class="space-y-1 break-inside-avoid-page">
+                <section class="space-y-1.5 break-inside-avoid-page">
                     <h2 class="flex items-baseline justify-between gap-3 border-b border-border-default pb-1 text-sm font-semibold">
                         <span>{{ $productName }}</span>
                         <span class="text-xs font-normal text-body">{{ $productTiles->count() }} {{ __('packs') }} · {{ $productTiles->sum('pieces') }} {{ __('pcs') }}</span>
                     </h2>
-                    @foreach($productTiles->groupBy('color') as $colorName => $colorTiles)
-                        <div class="packing-color-row" data-packing-color="{{ $colorName }}">
-                            <div class="packing-color-label">
-                                <p class="text-xs font-semibold">{{ filled($colorName) ? $colorName : __('No color') }}</p>
-                                <p class="packing-meta">{{ $colorTiles->count() }} {{ $colorTiles->count() === 1 ? __('pack') : __('packs') }} · {{ $colorTiles->sum('pieces') }} {{ __('pcs') }}</p>
-                            </div>
-                            <div class="packing-strip">
-                                @foreach($colorTiles as $tile)
-                                    @php($image = $tile['item']->productImages()[0] ?? null)
-                                    <article class="packing-tile" data-packing-tile>
-                                        <div class="packing-thumb">
+                    <div class="packing-cards">
+                        @foreach($productTiles->groupBy(fn ($tile) => $tile['color'].'|'.$tile['quantities']->implode(':')) as $cardTiles)
+                            @php
+                                $first = $cardTiles->first();
+                                $image = $first['item']->productImages()[0] ?? null;
+                                $packCount = $cardTiles->count();
+                            @endphp
+                            <article class="packing-card" data-packing-card="{{ $first['color'] }}">
+                                <p class="truncate text-xs font-semibold">{{ filled($first['color']) ? $first['color'] : __('No color') }}</p>
+                                <div class="packing-card-images">
+                                    @foreach($cardTiles as $tile)
+                                        <div class="packing-card-thumb" data-packing-tile title="#{{ $tile['number'] }}">
                                             @if($image)
-                                                <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="block h-auto w-full">
+                                                <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}">
                                             @else
-                                                <i class="ph ph-image grid aspect-square place-items-center text-2xl text-body" aria-hidden="true"></i>
+                                                <i class="ph ph-image grid size-full place-items-center text-lg text-body" aria-hidden="true"></i>
                                             @endif
                                             <span class="packing-state {{ $tile['box']->packed_at ? 'text-primary' : 'text-body' }}">
                                                 <i class="ph {{ $tile['box']->packed_at ? 'ph-check-square' : 'ph-square' }}" aria-hidden="true"></i>
                                             </span>
                                         </div>
-                                        <p class="packing-meta font-semibold">#{{ $tile['number'] }}/{{ $packTiles->count() }}</p>
-                                        <p class="packing-meta">{{ $tile['pieces'] }} {{ __('pcs') }}</p>
-                                        <p class="packing-meta">{{ $tile['sizes']->first() }}–{{ $tile['sizes']->last() }} · {{ $tile['quantities']->implode(':') }}</p>
-                                    </article>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endforeach
+                                    @endforeach
+                                </div>
+                                <div class="packing-card-details" data-packing-details>
+                                    <p class="font-semibold text-title">{{ $packCount }} {{ $packCount === 1 ? __('pack') : __('packs') }} · {{ $cardTiles->sum('pieces') }} {{ __('pcs') }}</p>
+                                    <p>{{ $first['sizes']->first() }}–{{ $first['sizes']->last() }} · {{ $first['quantities']->implode(':') }} {{ __('per pack') }}</p>
+                                    <p>{{ $packCount === 1 ? __('Pack') : __('Packs') }} {{ $packNumbers($cardTiles->pluck('number')) }}</p>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
                 </section>
             @endforeach
         @endif

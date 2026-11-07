@@ -195,16 +195,17 @@ it('renders multiple products with multiple packs inside separate pack product g
         ->assertSee('5 packs · 15 pieces');
 });
 
-it('shows one packing slip picture per pack in a row per colour', function () {
+it('shows one packing slip picture per pack with the details once per colour', function () {
     $order = ($this->createOrder)([array_replace($this->wholesale, ['box_count' => 3])]);
 
     $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
 
     expect(substr_count($html, 'data-packing-tile'))->toBe(3)
-        ->and(substr_count($html, 'data-packing-color='))->toBe(1)
-        ->and($html)->toContain('3 packs')
-        ->and($html)->toContain('#3/3')
-        ->and($html)->toContain('S–L · 1:1:1');
+        ->and(substr_count($html, 'data-packing-card='))->toBe(1)
+        ->and(substr_count($html, 'data-packing-details'))->toBe(1)
+        ->and(substr_count($html, '1:1:1 per pack'))->toBe(1)
+        ->and($html)->toContain('3 packs · 9 pcs')
+        ->and($html)->toContain('Packs #1–3');
 });
 
 it('splits a box that holds several packs into one picture per pack', function () {
@@ -214,13 +215,12 @@ it('splits a box that holds several packs into one picture per pack', function (
     $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
 
     expect(substr_count($html, 'data-packing-tile'))->toBe(3)
-        ->and($html)->toContain('#2/3')
-        ->and($html)->toContain('3 pcs')
-        ->and($html)->toContain('S–L · 1:1:1')
+        ->and(substr_count($html, 'data-packing-card='))->toBe(1)
+        ->and($html)->toContain('S–L · 1:1:1 per pack')
         ->and($html)->not->toContain('3:3:3');
 });
 
-it('gives each colour its own packing slip row', function () {
+it('gives each colour its own packing slip card', function () {
     $blue = $this->product->colors()->create(['workspace_id' => $this->workspace->id, 'name' => 'Blue']);
     $this->product->update(['ws_size_ratios' => [$this->color->id => ['S' => 1, 'M' => 1, 'L' => 1], $blue->id => ['S' => 1, 'M' => 1, 'L' => 1]]]);
     collect(['S', 'M', 'L'])->each(fn ($size) => $this->product->variants()->create([
@@ -231,7 +231,9 @@ it('gives each colour its own packing slip row', function () {
 
     $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
 
-    expect(substr_count($html, 'data-packing-color='))->toBe(2)
+    expect(substr_count($html, 'data-packing-card='))->toBe(2)
         ->and(substr_count($html, 'data-packing-tile'))->toBe(3)
-        ->and($html)->toContain('data-packing-color="Blue"');
+        ->and($html)->toContain('data-packing-card="Blue"')
+        ->and($html)->toContain('Pack #1')
+        ->and($html)->toContain('Packs #2–3');
 });
