@@ -76,8 +76,8 @@
             <p class="rounded-md bg-section p-4 text-center text-sm text-body">{{ __('No boxes have been created for this order yet.') }}</p>
         @else
             @foreach($packTiles->groupBy(fn ($tile) => $tile['item']->product_name) as $productName => $productTiles)
-                <section class="space-y-1.5 break-inside-avoid-page">
-                    <h2 class="flex items-baseline justify-between gap-3 border-b border-border-default pb-1 text-sm font-semibold">
+                <section class="space-y-1 break-inside-avoid-page">
+                    <h2 class="flex items-baseline justify-between gap-3 border-b border-border-default pb-0.5 text-sm font-semibold">
                         <span>{{ $productName }}</span>
                         <span class="text-xs font-normal text-body">{{ $productTiles->count() }} {{ __('packs') }} · {{ $productTiles->sum('pieces') }} {{ __('pcs') }}</span>
                     </h2>
@@ -89,7 +89,7 @@
                                 $packCount = $cardTiles->count();
                             @endphp
                             <article class="packing-card" data-packing-card="{{ $first['color'] }}">
-                                <p class="truncate text-xs font-semibold">{{ filled($first['color']) ? $first['color'] : __('No color') }}</p>
+                                <p class="text-[11px] font-semibold leading-tight">{{ filled($first['color']) ? $first['color'] : __('No color') }}</p>
                                 <div class="packing-card-images">
                                     @foreach($cardTiles as $tile)
                                         <div class="packing-card-thumb" data-packing-tile title="#{{ $tile['number'] }}">
@@ -105,9 +105,8 @@
                                     @endforeach
                                 </div>
                                 <div class="packing-card-details" data-packing-details>
-                                    <p class="font-semibold text-title">{{ $packCount }} {{ $packCount === 1 ? __('pack') : __('packs') }} · {{ $cardTiles->sum('pieces') }} {{ __('pcs') }}</p>
+                                    <p><strong class="font-semibold text-title">{{ $packCount }} {{ $packCount === 1 ? __('pack') : __('packs') }} · {{ $cardTiles->sum('pieces') }} {{ __('pcs') }}</strong> · {{ $packNumbers($cardTiles->pluck('number')) }}</p>
                                     <p>{{ $first['sizes']->first() }}–{{ $first['sizes']->last() }} · {{ $first['quantities']->implode(':') }} {{ __('per pack') }}</p>
-                                    <p>{{ $packCount === 1 ? __('Pack') : __('Packs') }} {{ $packNumbers($cardTiles->pluck('number')) }}</p>
                                 </div>
                             </article>
                         @endforeach
