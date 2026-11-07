@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Commerce\Http\Controllers\Api\MobileCustomInvoiceController;
 use App\Modules\Commerce\Http\Controllers\Api\MobileLiveStreamController;
 use App\Modules\Commerce\Http\Controllers\Api\MobileOrderController;
 use App\Modules\Workspaces\Http\Middleware\ResolveMobileWorkspace;
@@ -11,6 +12,18 @@ Route::prefix('mobile/workspaces/{workspace}/orders')->middleware(['auth:sanctum
     Route::get('{order}/invoice', [MobileOrderController::class, 'invoice']);
     Route::post('{order}/invoice/send', [MobileOrderController::class, 'sendInvoice']);
     Route::put('{order}/status', [MobileOrderController::class, 'transition']);
+    Route::put('{order}/hold', [MobileOrderController::class, 'extendHold']);
+});
+
+Route::prefix('mobile/workspaces/{workspace}')->middleware(['auth:sanctum', ResolveMobileWorkspace::class])->controller(MobileCustomInvoiceController::class)->group(function (): void {
+    Route::get('custom-invoices', 'index');
+    Route::post('custom-invoices', 'store');
+    Route::get('custom-invoices/products', 'products');
+    Route::get('custom-invoices/{invoice}', 'show')->whereNumber('invoice');
+    Route::put('custom-invoices/{invoice}/status', 'transition')->whereNumber('invoice');
+    Route::post('custom-invoices/{invoice}/send', 'send')->whereNumber('invoice');
+    Route::get('invoice-requests/{invoiceRequest}/draft', 'draft')->whereNumber('invoiceRequest');
+    Route::put('invoice-requests/{invoiceRequest}/reject', 'reject')->whereNumber('invoiceRequest');
 });
 
 Route::prefix('mobile/workspaces/{workspace}/lives')->middleware(['auth:sanctum', ResolveMobileWorkspace::class])->group(function (): void {

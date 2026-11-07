@@ -45,7 +45,7 @@ class ProductGalleryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'media' => ['present', 'array', 'max:40'],
+            'media' => ['present', 'array'],
             'media.*.id' => ['required', 'integer', Rule::exists('media', 'id')->where('uploaded_by', $this->user()?->id)],
             'media.*.color_id' => ['nullable', 'regex:/^(?:[1-9][0-9]*|idx_[0-9]+)$/'],
             'media.*.alt_text' => ['nullable', 'string', 'max:255'],
@@ -66,7 +66,6 @@ class ProductGalleryRequest extends FormRequest
             $items = collect($this->input('media', []));
             $uniqueIds = $items->pluck('id')->unique();
             $media = Media::query()->whereIn('id', $uniqueIds)->get()->keyBy('id');
-            $images = $media->where('type', 'image');
             $videos = $media->where('type', 'video');
             $primaryIds = $items->where('is_primary', true)->pluck('id');
 
@@ -85,9 +84,6 @@ class ProductGalleryRequest extends FormRequest
                 $validator->errors()->add('media', 'Choose at most one primary image.');
             }
 
-            if ($images->count() > 40) {
-                $validator->errors()->add('media', 'A product can contain at most 40 images.');
-            }
             if ($videos->count() > 1) {
                 $validator->errors()->add('media', 'A product can contain at most one video.');
             }

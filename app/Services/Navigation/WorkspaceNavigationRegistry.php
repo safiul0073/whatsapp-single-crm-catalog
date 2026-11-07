@@ -638,6 +638,14 @@ class WorkspaceNavigationRegistry
                                 'keywords' => 'orders fulfillment packing slip invoices',
                             ],
                             [
+                                'label' => __('Custom invoices'),
+                                'route' => 'user.commerce.custom-invoices.index',
+                                'active' => 'user.commerce.custom-invoices.*',
+                                'icon' => 'ph-receipt',
+                                'permission' => 'commerce.invoices.view',
+                                'keywords' => 'custom invoice bill quote request',
+                            ],
+                            [
                                 'label' => __('Payment services'),
                                 'route' => 'user.commerce.payment-services.index',
                                 'active' => 'user.commerce.payment-services.*',

@@ -5,7 +5,6 @@
         $packedCount = $boxes->whereNotNull('packed_at')->count();
         $sizeOrder = array_flip(\App\Modules\Commerce\Services\OrderDocumentPresenter::SIZE_ORDER);
         $customerName = $customer['name'] ?? __('Customer');
-        $customerPhone = $customer['phone'];
         $addressLine = collect($shipTo)->filter()->implode(', ');
         $sizeRank = fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99;
         $packTiles = $boxes->flatMap(fn ($box) => $box->contents
@@ -59,7 +58,7 @@
             <div>
                 <p class="document-label">{{ __('Customer') }}</p>
                 <p class="font-medium">{{ $customerName }}</p>
-                @if($customerPhone)<p class="text-body">{{ $customerPhone }}</p>@endif
+                @if(filled($brand['email'] ?? null))<p class="text-body">{{ $brand['email'] }}</p>@endif
             </div>
             <div>
                 <p class="document-label">{{ __('Ship to') }}</p>
@@ -88,9 +87,9 @@
                                 $image = $first['item']->productImages()[0] ?? null;
                                 $packCount = $cardTiles->count();
                             @endphp
-                            <article class="packing-card" data-packing-card="{{ $first['color'] }}">
+                            <article class="packing-card packing-card-span-{{ min($packCount, 4) }}" data-packing-card="{{ $first['color'] }}">
                                 <p class="text-[11px] font-semibold leading-tight">{{ filled($first['color']) ? $first['color'] : __('No color') }}</p>
-                                <div class="packing-card-images">
+                                <div class="packing-card-images packing-card-images-{{ min($packCount, 4) }}">
                                     @foreach($cardTiles as $tile)
                                         <div class="packing-card-thumb" data-packing-tile title="#{{ $tile['number'] }}">
                                             @if($image)

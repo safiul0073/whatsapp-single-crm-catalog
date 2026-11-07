@@ -3,9 +3,11 @@
 namespace App\Modules\Commerce\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Http\Requests\ExtendOrderHoldRequest;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderBoxItem;
+use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
@@ -155,6 +157,14 @@ class MobileOrderController extends Controller
         $updated = $workflow->transition($model, $targetStatus, $request->safe()->except('status'));
 
         return response()->json(['data' => $orders->payload($updated)]);
+    }
+
+    public function extendHold(ExtendOrderHoldRequest $request, string $workspace, string $order, OrderInventoryService $inventory, UnifiedOrderService $orders): JsonResponse
+    {
+        $model = Order::query()->where('workspace_id', $request->attributes->get('mobile_workspace_id'))->findOrFail((string) ($request->route('order') ?? $order));
+        $inventory->holdUntil($model, $request->filled('until') ? $request->date('until') : null, $request->integer('hours'));
+
+        return response()->json(['data' => $orders->payload($model->fresh())]);
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Modules\Commerce\Http\Requests\PackOrderRequest;
 use App\Modules\Commerce\Http\Requests\StoreCustomerAuthSettingsRequest;
 use App\Modules\Commerce\Http\Requests\StoreOrderSettingsRequest;
 use App\Modules\Commerce\Http\Requests\StorePaymentServicesRequest;
+use App\Modules\Commerce\Http\Requests\UpdateOrderRequest;
 use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\CustomerAuthSetting;
 use App\Modules\Commerce\Models\Order;
@@ -49,6 +50,50 @@ class OrderManagementController extends Controller
             $this->assertOrder($request, $order);
             abort_unless($order->status === 'needs_details' && ! $order->groups()->exists(), 422);
         }
+
+        return view('commerce::user.create-order', array_merge($this->orderFormData($workspace), ['completingOrder' => $order]));
+    }
+
+    public function edit(Request $request, Order $order): View
+    {
+        $this->assertOrder($request, $order);
+        abort_unless($order->isEditable(), 422, 'This order can no longer be edited.');
+        $workspace = $this->workspaces->current($request->user());
+        $order->load(['groups', 'items', 'contact']);
+        $form = $this->orderFormData($workspace);
+        $availableProductIds = $form['products']->pluck('id')->all();
+        $orderGroups = [];
+        $unavailableLines = [];
+        foreach ($order->groups as $group) {
+            $label = trim($group->product_name.' · '.($group->color_name ?? ''), ' ·');
+            if (! in_array($group->product_id, $availableProductIds, true)) {
+                $unavailableLines[] = $label;
+
+                continue;
+            }
+            $orderGroups[] = match (true) {
+                ! empty($group->pack_snapshot) => ['product_id' => $group->product_id, 'mode' => 'wholesale', 'color_id' => $group->color_id, 'box_count' => $group->box_count, 'keep_group_id' => $group->id, 'locked' => true, 'label' => $label.' · '.($group->pack_snapshot['name'] ?? __('Pack')).' × '.$group->box_count],
+                $group->mode === 'retail' => ['product_id' => $group->product_id, 'mode' => 'retail', 'variant_id' => $order->items->firstWhere('group_id', $group->id)?->variant_id, 'quantity' => (int) $group->quantity],
+                default => ['product_id' => $group->product_id, 'mode' => 'wholesale', 'color_id' => $group->color_id, 'box_count' => $group->box_count],
+            };
+        }
+
+        return view('commerce::user.create-order', array_merge($form, ['completingOrder' => null, 'editingOrder' => $order, 'orderGroups' => $orderGroups, 'unavailableLines' => $unavailableLines]));
+    }
+
+    public function update(UpdateOrderRequest $request, Order $order, UnifiedOrderService $orders): RedirectResponse
+    {
+        $this->assertOrder($request, $order);
+        $orders->updateOrder($order, $this->workspaces->current($request->user()), $request->validated());
+
+        return redirect()->route('user.commerce.orders.show', $order)->with('success', __('Order updated.'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function orderFormData(Workspace $workspace): array
+    {
         $wholesaleEnabled = StoreFeatures::wholesaleEnabled($workspace->id);
         $retailEnabled = StoreFeatures::retailEnabled($workspace->id);
         $products = Product::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('visibility', 'published')->with(['variants.color', 'colors.swatchMedia'])->get()
@@ -79,7 +124,7 @@ class OrderManagementController extends Controller
                 'ratios' => $product->getEffectiveSizeRatios(), 'multiplier' => $product->ws_ratio_multiplier ?? 1, 'minimum' => $product->ws_main_moq ?? 1,
             ]);
 
-        return view('commerce::user.create-order', ['wholesaleEnabled' => $wholesaleEnabled, 'retailEnabled' => $retailEnabled, 'completingOrder' => $order, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id), 'workspaceId' => $workspace->id]);
+        return ['wholesaleEnabled' => $wholesaleEnabled, 'retailEnabled' => $retailEnabled, 'products' => $products, 'contacts' => Contact::query()->where('workspace_id', $workspace->id)->orderBy('name')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspace->id), 'workspaceId' => $workspace->id];
     }
 
     public function preview(CreateUnifiedOrderRequest $request, UnifiedOrderService $orders): JsonResponse

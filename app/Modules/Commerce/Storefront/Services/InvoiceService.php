@@ -2,6 +2,8 @@
 
 namespace App\Modules\Commerce\Storefront\Services;
 
+use App\Modules\Commerce\Models\CustomInvoice;
+use App\Modules\Commerce\Models\CustomInvoiceItem;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderGroup;
 use App\Modules\Commerce\Models\OrderItem;
@@ -9,6 +11,7 @@ use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Workspaces\Models\Workspace;
+use Closure;
 
 class InvoiceService
 {
@@ -24,12 +27,124 @@ class InvoiceService
 
         $precision = (new StoreOrderSetting(['currency' => $order->currency]))->precision();
         $currency = (string) ($order->currency ?: 'USD');
-        $fmt = fn ($amount): string => $amount !== null
+        $fmt = $this->formatter($precision, $currency);
+
+        $order->ensureInvoice();
+        $order->loadMissing('payments');
+
+        $addr = is_array($order->shipping_address) ? $order->shipping_address : [];
+        $cust = is_array($order->customer_snapshot) ? $order->customer_snapshot : [];
+        $customerName = (string) ($cust['name'] ?? $addr['name'] ?? 'Customer');
+        $customerPhone = (string) ($cust['phone'] ?? $addr['phone'] ?? '');
+        $customerEmail = (string) ($cust['email'] ?? $addr['email'] ?? '');
+        $hasDiscount = OrderMoney::minor($order->discount_amount ?? 0, $order->moneyPrecision()) > 0;
+
+        return $this->render($order->workspace_id, [
+            'number' => (string) $order->invoice_number,
+            'date' => $order->created_at ? $order->created_at->format('d M Y') : now()->format('d M Y'),
+            'reference' => 'Order: '.$this->truncate((string) $order->number, 24),
+            'status' => 'Payment: '.strtoupper(str_replace('_', ' ', (string) $order->payment_state)),
+            'is_paid' => in_array((string) $order->payment_state, ['paid', 'completed'], true),
+            'bill_to' => ['name' => $customerName, 'lines' => array_values(array_filter([$customerPhone !== '' ? 'Phone: '.$customerPhone : null, $customerEmail !== '' ? $customerEmail : null]))],
+            'ship_to' => ['label' => 'SHIP TO', 'name' => (string) ($addr['name'] ?? $customerName), 'lines' => array_values(array_filter([
+                (string) ($addr['line1'] ?? ''),
+                (string) ($addr['line2'] ?? ''),
+                trim(implode(', ', array_filter([$addr['city'] ?? null, $addr['state'] ?? null, $addr['postal_code'] ?? null, $addr['country'] ?? null]))),
+            ], fn (string $line): bool => $line !== ''))],
+            'notes_label' => 'PAYMENT INSTRUCTIONS',
+            'notes' => trim((string) $order->payment_instructions),
+            'totals' => [
+                ['Subtotal:', $fmt($order->subtotal), 'F2', [0.07, 0.09, 0.15]],
+                ['Discount:', ($hasDiscount ? '-' : '').$fmt($order->discount_amount), 'F1', $hasDiscount ? [0.10, 0.50, 0.30] : [0.07, 0.09, 0.15]],
+                ['Shipping:', $fmt($order->shipping_amount), 'F1', [0.07, 0.09, 0.15]],
+            ],
+            'total' => $fmt($order->total),
+            'after_total' => [
+                ['Paid:', $fmt($order->paidAmount()), 'F1', [0.10, 0.50, 0.30]],
+                ['Balance due:', $fmt($order->balanceDue()), 'F2', [0.07, 0.09, 0.15]],
+            ],
+            'url' => $order->invoiceUrl(),
+        ], $this->buildInvoiceRows($order, $precision, $currency));
+    }
+
+    /**
+     * Renders an owner-made custom invoice with the same layout as order invoices.
+     */
+    public function customPdf(CustomInvoice $invoice): string
+    {
+        $invoice->loadMissing(['items.variant.product.primaryMedia', 'items.product.primaryMedia']);
+        $precision = $invoice->moneyPrecision();
+        $fmt = $this->formatter($precision, (string) $invoice->currency);
+        $minor = fn ($amount): int => OrderMoney::minor($amount ?? 0, $precision);
+
+        $rows = $invoice->items->map(fn (CustomInvoiceItem $item): array => [
+            'title' => (string) $item->name,
+            'subtitle' => (string) ($item->description ?? ($item->product_id ? 'Catalog item' : 'Custom item')),
+            'breakdown' => '',
+            'type_label' => $item->product_id ? 'Product' : 'Custom',
+            'qty' => $item->quantity.' pc(s)',
+            'unit_price' => $fmt($item->unit_price),
+            'line_total' => $fmt($item->line_total),
+            'image_url' => $this->customItemImageUrl($item),
+        ])->all();
+
+        $totals = [['Subtotal:', $fmt($invoice->subtotal), 'F2', [0.07, 0.09, 0.15]]];
+        if ($minor($invoice->discount_amount) > 0) {
+            $totals[] = ['Discount:', '-'.$fmt($invoice->discount_amount), 'F1', [0.10, 0.50, 0.30]];
+        }
+        if ($minor($invoice->tax_amount) > 0) {
+            $totals[] = ['Tax:', $fmt($invoice->tax_amount), 'F1', [0.07, 0.09, 0.15]];
+        }
+        if ($minor($invoice->shipping_amount) > 0) {
+            $totals[] = ['Shipping:', $fmt($invoice->shipping_amount), 'F1', [0.07, 0.09, 0.15]];
+        }
+        $isPaid = $invoice->status === CustomInvoice::PAID;
+
+        return $this->render($invoice->workspace_id, [
+            'number' => (string) $invoice->number,
+            'date' => ($invoice->issued_at ?? $invoice->created_at ?? now())->format('d M Y'),
+            'reference' => $invoice->due_date ? 'Due: '.$invoice->due_date->format('d M Y') : '',
+            'status' => 'Status: '.strtoupper($invoice->status),
+            'is_paid' => $isPaid,
+            'bill_to' => ['name' => (string) $invoice->bill_to_name, 'lines' => array_values(array_filter([
+                $invoice->bill_to_phone ? 'Phone: '.$invoice->bill_to_phone : null,
+                $invoice->bill_to_email,
+            ]))],
+            'ship_to' => ['label' => 'ADDRESS', 'name' => (string) $invoice->bill_to_name, 'lines' => array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $invoice->bill_to_address) ?: [])))],
+            'notes_label' => 'NOTES',
+            'notes' => trim((string) $invoice->notes),
+            'totals' => $totals,
+            'total' => $fmt($invoice->total),
+            'after_total' => [
+                ['Paid:', $fmt($isPaid ? $invoice->total : 0), 'F1', [0.10, 0.50, 0.30]],
+                ['Balance due:', $fmt($isPaid || $invoice->status === CustomInvoice::CANCELLED ? 0 : $invoice->total), 'F2', [0.07, 0.09, 0.15]],
+            ],
+            'url' => $invoice->publicUrl(),
+        ], $rows);
+    }
+
+    private function formatter(int $precision, string $currency): Closure
+    {
+        return fn ($amount): string => $amount !== null
             ? OrderMoney::decimal(OrderMoney::minor($amount, $precision), $precision).' '.$currency
             : '0.00 '.$currency;
+    }
 
-        $storeSetting = StorefrontSetting::query()->where('workspace_id', $order->workspace_id)->first();
-        $storeName = (string) ($storeSetting?->config['name'] ?? Workspace::query()->find($order->workspace_id)?->name ?? 'Storefront');
+    private function customItemImageUrl(CustomInvoiceItem $item): ?string
+    {
+        $product = $item->variant?->product ?? $item->product;
+
+        return $product?->primaryMedia?->isImage() ? $product->primaryMedia->url : null;
+    }
+
+    /**
+     * @param  array{number: string, date: string, reference: string, status: string, is_paid: bool, bill_to: array{name: string, lines: list<string>}, ship_to: array{label: string, name: string, lines: list<string>}, notes_label: string, notes: string, totals: list<array{0: string, 1: string, 2: string, 3: array{0: float, 1: float, 2: float}}>, total: string, after_total: list<array{0: string, 1: string, 2: string, 3: array{0: float, 1: float, 2: float}}>, url: string}  $document
+     * @param  array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>  $rows
+     */
+    private function render(int $workspaceId, array $document, array $rows): string
+    {
+        $storeSetting = StorefrontSetting::query()->where('workspace_id', $workspaceId)->first();
+        $storeName = (string) ($storeSetting?->config['name'] ?? Workspace::query()->find($workspaceId)?->name ?? 'Storefront');
         $store = [
             'name' => $storeName,
             'address' => trim((string) ($storeSetting?->config['address'] ?? '')),
@@ -37,10 +152,7 @@ class InvoiceService
             'email' => trim((string) ($storeSetting?->config['contact_email'] ?? '')),
             'tax_id' => trim((string) ($storeSetting?->config['tax_id'] ?? '')),
         ];
-        $order->ensureInvoice();
-        $order->loadMissing('payments');
 
-        $rows = $this->buildInvoiceRows($order, $precision, $currency);
         $rowChunks = $this->paginateRows($rows);
 
         $totalPages = max(1, count($rowChunks));
@@ -100,11 +212,10 @@ class InvoiceService
             $isLastPage = $pageIndex === ($totalPages - 1);
 
             $stream = $this->renderPageStream(
-                order: $order,
+                document: $document,
                 store: $store,
                 logo: $logo ? ['name' => $logoName, 'w' => $logo['pt_width'], 'h' => $logo['pt_height']] : null,
                 rows: $pageRows,
-                fmt: $fmt,
                 isFirstPage: $isFirstPage,
                 isLastPage: $isLastPage,
                 pageNum: $pageIndex + 1,
@@ -522,16 +633,16 @@ class InvoiceService
 
     /**
      * @param  array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>  $rows
+     * @param  array<string, mixed>  $document
      * @param  array<string, string>  $imageUrlToName
      * @param  array{name: string, address: string, phone: string, email: string}  $store
      * @param  array{name: string, w: float, h: float}|null  $logo
      */
     private function renderPageStream(
-        Order $order,
+        array $document,
         array $store,
         ?array $logo,
         array $rows,
-        callable $fmt,
         bool $isFirstPage,
         bool $isLastPage,
         int $pageNum,
@@ -564,21 +675,19 @@ class InvoiceService
             $nameY -= 11;
         }
 
-        $dateStr = $order->created_at ? $order->created_at->format('d M Y') : now()->format('d M Y');
-        $paymentStr = strtoupper(str_replace('_', ' ', (string) $order->payment_state));
-        $isPaid = in_array((string) $order->payment_state, ['paid', 'completed'], true);
-
         $ops[] = $this->text(380, 806, 'INVOICE', 'F2', 24, [0.07, 0.09, 0.15]);
-        $ops[] = $this->text(380, 788, $this->truncate((string) $order->invoice_number, 28), 'F2', 10, [0.07, 0.09, 0.15]);
-        $ops[] = $this->text(380, 774, 'Date: '.$dateStr, 'F1', 9, [0.30, 0.35, 0.43]);
-        $ops[] = $this->text(380, 761, 'Order: '.$this->truncate((string) $order->number, 24), 'F1', 9, [0.30, 0.35, 0.43]);
+        $ops[] = $this->text(380, 788, $this->truncate($document['number'], 28), 'F2', 10, [0.07, 0.09, 0.15]);
+        $ops[] = $this->text(380, 774, 'Date: '.$document['date'], 'F1', 9, [0.30, 0.35, 0.43]);
+        if ($document['reference'] !== '') {
+            $ops[] = $this->text(380, 761, $document['reference'], 'F1', 9, [0.30, 0.35, 0.43]);
+        }
         $ops[] = $this->text(
             380,
             748,
-            'Payment: '.$paymentStr,
+            $document['status'],
             'F2',
             9,
-            $isPaid ? [0.10, 0.50, 0.30] : [0.75, 0.40, 0.05]
+            $document['is_paid'] ? [0.10, 0.50, 0.30] : [0.75, 0.40, 0.05]
         );
         $ops[] = $this->text(500, 761, 'Page '.$pageNum.' of '.$totalPages, 'F1', 8, [0.50, 0.55, 0.62]);
         $ops[] = '0.86 0.88 0.91 RG 0.7 w 40 738 m 555 738 l S';
@@ -589,30 +698,18 @@ class InvoiceService
             $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 40 632 250 90 re B';
             $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 305 632 250 90 re B';
 
-            $addr = is_array($order->shipping_address) ? $order->shipping_address : [];
-            $cust = is_array($order->customer_snapshot) ? $order->customer_snapshot : [];
-            $customerName = (string) ($cust['name'] ?? $addr['name'] ?? 'Customer');
-            $customerPhone = (string) ($cust['phone'] ?? $addr['phone'] ?? '');
-            $customerEmail = (string) ($cust['email'] ?? $addr['email'] ?? '');
-            $shipName = (string) ($addr['name'] ?? $customerName);
-            $shipLines = array_values(array_filter([
-                (string) ($addr['line1'] ?? ''),
-                (string) ($addr['line2'] ?? ''),
-                trim(implode(', ', array_filter([$addr['city'] ?? null, $addr['state'] ?? null, $addr['postal_code'] ?? null, $addr['country'] ?? null]))),
-            ], fn (string $line): bool => $line !== ''));
-
             $ops[] = $this->text(50, 707, 'BILL TO', 'F2', 8, [0.40, 0.45, 0.55]);
-            $ops[] = $this->text(50, 691, $this->truncate($customerName, 38), 'F2', 10, [0.07, 0.09, 0.15]);
+            $ops[] = $this->text(50, 691, $this->truncate($document['bill_to']['name'], 38), 'F2', 10, [0.07, 0.09, 0.15]);
             $billY = 676;
-            foreach (array_filter([$customerPhone !== '' ? 'Phone: '.$customerPhone : null, $customerEmail !== '' ? $customerEmail : null]) as $line) {
+            foreach (array_slice($document['bill_to']['lines'], 0, 3) as $line) {
                 $ops[] = $this->text(50, $billY, $this->truncate((string) $line, 42), 'F1', 9, [0.25, 0.30, 0.38]);
                 $billY -= 14;
             }
 
-            $ops[] = $this->text(315, 707, 'SHIP TO', 'F2', 8, [0.40, 0.45, 0.55]);
-            $ops[] = $this->text(315, 691, $this->truncate($shipName, 38), 'F2', 10, [0.07, 0.09, 0.15]);
+            $ops[] = $this->text(315, 707, $document['ship_to']['label'], 'F2', 8, [0.40, 0.45, 0.55]);
+            $ops[] = $this->text(315, 691, $this->truncate($document['ship_to']['name'], 38), 'F2', 10, [0.07, 0.09, 0.15]);
             $shipY = 676;
-            foreach (array_slice($shipLines, 0, 3) as $line) {
+            foreach (array_slice($document['ship_to']['lines'], 0, 3) as $line) {
                 $ops[] = $this->text(315, $shipY, $this->truncate($line, 44), 'F1', 9, [0.25, 0.30, 0.38]);
                 $shipY -= 14;
             }
@@ -686,11 +783,10 @@ class InvoiceService
 
         if ($isLastPage) {
             $boxTop = max(140, $y - 14);
-            $boxBottom = $boxTop - 124;
 
-            $instructions = trim((string) $order->payment_instructions);
+            $instructions = $document['notes'];
             if ($instructions !== '') {
-                $ops[] = $this->text(40, $boxTop - 16, 'PAYMENT INSTRUCTIONS', 'F2', 8, [0.40, 0.45, 0.55]);
+                $ops[] = $this->text(40, $boxTop - 16, $document['notes_label'], 'F2', 8, [0.40, 0.45, 0.55]);
                 $noteY = $boxTop - 30;
                 foreach (array_slice(str_split($instructions, 60), 0, 4) as $noteLine) {
                     $ops[] = $this->text(40, $noteY, $noteLine, 'F1', 8.5, [0.25, 0.30, 0.38]);
@@ -698,31 +794,33 @@ class InvoiceService
                 }
             }
 
-            $ops[] = '0.97 0.98 0.99 rg 0.85 0.88 0.92 RG 0.7 w 335 '.$boxBottom.' 220 124 re B';
-            $ops[] = $this->text(347, $boxTop - 16, 'Subtotal:', 'F1', 9, [0.30, 0.35, 0.43]);
-            $ops[] = $this->text(455, $boxTop - 16, $fmt($order->subtotal), 'F2', 9, [0.07, 0.09, 0.15]);
+            $totals = array_slice($document['totals'], 0, 4);
+            $boxHeight = 16 * count($totals) + 76;
+            $boxBottom = $boxTop - $boxHeight;
+            $ops[] = '0.97 0.98 0.99 rg 0.85 0.88 0.92 RG 0.7 w 335 '.$boxBottom.' 220 '.$boxHeight.' re B';
+            $lineY = $boxTop - 16;
+            foreach ($totals as [$label, $value, $font, $color]) {
+                $ops[] = $this->text(347, $lineY, $label, 'F1', 9, [0.30, 0.35, 0.43]);
+                $ops[] = $this->text(455, $lineY, $value, $font, 9, $color);
+                $lineY -= 16;
+            }
 
-            $ops[] = $this->text(347, $boxTop - 32, 'Discount:', 'F1', 9, [0.30, 0.35, 0.43]);
-            $hasDiscount = OrderMoney::minor($order->discount_amount ?? 0, $order->moneyPrecision()) > 0;
-            $ops[] = $this->text(455, $boxTop - 32, ($hasDiscount ? '-' : '').$fmt($order->discount_amount), 'F1', 9, $hasDiscount ? [0.10, 0.50, 0.30] : [0.07, 0.09, 0.15]);
+            $ops[] = '0.07 0.09 0.15 rg 335 '.($lineY - 16).' 220 28 re f';
+            $ops[] = $this->text(347, $lineY - 6, 'TOTAL:', 'F2', 10, [1, 1, 1]);
+            $ops[] = $this->text(445, $lineY - 6, $document['total'], 'F2', 10.5, [1, 1, 1]);
+            $lineY -= 32;
 
-            $ops[] = $this->text(347, $boxTop - 48, 'Shipping:', 'F1', 9, [0.30, 0.35, 0.43]);
-            $ops[] = $this->text(455, $boxTop - 48, $fmt($order->shipping_amount), 'F1', 9, [0.07, 0.09, 0.15]);
-
-            $ops[] = '0.07 0.09 0.15 rg 335 '.($boxTop - 80).' 220 28 re f';
-            $ops[] = $this->text(347, $boxTop - 70, 'TOTAL:', 'F2', 10, [1, 1, 1]);
-            $ops[] = $this->text(445, $boxTop - 70, $fmt($order->total), 'F2', 10.5, [1, 1, 1]);
-
-            $ops[] = $this->text(347, $boxTop - 96, 'Paid:', 'F1', 9, [0.30, 0.35, 0.43]);
-            $ops[] = $this->text(455, $boxTop - 96, $fmt($order->paidAmount()), 'F1', 9, [0.10, 0.50, 0.30]);
-            $ops[] = $this->text(347, $boxTop - 112, 'Balance due:', 'F2', 9, [0.07, 0.09, 0.15]);
-            $ops[] = $this->text(455, $boxTop - 112, $fmt($order->balanceDue()), 'F2', 9, [0.07, 0.09, 0.15]);
+            foreach (array_slice($document['after_total'], 0, 2) as [$label, $value, $font, $color]) {
+                $ops[] = $this->text(347, $lineY, $label, $font, 9, $font === 'F2' ? [0.07, 0.09, 0.15] : [0.30, 0.35, 0.43]);
+                $ops[] = $this->text(455, $lineY, $value, $font, 9, $color);
+                $lineY -= 16;
+            }
         }
 
         // Footer
         $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 48 m 555 48 l S';
         $ops[] = $this->text(40, 34, 'Thank you for your business.', 'F2', 8.5, [0.30, 0.35, 0.43]);
-        $ops[] = $this->text(40, 22, $this->truncate('View this invoice online: '.$order->invoiceUrl(), 110), 'F1', 7.5, [0.45, 0.50, 0.58]);
+        $ops[] = $this->text(40, 22, $this->truncate('View this invoice online: '.$document['url'], 110), 'F1', 7.5, [0.45, 0.50, 0.58]);
 
         return implode("\n", $ops);
     }

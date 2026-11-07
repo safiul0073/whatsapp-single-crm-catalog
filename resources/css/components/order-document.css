@@ -37,19 +37,43 @@
 
 
 .packing-cards {
-  @apply flex flex-wrap items-start gap-1.5 print:gap-1;
+  @apply grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-1.5 print:grid-cols-[repeat(auto-fill,minmax(30mm,1fr))] print:gap-1;
 }
 
 .packing-card {
-  @apply inline-flex w-max max-w-full flex-col gap-0.5 rounded-md border border-border-soft px-1.5 py-1 break-inside-avoid print:rounded-sm;
+  @apply flex min-w-0 flex-col gap-1 rounded-md border border-border-soft p-1.5 break-inside-avoid print:rounded-sm print:p-1;
+}
+
+.packing-card-span-2 {
+  @apply col-span-2;
+}
+
+.packing-card-span-3 {
+  @apply col-span-3;
+}
+
+.packing-card-span-4 {
+  @apply col-span-4;
 }
 
 .packing-card-images {
-  @apply flex flex-wrap gap-0.5;
+  @apply grid grid-cols-1 gap-1;
+}
+
+.packing-card-images-2 {
+  @apply grid-cols-2;
+}
+
+.packing-card-images-3 {
+  @apply grid-cols-3;
+}
+
+.packing-card-images-4 {
+  @apply grid-cols-4;
 }
 
 .packing-card-thumb {
-  @apply relative size-[14mm] shrink-0 overflow-hidden rounded-sm border border-border-soft bg-section print:size-[12mm];
+  @apply relative aspect-square w-full overflow-hidden rounded-sm border border-border-soft bg-section;
 }
 
 .packing-card-thumb img {
@@ -57,9 +81,8 @@
 }
 
 .packing-card-details {
-  @apply text-[10px] leading-snug text-body;
+  @apply text-[10px] leading-snug break-words text-body;
 }
-
 
 .packing-state {
   @apply absolute right-0.5 top-0.5 rounded-sm bg-white/90 px-px text-xs leading-none;

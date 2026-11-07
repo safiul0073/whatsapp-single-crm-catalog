@@ -30,6 +30,7 @@ import './components/commerce-pos.js';
 import './components/commerce-payment-gallery.js';
 import './components/commerce-order-packing.js';
 import './components/commerce-order-invoice.js';
+import './components/commerce-custom-invoice.js';
 import './components/commerce-product-gallery.js';
 import './components/commerce-visitors.js';
 import './components/crm-board.js';
