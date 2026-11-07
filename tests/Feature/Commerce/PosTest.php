@@ -672,3 +672,13 @@ it('prints one invoice in A4 and 80mm receipt formats with store branding and ke
     $this->actingAs($viewer)->withSession(['active_workspace_id' => $c['workspace']->id]);
     $this->get(route('user.commerce.orders.invoice.print', $order))->assertForbidden();
 });
+
+it('shows no balance due once an order is marked paid without a recorded payment', function () {
+    $order = new Order(['total' => '1400.00', 'currency' => 'USD', 'payment_state' => 'paid']);
+
+    expect($order->balanceDue())->toBe('0.00');
+
+    $order->payment_state = 'unpaid';
+
+    expect($order->balanceDue())->toBe('1400.00');
+});

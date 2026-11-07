@@ -82,6 +82,10 @@ class Order extends Model
             return null;
         }
 
+        if ($this->payment_state === 'paid') {
+            return OrderMoney::decimal(0, $this->moneyPrecision());
+        }
+
         return OrderMoney::decimal(max(0, OrderMoney::minor($this->total, $this->moneyPrecision()) - OrderMoney::minor($this->paidAmount(), $this->moneyPrecision())), $this->moneyPrecision());
     }
 

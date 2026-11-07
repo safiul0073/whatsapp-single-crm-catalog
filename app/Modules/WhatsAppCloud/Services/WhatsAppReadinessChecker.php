@@ -163,11 +163,21 @@ class WhatsAppReadinessChecker implements ReadinessChecker
         }
 
         $overall = strtoupper((string) ($health['can_send_message'] ?? 'AVAILABLE'));
-        $problems = collect($health['entities'] ?? [])
+        $errors = collect($health['entities'] ?? [])
             ->filter(fn (array $entity): bool => strtoupper((string) ($entity['can_send_message'] ?? 'AVAILABLE')) !== 'AVAILABLE')
-            ->flatMap(fn (array $entity): array => collect($entity['errors'] ?? [])->map(fn (array $error): string => trim(
-                ucfirst(strtolower((string) ($entity['entity_type'] ?? ''))).': '.($error['error_description'] ?? '').' '.($error['possible_solution'] ?? '')
-            ))->all())
+            ->flatMap(fn (array $entity): array => collect($entity['errors'] ?? [])
+                ->map(fn (array $error): array => $error + ['entity_type' => (string) ($entity['entity_type'] ?? '')])
+                ->all());
+        $messagingErrors = $errors->reject(fn (array $error): bool => $this->isCallingOnly($error));
+
+        if ($overall === 'LIMITED' && $errors->isNotEmpty() && $messagingErrors->isEmpty()) {
+            $overall = 'AVAILABLE';
+        }
+
+        $problems = $messagingErrors
+            ->map(fn (array $error): string => trim(
+                ucfirst(strtolower($error['entity_type'])).': '.($error['error_description'] ?? '').' '.($error['possible_solution'] ?? '')
+            ))
             ->filter()
             ->unique()
             ->values()
@@ -189,6 +199,18 @@ class WhatsAppReadinessChecker implements ReadinessChecker
             $state === 'action' ? ['campaigns'] : ['send', 'templates', 'campaigns'],
             $overall === 'LIMITED' ? __('Meta is limiting how much this number can send.') : null,
         );
+    }
+
+    /**
+     * Meta also reports WhatsApp voice-calling (SIP) problems in health_status; they do not affect messaging.
+     *
+     * @param  array<string, mixed>  $error
+     */
+    protected function isCallingOnly(array $error): bool
+    {
+        $text = strtolower(($error['error_description'] ?? '').' '.($error['possible_solution'] ?? ''));
+
+        return str_contains($text, 'calling') || preg_match('/\bsip\b/', $text) === 1;
     }
 
     /**

@@ -116,6 +116,41 @@ it('does not block sending for a coexistence number that Meta only limits', func
         ->and($report['blocked_features'])->not->toContain('templates');
 });
 
+it('ignores WhatsApp calling (SIP) limits when checking whether messages can be sent', function (): void {
+    fakeWhatsAppReadiness(['health_status' => [
+        'can_send_message' => 'LIMITED',
+        'entities' => [[
+            'entity_type' => 'PHONE_NUMBER',
+            'can_send_message' => 'LIMITED',
+            'errors' => [['error_code' => 141010, 'error_description' => 'WhatsApp Business calling cannot use SIP because it is not enabled', 'possible_solution' => 'Configure SIP using {PHONE_NUMBER_ID}/settings API']],
+        ]],
+    ]]);
+
+    $report = app(ChannelReadinessService::class)->check(readinessChannel('whatsapp'));
+
+    expect(readinessItem($report, 'can_send')['state'])->toBe('done');
+});
+
+it('keeps only messaging problems when Meta mixes them with calling limits', function (): void {
+    fakeWhatsAppReadiness(['health_status' => [
+        'can_send_message' => 'LIMITED',
+        'entities' => [[
+            'entity_type' => 'PHONE_NUMBER',
+            'can_send_message' => 'LIMITED',
+            'errors' => [
+                ['error_description' => 'WhatsApp Business calling cannot use SIP because it is not enabled', 'possible_solution' => 'Configure SIP'],
+                ['error_description' => 'Quality is low.', 'possible_solution' => 'Send fewer messages.'],
+            ],
+        ]],
+    ]]);
+
+    $item = readinessItem(app(ChannelReadinessService::class)->check(readinessChannel('whatsapp')), 'can_send');
+
+    expect($item['state'])->toBe('action')
+        ->and(implode(' ', $item['how']))->toContain('Quality is low.')
+        ->and(implode(' ', $item['how']))->not->toContain('SIP');
+});
+
 it('shows Meta\'s own fix when a WhatsApp number is blocked', function (): void {
     fakeWhatsAppReadiness(['health_status' => [
         'can_send_message' => 'BLOCKED',
