@@ -7,6 +7,28 @@
         $customerName = $customer['name'] ?? __('Customer');
         $customerPhone = $customer['phone'];
         $addressLine = collect($shipTo)->filter()->implode(', ');
+        $sizeRank = fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99;
+        $packTiles = $boxes->flatMap(fn ($box) => $box->contents
+            ->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))
+            ->flatMap(function ($contents) use ($box, $sizeRank) {
+                $contents = $contents->sortBy($sizeRank)->values();
+                $total = (int) $contents->sum('quantity');
+                $perPack = $box->group?->mode === 'wholesale' ? (int) $box->group->pieces_per_box : 0;
+                $packCount = $perPack > 0 && $total > $perPack && $total % $perPack === 0 ? intdiv($total, $perPack) : 1;
+                $packCount = $contents->every(fn ($content) => $content->quantity % $packCount === 0) ? $packCount : 1;
+                $quantities = $contents->map(fn ($content) => intdiv((int) $content->quantity, $packCount));
+
+                return collect(range(1, $packCount))->map(fn () => [
+                    'box' => $box,
+                    'item' => $contents->first()->item,
+                    'color' => (string) ($contents->first()->item->attributes['color'] ?? ''),
+                    'sizes' => $contents->map(fn ($content) => $content->item->attributes['size'] ?? '—'),
+                    'quantities' => $quantities,
+                    'pieces' => (int) $quantities->sum(),
+                ]);
+            }))
+            ->values()
+            ->map(fn (array $tile, int $index): array => $tile + ['number' => $index + 1]);
     @endphp
         <header class="flex items-start justify-between gap-4 border-b border-border-default pb-2">
             <div>
@@ -32,54 +54,48 @@
             </div>
             <div class="text-right">
                 <p class="document-label">{{ __('Packing') }}</p>
-                <p class="font-medium">{{ $boxes->count() }} {{ __('boxes') }} · {{ $totalPieces }} {{ __('pcs') }}</p>
+                <p class="font-medium">{{ $packTiles->count() }} {{ __('packs') }} · {{ $totalPieces }} {{ __('pcs') }}</p>
                 <p class="text-body">{{ $packedCount }} / {{ $boxes->count() }} {{ __('packed') }}</p>
             </div>
         </section>
 
-        @php
-            $packs = $boxes->flatMap(fn ($box) => $box->contents
-                ->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))
-                ->map(fn ($contents) => ['box' => $box, 'index' => $boxes->search($box) + 1, 'contents' => $contents->sortBy(fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99)->values()]))
-                ->groupBy(fn ($pack) => $pack['contents']->first()->item->product_name);
-        @endphp
-        @if($packs->isEmpty())
+        @if($packTiles->isEmpty())
             <p class="rounded-md bg-section p-4 text-center text-sm text-body">{{ __('No boxes have been created for this order yet.') }}</p>
         @else
-            @foreach($packs as $productName => $productPacks)
-                <section class="space-y-1.5 break-inside-avoid-page">
+            @foreach($packTiles->groupBy(fn ($tile) => $tile['item']->product_name) as $productName => $productTiles)
+                <section class="space-y-1 break-inside-avoid-page">
                     <h2 class="flex items-baseline justify-between gap-3 border-b border-border-default pb-1 text-sm font-semibold">
                         <span>{{ $productName }}</span>
-                        <span class="text-xs font-normal text-body">{{ $productPacks->count() }} {{ __('packs') }} · {{ $productPacks->sum(fn ($pack) => $pack['contents']->sum('quantity')) }} {{ __('pcs') }}</span>
+                        <span class="text-xs font-normal text-body">{{ $productTiles->count() }} {{ __('packs') }} · {{ $productTiles->sum('pieces') }} {{ __('pcs') }}</span>
                     </h2>
-                    <div class="packing-grid">
-                        @foreach($productPacks as $pack)
-                            @php
-                                $contents = $pack['contents'];
-                                $item = $contents->first()->item;
-                                $image = $item->productImages()[0] ?? null;
-                                $color = $item->attributes['color'] ?? null;
-                                $sizes = $contents->map(fn ($content) => $content->item->attributes['size'] ?? '—');
-                            @endphp
-                            <article class="packing-tile">
-                                <div class="packing-thumb">
-                                    @if($image)
-                                        <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="block h-auto w-full">
-                                    @else
-                                        <i class="ph ph-image grid aspect-square place-items-center text-2xl text-body" aria-hidden="true"></i>
-                                    @endif
-                                    <span class="packing-state {{ $pack['box']->packed_at ? 'text-primary' : 'text-body' }}">
-                                        <i class="ph {{ $pack['box']->packed_at ? 'ph-check-square' : 'ph-square' }}" aria-hidden="true"></i>
-                                    </span>
-                                </div>
-                                <p class="packing-meta">
-                                    <strong class="font-semibold">{{ filled($color) ? $color : __('No color') }}</strong>
-                                    · {{ $pack['index'] }}/{{ $boxes->count() }} · {{ $contents->sum('quantity') }} {{ __('pcs') }}
-                                </p>
-                                <p class="packing-meta">{{ $sizes->first() }}–{{ $sizes->last() }} · {{ $contents->pluck('quantity')->implode(':') }}</p>
-                            </article>
-                        @endforeach
-                    </div>
+                    @foreach($productTiles->groupBy('color') as $colorName => $colorTiles)
+                        <div class="packing-color-row" data-packing-color="{{ $colorName }}">
+                            <div class="packing-color-label">
+                                <p class="text-xs font-semibold">{{ filled($colorName) ? $colorName : __('No color') }}</p>
+                                <p class="packing-meta">{{ $colorTiles->count() }} {{ $colorTiles->count() === 1 ? __('pack') : __('packs') }} · {{ $colorTiles->sum('pieces') }} {{ __('pcs') }}</p>
+                            </div>
+                            <div class="packing-strip">
+                                @foreach($colorTiles as $tile)
+                                    @php($image = $tile['item']->productImages()[0] ?? null)
+                                    <article class="packing-tile" data-packing-tile>
+                                        <div class="packing-thumb">
+                                            @if($image)
+                                                <img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="block h-auto w-full">
+                                            @else
+                                                <i class="ph ph-image grid aspect-square place-items-center text-2xl text-body" aria-hidden="true"></i>
+                                            @endif
+                                            <span class="packing-state {{ $tile['box']->packed_at ? 'text-primary' : 'text-body' }}">
+                                                <i class="ph {{ $tile['box']->packed_at ? 'ph-check-square' : 'ph-square' }}" aria-hidden="true"></i>
+                                            </span>
+                                        </div>
+                                        <p class="packing-meta font-semibold">#{{ $tile['number'] }}/{{ $packTiles->count() }}</p>
+                                        <p class="packing-meta">{{ $tile['pieces'] }} {{ __('pcs') }}</p>
+                                        <p class="packing-meta">{{ $tile['sizes']->first() }}–{{ $tile['sizes']->last() }} · {{ $tile['quantities']->implode(':') }}</p>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
                 </section>
             @endforeach
         @endif

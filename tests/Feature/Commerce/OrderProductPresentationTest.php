@@ -194,3 +194,44 @@ it('renders multiple products with multiple packs inside separate pack product g
         ->assertSee('3 packs · 9 pieces')
         ->assertSee('5 packs · 15 pieces');
 });
+
+it('shows one packing slip picture per pack in a row per colour', function () {
+    $order = ($this->createOrder)([array_replace($this->wholesale, ['box_count' => 3])]);
+
+    $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
+
+    expect(substr_count($html, 'data-packing-tile'))->toBe(3)
+        ->and(substr_count($html, 'data-packing-color='))->toBe(1)
+        ->and($html)->toContain('3 packs')
+        ->and($html)->toContain('#3/3')
+        ->and($html)->toContain('S–L · 1:1:1');
+});
+
+it('splits a box that holds several packs into one picture per pack', function () {
+    $order = ($this->createOrder)([$this->wholesale]);
+    $order->boxes()->first()->contents()->get()->each(fn ($content) => $content->update(['quantity' => $content->quantity * 3]));
+
+    $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
+
+    expect(substr_count($html, 'data-packing-tile'))->toBe(3)
+        ->and($html)->toContain('#2/3')
+        ->and($html)->toContain('3 pcs')
+        ->and($html)->toContain('S–L · 1:1:1')
+        ->and($html)->not->toContain('3:3:3');
+});
+
+it('gives each colour its own packing slip row', function () {
+    $blue = $this->product->colors()->create(['workspace_id' => $this->workspace->id, 'name' => 'Blue']);
+    $this->product->update(['ws_size_ratios' => [$this->color->id => ['S' => 1, 'M' => 1, 'L' => 1], $blue->id => ['S' => 1, 'M' => 1, 'L' => 1]]]);
+    collect(['S', 'M', 'L'])->each(fn ($size) => $this->product->variants()->create([
+        'workspace_id' => $this->workspace->id, 'color_id' => $blue->id, 'sku' => 'shirt-blue-'.$size,
+        'meta_retailer_id' => 'shirt-blue-'.$size, 'size' => $size, 'price' => 10, 'stock_quantity' => 100, 'status' => 'active',
+    ]));
+    $order = ($this->createOrder)([$this->wholesale, array_replace($this->wholesale, ['color_id' => $blue->id, 'box_count' => 2])]);
+
+    $html = $this->get(route('user.commerce.orders.packing-slip', $order))->assertOk()->getContent();
+
+    expect(substr_count($html, 'data-packing-color='))->toBe(2)
+        ->and(substr_count($html, 'data-packing-tile'))->toBe(3)
+        ->and($html)->toContain('data-packing-color="Blue"');
+});
