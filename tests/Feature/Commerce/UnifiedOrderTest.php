@@ -166,8 +166,9 @@ it('releases cancellation and expiry reservations safely', function () {
     $this->travel(25)->hours();
     app(OrderInventoryService::class)->expire();
     app(OrderInventoryService::class)->expire();
-    expect($order->reservations()->where('state', 'expired')->count())->toBe(3);
-    app(OrderWorkflowService::class)->transition($order->fresh(), 'cancelled');
+    expect($order->fresh()->status)->toBe('cancelled')
+        ->and($order->reservations()->where('state', 'released')->count())->toBe(3)
+        ->and($order->events()->where('key', 'hold_expired')->exists())->toBeTrue();
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(100);
 });
 
@@ -293,7 +294,7 @@ it('aggregates wholesale tiers across colors without changing each box ratio', f
     expect($order->subtotal)->toBe('144.0000')->and($order->boxes()->count())->toBe(6)->and($order->items->sum('quantity'))->toBe(36);
 });
 
-it('reacquires expired stock before payment and rejects stock held by another order', function () {
+it('cannot reopen an expired order once another order holds its stock', function () {
     $c = unifiedContext();
     $c['variants'][0]->update(['stock_quantity' => 6]);
     $service = app(UnifiedOrderService::class);
@@ -303,9 +304,9 @@ it('reacquires expired stock before payment and rejects stock held by another or
     $c['data']['submission_reference'] = (string) Str::uuid();
     $service->create($c['workspace'], $c['data']);
     $workflow = app(OrderWorkflowService::class);
-    $workflow->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
-    expect(fn () => $workflow->transition($order->fresh(), 'paid'))->toThrow(ValidationException::class);
-    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(6)->and($order->fresh()->payment_state)->toBe('unpaid');
+    expect($order->fresh()->status)->toBe('cancelled');
+    expect(fn () => $workflow->transition($order->fresh(), 'awaiting_payment'))->toThrow(ValidationException::class);
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(6)->and($order->fresh()->status)->toBe('cancelled');
 });
 
 it('blocks over-allocation and dispatch until every retail piece is packed', function () {

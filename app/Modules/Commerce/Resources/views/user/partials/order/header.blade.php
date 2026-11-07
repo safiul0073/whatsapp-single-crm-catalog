@@ -14,6 +14,9 @@
             @if($primaryAction)
                 <a href="{{ $primaryAction['href'] }}" class="btn btn-primary btn-sm"><i class="ph {{ $primaryAction['icon'] }}"></i> {{ $primaryAction['label'] }}</a>
             @endif
+            @if($canUpdate && $order->isEditable())
+                <a href="{{ route('user.commerce.orders.edit', $order) }}" class="btn btn-outline btn-sm" data-edit-order><i class="ph ph-pencil-simple"></i> {{ __('Edit order') }}</a>
+            @endif
             <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
                 <button type="button" class="btn btn-outline btn-sm h-full" @click="open = !open" :aria-expanded="open" aria-haspopup="menu"><i class="ph ph-files"></i> {{ __('Documents') }} <i class="ph ph-caret-down text-xs"></i></button>
                 <div x-show="open" x-cloak class="order-menu" role="menu">
@@ -53,8 +56,36 @@
             @endif
         </div>
     </div>
+    @if($canUpdate && $order->status === 'awaiting_payment' && $order->payment_state === 'submitted')
+        <div class="flex flex-col gap-3 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-title sm:flex-row sm:items-center sm:justify-between">
+            <p role="status"><i class="ph ph-receipt"></i> {{ __('The customer submitted payment proof. Check it and confirm the payment.') }}@if($holdExpiresAt) {{ __('Stock is held until :time.', ['time' => $holdExpiresAt->format('M j, Y · g:i A')]) }}@endif</p>
+            <div class="flex flex-wrap gap-2">
+                <a href="#payments" class="btn btn-outline btn-sm"><i class="ph ph-eye"></i> {{ __('Review proof') }}</a>
+                <form method="POST" action="{{ route('user.commerce.orders.transition', $order) }}">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="status" value="paid">
+                    <button type="submit" class="btn btn-primary btn-sm" data-confirm data-confirm-title="{{ __('Confirm this payment?') }}" data-confirm-message="{{ __('The order is marked paid and the held stock is taken out of inventory.') }}" data-confirm-button="{{ __('Confirm') }}" data-confirm-variant="primary" data-confirm-icon="ph-check-circle"><i class="ph ph-check-circle"></i> {{ __('Confirm payment') }}</button>
+                </form>
+                <button type="button" class="btn btn-outline btn-sm" data-modal-open="extendHoldModal"><i class="ph ph-clock-clockwise"></i> {{ __('Change hold time') }}</button>
+            </div>
+        </div>
+    @elseif($canUpdate && ($holdExpiresAt || $order->status === 'awaiting_payment'))
+        <div class="flex flex-col gap-3 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-title sm:flex-row sm:items-center sm:justify-between">
+            <p role="status"><i class="ph ph-hourglass-medium"></i> {{ $holdExpiresAt ? __('Stock held for the customer until :time. The order is cancelled automatically if not paid.', ['time' => $holdExpiresAt->format('M j, Y · g:i A')]) : __('Stock is not held for this order.') }}</p>
+            <button type="button" class="btn btn-outline btn-sm" data-modal-open="extendHoldModal"><i class="ph ph-clock-clockwise"></i> {{ __('Change hold time') }}</button>
+        </div>
+    @endif
     @if($order->status === 'cancelled')
-        <p role="status" class="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-title">{{ __('This order was cancelled.') }}</p>
+        <div role="status" class="flex flex-col gap-3 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-title sm:flex-row sm:items-center sm:justify-between">
+            <p>{{ $holdLapsed ? __('This order was cancelled automatically because payment was not completed in time.') : __('This order was cancelled.') }}</p>
+            @if($holdLapsed && $canUpdate)
+                <form method="POST" action="{{ route('user.commerce.orders.transition', $order) }}">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="status" value="awaiting_payment">
+                    <button type="submit" class="btn btn-outline btn-sm"><i class="ph ph-arrow-counter-clockwise"></i> {{ __('Reopen and hold stock again') }}</button>
+                </form>
+            @endif
+        </div>
     @elseif($currentStepIndex !== false)
         <ol class="order-stepper grid grid-cols-2 {{ $order->source === 'pos' && $order->fulfillment_type === 'pickup' ? '' : 'sm:grid-cols-4 lg:grid-cols-8' }}">
             @foreach($progressSteps as $stepIndex => $step)

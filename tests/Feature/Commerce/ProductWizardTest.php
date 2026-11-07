@@ -136,6 +136,15 @@ it('rejects foreign media colors and products without changing saved data', func
     expect($product->fresh()->name)->toBe('Protected Tee')->and($product->fresh()->gallery)->toHaveCount(0);
 });
 
+it('accepts more than forty gallery images', function (): void {
+    $product = $this->productService->createDraft($this->workspace->id, ['name' => 'Big Gallery Tee']);
+    $media = collect(range(1, 45))->map(fn (int $i): array => ['id' => wizardImage($this->merchant)->id, 'is_primary' => $i === 1])->all();
+
+    $this->putJson(route('user.commerce.products.gallery.update', $product), ['media' => $media])->assertSessionHasNoErrors();
+
+    expect($product->fresh()->gallery)->toHaveCount(45);
+});
+
 it('rolls back attempted publication of an incomplete product', function (): void {
     $product = $this->productService->createDraft($this->workspace->id, ['name' => 'Incomplete']);
     $this->put(route('user.commerce.products.details.update', $product), ['name' => 'Changed', 'status' => 'active', 'next_step' => 9])->assertSessionHasErrors('status');

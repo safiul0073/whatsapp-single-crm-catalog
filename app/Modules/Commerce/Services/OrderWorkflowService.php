@@ -28,7 +28,7 @@ class OrderWorkflowService
         'packed' => ['shipped', 'cancelled'],
         'shipped' => ['completed'],
         'completed' => [],
-        'cancelled' => [],
+        'cancelled' => ['awaiting_payment'],
     ];
 
     public function __construct(protected AuditLogService $audit) {}
@@ -134,6 +134,15 @@ class OrderWorkflowService
                 throw ValidationException::withMessages(['status' => "Order cannot move from {$locked->status} to {$to}."]);
             }
             $unified = $locked->source !== 'native_whatsapp' || $locked->groups()->exists();
+            if ($locked->status === 'cancelled') {
+                if (! $locked->events()->where('key', 'hold_expired')->exists() || $locked->paid_at) {
+                    throw ValidationException::withMessages(['status' => 'Only orders cancelled because their payment window expired can be reopened.']);
+                }
+                $locked->reservations()->where('state', 'released')->update(['state' => 'expired', 'expires_at' => now()]);
+                app(OrderInventoryService::class)->reserve($locked->load('items'));
+                $locked->inventory_restored_at = null;
+                $locked->events()->whereIn('key', ['hold_expired', 'reservation_expired', 'cancelled'])->delete();
+            }
             if ($locked->status === 'draft' && $to !== 'cancelled') {
                 app(OrderInventoryService::class)->reserve($locked->load('items'));
                 $to = $locked->shipping_quote_required ? 'requested' : 'awaiting_payment';

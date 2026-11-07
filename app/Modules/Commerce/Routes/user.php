@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
+use App\Modules\Commerce\Http\Controllers\User\CustomInvoiceController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
 use App\Modules\Commerce\Http\Controllers\User\VisitorController;
@@ -86,6 +87,25 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('catalog/{catalog}/verify-sales-channels', [CommerceController::class, 'verifySalesChannels'])->middleware('permission:commerce.catalog.manage')->name('catalog.verify-sales-channels');
     Route::post('catalog/{catalog}/commerce-settings', [CommerceController::class, 'updateCommerceSettings'])->middleware('permission:commerce.catalog.manage')->name('catalog.commerce-settings');
     Route::get('orders', [CommerceController::class, 'orders'])->middleware('permission:commerce.orders.view')->name('orders.index');
+    Route::prefix('custom-invoices')->name('custom-invoices.')->controller(CustomInvoiceController::class)->group(function (): void {
+        Route::middleware('permission:commerce.invoices.manage')->group(function (): void {
+            Route::get('create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('customers', 'customers')->middleware('throttle:60,1')->name('customers');
+            Route::get('{customInvoice}/edit', 'edit')->name('edit');
+            Route::put('{customInvoice}', 'update')->name('update');
+            Route::put('{customInvoice}/status', 'transition')->name('transition');
+            Route::post('{customInvoice}/send', 'send')->name('send');
+            Route::post('{customInvoice}/link', 'regenerateLink')->name('link');
+            Route::delete('{customInvoice}', 'destroy')->name('destroy');
+            Route::put('requests/{invoiceRequest}/reject', 'rejectRequest')->name('requests.reject');
+        });
+        Route::middleware('permission:commerce.invoices.view')->group(function (): void {
+            Route::get('/', 'index')->name('index');
+            Route::get('{customInvoice}/pdf', 'pdf')->name('pdf');
+            Route::get('{customInvoice}', 'show')->name('show');
+        });
+    });
     Route::get('visitors', [VisitorController::class, 'index'])->middleware('permission:commerce.customers.view')->name('visitors.index');
     Route::get('visitors/live', [VisitorController::class, 'live'])->middleware('permission:commerce.customers.view')->name('visitors.live');
     Route::get('visitors/now', [VisitorController::class, 'livePage'])->middleware('permission:commerce.customers.view')->name('visitors.live-page');
@@ -109,6 +129,8 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::put('payment-services', [$controller, 'updatePaymentServices'])->name('payment-services.update');
     });
     Route::middleware('permission:commerce.orders.update')->group(function () use ($controller): void {
+        Route::get('orders/{order}/edit', [$controller, 'edit'])->name('orders.edit');
+        Route::put('orders/{order}/items', [$controller, 'update'])->name('orders.update');
         Route::post('orders/{order}/boxes', [$controller, 'retailBox'])->name('orders.boxes.store');
         Route::put('orders/{order}/boxes/packed-all', [$controller, 'packedAll'])->name('orders.boxes.packed-all');
         Route::put('orders/{order}/boxes/{box}/packed', [$controller, 'packed'])->name('orders.boxes.packed');
@@ -124,6 +146,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('orders/{order}', [CommerceController::class, 'order'])->middleware('permission:commerce.orders.view')->name('orders.show');
     Route::put('orders/{order}/customer', [CommerceController::class, 'updateCustomer'])->middleware('permission:commerce.orders.customer.edit')->name('orders.customer.update');
     Route::put('orders/{order}/quote', [CommerceController::class, 'quote'])->middleware('permission:commerce.orders.update')->name('orders.quote');
+    Route::put('orders/{order}/hold', [CommerceController::class, 'extendHold'])->middleware('permission:commerce.orders.update')->name('orders.hold');
     Route::put('orders/{order}/status', [CommerceController::class, 'transition'])->middleware('permission:commerce.orders.update')->name('orders.transition');
     Route::put('orders/{order}/shipment', [CommerceController::class, 'updateShipment'])->middleware('permission:commerce.orders.update')->name('orders.shipment');
     Route::post('conversations/{conversation}/catalog', [CommerceController::class, 'sendCatalog'])->middleware('permission:commerce.catalog.manage')->name('conversations.catalog');

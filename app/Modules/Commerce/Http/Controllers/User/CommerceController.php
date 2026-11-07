@@ -10,6 +10,7 @@ use App\Modules\Commerce\Http\Requests\CatalogRequest;
 use App\Modules\Commerce\Http\Requests\CategoryRequest;
 use App\Modules\Commerce\Http\Requests\CommerceSettingsRequest;
 use App\Modules\Commerce\Http\Requests\DeleteOrdersRequest;
+use App\Modules\Commerce\Http\Requests\ExtendOrderHoldRequest;
 use App\Modules\Commerce\Http\Requests\ProductDetailsRequest;
 use App\Modules\Commerce\Http\Requests\ProductGalleryRequest;
 use App\Modules\Commerce\Http\Requests\ProductOptionsRequest;
@@ -40,6 +41,7 @@ use App\Modules\Commerce\Services\CatalogDiagnosticsService;
 use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
 use App\Modules\Commerce\Services\MetaCatalogClient;
+use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
@@ -902,6 +904,14 @@ class CommerceController extends Controller
         $this->orders->transition($order, $request->string('status')->toString(), $request->validated());
 
         return back()->with('success', __('Order status updated.'));
+    }
+
+    public function extendHold(ExtendOrderHoldRequest $request, Order $order): RedirectResponse
+    {
+        $this->assertWorkspace($request, $order->workspace_id);
+        $expiresAt = app(OrderInventoryService::class)->holdUntil($order, $request->filled('until') ? $request->date('until') : null, $request->integer('hours'));
+
+        return back()->with('success', __('Stock is now held until :time.', ['time' => $expiresAt->format('M j, Y · g:i A')]));
     }
 
     public function updateShipment(UpdateShipmentRequest $request, Order $order): RedirectResponse

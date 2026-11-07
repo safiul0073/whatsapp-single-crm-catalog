@@ -17,7 +17,8 @@ env:
   DEPLOY_HOST: 145.79.28.69
   DEPLOY_PORT: "65002"
   DEPLOY_USER: u619547556
-  DEPLOY_PATH: domains/app.fashionfiest.com/public_html
+  DEPLOY_BASE: domains/app.fashionfiest.com
+  KEEP_RELEASES: "5"
 
 jobs:
   deploy:
@@ -65,38 +66,63 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Put the application in maintenance mode
+      - name: Pick a release name
+        run: echo "RELEASE=$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Check the server layout
         run: |
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && if [ -f artisan ]; then php artisan down --retry=60; fi"
+            "cd '$DEPLOY_BASE' && test -L current && test -f shared/.env && test -d shared/storage" \
+            || { echo 'Server is not set up for release deploys. Run the one-time migration first.'; exit 1; }
 
-      - name: Upload the application
+      - name: Upload the new release (the live site is untouched)
         run: |
-          rsync -az --delete \
+          rsync -az \
+            --link-dest="../../current/" \
             --exclude='.env' \
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='node_modules/' \
             --exclude='public/storage' \
-            --exclude='storage/' \
+            --exclude='/storage/' \
             --exclude='tests/' \
             -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
-            ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+            ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_BASE/releases/$RELEASE/"
 
-      - name: Finalize the deployment
+      - name: Prepare the release and migrate
         run: |
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && \
-            mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && \
-            chmod -R ug+rw storage bootstrap/cache && \
-            php artisan migrate --force && \
+            "set -e; cd '$DEPLOY_BASE/releases/$RELEASE' && \
+            ln -sfn ../../shared/.env .env && \
+            rm -rf storage && ln -sfn ../../shared/storage storage && \
+            mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs storage/app/public storage/app/support-attachments bootstrap/cache && \
+            chmod -R ug+rw bootstrap/cache && \
             php artisan storage:link --force && \
             php artisan optimize && \
-            php artisan queue:restart && \
-            php artisan up"
+            php artisan migrate --force"
 
-      - name: Restore the application after a failed deployment
+      - name: Switch traffic to the new release
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "set -e; cd '$DEPLOY_BASE' && \
+            ln -sfn 'releases/$RELEASE' current_tmp && mv -Tf current_tmp current && \
+            cd public_html && \
+            for f in ../current/public/* ../current/public/.[!.]*; do \
+              [ -e \"\$f\" ] || [ -L \"\$f\" ] || continue; \
+              n=\$(basename \"\$f\"); [ \"\$n\" = .htaccess ] && continue; \
+              [ -L \"\$n\" ] || [ ! -e \"\$n\" ] && ln -sfn \"\$f\" \"\$n\"; \
+            done; \
+            cp ../current/public/.htaccess .htaccess && \
+            find . -maxdepth 1 -xtype l -delete && \
+            cd ../current && php artisan queue:restart"
+
+      - name: Remove old releases
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_BASE/releases' && ls -1t | tail -n +$((KEEP_RELEASES + 1)) | xargs -r rm -rf" || true
+
+      - name: Remove the unfinished release after a failure
         if: failure()
         run: |
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && if [ -f artisan ]; then php artisan up; fi" || true
+            "cd '$DEPLOY_BASE' && [ \"\$(readlink current)\" != 'releases/$RELEASE' ] && rm -rf 'releases/$RELEASE'" || true

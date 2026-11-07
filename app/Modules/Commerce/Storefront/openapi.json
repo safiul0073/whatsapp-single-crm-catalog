@@ -3427,6 +3427,256 @@
           }
         ]
       }
+    },
+    "/me/invoices": {
+      "get": {
+        "operationId": "get_me_invoices",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me/invoices/{number}": {
+      "get": {
+        "operationId": "get_me_invoices__number_",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me/invoices/{number}/pdf": {
+      "get": {
+        "operationId": "get_me_invoices__number__pdf",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me/invoice-requests": {
+      "get": {
+        "operationId": "get_me_invoice_requests",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_me_invoice_requests",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform or customer credential"
+          },
+          "404": {
+            "description": "Unknown or out-of-scope resource"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Host",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {

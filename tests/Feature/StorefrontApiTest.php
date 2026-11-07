@@ -13,6 +13,7 @@ use App\Modules\Commerce\Models\ProductOption;
 use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
+use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
@@ -202,6 +203,62 @@ it('submits payment evidence without marking the order paid', function (): void 
     $this->post('/api/storefront/v1/orders/'.$order['submission_reference'].'/evidence', ['payment_method_id' => 'bank', 'transaction_id' => 'BANK-123', 'receipts' => [UploadedFile::fake()->image('receipt.png')]], $this->auth)->assertOk();
     expect(Order::query()->findOrFail($order['id'])->payment_state)->toBe('submitted');
     expect($this->variant->fresh()->stock_quantity)->toBe(5);
+});
+
+it('cancels an unpaid order when its stock hold expires, even with payment proof', function (): void {
+    Storage::fake('local');
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    $order = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
+    expect($order['hold_expires_at'])->not->toBeNull();
+    $this->post('/api/storefront/v1/orders/'.$order['submission_reference'].'/evidence', ['payment_method_id' => 'bank', 'transaction_id' => 'BANK-9', 'receipts' => [UploadedFile::fake()->image('receipt.png')]], $this->auth)->assertOk();
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+    $model = Order::query()->findOrFail($order['id']);
+    expect($model->status)->toBe('cancelled')
+        ->and($model->events()->where('key', 'hold_expired')->exists())->toBeTrue()
+        ->and(OrderReservation::query()->where('order_id', $model->id)->where('state', 'reserved')->exists())->toBeFalse()
+        ->and($this->variant->fresh()->stock_quantity)->toBe(5);
+});
+
+it('places a held order without choosing a payment method', function (): void {
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    unset($data['payment_method_id']);
+    $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertStatus(422);
+    $order = $this->postJson('/api/storefront/v1/checkout/orders', [...$data, 'hold' => true], [...$headers, 'Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data');
+    expect($order['status'])->toBe('awaiting_payment')->and($order['hold_expires_at'])->not->toBeNull();
+});
+
+it('lets the owner extend a hold and reopen an order whose hold expired', function (): void {
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    $inventory = app(OrderInventoryService::class);
+    $before = $inventory->holdExpiresAt($order);
+    $after = $inventory->extendHold($order, 48);
+    expect($after->diffInHours($before, true))->toBeGreaterThanOrEqual(47.9);
+    $this->travel(30)->hours();
+    $inventory->expire();
+    expect($order->fresh()->status)->toBe('awaiting_payment');
+    $this->travel(50)->hours();
+    $inventory->expire();
+    expect($order->fresh()->status)->toBe('cancelled');
+    app(OrderWorkflowService::class)->transition($order, 'awaiting_payment');
+    expect($order->fresh()->status)->toBe('awaiting_payment')
+        ->and($inventory->holdExpiresAt($order->fresh())?->isFuture())->toBeTrue();
+});
+
+it('lets the owner set an exact hold deadline', function (): void {
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    $until = now()->addDays(5)->startOfMinute();
+    app(OrderInventoryService::class)->holdUntil($order, $until);
+    expect(app(OrderInventoryService::class)->holdExpiresAt($order)->equalTo($until))->toBeTrue();
+});
+
+it('does not reopen orders cancelled for other reasons', function (): void {
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    app(OrderWorkflowService::class)->transition($order, 'cancelled');
+    expect(fn () => app(OrderWorkflowService::class)->transition($order, 'awaiting_payment'))->toThrow(ValidationException::class);
 });
 
 it('blocks expired tokens and tokens after the CRM phone changes', function (): void {

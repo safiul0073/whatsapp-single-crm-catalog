@@ -29,6 +29,8 @@
         $customerPhone = $contactPerson?->phone ?? ($order->customer_snapshot['phone'] ?? ($address['phone'] ?? ''));
         $customerEmail = $contactPerson?->email ?? ($order->customer_snapshot['email'] ?? ($address['email'] ?? ''));
         $canUpdate = auth()->user()->can('commerce.orders.update');
+        $holdExpiresAt = $order->status === 'awaiting_payment' && $order->payment_state !== 'paid' ? app(\App\Modules\Commerce\Services\OrderInventoryService::class)->holdExpiresAt($order) : null;
+        $holdLapsed = $order->status === 'cancelled' && ! $order->paid_at && $order->events->contains('key', 'hold_expired');
         $showStatusForm = $order->source !== 'pos' || ($order->fulfillment_type === 'delivery' && ! in_array($order->status, ['completed', 'cancelled']));
         $canCancel = $canUpdate && ! in_array($order->status, ['completed', 'cancelled'], true) && ($order->source !== 'pos' || (! $order->inventory_adjusted_at && $order->payments->isEmpty()));
         $primaryAction = match (true) {
@@ -61,5 +63,6 @@
         </div>
         @include('commerce::user.partials.order-product-gallery')
         @include('commerce::user.partials.order.modal-customer')
+        @include('commerce::user.partials.order.modal-hold')
     </div>
 </x-layouts.user>

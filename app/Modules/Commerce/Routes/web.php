@@ -13,3 +13,4 @@ Route::get('shop/{workspace:slug}', [PublicCommerceController::class, 'index'])-
 Route::get('shop/{workspace:slug}/products/{product:slug}', [PublicCommerceController::class, 'product'])->name('commerce.products.public');
 
 Route::get('invoices/{token}', [PublicInvoiceController::class, 'show'])->middleware('throttle:60,1')->name('commerce.invoices.show');
+Route::get('custom-invoices/{token}', [PublicInvoiceController::class, 'custom'])->middleware('throttle:60,1')->name('commerce.custom-invoices.show');

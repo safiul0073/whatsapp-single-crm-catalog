@@ -99,14 +99,16 @@ class CheckoutController extends Controller
 
                 return response()->json(['data' => $this->orders->payload(Order::query()->where('workspace_id', $w->id)->findOrFail($submission->order_id))]);
             }
-            $method = collect(StoreOrderSetting::paymentMethods($w->id, true))->firstWhere('id', $r->input('payment_method_id'));
-            abort_unless($method, 422, 'Choose an available manual payment method.');
+            $method = $r->filled('payment_method_id') ? collect(StoreOrderSetting::paymentMethods($w->id, true))->firstWhere('id', $r->input('payment_method_id')) : null;
+            abort_unless($method || $r->boolean('hold'), 422, 'Choose an available manual payment method.');
             [$cart, $data, $rewards] = $this->data($r);
             $data['submission_reference'] = $key;
             $preview = $this->orders->preview($w, $data);
             abort_if($preview['shipping_quote_required'], 422, 'No shipping rate covers this address.');
             $order = $this->orders->create($w, $data);
-            $order->update(['provider_payload' => array_merge($order->provider_payload ?? [], ['manual_payment_method_id' => $method['id']])]);
+            if ($method) {
+                $order->update(['provider_payload' => array_merge($order->provider_payload ?? [], ['manual_payment_method_id' => $method['id']])]);
+            }
             CheckoutSubmission::query()->create(['workspace_id' => $w->id, 'customer_id' => $c->id, 'key' => $key, 'request_hash' => $hash, 'payload' => $data, 'order_id' => $order->id]);
             if ($cart->coupon_code) {
                 $coupon = Coupon::query()->where('workspace_id', $w->id)->where('code', $cart->coupon_code)->firstOrFail();

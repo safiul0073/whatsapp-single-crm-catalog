@@ -235,7 +235,6 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
       
       const isVideo = item.type === 'video';
       if (isVideo && this.gallery.some((entry) => entry.type === 'video')) return;
-      if (!isVideo && this.gallery.filter((entry) => entry.type === 'image').length >= 40) return;
 
       this.gallery.push({
         id: item.id,

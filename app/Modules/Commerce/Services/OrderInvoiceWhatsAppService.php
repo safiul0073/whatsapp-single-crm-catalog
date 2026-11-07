@@ -3,9 +3,11 @@
 namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\CommerceMessageAttempt;
+use App\Modules\Commerce\Models\CustomInvoice;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -63,62 +65,118 @@ class OrderInvoiceWhatsAppService
             return $this->result(self::SKIPPED_CONTACT);
         }
 
+        $deliver = $this->deliver(
+            workspaceId: $order->workspace_id,
+            contact: $contact,
+            phone: $phone,
+            channelAccountId: $order->channel_account_id ?? $settings->whatsapp_channel_id,
+            settings: $settings,
+            caption: 'Invoice '.$order->invoice_number.' for order '.$order->number,
+            url: $order->invoiceUrl(),
+            downloadUrl: $order->invoiceUrl(download: true),
+            filename: $order->invoice_number.'.pdf',
+            key: $manual ? 'order-invoice:'.$order->id.':'.now()->format('YmdHisu') : 'order-invoice:'.$order->id,
+            reference: ['order_invoice_id' => $order->id],
+        );
+        if ($deliver['status'] === self::SENT) {
+            $order->forceFill(['invoice_sent_at' => now()])->save();
+        }
+        if ($deliver['status'] === self::FAILED && ($deliver['attempt_status'] ?? null) === 'failed' && ! $manual) {
+            throw new RuntimeException($deliver['detail'] !== '' ? $deliver['detail'] : 'Invoice message failed.');
+        }
+
+        return $this->result($deliver['status'], $deliver['detail']);
+    }
+
+    /**
+     * Sends a custom invoice to the customer it was made for. Always a manual send.
+     *
+     * @return array{status: string, message: string}
+     */
+    public function sendCustom(CustomInvoice $invoice): array
+    {
+        $invoice->loadMissing('customer.contact');
+        $contact = $invoice->customer?->contact;
+        if (! $contact || $contact->blocked_at || $contact->opt_out_at || $contact->opt_in_status === ContactOptInStatus::Unsubscribed) {
+            return $this->result(self::SKIPPED_CONTACT);
+        }
+
+        $settings = StoreOrderSetting::forWorkspace($invoice->workspace_id);
+        $deliver = $this->deliver(
+            workspaceId: $invoice->workspace_id,
+            contact: $contact,
+            phone: (string) $contact->phone,
+            channelAccountId: $settings->whatsapp_channel_id,
+            settings: $settings,
+            caption: 'Invoice '.$invoice->number,
+            url: $invoice->publicUrl(),
+            downloadUrl: $invoice->publicUrl(download: true),
+            filename: $invoice->number.'.pdf',
+            key: 'custom-invoice:'.$invoice->id.':'.now()->format('YmdHisu'),
+            reference: ['custom_invoice_id' => $invoice->id],
+        );
+        if ($deliver['status'] === self::SENT) {
+            $invoice->forceFill(['sent_at' => now()])->save();
+        }
+
+        return $this->result($deliver['status'], $deliver['detail']);
+    }
+
+    /**
+     * Finds the WhatsApp channel and conversation, then sends the PDF (or a template with the link outside the 24-hour window).
+     *
+     * @param  array<string, int>  $reference
+     * @return array{status: string, detail: string, attempt_status?: string}
+     */
+    private function deliver(int $workspaceId, Contact $contact, string $phone, ?int $channelAccountId, StoreOrderSetting $settings, string $caption, string $url, string $downloadUrl, string $filename, string $key, array $reference): array
+    {
         $account = ChannelAccount::query()
-            ->where('workspace_id', $order->workspace_id)
+            ->where('workspace_id', $workspaceId)
             ->where('provider', 'whatsapp')
             ->where('status', 'connected')
-            ->find($order->channel_account_id ?? $settings->whatsapp_channel_id);
+            ->find($channelAccountId);
         if (! $account) {
-            return $this->result(self::SKIPPED_NO_CHANNEL);
+            return ['status' => self::SKIPPED_NO_CHANNEL, 'detail' => ''];
         }
 
         $conversation = Conversation::query()
-            ->where('workspace_id', $order->workspace_id)
+            ->where('workspace_id', $workspaceId)
             ->where('contact_id', $contact->id)
             ->where('channel_account_id', $account->id)
             ->latest('id')
             ->first();
         if (! $conversation) {
-            return $this->result(self::SKIPPED_NO_CONVERSATION);
+            return ['status' => self::SKIPPED_NO_CONVERSATION, 'detail' => ''];
         }
 
-        $url = $order->invoiceUrl();
-        $caption = 'Invoice '.$order->invoice_number.' for order '.$order->number.'. View or download: '.$url;
-        $payload = [
-            'type' => 'document',
-            'url' => $order->invoiceUrl(download: true),
-            'filename' => $order->invoice_number.'.pdf',
-            'caption' => 'Invoice '.$order->invoice_number.' for order '.$order->number,
-        ];
+        $body = $caption.'. View or download: '.$url;
+        $payload = ['type' => 'document', 'url' => $downloadUrl, 'filename' => $filename, 'caption' => $caption];
 
         if (! $conversation->session_expires_at || $conversation->session_expires_at->isPast()) {
-            $payload = $this->templatePayload($order, $settings, $account, $contact->opt_in_status, $caption);
+            $payload = $this->templatePayload($workspaceId, $settings, $account, $contact->opt_in_status, $body);
             if ($payload === null) {
-                return $this->result(self::SKIPPED_WINDOW);
+                return ['status' => self::SKIPPED_WINDOW, 'detail' => ''];
             }
         }
 
-        $key = $manual
-            ? 'order-invoice:'.$order->id.':'.now()->format('YmdHisu')
-            : 'order-invoice:'.$order->id;
         $attempt = CommerceMessageAttempt::query()->firstOrCreate(
             ['idempotency_key' => hash('sha256', $key)],
-            ['workspace_id' => $order->workspace_id, 'conversation_id' => $conversation->id, 'message_type' => $payload['type'], 'status' => 'pending', 'request_payload' => $payload],
+            ['workspace_id' => $workspaceId, 'conversation_id' => $conversation->id, 'message_type' => $payload['type'], 'status' => 'pending', 'request_payload' => $payload],
         );
         if (in_array($attempt->status, ['completed', 'uncertain', 'processing'], true)) {
-            return $this->result(self::SKIPPED_ALREADY_SENT);
+            return ['status' => self::SKIPPED_ALREADY_SENT, 'detail' => ''];
         }
 
         $message = $attempt->message ?? Message::query()->create([
-            'workspace_id' => $order->workspace_id,
+            'workspace_id' => $workspaceId,
             'channel_account_id' => $account->id,
             'provider' => 'whatsapp',
             'conversation_id' => $conversation->id,
             'contact_id' => $contact->id,
             'direction' => 'outbound',
             'type' => $payload['type'],
-            'body' => $caption,
-            'payload' => ['order_invoice_id' => $order->id, 'request' => $payload],
+            'body' => $body,
+            'payload' => $reference + ['request' => $payload],
             'status' => 'queued',
         ]);
         $attempt->update(['message_id' => $message->id, 'status' => 'processing']);
@@ -135,28 +193,21 @@ class OrderInvoiceWhatsAppService
             'last_error' => $result['error'] ?? null,
         ]);
 
-        if ($ok) {
-            $order->forceFill(['invoice_sent_at' => now()])->save();
-
-            return $this->result(self::SENT);
-        }
-        if ($attempt->status === 'failed' && ! $manual) {
-            throw new RuntimeException($result['error'] ?? 'Invoice message failed.');
-        }
-
-        return $this->result(self::FAILED, (string) ($result['error'] ?? ''));
+        return $ok
+            ? ['status' => self::SENT, 'detail' => '']
+            : ['status' => self::FAILED, 'detail' => (string) ($result['error'] ?? ''), 'attempt_status' => $attempt->status];
     }
 
     /**
      * @return array<string, mixed>|null
      */
-    private function templatePayload(Order $order, StoreOrderSetting $settings, ChannelAccount $account, mixed $optIn, string $body): ?array
+    private function templatePayload(int $workspaceId, StoreOrderSetting $settings, ChannelAccount $account, mixed $optIn, string $body): ?array
     {
         if ($optIn !== ContactOptInStatus::Subscribed) {
             return null;
         }
         $template = MessageTemplate::query()
-            ->where('workspace_id', $order->workspace_id)
+            ->where('workspace_id', $workspaceId)
             ->where('provider', 'whatsapp')
             ->where('category', 'utility')
             ->find($settings->whatsapp_template_id);

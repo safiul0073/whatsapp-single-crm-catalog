@@ -266,6 +266,82 @@ class UnifiedOrderService
         });
     }
 
+    /**
+     * Replaces an order's lines, customer and address before it ships. Prices are recalculated with today's
+     * prices; stock holds (or, once paid, the stock already taken out) follow the new quantities.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateOrder(Order $order, Workspace $workspace, array $data): Order
+    {
+        return DB::transaction(function () use ($order, $workspace, $data): Order {
+            $locked = Order::query()->where('workspace_id', $workspace->id)->lockForUpdate()->findOrFail($order->id);
+            abort_unless($locked->isEditable(), 422, 'This order can no longer be edited.');
+            $locked->load(['items', 'groups', 'payments']);
+
+            $data['source'] = $locked->source;
+            $data['adjustments'] = $locked->adjustments ?? [];
+            $data['shipping_address'] = array_replace(['country' => ''], $locked->shipping_address ?? []);
+            $data['shipping_method_id'] = $locked->shipping_method_id;
+            unset($data['customer'], $data['contact_id']);
+            $data['groups'] = array_map(function (array $selection) use ($locked): array {
+                if (empty($selection['keep_group_id'])) {
+                    unset($selection['keep_group_id']);
+
+                    return $selection;
+                }
+                $kept = $locked->groups->firstWhere('id', (int) $selection['keep_group_id']);
+                if (! $kept || empty($kept->pack_snapshot)) {
+                    $this->invalid('groups', 'A kept pack does not belong to this order.');
+                }
+
+                return ['product_id' => $kept->product_id, 'mode' => 'wholesale', 'color_id' => $kept->color_id, 'box_count' => $kept->box_count, 'size_quantities' => $kept->ratio, 'pack_snapshot' => $kept->pack_snapshot];
+            }, $data['groups']);
+
+            $preview = $this->preview($workspace, $data);
+            $previousQuantities = $locked->items->groupBy('variant_id')->map(fn ($items): int => (int) $items->sum('quantity'))->all();
+            $previousTotal = $locked->total;
+            $editNumber = $locked->events()->where('key', 'like', 'edited\\_%')->count() + 1;
+
+            $locked->boxes()->delete();
+            $locked->items()->delete();
+            $locked->groups()->delete();
+
+            $isPaid = $locked->inventory_adjusted_at !== null || $locked->payment_state === 'paid';
+            $status = match (true) {
+                $locked->status === 'draft' => 'draft',
+                $locked->status === 'packed' => 'processing',
+                in_array($locked->status, ['paid', 'processing'], true) => $locked->status,
+                default => $preview['shipping_quote_required'] ? 'requested' : 'awaiting_payment',
+            };
+            $locked->update(array_merge(collect($preview)->only(['currency', 'subtotal', 'discount_amount', 'shipping_amount', 'shipping_quote_required', 'total', 'shipping_method_id', 'delivery_method'])->all(), [
+                'issues' => [], 'status' => $status, 'packed_at' => null,
+                'submission_reference' => $data['submission_reference'], 'payload_hash' => hash('sha256', json_encode($data, JSON_THROW_ON_ERROR)),
+                'provider_payload' => array_replace($locked->provider_payload ?? [], ['checkout_quote' => ['weight' => $preview['weight'], 'chargeable_weight_kg' => $preview['chargeable_weight_kg']]]),
+            ]));
+            $this->saveGroups($locked, $preview['groups'], $workspace->id);
+            $locked->load('items');
+
+            if ($locked->inventory_adjusted_at) {
+                $this->inventory->adjustConsumed($locked, $previousQuantities, $editNumber);
+            } elseif ($status !== 'draft') {
+                $this->inventory->reserve($locked);
+                $this->inventory->releaseRemoved($locked);
+            }
+
+            if (! $isPaid && $locked->payments->isNotEmpty() && $locked->total !== null) {
+                $paid = OrderMoney::minor($locked->balanceDue(), $locked->moneyPrecision()) === 0;
+                $locked->update(['payment_state' => $paid ? 'paid' : 'partially_paid', 'paid_at' => $paid ? now() : null]);
+            }
+
+            $precision = $locked->moneyPrecision();
+            $money = fn (?string $amount): string => $amount === null ? 'quote pending' : $locked->currency.' '.OrderMoney::decimal(OrderMoney::minor($amount, $precision), $precision);
+            $this->event($locked, 'edited_'.$editNumber, $money($previousTotal) === $money($locked->total) ? 'Order edited' : 'Order edited · total '.$money($previousTotal).' → '.$money($locked->total));
+
+            return $locked->fresh(['items', 'groups', 'boxes.contents.item', 'events']);
+        }, 3);
+    }
+
     private function saveGroups(Order $order, array $groups, int $workspaceId): void
     {
         $customBoxes = [];
@@ -364,6 +440,7 @@ class UnifiedOrderService
             ]),
             [
                 'created_at' => $order->created_at?->toIso8601String(),
+                'hold_expires_at' => $order->status === 'awaiting_payment' && $order->payment_state !== 'paid' ? $this->inventory->holdExpiresAt($order)?->toIso8601String() : null,
                 'items' => $order->items->toArray(),
                 'groups' => $order->groups->toArray(),
                 'boxes' => $order->boxes->toArray(),

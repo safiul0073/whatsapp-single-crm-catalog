@@ -5,6 +5,7 @@ use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -234,6 +235,19 @@ it('gives each colour its own packing slip card', function () {
     expect(substr_count($html, 'data-packing-card='))->toBe(2)
         ->and(substr_count($html, 'data-packing-tile'))->toBe(3)
         ->and($html)->toContain('data-packing-card="Blue"')
+        ->and($html)->toContain('packing-card packing-card-span-1')
+        ->and($html)->toContain('packing-card packing-card-span-2')
+        ->and($html)->toContain('packing-card-images packing-card-images-2')
         ->and($html)->toContain('3 pcs</strong> · #1')
         ->and($html)->toContain('6 pcs</strong> · #2–3');
+});
+
+it('shows the store email instead of the customer phone on the packing slip', function () {
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->workspace->id], ['config' => ['contact_email' => 'hello@shop.test']]);
+    $order = ($this->createOrder)([$this->wholesale]);
+
+    $this->get(route('user.commerce.orders.packing-slip', $order))
+        ->assertOk()
+        ->assertSee('hello@shop.test')
+        ->assertDontSee('+15555550100');
 });

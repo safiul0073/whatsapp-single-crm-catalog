@@ -19,6 +19,8 @@ class Order extends Model
 
     protected $table = 'commerce_orders';
 
+    public const EDITABLE_STATUSES = ['draft', 'needs_details', 'requested', 'quoted', 'awaiting_payment', 'paid', 'processing', 'packed'];
+
     protected $fillable = ['fulfillment_type', 'shipping_method_id', 'customer_snapshot', 'source', 'submission_reference', 'payload_hash', 'customer_reference', 'tracking_code', 'payment_state', 'payment_instructions', 'payment_evidence', 'discount_amount', 'adjustments', 'shipping_quote_required', 'packed_at', 'delivered_at', 'workspace_id', 'contact_id', 'conversation_id', 'channel_account_id', 'catalog_id', 'number', 'provider_message_id', 'provider_catalog_id', 'status', 'currency', 'subtotal', 'shipping_amount', 'total', 'shipping_address', 'delivery_method', 'delivery_notes', 'duties_disclosure', 'payment_url', 'tracking_number', 'tracking_url', 'inventory_adjusted_at', 'inventory_restored_at', 'paid_at', 'shipped_at', 'issues', 'provider_payload', 'invoice_number', 'invoice_token', 'invoice_sent_at'];
 
     protected function casts(): array
@@ -201,6 +203,18 @@ class Order extends Model
     public function channelAccount(): BelongsTo
     {
         return $this->belongsTo(ChannelAccount::class);
+    }
+
+    /**
+     * Owners may change an order's lines, customer and address until it ships.
+     * POS sales and legacy WhatsApp requests without groups are excluded.
+     */
+    public function isEditable(): bool
+    {
+        return in_array($this->status, self::EDITABLE_STATUSES, true)
+            && $this->shipped_at === null
+            && $this->source !== 'pos'
+            && $this->groups()->exists();
     }
 
     public function hasCompleteShippingAddress(): bool
