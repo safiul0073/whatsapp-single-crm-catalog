@@ -245,7 +245,8 @@ abstract class BaseTemplateNotification extends Notification
             'sms' => ! empty($notifiable->phone),
             'in_app' => true,
             'web_push' => method_exists($notifiable, 'pushSubscriptions'),
-            'mobile_push' => method_exists($notifiable, 'deviceTokens')
+            'mobile_push' => filled(config('firebase.projects.'.config('firebase.default').'.credentials'))
+                && method_exists($notifiable, 'deviceTokens')
                 && $notifiable->deviceTokens()->exists(),
             default => false,
         };
