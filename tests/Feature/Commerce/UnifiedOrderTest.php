@@ -193,7 +193,31 @@ it('renders manual order management with appropriate permissions', function () {
     $role = Role::findOrCreate('Order manager', 'web');
     $role->givePermissionTo(Permission::findOrCreate('commerce.manage', 'web'));
     $c['user']->assignRole($role);
-    $this->actingAs($c['user'])->get(route('user.commerce.orders.create'))->assertOk()->assertSee('Create Order');
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.create'))->assertOk()->assertSee('Create Order')
+        ->assertSee('Recipient same as customer')
+        ->assertSee('Restored your unfinished order from')
+        ->assertSee('Clear form')
+        ->assertSee('restoreDraft(draft)', false)
+        ->assertDontSee('resumeDraft()', false)
+        ->assertSee('order-draft:'.$c['workspace']->id.':new', false)
+        ->assertViewHas('products', fn ($products): bool => $products->every(fn (array $product): bool => $product['variants']->every(fn (array $variant): bool => array_key_exists('price', $variant) && array_key_exists('sku', $variant))));
+});
+
+it('picks colours from swatch chips that show only the colour name', function () {
+    $c = unifiedContext();
+    $role = Role::findOrCreate('Order picker', 'web');
+    $role->givePermissionTo(Permission::findOrCreate('commerce.manage', 'web'));
+    $c['user']->assignRole($role);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.create'))
+        ->assertOk()
+        ->assertSee('order-chip-swatch', false)
+        ->assertSee('Choose a colour first')
+        ->assertDontSee('in stock')
+        ->assertDontSee('Select colour / size')
+        ->assertViewHas('products', fn ($products): bool => $products->every(fn (array $product): bool => $product['colors']->every(fn (array $color): bool => array_key_exists('hex_code', $color) && array_key_exists('swatch_image_url', $color))
+            && $product['variants']->every(fn (array $variant): bool => array_key_exists('color_id', $variant) && array_key_exists('size', $variant))));
 });
 
 function workspaceMemberWith(array $context, array $permissions): User
