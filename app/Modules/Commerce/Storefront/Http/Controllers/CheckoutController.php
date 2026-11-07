@@ -71,7 +71,9 @@ class CheckoutController extends Controller
             [, $data, $rewards] = $this->data($r);
             unset($rewards['applied_minor']);
 
-            return response()->json(['data' => [...$this->orders->preview($r->attributes->get('store_workspace'), $data), 'rewards' => $rewards]]);
+            $workspace = $r->attributes->get('store_workspace');
+
+            return response()->json(['data' => [...$this->orders->preview($workspace, $data), 'rewards' => $rewards, 'hold_hours' => (int) StoreOrderSetting::forWorkspace($workspace->id)->reservation_hours]]);
         });
     }
 

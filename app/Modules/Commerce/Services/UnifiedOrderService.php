@@ -440,6 +440,7 @@ class UnifiedOrderService
             ]),
             [
                 'created_at' => $order->created_at?->toIso8601String(),
+                'hold_lapsed' => $order->status === 'cancelled' && ! $order->paid_at && $order->events->contains('key', 'hold_expired'),
                 'hold_expires_at' => $order->status === 'awaiting_payment' && $order->payment_state !== 'paid' ? $this->inventory->holdExpiresAt($order)?->toIso8601String() : null,
                 'items' => $order->items->toArray(),
                 'groups' => $order->groups->toArray(),
