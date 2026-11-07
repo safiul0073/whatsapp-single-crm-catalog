@@ -205,7 +205,7 @@ it('shows one packing slip picture per pack with the details once per colour', f
         ->and(substr_count($html, 'data-packing-details'))->toBe(1)
         ->and(substr_count($html, '1:1:1 per pack'))->toBe(1)
         ->and($html)->toContain('3 packs · 9 pcs')
-        ->and($html)->toContain('Packs #1–3');
+        ->and($html)->toContain('9 pcs</strong> · #1–3');
 });
 
 it('splits a box that holds several packs into one picture per pack', function () {
@@ -234,6 +234,6 @@ it('gives each colour its own packing slip card', function () {
     expect(substr_count($html, 'data-packing-card='))->toBe(2)
         ->and(substr_count($html, 'data-packing-tile'))->toBe(3)
         ->and($html)->toContain('data-packing-card="Blue"')
-        ->and($html)->toContain('Pack #1')
-        ->and($html)->toContain('Packs #2–3');
+        ->and($html)->toContain('3 pcs</strong> · #1')
+        ->and($html)->toContain('6 pcs</strong> · #2–3');
 });
