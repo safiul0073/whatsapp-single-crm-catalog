@@ -19,7 +19,7 @@ class ProfileController extends Controller
     public function edit(): View
     {
         $user = Auth::guard('admin')->user();
-        $sessions = $this->sessionService->getActiveSessions($user->id);
+        $sessions = $this->sessionService->getActiveAdminSessions($user->id);
 
         return view('panels.admin.profile.edit', compact('user', 'sessions'));
     }
@@ -67,7 +67,7 @@ class ProfileController extends Controller
     {
         $user = Auth::guard('admin')->user();
 
-        $this->sessionService->revokeSession($sessionId, $user->id);
+        $this->sessionService->revokeAdminSession($sessionId, $user->id);
 
         return back()->with('success', __('Session revoked successfully.'));
     }
@@ -76,7 +76,7 @@ class ProfileController extends Controller
     {
         $user = Auth::guard('admin')->user();
 
-        $this->sessionService->revokeAllOtherSessions($user->id, session()->getId());
+        $this->sessionService->revokeAllOtherAdminSessions($user->id, session()->getId());
 
         return back()->with('success', __('All other sessions have been revoked.'));
     }

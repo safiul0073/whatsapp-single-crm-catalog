@@ -58,7 +58,8 @@
             <div>
                 <p class="document-label">{{ __('Customer') }}</p>
                 <p class="font-medium">{{ $customerName }}</p>
-                @if(filled($brand['email'] ?? null))<p class="text-body">{{ $brand['email'] }}</p>@endif
+                @if(filled($customer['phone'] ?? null))<p class="text-body">{{ $customer['phone'] }}</p>@endif
+                @if(filled($customer['email'] ?? null))<p class="text-body">{{ $customer['email'] }}</p>@endif
             </div>
             <div>
                 <p class="document-label">{{ __('Ship to') }}</p>
