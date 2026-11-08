@@ -54,16 +54,16 @@
             </div>
             <div class="media-manage-bar hidden" data-media-manage-bar>
                 <div class="media-manage-select" data-media-manage-select>
-                    <span><strong data-media-manage-count>0</strong> {{ __('selected') }}</span>
-                    <button type="button" class="btn btn-xs btn-ghost" data-media-manage-all>{{ __('Select all') }}</button>
-                    <button type="button" class="btn btn-xs btn-error" data-media-manage-delete disabled>
+                    <span class="media-manage-count"><strong data-media-manage-count>0</strong> {{ __('selected') }}</span>
+                    <button type="button" class="media-manage-btn media-manage-btn--ghost" data-media-manage-all>{{ __('Select all') }}</button>
+                    <button type="button" class="media-manage-btn media-manage-btn--danger" data-media-manage-delete disabled>
                         <i class="ph ph-trash"></i> {{ __('Delete selected') }}
                     </button>
                 </div>
                 <div class="media-manage-confirm hidden" data-media-manage-confirm>
                     <span data-media-confirm-text data-template="{{ __('Delete :count file(s)? Pages using them will lose the image. This cannot be undone.') }}"></span>
-                    <button type="button" class="btn btn-xs btn-error" data-media-confirm-yes>{{ __('Delete') }}</button>
-                    <button type="button" class="btn btn-xs btn-ghost" data-media-confirm-no>{{ __('Cancel') }}</button>
+                    <button type="button" class="media-manage-btn media-manage-btn--danger" data-media-confirm-yes>{{ __('Delete') }}</button>
+                    <button type="button" class="media-manage-btn media-manage-btn--ghost" data-media-confirm-no>{{ __('Cancel') }}</button>
                 </div>
             </div>
             <p class="media-upload-error hidden" data-media-upload-error role="alert"></p>
