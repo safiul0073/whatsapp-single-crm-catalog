@@ -9,7 +9,6 @@
             <div class="min-w-0 leading-snug">
                 <h1 class="text-base font-semibold leading-tight">{{ $brand['name'] }}</h1>
                 @if($brand['address'])<p class="text-body">{{ $brand['address'] }}</p>@endif
-                @if($brand['phone'])<p class="text-body">{{ $brand['phone'] }}</p>@endif
                 @if($brand['email'])<p class="break-all text-body">{{ $brand['email'] }}</p>@endif
                 @if($brand['tax_id'])<p class="text-body">{{ __('Tax ID') }}: {{ $brand['tax_id'] }}</p>@endif
             </div>
