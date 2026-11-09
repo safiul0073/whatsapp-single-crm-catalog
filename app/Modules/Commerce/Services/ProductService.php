@@ -493,8 +493,6 @@ class ProductService
             'shipping_info' => array_key_exists('shipping_info', $data) ? $data['shipping_info'] : ($product?->shipping_info ?? 'USA & Canada Shipping'),
             'delivery_time' => array_key_exists('delivery_time', $data) ? $data['delivery_time'] : ($product?->delivery_time ?? '6–10 Working Days Delivery'),
             'moq' => array_key_exists('moq', $data) ? (int) $data['moq'] : ($product?->moq ?? 1),
-            'rating' => array_key_exists('rating', $data) ? (float) $data['rating'] : ($product?->rating ?? 5.00),
-            'reviews_count' => array_key_exists('reviews_count', $data) ? (int) $data['reviews_count'] : ($product?->reviews_count ?? 128),
             'condition' => array_key_exists('condition', $data) ? $data['condition'] : ($product?->condition ?? 'new'),
             'audience' => $audienceName,
             'fabric_gsm' => array_key_exists('fabric_gsm', $data) ? $data['fabric_gsm'] : $product?->fabric_gsm,

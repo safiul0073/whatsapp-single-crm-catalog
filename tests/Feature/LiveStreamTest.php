@@ -9,15 +9,18 @@ use App\Modules\Commerce\Storefront\Events\LiveStreamStatusChanged;
 use App\Modules\Commerce\Storefront\Events\LiveWebRtcSignal;
 use App\Modules\Commerce\Storefront\Models\LiveStream;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\MetaSocial\Services\MetaPageTokenResolver;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Broadcasting\Broadcasters\Broadcaster;
 use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -293,6 +296,52 @@ it('simultaneously streams to facebook live and storefront when facebook setting
         ->assertOk();
     expect($stopRes->json('data.status'))->toBe('ended')
         ->and($stopRes->json('data.facebook_status'))->toBe('ended');
+});
+
+it('streams to a facebook page picked from connect with facebook without storing its token', function (): void {
+    Sanctum::actingAs($this->owner);
+
+    $resolver = Mockery::mock(MetaPageTokenResolver::class);
+    $resolver->shouldReceive('pages')->andReturn([['id' => '555', 'name' => 'Connected Brand Page']]);
+    $resolver->shouldReceive('forPage')->with($this->store->id, '555')->andReturn('EAAB_CONNECTED_TOKEN');
+    app()->instance(MetaPageTokenResolver::class, $resolver);
+
+    Http::fake([
+        'https://graph.facebook.com/*/555/live_videos' => Http::response(['id' => 'fb_live_555', 'secure_stream_url' => 'rtmps://fb/555'], 200),
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->putJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/settings", [
+        'facebook' => ['enabled' => true, 'page_id' => '555'],
+    ])->assertOk();
+
+    $fb = StorefrontSetting::query()->where('workspace_id', $this->store->id)->first()->config['live']['facebook'];
+    expect($fb['page_access_token'])->toBe('')
+        ->and($fb['page_name'])->toBe('Connected Brand Page');
+
+    $liveId = $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives", [
+        'title' => 'Connected Page Live',
+        'broadcast_platforms' => ['storefront', 'facebook'],
+    ])->assertCreated()->json('data.id');
+
+    $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/{$liveId}/start", [
+        'broadcast_platforms' => ['storefront', 'facebook'],
+    ])->assertOk()->assertJsonPath('data.facebook_live_id', 'fb_live_555');
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/555/live_videos')
+        && $request->hasHeader('Authorization', 'Bearer EAAB_CONNECTED_TOKEN'));
+});
+
+it('stores a manually entered facebook page token encrypted', function (): void {
+    Sanctum::actingAs($this->owner);
+
+    $this->putJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/settings", [
+        'facebook' => ['enabled' => true, 'page_id' => '123', 'page_access_token' => 'EAAB_MANUAL'],
+    ])->assertOk();
+
+    $stored = StorefrontSetting::query()->where('workspace_id', $this->store->id)->first()->config['live']['facebook']['page_access_token'];
+    expect($stored)->not->toBe('EAAB_MANUAL')
+        ->and(Crypt::decryptString($stored))->toBe('EAAB_MANUAL');
 });
 
 it('blocks facebook-only broadcast when facebook settings are not configured', function (): void {

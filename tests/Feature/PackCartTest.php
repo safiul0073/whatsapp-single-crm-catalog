@@ -457,17 +457,29 @@ it('prices pack-mode standard wholesale from the pack price list and skips shipp
     expect($res->json('data.subtotal'))->toBe('520.00')->and($res->json('data.shipping_required'))->toBeTrue();
 });
 
-it('lets only customers with a completed order of the product rate it', function () {
+it('lets only customers with a confirmed or delivered order of the product rate it', function () {
     $url = '/api/storefront/v1/catalog/products/shirt/reviews';
     $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->headers)->assertUnauthorized();
     $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->auth)->assertOk()->assertJsonPath('data.can_review', false);
     $this->postJson($url, ['rating' => 5, 'body' => 'Great'], $this->auth)->assertForbidden();
 
-    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => $this->contact->id, 'source' => 'storefront', 'submission_reference' => (string) Str::uuid(), 'payload_hash' => 'x', 'number' => 'ORD-R1', 'tracking_code' => 'TRK-R1', 'status' => 'processing', 'currency' => 'USD', 'subtotal' => 20, 'total' => 20, 'customer_snapshot' => [], 'shipping_address' => []]);
+    $ref = (string) Str::uuid();
+    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => $this->contact->id, 'source' => 'storefront', 'submission_reference' => $ref, 'payload_hash' => 'x', 'number' => 'ORD-R1', 'tracking_code' => 'TRK-R1', 'status' => 'requested', 'currency' => 'USD', 'subtotal' => 20, 'total' => 20, 'customer_snapshot' => [], 'shipping_address' => []]);
     $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
     $this->postJson($url, ['rating' => 5, 'body' => 'Great'], $this->auth)->assertForbidden();
+    $this->getJson("/api/storefront/v1/me/orders/{$ref}", $this->auth)->assertOk()->assertJsonPath('data.can_review', false);
 
-    $order->update(['status' => 'completed']);
+    $order->update(['status' => 'cancelled']);
+    $this->postJson($url, ['rating' => 5, 'body' => 'Great'], $this->auth)->assertForbidden();
+
+    $order->update(['status' => 'processing']);
     $this->getJson('/api/storefront/v1/catalog/products/shirt/review-eligibility', $this->auth)->assertOk()->assertJsonPath('data.can_review', true);
     $this->postJson($url, ['rating' => 4, 'body' => 'Great'], $this->auth)->assertCreated()->assertJsonPath('data.status', 'pending');
+
+    $this->getJson("/api/storefront/v1/me/orders/{$ref}", $this->auth)->assertOk()
+        ->assertJsonPath('data.can_review', true)
+        ->assertJsonPath('data.reviews.shirt.rating', 4)
+        ->assertJsonPath('data.reviews.shirt.status', 'pending');
+    $this->getJson('/api/storefront/v1/me/orders', $this->auth)->assertOk()
+        ->assertJsonPath('data.0.reviews.shirt.rating', 4);
 });

@@ -31,6 +31,8 @@ use App\Modules\Commerce\Storefront\Services\FacebookLiveService;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
 use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\MetaSocial\Http\Requests\ConnectMetaBusinessRequest;
+use App\Modules\MetaSocial\Services\MetaBusinessConnectService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -64,6 +66,7 @@ class AdminController extends Controller
             'settings' => $settings,
             'tracking' => app(TrackingSettingsService::class)->admin($w),
             'liveSettings' => $this->lives->settings($w),
+            'facebookSignup' => app(MetaBusinessConnectService::class)->signupConfig(),
             'liveStreams' => LiveStream::query()->where('workspace_id', $w)->with('products')->latest('id')->get(),
             'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
             'chatWidgets' => ChatbotWidget::query()->where('workspace_id', $w)->where('is_active', true)->orderBy('name')->get(['name', 'public_token']),
@@ -467,6 +470,21 @@ class AdminController extends Controller
         $this->lives->saveSettings($w, $r->validated());
 
         return $this->redirectTab($r, 'live', 'Live streaming and Facebook Live settings saved.');
+    }
+
+    public function connectFacebookLive(ConnectMetaBusinessRequest $r, MetaBusinessConnectService $meta): RedirectResponse
+    {
+        $meta->connect($r->user(), $r->validated('code'));
+        $pages = $this->facebook->connectedPages($this->workspace($r));
+
+        return $this->redirectTab(
+            $r,
+            'live',
+            $pages === []
+                ? __('Facebook connected, but no Page was shared. Click "Reconnect" and select your Page.')
+                : __('Facebook connected. Choose the Page to stream to and save.'),
+            $pages === [] ? 'error' : 'success'
+        );
     }
 
     public function verifyFacebookLive(Request $r): RedirectResponse

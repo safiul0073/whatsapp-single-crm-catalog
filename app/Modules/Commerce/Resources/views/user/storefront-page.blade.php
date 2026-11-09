@@ -409,6 +409,7 @@
                                                 class="form-input text-xs rounded-xl"
                                             >
                                                 <option value="new-arrivals">{{ __('New Arrivals (Latest Products)') }}</option>
+                                                <option value="best-sellers">{{ __('Top Sellers (Most Sold)') }}</option>
                                                 <option value="featured">{{ __('Featured Products') }}</option>
                                                 <option value="deals">{{ __('On Sale / Deals') }}</option>
                                                 <option value="category">{{ __('By Specific Category') }}</option>

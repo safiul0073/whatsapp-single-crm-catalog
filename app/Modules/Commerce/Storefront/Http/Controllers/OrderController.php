@@ -8,6 +8,7 @@ use App\Modules\Commerce\Http\Requests\PaymentEvidenceRequest;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
+use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Services\InvoiceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -32,13 +33,43 @@ class OrderController extends Controller
     public function index(Request $r, UnifiedOrderService $s): JsonResponse
     {
         $p = $this->query($r)->latest()->paginate(20);
+        $payloads = $p->getCollection()->map(fn (Order $o): array => $s->payload($o))->all();
 
-        return response()->json(['data' => $p->map(fn ($o) => $s->payload($o)), 'meta' => ['last_page' => $p->lastPage(), 'current_page' => $p->currentPage()]]);
+        return response()->json(['data' => $this->withReviews($r, $payloads), 'meta' => ['last_page' => $p->lastPage(), 'current_page' => $p->currentPage()]]);
     }
 
     public function show(Request $r, string $ref, UnifiedOrderService $s): JsonResponse
     {
-        return response()->json(['data' => $s->payload($this->find($r, $ref))]);
+        return response()->json(['data' => $this->withReviews($r, [$s->payload($this->find($r, $ref))])[0]]);
+    }
+
+    /**
+     * Adds `can_review` and the customer's own `reviews` (product_slug => rating/status) to each order payload.
+     *
+     * @param  array<int, array<string, mixed>>  $payloads
+     * @return array<int, array<string, mixed>>
+     */
+    private function withReviews(Request $r, array $payloads): array
+    {
+        $c = $r->attributes->get('store_customer');
+        $slugs = collect($payloads)->flatMap(fn (array $o): array => array_column($o['items'] ?? [], 'product_slug'))->filter()->unique()->values();
+        $reviews = $slugs->isEmpty() ? collect() : ProductReview::query()
+            ->join('commerce_products', 'commerce_products.id', '=', 'commerce_product_reviews.product_id')
+            ->where('commerce_product_reviews.workspace_id', $c->workspace_id)
+            ->where('commerce_product_reviews.customer_id', $c->id)
+            ->whereIn('commerce_products.slug', $slugs)
+            ->get(['commerce_products.slug', 'commerce_product_reviews.rating', 'commerce_product_reviews.status'])
+            ->keyBy('slug');
+
+        return array_map(function (array $o) use ($reviews): array {
+            $slugs = collect(array_column($o['items'] ?? [], 'product_slug'))->filter()->unique();
+            $o['can_review'] = in_array($o['status'] ?? null, Order::REVIEWABLE_STATUSES, true);
+            $o['reviews'] = (object) $slugs->filter(fn (string $slug): bool => $reviews->has($slug))
+                ->mapWithKeys(fn (string $slug): array => [$slug => ['rating' => (int) $reviews[$slug]->rating, 'status' => (string) $reviews[$slug]->status]])
+                ->all();
+
+            return $o;
+        }, $payloads);
     }
 
     public function cancel(Request $r, string $ref, OrderWorkflowService $workflow, UnifiedOrderService $s): JsonResponse

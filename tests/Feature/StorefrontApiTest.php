@@ -23,6 +23,7 @@ use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Models\LegacyMapping;
+use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\ReferralSetting;
 use App\Modules\Commerce\Storefront\Models\ReferralTransaction;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
@@ -148,6 +149,23 @@ it('keeps draft changes out of published pages and scopes preview tokens', funct
     $token = app(CmsService::class)->previewToken($this->store->id, 'home');
     $this->getJson('/api/storefront/v1/cms/pages/home?preview_token='.$token, $this->headers)->assertOk()->assertJsonPath('data.title', 'Draft title');
     expect(app(CmsService::class)->verifyPreview($this->other->id, 'home', $token))->toBeFalse();
+});
+
+it('orders home sections slider, categories, new arrivals, top sellers, then the rest', function (): void {
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated();
+    $page = StorefrontPage::query()->where('workspace_id', $this->store->id)->where('slug', 'home')->firstOrFail();
+    $page->update(['status' => 'published', 'published_at' => now(), 'published_content' => ['title' => 'Home', 'sections' => [
+        ['id' => 1, 'type' => 'rich_text', 'config' => ['text' => 'Hi']],
+        ['id' => 2, 'type' => 'category_grid', 'config' => []],
+        ['id' => 3, 'type' => 'hero_slider', 'config' => ['slider_id' => 0]],
+    ]]]);
+
+    $sections = $this->getJson('/api/storefront/v1/cms/pages/home', $this->headers)->assertOk()->json('data.sections');
+
+    expect(array_map(fn (array $s): string => $s['type'].':'.($s['config']['source'] ?? ''), $sections))
+        ->toBe(['hero_slider:', 'category_grid:', 'product_carousel:new-arrivals', 'product_carousel:best-sellers', 'rich_text:']);
+    expect($sections[3]['data'][0]['id'])->toBe($this->variant->product_id);
 });
 
 function storefrontCheckoutFixture($test): array
@@ -701,4 +719,46 @@ it('lists only published pages and blogs in the cms sitemap', function (): void 
     StorefrontPage::query()->create(['workspace_id' => $this->store->id, 'slug' => 'draft-page', 'title' => 'Draft', 'status' => 'draft']);
     $slugs = $this->getJson('/api/storefront/v1/cms/sitemap', $this->headers)->assertOk()->json('data.pages.*.slug');
     expect($slugs)->toContain('home')->not->toContain('draft-page');
+});
+
+function ratingReviewer($test, string $phone): Customer
+{
+    $contact = Contact::withoutEvents(fn () => Contact::query()->create(['workspace_id' => $test->store->id, 'name' => 'Reviewer '.$phone, 'phone' => $phone, 'source' => 'website', 'opt_in_status' => 'unknown']));
+
+    return app(CustomerService::class)->enroll($contact, true);
+}
+
+it('derives product rating and reviews_count from approved reviews only', function (): void {
+    $url = '/api/storefront/v1/catalog/products/shirt';
+    $this->getJson($url, $this->headers)->assertOk()
+        ->assertJsonPath('data.rating', 0)
+        ->assertJsonPath('data.reviews_count', 0);
+
+    $five = ProductReview::query()->create(['workspace_id' => $this->store->id, 'customer_id' => $this->customer->id, 'product_id' => $this->product->id, 'rating' => 5, 'body' => 'Great', 'status' => 'pending']);
+    $four = ProductReview::query()->create(['workspace_id' => $this->store->id, 'customer_id' => ratingReviewer($this, '+8801700000001')->id, 'product_id' => $this->product->id, 'rating' => 4, 'body' => 'Good', 'status' => 'pending']);
+    expect($this->product->fresh()->reviews_count)->toBe(0);
+
+    $five->update(['status' => 'approved']);
+    $four->update(['status' => 'approved']);
+    $this->getJson($url, $this->headers)->assertOk()
+        ->assertJsonPath('data.rating', 4.5)
+        ->assertJsonPath('data.reviews_count', 2);
+
+    $four->update(['status' => 'rejected']);
+    expect((float) $this->product->fresh()->rating)->toBe(5.0)
+        ->and($this->product->fresh()->reviews_count)->toBe(1);
+
+    $five->delete();
+    expect((float) $this->product->fresh()->rating)->toBe(0.0)
+        ->and($this->product->fresh()->reviews_count)->toBe(0);
+});
+
+it('backfills fake rating defaults with the refresh-ratings command', function (): void {
+    Product::query()->whereKey($this->product->id)->update(['rating' => 5.00, 'reviews_count' => 128]);
+    ProductReview::withoutEvents(fn () => ProductReview::query()->create(['workspace_id' => $this->store->id, 'customer_id' => $this->customer->id, 'product_id' => $this->product->id, 'rating' => 3, 'body' => 'Ok', 'status' => 'approved']));
+
+    $this->artisan('commerce:refresh-ratings')->assertSuccessful();
+
+    expect((float) $this->product->fresh()->rating)->toBe(3.0)
+        ->and($this->product->fresh()->reviews_count)->toBe(1);
 });

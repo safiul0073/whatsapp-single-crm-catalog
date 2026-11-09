@@ -11,6 +11,7 @@ use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Services\StorefrontUrl;
 use App\Modules\Commerce\Storefront\Console\ImportLegacy;
 use App\Modules\Commerce\Storefront\Console\ProvisionStore;
+use App\Modules\Commerce\Storefront\Console\RefreshProductRatings;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\ProvisionStoreService;
@@ -55,7 +56,7 @@ class CommerceServiceProvider extends BasePanelModuleProvider
                 ->unique()
                 ->each(fn (int $workspaceId) => RevalidateStorefront::dispatch($workspaceId, ['all']));
         });
-        $this->commands([ProvisionStore::class, ImportLegacy::class]);
+        $this->commands([ProvisionStore::class, ImportLegacy::class, RefreshProductRatings::class]);
     }
 
     public function register(): void

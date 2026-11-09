@@ -32,7 +32,6 @@ class LiveAdminRequest extends FormRequest
                 'turn_credential' => 'nullable|string|max:500',
                 'facebook' => 'nullable|array',
                 'facebook.enabled' => 'nullable|boolean',
-                'facebook.use_connected_messenger_page' => 'nullable|boolean',
                 'facebook.page_id' => 'nullable|string|max:120',
                 'facebook.page_name' => 'nullable|string|max:200',
                 'facebook.page_access_token' => 'nullable|string|max:2000',

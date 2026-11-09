@@ -13,6 +13,7 @@ use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSection;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -28,7 +29,7 @@ class CmsService
         $common = ['title' => 'nullable|string|max:200', 'subtitle' => 'nullable|string|max:1000', 'button_text' => 'nullable|string|max:80', 'button_link' => ['nullable', 'string', 'max:2048', 'regex:#^(?:/(?!/)|https?://|#)#']];
         $rules = match ($section['type']) {
             'hero_slider' => ['slider_id' => 'required|integer'],
-            'product_carousel' => ['source' => 'required|in:featured,new-arrivals,deals,category,brand,manual', 'category' => 'nullable|string|max:150', 'brand' => 'nullable|string|max:150', 'product_ids' => 'nullable|array|max:24', 'product_ids.*' => 'integer', 'limit' => 'nullable|integer|min:1|max:24'],
+            'product_carousel' => ['source' => 'required|in:featured,new-arrivals,best-sellers,deals,category,brand,manual', 'category' => 'nullable|string|max:150', 'brand' => 'nullable|string|max:150', 'product_ids' => 'nullable|array|max:24', 'product_ids.*' => 'integer', 'limit' => 'nullable|integer|min:1|max:24'],
             'live_videos' => ['limit' => 'nullable|integer|min:1|max:24'],
             'promo_banner','content_grid','testimonials' => ['items' => 'nullable|array|max:12', 'items.*.title' => 'nullable|string|max:200', 'items.*.text' => 'nullable|string|max:2000', 'items.*.image' => ['nullable', 'string', 'max:2048', 'regex:#^(?:/(?!/)|https?://)#'], 'items.*.link' => ['nullable', 'string', 'max:2048', 'regex:#^(?:/(?!/)|https?://|#)#']],
             'benefit_banner' => ['items' => 'nullable|array|max:12', 'items.*.title' => 'nullable|string|max:200', 'items.*.text' => 'nullable|string|max:2000'],
@@ -358,6 +359,9 @@ class CmsService
         abort_unless($preview || ($p->status === 'published' && $p->published_at?->isPast()), 404);
         $sections = $preview ? StorefrontSection::query()->where('workspace_id', $workspace)->where('page_id', $p->id)->orderBy('position')->get()->toArray() : ($p->published_content['sections'] ?? []);
         $sections = array_values(array_filter($sections, fn ($s) => ($s['active'] ?? true) && (empty($s['starts_at']) || now()->gte($s['starts_at'])) && (empty($s['ends_at']) || now()->lt($s['ends_at']))));
+        if ($slug === 'home') {
+            $sections = $this->orderHomeSections($sections);
+        }
         foreach ($sections as &$s) {
             $config = $s['config'];
             $s['data'] = match ($s['type']) {
@@ -369,6 +373,9 @@ class CmsService
                 default => [],
             };
         }
+
+        unset($s);
+        $sections = array_values(array_filter($sections, fn (array $s): bool => ! ($s['auto'] ?? false) || $s['data'] !== []));
 
         return ['slug' => $p->slug, 'title' => $preview ? $p->title : ($p->published_content['title'] ?? $p->title), 'seo' => $preview ? $p->seo : ($p->published_content['seo'] ?? []), 'sections' => $sections];
     }
@@ -423,6 +430,34 @@ class CmsService
         ];
     }
 
+    /**
+     * Home order: slider, categories, new arrivals, top sellers, then the rest.
+     * Missing new-arrivals / best-sellers carousels are added automatically.
+     *
+     * @param  array<int, array<string, mixed>>  $sections
+     * @return array<int, array<string, mixed>>
+     */
+    private function orderHomeSections(array $sections): array
+    {
+        $source = fn (array $s): ?string => $s['type'] === 'product_carousel' ? ($s['config']['source'] ?? null) : null;
+        $rank = fn (array $s): int => match (true) {
+            $s['type'] === 'hero_slider' => 0,
+            in_array($s['type'], ['category_grid', 'category_carousel'], true) => 1,
+            $source($s) === 'new-arrivals' => 2,
+            $source($s) === 'best-sellers' => 3,
+            default => 4,
+        };
+        foreach (['new-arrivals' => 'New Arrivals', 'best-sellers' => 'Top Sellers'] as $key => $title) {
+            if (! array_filter($sections, fn (array $s): bool => $source($s) === $key)) {
+                $sections[] = ['id' => 'auto-'.$key, 'type' => 'product_carousel', 'auto' => true, 'visibility' => 'all', 'active' => true, 'config' => ['source' => $key, 'title' => $title, 'limit' => 8] + ($key === 'new-arrivals' ? ['button_text' => 'View all', 'button_link' => '/collections/new-arrivals'] : [])];
+            }
+        }
+        $indexed = array_map(null, array_keys($sections), $sections);
+        usort($indexed, fn (array $a, array $b): int => [$rank($a[1]), $a[0]] <=> [$rank($b[1]), $b[0]]);
+
+        return array_column($indexed, 1);
+    }
+
     private function products(int $workspace, array $config): array
     {
         $q = app(CatalogService::class)->query($workspace, array_intersect_key($config, array_flip(['category', 'brand'])));
@@ -431,6 +466,18 @@ class CmsService
         } elseif (($config['source'] ?? '') === 'featured') {
             $ids = StorefrontContent::query()->where('workspace_id', $workspace)->where('type', 'collection')->where('slug', 'featured')->where('published_at', '<=', now())->first()?->data['product_ids'] ?? [];
             $q->whereIn('id', $ids);
+        } elseif (($config['source'] ?? '') === 'best-sellers') {
+            $sold = DB::table('commerce_order_items as oi')
+                ->join('commerce_product_variants as v', 'v.id', '=', 'oi.variant_id')
+                ->join('commerce_orders as o', 'o.id', '=', 'oi.order_id')
+                ->where('oi.workspace_id', $workspace)
+                ->where('o.status', '!=', 'cancelled')
+                ->whereNull('o.deleted_at')
+                ->groupBy('v.product_id')
+                ->selectRaw('v.product_id, SUM(oi.quantity) as sold_qty');
+            $q->joinSub($sold, 'sold', 'sold.product_id', '=', 'commerce_products.id')
+                ->select('commerce_products.*')
+                ->orderByDesc('sold.sold_qty');
         } elseif (($config['source'] ?? '') === 'deals') {
             $q->whereHas('variants', fn ($variants) => $variants->where('status', 'active')->whereColumn('compare_at_price', '>', 'price'));
         }

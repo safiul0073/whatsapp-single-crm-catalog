@@ -194,6 +194,7 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     Route::put('credentials', [$c, 'updateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.update');
     Route::put('live-settings', [$c, 'liveSettings'])->middleware('permission:commerce.storefront.settings')->name('live.settings');
     Route::post('live-settings/verify-facebook', [$c, 'verifyFacebookLive'])->middleware('permission:commerce.storefront.settings')->name('live.verify-facebook');
+    Route::post('live-settings/facebook/connect', [$c, 'connectFacebookLive'])->middleware(['permission:commerce.storefront.settings', 'can:meta-social.manage'])->name('live.facebook.connect');
     Route::post('lives', [$c, 'storeLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.store');
     Route::post('lives/{id}/toggle-slider', [$c, 'toggleLiveSlider'])->middleware('permission:commerce.storefront.marketing')->name('lives.toggle-slider');
     Route::post('lives/{id}/stop', [$c, 'stopLive'])->middleware('permission:commerce.storefront.marketing')->name('lives.stop');
