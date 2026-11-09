@@ -20,6 +20,7 @@ use App\Modules\Media\Events\ImageVariantsGenerated;
 use App\Modules\Shared\Support\BasePanelModuleProvider;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -30,8 +31,8 @@ class CommerceServiceProvider extends BasePanelModuleProvider
     protected function bootModule(array $module): void
     {
         Route::middleware('api')->group(__DIR__.'/../Routes/storefront.php');
-        RateLimiter::for('storefront', fn ($r) => Limit::perMinute(240)->by(hash('sha256', $r->header('X-Store-Host', '').':'.$r->header('X-Storefront-Client-IP', $r->ip()))));
-        RateLimiter::for('storefront-auth', fn ($r) => Limit::perMinute(20)->by(hash('sha256', $r->header('X-Store-Host', '').':'.$r->header('X-Storefront-Client-IP', $r->ip()))));
+        RateLimiter::for('storefront', fn ($r) => self::storefrontLimit($r, 240));
+        RateLimiter::for('storefront-auth', fn ($r) => Limit::perMinute(20)->by(self::storefrontClientKey($r)));
         Workspace::created(function ($workspace): void {
             if (Schema::hasTable('commerce_store_domains')) {
                 app(ProvisionStoreService::class)->provision($workspace);
@@ -63,5 +64,32 @@ class CommerceServiceProvider extends BasePanelModuleProvider
     {
         $this->app->scoped(ProductShowcaseCollector::class);
         $this->app->scoped(StorefrontUrl::class);
+    }
+
+    /**
+     * The Next.js storefront renders pages server-side, so many API calls share its IP.
+     * Platform-authenticated calls are limited per forwarded visitor IP (600/min), and
+     * server-only calls without one get a larger per-store budget. Mobile and other
+     * callers keep the plain per-IP limit and cannot pick a bucket via the header.
+     */
+    public static function storefrontLimit(Request $r, int $default): Limit
+    {
+        $host = (string) $r->header('X-Store-Host', '');
+        if ($r->attributes->get('storefront_platform') === true) {
+            $client = trim((string) $r->header('X-Storefront-Client-IP', ''));
+
+            return $client !== ''
+                ? Limit::perMinute(600)->by(hash('sha256', 'visitor:'.$host.':'.$client))
+                : Limit::perMinute(3000)->by(hash('sha256', 'server:'.$host));
+        }
+
+        return Limit::perMinute($default)->by(hash('sha256', $host.':'.$r->ip()));
+    }
+
+    public static function storefrontClientKey(Request $r): string
+    {
+        $client = $r->attributes->get('storefront_platform') === true ? trim((string) $r->header('X-Storefront-Client-IP', '')) : '';
+
+        return hash('sha256', $r->header('X-Store-Host', '').':'.($client !== '' ? $client : $r->ip()));
     }
 }

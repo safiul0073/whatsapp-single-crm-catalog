@@ -2,6 +2,7 @@
 
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\CustomInvoiceController;
+use App\Modules\Commerce\Http\Controllers\User\FeatureIconController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
 use App\Modules\Commerce\Http\Controllers\User\VisitorController;
@@ -41,6 +42,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     });
 
     Route::get('/', [CommerceController::class, 'index'])->middleware('permission:commerce.products.view')->name('products.index');
+    Route::get('icon-picker/icons', [FeatureIconController::class, 'index'])->middleware('permission:commerce.products.manage')->name('icon-picker.icons');
     Route::get('products/create', [CommerceController::class, 'create'])->middleware('permission:commerce.products.manage')->name('products.create');
     Route::post('products', [CommerceController::class, 'store'])->middleware('permission:commerce.products.manage')->name('products.store');
     Route::get('products/{product}/edit', [CommerceController::class, 'edit'])->middleware('permission:commerce.products.manage')->name('products.edit');

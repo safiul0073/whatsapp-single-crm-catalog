@@ -1240,6 +1240,8 @@
 
                 @include('commerce::user.partials.storefront-seo-card')
 
+                @include('commerce::user.partials.storefront-feature-icons-card')
+
                 {{-- Retail Selling Card --}}
                 <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div class="flex items-center justify-between gap-4">

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Http\Requests;
 
+use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -114,7 +115,9 @@ class ProductDetailsRequest extends FormRequest
             'care_information' => ['nullable', 'string', 'max:2000'],
             'features' => ['nullable', 'array'],
             'features.*' => ['nullable', 'string', 'max:255'],
-            'feature_highlights' => ['nullable', 'array'],
+            'feature_highlights' => ['nullable', 'array', 'max:12'],
+            'feature_highlights.*.icon' => ['nullable', 'string', 'max:80', FeatureIconCatalog::ICON_RULE],
+            'feature_highlights.*.label' => ['nullable', 'string', 'max:80'],
             'shipping_countries' => ['nullable', 'array'],
             'specifications' => ['nullable', 'array'],
             'attribute_values' => ['nullable', 'array'],

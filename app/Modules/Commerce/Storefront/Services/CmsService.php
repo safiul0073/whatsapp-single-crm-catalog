@@ -439,7 +439,25 @@ class CmsService
      */
     private function orderHomeSections(array $sections): array
     {
-        $source = fn (array $s): ?string => $s['type'] === 'product_carousel' ? ($s['config']['source'] ?? null) : null;
+        // A carousel fills the new-arrivals / best-sellers slot by source, or by its title
+        // (e.g. a "TOP SELLERS" featured carousel), so no duplicate is auto-added.
+        $source = function (array $s): ?string {
+            if (($s['type'] ?? null) !== 'product_carousel') {
+                return null;
+            }
+            $src = $s['config']['source'] ?? null;
+            if (in_array($src, ['new-arrivals', 'best-sellers'], true)) {
+                return $src;
+            }
+            $title = preg_replace('/[^a-z]+/', ' ', strtolower((string) ($s['config']['title'] ?? '')));
+            $title = trim((string) $title);
+
+            return match (true) {
+                (bool) preg_match('/^(top|best) ?sellers?$/', $title) => 'best-sellers',
+                (bool) preg_match('/^new arrivals?$/', $title) => 'new-arrivals',
+                default => $src,
+            };
+        };
         $rank = fn (array $s): int => match (true) {
             $s['type'] === 'hero_slider' => 0,
             $source($s) === 'new-arrivals' => 1,
