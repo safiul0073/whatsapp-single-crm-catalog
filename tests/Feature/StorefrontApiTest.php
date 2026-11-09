@@ -40,11 +40,13 @@ use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Models\ShippingZone;
 use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -775,4 +777,43 @@ it('treats a carousel titled Top Sellers as the top-sellers slot instead of addi
 
     expect(array_map(fn (array $s): string => $s['type'].':'.($s['config']['title'] ?? ''), $sections))
         ->toBe(['product_carousel:New  Arrivals', 'product_carousel:TOP SELLERS', 'category_grid:']);
+});
+
+it('rate limits server-rendered storefront calls per forwarded visitor IP', function (): void {
+    $limiter = RateLimiter::limiter('storefront');
+    $make = function (?string $client): Request {
+        $r = Request::create('/api/storefront/v1/catalog/products', 'GET', server: ['REMOTE_ADDR' => '10.0.0.5']);
+        $r->headers->set('X-Store-Host', 'one.localhost');
+        if ($client !== null) {
+            $r->headers->set('X-Storefront-Client-IP', $client);
+        }
+        $r->attributes->set('storefront_platform', true);
+
+        return $r;
+    };
+
+    $a = $limiter($make('203.0.113.10'));
+    $b = $limiter($make('203.0.113.20'));
+    $server = $limiter($make(null));
+
+    expect($a->maxAttempts)->toBe(600)
+        ->and($a->key)->not->toBe($b->key)
+        ->and($server->maxAttempts)->toBe(3000);
+
+    // The real middleware marks platform calls, so a forwarded IP request passes through normally.
+    $this->getJson('/api/storefront/v1/catalog/products', [...$this->headers, 'X-Storefront-Client-IP' => '203.0.113.10'])->assertOk();
+});
+
+it('ignores a client IP header on mobile routes when rate limiting', function (): void {
+    $limiter = RateLimiter::limiter('storefront');
+    $request = Request::create('/api/v1/mobile/storefront/catalog/products', 'GET', server: ['REMOTE_ADDR' => '198.51.100.7']);
+    $request->headers->set('X-Store-Host', 'one.localhost');
+    $request->headers->set('X-Storefront-Client-IP', '203.0.113.99');
+    $limit = $limiter($request);
+
+    expect($limit->maxAttempts)->toBe(240)
+        ->and($limit->key)->toBe(hash('sha256', 'one.localhost:198.51.100.7'));
+
+    $request->attributes->set('storefront_platform', true);
+    expect($limiter($request)->maxAttempts)->toBe(600);
 });

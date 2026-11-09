@@ -18,6 +18,8 @@ class AuthenticatePlatform
 
         $envSecret = (string) config('storefront.platform_secret');
         if (strlen($envSecret) >= 32 && hash_equals($envSecret, $provided)) {
+            $request->attributes->set('storefront_platform', true);
+
             return $next($request);
         }
 
@@ -31,6 +33,7 @@ class AuthenticatePlatform
         }
 
         abort_unless($matched, 401);
+        $request->attributes->set('storefront_platform', true);
 
         return $next($request);
     }
