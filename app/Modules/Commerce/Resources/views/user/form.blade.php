@@ -1428,14 +1428,14 @@
                     {{-- Feature Highlights List --}}
                     <div class="mt-5 space-y-3">
                         <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
-                            <div class="flex items-center gap-3 p-3 rounded-md border border-neutral-200 bg-white shadow-2xs">
+                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-md border border-neutral-200 bg-white shadow-2xs">
                                 <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
                                     <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
                                 </div>
                                 <div class="w-44">
                                     <select
                                         class="form-input text-xs py-2.5"
-                                        :value="feat.icon"
+                                        x-effect="const icon = feat.icon; $nextTick(() => { $el.value = icon })"
                                         @change="onFeatureIconChange(fIdx, $event)"
                                         aria-label="{{ __('Feature icon') }}"
                                     >
@@ -1450,9 +1450,10 @@
                                 </div>
                                 <input
                                     type="text"
-                                    class="form-input text-xs font-bold py-2.5 flex-1"
+                                    class="form-input text-xs font-bold py-2.5 flex-1 min-w-48"
                                     x-model="feat.label"
-                                    placeholder="{{ __('Premium Tech Fleece') }}"
+                                    placeholder="{{ __('Feature name shown to shoppers, e.g. Premium Tech Fleece') }}"
+                                    aria-label="{{ __('Feature name') }}"
                                     required
                                 >
                                 <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeFeatureHighlight(fIdx)" aria-label="{{ __('Delete feature') }}">
