@@ -762,3 +762,17 @@ it('backfills fake rating defaults with the refresh-ratings command', function (
     expect((float) $this->product->fresh()->rating)->toBe(3.0)
         ->and($this->product->fresh()->reviews_count)->toBe(1);
 });
+
+it('treats a carousel titled Top Sellers as the top-sellers slot instead of adding a duplicate', function (): void {
+    $page = StorefrontPage::query()->where('workspace_id', $this->store->id)->where('slug', 'home')->firstOrFail();
+    $page->update(['status' => 'published', 'published_at' => now(), 'published_content' => ['title' => 'Home', 'sections' => [
+        ['id' => 1, 'type' => 'category_grid', 'config' => []],
+        ['id' => 2, 'type' => 'product_carousel', 'config' => ['source' => 'featured', 'title' => 'TOP SELLERS']],
+        ['id' => 3, 'type' => 'product_carousel', 'config' => ['source' => 'manual', 'title' => 'New  Arrivals']],
+    ]]]);
+
+    $sections = $this->getJson('/api/storefront/v1/cms/pages/home', $this->headers)->assertOk()->json('data.sections');
+
+    expect(array_map(fn (array $s): string => $s['type'].':'.($s['config']['title'] ?? ''), $sections))
+        ->toBe(['product_carousel:New  Arrivals', 'product_carousel:TOP SELLERS', 'category_grid:']);
+});
