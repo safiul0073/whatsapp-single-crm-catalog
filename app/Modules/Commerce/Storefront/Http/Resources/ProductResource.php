@@ -154,7 +154,7 @@ class ProductResource extends JsonResource
             'shipping_info' => $this->shipping_info ?? 'USA & Canada',
             'care_information' => $this->care_information,
             'features' => $this->features ?? [],
-            'rating' => (float) ($this->rating ?? 5.0),
+            'rating' => (float) ($this->rating ?? 0),
             'reviews_count' => (int) ($this->reviews_count ?? 0),
             'whatsapp_number' => $whatsappNumber,
             'shipping_estimate' => [

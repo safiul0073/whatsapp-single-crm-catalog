@@ -312,17 +312,20 @@
                             {{ $product->name }}
                         </h1>
 
-                        {{-- Star Rating & Reviews --}}
-                        <div class="mt-2.5 flex items-center gap-2">
-                            <div class="flex items-center text-[#F59E0B]">
-                                @for($i = 1; $i <= 5; $i++)
-                                    <i class="ph-fill ph-star text-sm"></i>
-                                @endfor
+                        {{-- Star Rating & Reviews (from approved reviews) --}}
+                        @if(($product->reviews_count ?? 0) > 0)
+                            <div class="mt-2.5 flex items-center gap-2">
+                                <div class="flex items-center">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="ph-fill ph-star text-sm {{ $i <= round((float) $product->rating) ? 'text-[#F59E0B]' : 'text-neutral-200' }}"></i>
+                                    @endfor
+                                </div>
+                                <span class="text-xs font-semibold text-neutral-600">
+                                    {{ number_format((float) $product->rating, 1) }}
+                                    ({{ $product->reviews_count }} {{ $product->reviews_count === 1 ? __('Review') : __('Reviews') }})
+                                </span>
                             </div>
-                            <span class="text-xs font-semibold text-neutral-600">
-                                ({{ $product->reviews_count ?? 128 }} {{ __('Reviews') }})
-                            </span>
-                        </div>
+                        @endif
 
                         {{-- Short Description / Subtitle --}}
                         <div class="mt-3 text-sm text-neutral-600 leading-relaxed font-normal">

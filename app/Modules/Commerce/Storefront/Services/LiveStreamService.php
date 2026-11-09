@@ -44,7 +44,7 @@ class LiveStreamService
         $record = StorefrontSetting::query()->where('workspace_id', $workspaceId)->first();
         $raw = (array) data_get($record?->config, 'live', []);
         $fbReadiness = $this->facebook->readiness($workspaceId, $verifyFacebook);
-        $fbCreds = $this->facebook->resolveCredentials($workspaceId);
+        $fbCreds = $this->facebook->resolveCredentials($workspaceId, false);
 
         $defaultPlatforms = $this->normalizePlatforms((array) ($raw['default_platforms'] ?? ['storefront', 'facebook']));
         $iceServers = ! empty($raw['ice_servers']) && is_array($raw['ice_servers'])
@@ -78,11 +78,11 @@ class LiveStreamService
             'reverb' => $this->reverbConfig(),
             'facebook' => [
                 'enabled' => $fbCreds['enabled'],
-                'use_connected_messenger_page' => $fbCreds['use_connected_messenger_page'],
                 'page_id' => $fbCreds['page_id'],
                 'page_name' => $fbCreds['page_name'],
-                'has_access_token' => $fbCreds['page_access_token'] !== '',
+                'has_access_token' => $fbCreds['has_manual_token'],
                 'source' => $fbCreds['source'],
+                'pages' => $fbCreds['pages'],
                 'sync_facebook_comments' => $fbCreds['sync_facebook_comments'],
                 'auto_upload_vod_fallback' => $fbCreds['auto_upload_vod_fallback'],
                 'readiness' => $fbReadiness,
@@ -108,18 +108,29 @@ class LiveStreamService
             : ($existingLive['default_platforms'] ?? ['storefront']);
 
         $fbInput = (array) ($data['facebook'] ?? []);
+        $pageId = trim((string) ($fbInput['page_id'] ?? ($existingFb['page_id'] ?? '')));
+        $connectedPage = collect($this->facebook->connectedPages($workspaceId))->firstWhere('id', $pageId);
+        $pageChanged = $pageId !== (string) ($existingFb['page_id'] ?? '');
+
+        // A Page picked from "Connect with Facebook" needs no token; its name comes from Meta.
+        // A manually entered token (mobile app / legacy) is kept, encrypted.
         $newToken = trim((string) ($fbInput['page_access_token'] ?? ''));
+        $storedToken = $connectedPage !== null || $pageId === ''
+            ? ''
+            : ($newToken !== '' ? $this->facebook->encryptToken($newToken) : (string) ($existingFb['page_access_token'] ?? ''));
+        $pageName = $connectedPage !== null
+            ? (string) $connectedPage['name']
+            : trim((string) ($fbInput['page_name'] ?? ($existingFb['page_name'] ?? '')));
 
         $facebookConfig = [
             'enabled' => filter_var($fbInput['enabled'] ?? ($existingFb['enabled'] ?? false), FILTER_VALIDATE_BOOLEAN),
-            'use_connected_messenger_page' => filter_var($fbInput['use_connected_messenger_page'] ?? ($existingFb['use_connected_messenger_page'] ?? true), FILTER_VALIDATE_BOOLEAN),
-            'page_id' => trim((string) ($fbInput['page_id'] ?? ($existingFb['page_id'] ?? ''))),
-            'page_name' => trim((string) ($fbInput['page_name'] ?? ($existingFb['page_name'] ?? ''))),
-            'page_access_token' => $newToken !== '' ? $newToken : (string) ($existingFb['page_access_token'] ?? ''),
+            'page_id' => $pageId,
+            'page_name' => $pageName,
+            'page_access_token' => $storedToken,
             'sync_facebook_comments' => filter_var($fbInput['sync_facebook_comments'] ?? ($existingFb['sync_facebook_comments'] ?? true), FILTER_VALIDATE_BOOLEAN),
             'auto_upload_vod_fallback' => filter_var($fbInput['auto_upload_vod_fallback'] ?? ($existingFb['auto_upload_vod_fallback'] ?? true), FILTER_VALIDATE_BOOLEAN),
-            'verification_status' => $existingFb['verification_status'] ?? 'ready',
-            'last_verified_at' => $existingFb['last_verified_at'] ?? null,
+            'verification_status' => $pageChanged || $newToken !== '' ? 'ready' : ($existingFb['verification_status'] ?? 'ready'),
+            'last_verified_at' => $pageChanged ? null : ($existingFb['last_verified_at'] ?? null),
             'last_error' => null,
         ];
 

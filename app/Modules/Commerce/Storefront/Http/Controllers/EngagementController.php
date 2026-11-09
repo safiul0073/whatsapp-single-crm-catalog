@@ -55,7 +55,7 @@ class EngagementController extends Controller
     {
         $c = $r->attributes->get('store_customer');
         $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
-        abort_unless($this->hasCompletedPurchase($c, $p->id), 403, 'Only customers with a completed order of this product can review it.');
+        abort_unless($this->hasConfirmedPurchase($c, $p->id), 403, 'Only customers with a confirmed or delivered order of this product can review it.');
         $review = ProductReview::query()->updateOrCreate(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id, 'product_id' => $p->id], [...$r->validated(), 'status' => 'pending']);
 
         return response()->json(['data' => $review], 201);
@@ -67,18 +67,18 @@ class EngagementController extends Controller
         $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
         $existing = ProductReview::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->where('product_id', $p->id)->first(['rating', 'body', 'status']);
 
-        return response()->json(['data' => ['can_review' => $this->hasCompletedPurchase($c, $p->id), 'review' => $existing]]);
+        return response()->json(['data' => ['can_review' => $this->hasConfirmedPurchase($c, $p->id), 'review' => $existing]]);
     }
 
     /**
-     * Only buyers whose order containing this product is completed may rate it.
+     * Only buyers whose order containing this product is confirmed or delivered may rate it.
      */
-    private function hasCompletedPurchase($customer, int $productId): bool
+    private function hasConfirmedPurchase($customer, int $productId): bool
     {
         return Order::query()
             ->where('workspace_id', $customer->workspace_id)
             ->where('contact_id', $customer->contact_id)
-            ->where('status', 'completed')
+            ->whereIn('status', Order::REVIEWABLE_STATUSES)
             ->whereHas('items.variant', fn ($q) => $q->where('product_id', $productId))
             ->exists();
     }

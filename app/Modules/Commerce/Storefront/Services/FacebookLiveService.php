@@ -7,26 +7,32 @@ use App\Modules\Commerce\Storefront\Events\LiveEngagementUpdated;
 use App\Modules\Commerce\Storefront\Models\LiveStream;
 use App\Modules\Commerce\Storefront\Models\LiveStreamComment;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
-use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
-use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MetaSocial\Services\MetaPageTokenResolver;
 use App\Modules\MetaSocial\Services\MetaSocialSettingsService;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class FacebookLiveService
 {
-    public function __construct(protected MetaSocialSettingsService $metaSettings) {}
+    public function __construct(
+        protected MetaSocialSettingsService $metaSettings,
+        protected MetaPageTokenResolver $pageTokens,
+    ) {}
 
     /**
      * Resolve effective Facebook Live credentials for the workspace.
      *
      * @return array{
      *     enabled: bool,
-     *     use_connected_messenger_page: bool,
      *     page_id: string,
      *     page_name: string,
      *     page_access_token: string,
+     *     has_credentials: bool,
+     *     has_manual_token: bool,
      *     source: string,
+     *     pages: array<int, array{id: string, name: string}>,
      *     sync_facebook_comments: bool,
      *     auto_upload_vod_fallback: bool,
      *     verification_status: string,
@@ -34,58 +40,95 @@ class FacebookLiveService
      *     last_error: ?string
      * }
      */
-    public function resolveCredentials(int $workspaceId): array
+    public function resolveCredentials(int $workspaceId, bool $withToken = true): array
     {
         $setting = StorefrontSetting::query()->where('workspace_id', $workspaceId)->first();
         $liveConfig = (array) data_get($setting?->config, 'live', []);
         $fbConfig = (array) ($liveConfig['facebook'] ?? []);
 
-        $useConnectedPage = (bool) ($fbConfig['use_connected_messenger_page'] ?? true);
         $pageId = trim((string) ($fbConfig['page_id'] ?? ''));
         $pageName = trim((string) ($fbConfig['page_name'] ?? ''));
-        $accessToken = trim((string) ($fbConfig['page_access_token'] ?? ''));
-        $source = 'custom';
+        $manualToken = $this->decryptToken((string) ($fbConfig['page_access_token'] ?? ''));
+        $accessToken = '';
+        $source = 'none';
 
-        if ($useConnectedPage || $pageId === '' || $accessToken === '') {
-            $messengerAccount = ChannelAccount::query()
-                ->where('workspace_id', $workspaceId)
-                ->where('provider', 'messenger')
-                ->where('status', ChannelAccountStatus::Connected->value)
-                ->latest('id')
-                ->first();
+        // Pages the workspace connected through "Connect with Facebook" (Meta Business login or Messenger channel).
+        $pages = $this->connectedPages($workspaceId);
+        if ($pageId === '' && count($pages) === 1) {
+            $pageId = $pages[0]['id'];
+        }
+        $connected = collect($pages)->firstWhere('id', $pageId);
 
-            if ($messengerAccount) {
-                $channelToken = trim((string) $messengerAccount->credential('access_token', ''));
-                $channelPageId = trim((string) ($messengerAccount->provider_account_id ?: data_get($messengerAccount->settings, 'page_id', '')));
-                if ($channelPageId !== '' && $channelToken !== '') {
-                    $pageId = $channelPageId;
-                    $pageName = trim((string) ($messengerAccount->provider_display_id ?: $messengerAccount->name ?: $pageName));
-                    $accessToken = $channelToken;
-                    $source = 'messenger_channel';
-                }
-            }
+        if ($pageId !== '' && $connected !== null) {
+            $pageName = $pageName !== '' ? $pageName : $connected['name'];
+            $source = 'meta_connection';
+            $accessToken = $withToken ? $this->connectedPageToken($workspaceId, $pageId) : '';
         }
 
-        $enabled = array_key_exists('enabled', $fbConfig)
-            ? (bool) $fbConfig['enabled']
-            : ($pageId !== '' && $accessToken !== '');
+        // Legacy / mobile path: a manually entered Page token (stored encrypted).
+        if ($accessToken === '' && $source !== 'meta_connection' && $pageId !== '' && $manualToken !== '') {
+            $accessToken = $manualToken;
+            $source = 'custom';
+        }
 
-        $hasCredentials = $pageId !== '' && $accessToken !== '';
-        $defaultStatus = $hasCredentials ? 'ready' : 'unconfigured';
+        $hasCredentials = $pageId !== '' && ($source === 'meta_connection' || $accessToken !== '');
+        $enabled = array_key_exists('enabled', $fbConfig) ? (bool) $fbConfig['enabled'] : $hasCredentials;
 
         return [
             'enabled' => $enabled,
-            'use_connected_messenger_page' => $useConnectedPage,
             'page_id' => $pageId,
             'page_name' => $pageName,
             'page_access_token' => $accessToken,
+            'has_credentials' => $hasCredentials,
+            'has_manual_token' => $manualToken !== '',
             'source' => $source,
+            'pages' => $pages,
             'sync_facebook_comments' => (bool) ($fbConfig['sync_facebook_comments'] ?? true),
             'auto_upload_vod_fallback' => (bool) ($fbConfig['auto_upload_vod_fallback'] ?? true),
-            'verification_status' => (string) ($fbConfig['verification_status'] ?? $defaultStatus),
+            'verification_status' => (string) ($fbConfig['verification_status'] ?? ($hasCredentials ? 'ready' : 'unconfigured')),
             'last_verified_at' => $fbConfig['last_verified_at'] ?? null,
             'last_error' => $fbConfig['last_error'] ?? null,
         ];
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function connectedPages(int $workspaceId): array
+    {
+        try {
+            return $this->pageTokens->pages($workspaceId);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    protected function connectedPageToken(int $workspaceId, string $pageId): string
+    {
+        try {
+            return trim($this->pageTokens->forPage($workspaceId, $pageId));
+        } catch (Throwable) {
+            return '';
+        }
+    }
+
+    public function encryptToken(string $token): string
+    {
+        return $token === '' ? '' : Crypt::encryptString($token);
+    }
+
+    protected function decryptToken(string $stored): string
+    {
+        $stored = trim($stored);
+        if ($stored === '') {
+            return '';
+        }
+
+        try {
+            return Crypt::decryptString($stored);
+        } catch (DecryptException) {
+            return $stored; // saved before tokens were encrypted
+        }
     }
 
     /**
@@ -104,7 +147,7 @@ class FacebookLiveService
      */
     public function readiness(int $workspaceId, bool $verifyRemote = false): array
     {
-        $creds = $this->resolveCredentials($workspaceId);
+        $creds = $this->resolveCredentials($workspaceId, false);
 
         if (! $creds['enabled']) {
             return [
@@ -119,7 +162,7 @@ class FacebookLiveService
             ];
         }
 
-        if ($creds['page_id'] === '' || $creds['page_access_token'] === '') {
+        if (! $creds['has_credentials']) {
             return [
                 'ready' => false,
                 'enabled' => true,
@@ -127,7 +170,9 @@ class FacebookLiveService
                 'page_id' => '',
                 'page_name' => '',
                 'source' => $creds['source'],
-                'message' => 'Facebook Page ID or Page Access Token is not configured. Connect a Facebook Page in Marketing App.',
+                'message' => $creds['pages'] === []
+                    ? 'No Facebook Page connected. Click "Connect with Facebook" to link your Page.'
+                    : 'Select the Facebook Page to stream to.',
                 'last_verified_at' => null,
             ];
         }
@@ -147,7 +192,7 @@ class FacebookLiveService
             'source' => $creds['source'],
             'message' => $isReady
                 ? 'Facebook Live settings are up to date and ready.'
-                : ($creds['last_error'] ?: 'Facebook Page token needs to be updated in Marketing App.'),
+                : ($creds['last_error'] ?: 'Facebook Page access needs to be renewed. Click "Reconnect" and grant Live Video permission.'),
             'last_verified_at' => $creds['last_verified_at'],
         ];
     }
@@ -171,7 +216,10 @@ class FacebookLiveService
         $creds = $this->resolveCredentials($workspaceId);
 
         if ($creds['page_id'] === '' || $creds['page_access_token'] === '') {
-            $this->persistVerificationResult($workspaceId, 'unconfigured', '', 'Facebook Page ID and Access Token are required.');
+            $message = $creds['source'] === 'meta_connection'
+                ? 'Meta did not share access to this Page. Click "Reconnect" and include the Page.'
+                : 'Connect a Facebook Page first.';
+            $this->persistVerificationResult($workspaceId, 'unconfigured', '', $message);
 
             return [
                 'ready' => false,
@@ -180,7 +228,7 @@ class FacebookLiveService
                 'page_id' => '',
                 'page_name' => '',
                 'source' => $creds['source'],
-                'message' => 'Facebook Page ID and Access Token are required.',
+                'message' => $message,
                 'last_verified_at' => null,
             ];
         }

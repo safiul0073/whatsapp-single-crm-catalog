@@ -3928,6 +3928,17 @@ npm run start</pre>
         $fbReadiness = (array) ($fbCfg['readiness'] ?? ['ready' => false, 'status' => 'unconfigured', 'message' => 'Not configured']);
         $defaultPlatforms = (array) ($liveCfg['default_platforms'] ?? ['storefront', 'facebook']);
         $allLiveStreams = $liveStreams ?? collect();
+        $fbPages = (array) ($fbCfg['pages'] ?? []);
+        $fbSignup = (array) ($facebookSignup ?? []);
+        $canConnectFacebook = ($fbSignup['enabled'] ?? false) && (auth()->user()?->can('meta-social.manage') ?? false);
+        $fbLoginText = [
+            'data-opening-text' => __('Opening Facebook… A login window will appear.'),
+            'data-waiting-text' => __('Waiting for you in the Facebook window. Select your Page and keep every permission checked.'),
+            'data-cancelled-text' => __('The Facebook window was closed before finishing. Nothing was saved.'),
+            'data-popup-blocked-text' => __('Your browser blocked the Facebook window. Allow pop-ups for this site and try again.'),
+            'data-sdk-error-text' => __('Could not load Facebook login. Check your connection or turn off ad blockers for this site.'),
+            'data-finishing-text' => __('Saving your Facebook connection…'),
+        ];
     @endphp
     <div x-show="activeTab === 'live'" x-cloak class="space-y-6">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -4061,12 +4072,6 @@ npm run start</pre>
                             </label>
 
                             <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
-                                <input type="hidden" name="facebook[use_connected_messenger_page]" value="0">
-                                <input type="checkbox" name="facebook[use_connected_messenger_page]" value="1" class="form-checkbox rounded text-blue-600" @checked($fbCfg['use_connected_messenger_page'] ?? true)>
-                                <span>{{ __('Use Connected Messenger Facebook Page Automatically') }}</span>
-                            </label>
-
-                            <label class="flex items-center gap-2.5 text-xs font-medium text-title cursor-pointer">
                                 <input type="hidden" name="facebook[sync_facebook_comments]" value="0">
                                 <input type="checkbox" name="facebook[sync_facebook_comments]" value="1" class="form-checkbox rounded text-blue-600" @checked($fbCfg['sync_facebook_comments'] ?? true)>
                                 <span>{{ __('Sync Facebook Live Comments into Unified Reverb Chat') }}</span>
@@ -4079,19 +4084,45 @@ npm run start</pre>
                             </label>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div>
-                                <label for="fb_page_id" class="form-label text-[11px] font-semibold">{{ __('Facebook Page ID') }}</label>
-                                <input id="fb_page_id" type="text" name="facebook[page_id]" value="{{ $fbCfg['page_id'] ?? '' }}" placeholder="1029384756..." class="form-input mt-1 w-full rounded-lg text-xs font-mono">
-                            </div>
-                            <div>
-                                <label for="fb_page_name" class="form-label text-[11px] font-semibold">{{ __('Facebook Page Name') }}</label>
-                                <input id="fb_page_name" type="text" name="facebook[page_name]" value="{{ $fbCfg['page_name'] ?? '' }}" placeholder="My Brand Page" class="form-input mt-1 w-full rounded-lg text-xs">
-                            </div>
-                            <div>
-                                <label for="fb_page_token" class="form-label text-[11px] font-semibold">{{ __('Page Access Token (publish_video)') }}</label>
-                                <input id="fb_page_token" type="password" name="facebook[page_access_token]" value="" placeholder="{{ ($fbCfg['has_access_token'] ?? false) ? '•••••••••••••••• (Saved)' : 'EAAB...' }}" class="form-input mt-1 w-full rounded-lg text-xs font-mono">
-                            </div>
+                        <div class="rounded-lg border border-blue-200/70 bg-white p-3 dark:border-blue-900/50 dark:bg-neutral-900" data-facebook-live-connect>
+                            @if ($fbPages === [])
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-title">{{ __('Connect your Facebook Page') }}</p>
+                                        <p class="text-[11px] text-body" data-meta-connect-status="business">{{ __('Log in with Facebook, pick your Page and allow Live Video. No Page ID or token to copy.') }}</p>
+                                    </div>
+                                    @if ($canConnectFacebook)
+                                        <button type="button" class="btn btn-primary btn-sm rounded-lg text-xs flex items-center gap-1.5 shrink-0" data-meta-connect="business" data-meta-connect-form="facebookLiveConnectForm" data-app-id="{{ $fbSignup['app_id'] ?? '' }}" data-config-id="{{ $fbSignup['config_id'] ?? '' }}" data-graph-api-version="{{ $fbSignup['graph_api_version'] ?? '' }}" @foreach ($fbLoginText as $attribute => $text) {{ $attribute }}="{{ $text }}" @endforeach>
+                                            <i class="ph-fill ph-facebook-logo text-base"></i>
+                                            <span>{{ __('Connect with Facebook') }}</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="flex flex-wrap items-end justify-between gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <label for="fb_page_id" class="form-label text-[11px] font-semibold">{{ __('Facebook Page to stream to') }}</label>
+                                        <select id="fb_page_id" name="facebook[page_id]" class="form-select mt-1 w-full rounded-lg text-xs">
+                                            <option value="">{{ __('Select a Page') }}</option>
+                                            @foreach ($fbPages as $fbPage)
+                                                <option value="{{ $fbPage['id'] }}" @selected(($fbCfg['page_id'] ?? '') === $fbPage['id'])>{{ $fbPage['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        <p class="mt-1 text-[11px] text-body" data-meta-connect-status="business">{{ __('Page missing? Click Reconnect and select it in the Facebook window.') }}</p>
+                                    </div>
+                                    @if ($canConnectFacebook)
+                                        <button type="button" class="btn btn-outline btn-sm rounded-lg text-xs flex items-center gap-1.5 shrink-0" data-meta-connect="business" data-meta-connect-form="facebookLiveConnectForm" data-app-id="{{ $fbSignup['app_id'] ?? '' }}" data-config-id="{{ $fbSignup['config_id'] ?? '' }}" data-graph-api-version="{{ $fbSignup['graph_api_version'] ?? '' }}" @foreach ($fbLoginText as $attribute => $text) {{ $attribute }}="{{ $text }}" @endforeach>
+                                            <i class="ph-fill ph-facebook-logo text-base"></i>
+                                            <span>{{ __('Reconnect') }}</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
+                            @if (! ($fbSignup['enabled'] ?? false))
+                                <p class="mt-2 text-[11px] text-amber-700 dark:text-amber-300">{{ __('Connecting with Facebook is not available yet. The platform administrator still has to finish the Meta app setup.') }}</p>
+                            @elseif (! $canConnectFacebook)
+                                <p class="mt-2 text-[11px] text-amber-700 dark:text-amber-300">{{ __('Ask an account owner with Meta channel access to connect Facebook.') }}</p>
+                            @endif
                         </div>
                     </div>
 
@@ -4106,12 +4137,20 @@ npm run start</pre>
                     </div>
                 </form>
 
+                @if ($canConnectFacebook)
+                    <form id="facebookLiveConnectForm" method="POST" action="{{ route('user.commerce.storefront.live.facebook.connect') }}" class="hidden">
+                        @csrf
+                        <input type="hidden" name="_tab" value="live">
+                        <input type="hidden" name="code" value="">
+                    </form>
+                @endif
+
                 <form method="POST" action="{{ route('user.commerce.storefront.live.verify-facebook') }}" class="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-5 py-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     @csrf
                     <input type="hidden" name="_tab" value="live">
                     <div class="space-y-0.5">
                         <p class="text-xs font-semibold text-title">{{ __('Test & Verify Facebook Live Connection') }}</p>
-                        <p class="text-[11px] text-body">{{ __('Checks with Meta Graph API that your Page Access Token is valid and up to date before the owner goes live from the mobile app.') }}</p>
+                        <p class="text-[11px] text-body">{{ __('Checks with Facebook that the selected Page can be reached before the owner goes live from the mobile app.') }}</p>
                     </div>
                     <button type="submit" class="btn btn-outline btn-sm rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-1.5 shrink-0">
                         <i class="ph ph-check-circle text-base"></i>

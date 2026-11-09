@@ -82,8 +82,8 @@ return new class extends Migration
             $table->string('shipping_info')->nullable()->default('USA & Canada Shipping');
             $table->string('delivery_time')->nullable()->default('6–10 Working Days Delivery');
             $table->unsignedInteger('moq')->default(1);
-            $table->decimal('rating', 3, 2)->default(5.00);
-            $table->unsignedInteger('reviews_count')->default(128);
+            $table->decimal('rating', 3, 2)->default(0);
+            $table->unsignedInteger('reviews_count')->default(0);
             $table->string('condition')->default('new');
             $table->string('visibility')->default('published');
             $table->string('audience')->nullable();
