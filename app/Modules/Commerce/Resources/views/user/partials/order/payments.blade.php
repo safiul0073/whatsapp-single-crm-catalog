@@ -6,7 +6,20 @@
     <section class="section-card space-y-3 text-sm">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="heading-5 text-title">{{ __('Payment') }}</h2>
-            <span class="badge badge-soft">{{ str($order->payment_state)->replace('_', ' ')->title() }}</span>
+            <span @class([
+                'badge inline-flex items-center gap-1.5',
+                match ($order->payment_state) {
+                    'unpaid' => 'badge-danger',
+                    'partially_paid' => 'badge-warning',
+                    'paid' => 'badge-success',
+                    default => 'badge-soft',
+                },
+            ])>
+                @if($order->payment_state === 'unpaid')
+                    <span class="relative flex size-2"><span class="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-75"></span><span class="relative inline-flex size-2 rounded-full bg-red-500"></span></span>
+                @endif
+                {{ str($order->payment_state)->replace('_', ' ')->title() }}
+            </span>
         </div>
         <dl class="grid gap-3 sm:grid-cols-3">
             <div><dt class="text-body">{{ __('Total') }}</dt><dd class="font-semibold text-title">{{ $order->total === null ? __('Awaiting quote') : $money($order->total) }}</dd></div>
@@ -22,7 +35,11 @@
                 @include('commerce::user.partials.payment-gallery')
             </div>
         @else
-            <p class="border-t border-border-soft pt-3 text-body">{{ __('No payment proof submitted yet.') }}</p>
+            <p @class([
+                'border-t border-border-soft pt-3',
+                'font-medium text-red-600 dark:text-red-400' => $order->payment_state !== 'paid',
+                'text-body' => $order->payment_state === 'paid',
+            ])>{{ __('No payment proof submitted yet.') }}</p>
         @endif
     </section>
     @endif
