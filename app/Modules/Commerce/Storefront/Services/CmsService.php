@@ -431,7 +431,7 @@ class CmsService
     }
 
     /**
-     * Home order: slider, categories, new arrivals, top sellers, then the rest.
+     * Home order: slider, new arrivals, top sellers, categories, then the rest.
      * Missing new-arrivals / best-sellers carousels are added automatically.
      *
      * @param  array<int, array<string, mixed>>  $sections
@@ -442,9 +442,9 @@ class CmsService
         $source = fn (array $s): ?string => $s['type'] === 'product_carousel' ? ($s['config']['source'] ?? null) : null;
         $rank = fn (array $s): int => match (true) {
             $s['type'] === 'hero_slider' => 0,
-            in_array($s['type'], ['category_grid', 'category_carousel'], true) => 1,
-            $source($s) === 'new-arrivals' => 2,
-            $source($s) === 'best-sellers' => 3,
+            $source($s) === 'new-arrivals' => 1,
+            $source($s) === 'best-sellers' => 2,
+            in_array($s['type'], ['category_grid', 'category_carousel'], true) => 3,
             default => 4,
         };
         foreach (['new-arrivals' => 'New Arrivals', 'best-sellers' => 'Top Sellers'] as $key => $title) {

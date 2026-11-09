@@ -151,7 +151,7 @@ it('keeps draft changes out of published pages and scopes preview tokens', funct
     expect(app(CmsService::class)->verifyPreview($this->other->id, 'home', $token))->toBeFalse();
 });
 
-it('orders home sections slider, categories, new arrivals, top sellers, then the rest', function (): void {
+it('orders home sections slider, new arrivals, top sellers, categories, then the rest', function (): void {
     [$headers, $data] = storefrontCheckoutFixture($this);
     $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated();
     $page = StorefrontPage::query()->where('workspace_id', $this->store->id)->where('slug', 'home')->firstOrFail();
@@ -164,8 +164,8 @@ it('orders home sections slider, categories, new arrivals, top sellers, then the
     $sections = $this->getJson('/api/storefront/v1/cms/pages/home', $this->headers)->assertOk()->json('data.sections');
 
     expect(array_map(fn (array $s): string => $s['type'].':'.($s['config']['source'] ?? ''), $sections))
-        ->toBe(['hero_slider:', 'category_grid:', 'product_carousel:new-arrivals', 'product_carousel:best-sellers', 'rich_text:']);
-    expect($sections[3]['data'][0]['id'])->toBe($this->variant->product_id);
+        ->toBe(['hero_slider:', 'product_carousel:new-arrivals', 'product_carousel:best-sellers', 'category_grid:', 'rich_text:']);
+    expect($sections[2]['data'][0]['id'])->toBe($this->variant->product_id);
 });
 
 function storefrontCheckoutFixture($test): array
