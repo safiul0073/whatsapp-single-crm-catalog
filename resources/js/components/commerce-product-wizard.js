@@ -5,6 +5,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   options: config.options || [],
   variants: config.variants || [],
   variantPresets: config.variantPresets || [],
+  featureIconPresets: config.featureIconPresets || [],
   colors: (config.colors || []).map((col, idx) => ({
     id: col.id || '',
     name: col.name || '',
@@ -172,8 +173,26 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   },
 
   addFeatureHighlight() {
-    this.featureHighlights.push({ label: 'New Feature', icon: 'ph-check-circle' });
+    this.featureHighlights.push({ label: 'New Feature', icon: this.featureIconPresets[0] || 'ph-check-circle' });
     this.dirty = true;
+  },
+
+  onFeatureIconChange(index, event) {
+    if (event.target.value !== '__more__') {
+      this.featureHighlights[index].icon = event.target.value;
+      this.dirty = true;
+      return;
+    }
+    event.target.value = this.featureHighlights[index].icon;
+    window.dispatchEvent(new CustomEvent('feature-icon-picker:open', {
+      detail: {
+        value: this.featureHighlights[index].icon,
+        apply: (icon) => {
+          this.featureHighlights[index].icon = icon;
+          this.dirty = true;
+        },
+      },
+    }));
   },
 
   removeFeatureHighlight(index) {

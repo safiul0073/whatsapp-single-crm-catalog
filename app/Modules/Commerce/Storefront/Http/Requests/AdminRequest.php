@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Storefront\Http\Requests;
 
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -51,6 +52,9 @@ class AdminRequest extends FormRequest
             'settings' => [
                 'config' => 'required|array',
                 'config.name' => 'required|string|max:150',
+                'config.feature_icons' => 'nullable|array|max:30',
+                'config.feature_icons.*.icon' => ['required', 'string', 'max:80', FeatureIconCatalog::ICON_RULE],
+                'config.feature_icons.*.label' => 'required|string|max:40',
                 'config.primary' => 'required|regex:/^#[0-9a-fA-F]{6}$/D',
                 'config.hover' => 'required|regex:/^#[0-9a-fA-F]{6}$/D',
                 'config.footer_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/D',

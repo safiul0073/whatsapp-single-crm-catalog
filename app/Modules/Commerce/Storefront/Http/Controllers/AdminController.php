@@ -28,6 +28,7 @@ use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\DomainResolver;
 use App\Modules\Commerce\Storefront\Services\FacebookLiveService;
+use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
 use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
@@ -64,6 +65,8 @@ class AdminController extends Controller
 
         return view('commerce::user.storefront', [
             'settings' => $settings,
+            'featureIcons' => app(FeatureIconCatalog::class)->presets($w),
+            'featureIconDefaults' => FeatureIconCatalog::DEFAULTS,
             'tracking' => app(TrackingSettingsService::class)->admin($w),
             'liveSettings' => $this->lives->settings($w),
             'facebookSignup' => app(MetaBusinessConnectService::class)->signupConfig(),
@@ -136,6 +139,13 @@ class AdminController extends Controller
             $newConfig['pwa']['offline_images'] = array_values(array_filter((array) ($newConfig['pwa']['offline_images'] ?? [])));
         } elseif (isset($existing['pwa'])) {
             $newConfig['pwa'] = $existing['pwa'];
+        }
+        if (array_key_exists('feature_icons', $newConfig)) {
+            $newConfig['feature_icons'] = app(FeatureIconCatalog::class)->clean((array) ($newConfig['feature_icons'] ?? []));
+        } elseif ($r->boolean('feature_icons_submitted')) {
+            $newConfig['feature_icons'] = [];
+        } elseif (isset($existing['feature_icons'])) {
+            $newConfig['feature_icons'] = $existing['feature_icons'];
         }
         if (isset($existing['tracking'])) {
             $newConfig['tracking'] = $existing['tracking'];

@@ -50,6 +50,7 @@ use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
+use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -1026,6 +1027,7 @@ class CommerceController extends Controller
             'variantPresets' => VariantPreset::query()->where('workspace_id', $workspace->id)->where('is_active', true)->orderBy('name')->get(),
             'variantPreview' => $product ? $this->products->variantPreview($product) : [],
             'readinessIssues' => $product ? app(ProductReadinessService::class)->issues($product) : [],
+            'featureIcons' => app(FeatureIconCatalog::class)->presets($workspace->id),
         ]);
     }
 

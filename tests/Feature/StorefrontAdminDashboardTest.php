@@ -9,6 +9,7 @@ use App\Modules\Commerce\Storefront\Models\StorefrontMenu;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use App\Modules\Commerce\Storefront\Services\CmsService;
+use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Models\WorkspaceMember;
 use Illuminate\Http\UploadedFile;
@@ -805,4 +806,45 @@ it('allows store owners to configure and upload mobile apps for iOS and Android'
     $response->assertSee('Mobile App Downloads (iOS &amp; Android)', false);
     $response->assertSee('Download FashionFiest App');
     $response->assertSee('Choose .apk file');
+});
+
+it('lets the owner manage product feature icon presets and keeps them when omitted', function (): void {
+    $user = User::query()->create(['id' => 7, 'name' => 'Icon Owner', 'email' => 'icons@example.com', 'password' => bcrypt('secret123'), 'email_verified_at' => now()]);
+    $workspace = Workspace::query()->create(['name' => 'Icons', 'slug' => 'icons-'.Str::uuid(), 'owner_id' => $user->id, 'status' => 'active']);
+    WorkspaceMember::query()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'role' => 'owner', 'is_active' => true]);
+    $catalog = app(FeatureIconCatalog::class);
+    $base = ['name' => 'Icon Store', 'primary' => '#1FAA53', 'hover' => '#178A43', 'footer_color' => '#075E54'];
+
+    expect($catalog->presets($workspace->id))->toBe(FeatureIconCatalog::DEFAULTS);
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'feature_icons_submitted' => '1',
+        'config' => $base + ['feature_icons' => [
+            ['icon' => 'ph-snowflake', 'label' => '  Winter Ready '],
+            ['icon' => 'ph-ruler', 'label' => 'True Size'],
+        ]],
+    ])->assertSessionHasNoErrors();
+    expect($catalog->presets($workspace->id))->toBe([
+        ['icon' => 'ph-snowflake', 'label' => 'Winter Ready'],
+        ['icon' => 'ph-ruler', 'label' => 'True Size'],
+    ]);
+
+    // Another settings form that doesn't include the card keeps the presets.
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', ['config' => $base])->assertSessionHasNoErrors();
+    expect($catalog->presets($workspace->id))->toHaveCount(2);
+
+    // Removing every preset from the card saves an empty list.
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', ['feature_icons_submitted' => '1', 'config' => $base])->assertSessionHasNoErrors();
+    expect($catalog->presets($workspace->id))->toBe([]);
+
+    $this->actingAs($user)->put('/dashboard/commerce/storefront/settings', [
+        'config' => $base + ['feature_icons' => [['icon' => 'fa-bad<script>', 'label' => 'Bad']]],
+    ])->assertSessionHasErrors('config.feature_icons.0.icon');
+});
+
+it('lists phosphor icons for the feature icon picker', function (): void {
+    $icons = app(FeatureIconCatalog::class)->allIcons();
+
+    expect($icons)->toContain('ph-ruler')->toContain('ph-snowflake')
+        ->and(count($icons))->toBeGreaterThan(500);
 });

@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Media\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,4 +189,30 @@ it('preserves five demo products and each complete matrix during gallery and det
             ->and($product->ws_enabled)->toBeTrue();
     }
     expect(Product::query()->where('workspace_id', $this->workspace->id)->count())->toBe(5);
+});
+
+it('offers the store feature icon presets plus More icons in step 7 and validates icon names', function (): void {
+    StorefrontSetting::query()->updateOrCreate(
+        ['workspace_id' => $this->workspace->id],
+        ['config' => ['name' => 'Store', 'feature_icons' => [['icon' => 'ph-snowflake', 'label' => 'Winter Ready']]]],
+    );
+    $product = $this->productService->create($this->workspace->id, ['name' => 'Icon Tee', 'single_piece_price' => 10, 'selling_mode' => 'retail']);
+    $product->update(['feature_highlights' => [['icon' => 'ph-leaf', 'label' => 'Organic']]]);
+
+    $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => 7]))
+        ->assertOk()
+        ->assertSee('Winter Ready')
+        ->assertSee('More icons…')
+        ->assertDontSee('Quality Seal');
+
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Icon Tee', 'next_step' => 8,
+        'feature_highlights' => [['icon' => 'ph-snowflake', 'label' => 'Warm']],
+    ])->assertSessionHasNoErrors();
+    expect($product->fresh()->feature_highlights)->toBe([['icon' => 'ph-snowflake', 'label' => 'Warm']]);
+
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Icon Tee', 'next_step' => 8,
+        'feature_highlights' => [['icon' => 'bad icon"', 'label' => 'x']],
+    ])->assertSessionHasErrors('feature_highlights.0.icon');
 });

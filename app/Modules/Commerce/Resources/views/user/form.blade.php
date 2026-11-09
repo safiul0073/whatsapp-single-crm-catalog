@@ -90,6 +90,7 @@
             'sizes' => $sizeState,
             'tierPrices' => $tierPricesState,
             'featureHighlights' => $featureHighlightsState,
+            'featureIconPresets' => array_column($featureIcons ?? [], 'icon'),
             'shippingCountries' => $shippingCountriesState,
             'specifications' => $specificationsState,
             'variants' => $variantPreview ?? [],
@@ -1432,16 +1433,19 @@
                                     <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
                                 </div>
                                 <div class="w-44">
-                                    <select class="form-input text-xs py-2.5" x-model="feat.icon">
-                                        <option value="ph-t-shirt">{{ __('T-Shirt / Fleece') }}</option>
-                                        <option value="ph-arrows-out-line-vertical">{{ __('Zipper / Set') }}</option>
-                                        <option value="ph-users-three">{{ __('Users / Kids') }}</option>
-                                        <option value="ph-palette">{{ __('Palette / Colors') }}</option>
-                                        <option value="ph-ruler">{{ __('Ruler / True Size') }}</option>
-                                        <option value="ph-seal-check">{{ __('Quality Seal') }}</option>
-                                        <option value="ph-buildings">{{ __('Factory Direct') }}</option>
-                                        <option value="ph-globe">{{ __('Worldwide') }}</option>
-                                        <option value="ph-lock-key">{{ __('Secure') }}</option>
+                                    <select
+                                        class="form-input text-xs py-2.5"
+                                        :value="feat.icon"
+                                        @change="onFeatureIconChange(fIdx, $event)"
+                                        aria-label="{{ __('Feature icon') }}"
+                                    >
+                                        @foreach($featureIcons ?? [] as $preset)
+                                            <option value="{{ $preset['icon'] }}">{{ $preset['label'] }}</option>
+                                        @endforeach
+                                        <template x-if="!featureIconPresets.includes(feat.icon)">
+                                            <option :value="feat.icon" x-text="feat.icon.replace('ph-', '')"></option>
+                                        </template>
+                                        <option value="__more__">{{ __('More icons…') }}</option>
                                     </select>
                                 </div>
                                 <input
@@ -1457,6 +1461,13 @@
                             </div>
                         </template>
                     </div>
+
+                    <p class="mt-3 text-xs text-neutral-500">
+                        {{ __('Manage this icon list in') }}
+                        <a href="{{ route('user.commerce.storefront.index', ['tab' => 'settings']) }}#feature-icons" class="font-semibold text-primary hover:underline">{{ __('Storefront → Settings → Product feature icons') }}</a>
+                    </p>
+
+                    @include('commerce::user.partials.feature-icon-picker')
 
                     {{-- Hidden inputs --}}
                     <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
