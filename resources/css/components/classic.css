@@ -118,7 +118,7 @@
 }
 
 .app-topnav {
-  @apply hidden min-w-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-section/80 p-1;
+  @apply hidden max-w-full min-w-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-section/80 p-1;
 }
 
 .app-topnav__link {
@@ -141,8 +141,8 @@
   @apply text-primary;
 }
 
-.app-topnav__link--overflow {
-  display: none;
+.app-topnav [hidden] {
+  display: none !important;
 }
 
 .app-topbar__search {
@@ -194,15 +194,6 @@
   }
 }
 
-@media (min-width: 1600px) {
-  .app-topnav__link--overflow {
-    display: inline-flex;
-  }
-
-  .app-topnav__more {
-    display: none;
-  }
-}
 
 /* =====================================================================
    App Card — reusable container for content sections
