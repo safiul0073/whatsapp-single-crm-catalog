@@ -5,8 +5,10 @@ namespace App\Modules\Chatbots\Services;
 use App\Models\User;
 use App\Modules\Chatbots\Models\Chatbot;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class ChatbotService
 {
@@ -51,6 +53,10 @@ class ChatbotService
     public function create(?User $user, array $data): Chatbot
     {
         $workspace = $this->workspaces->current($user);
+
+        if (app(PlanLimitService::class)->reached($workspace->id, 'chatbots')) {
+            throw ValidationException::withMessages(['name' => __('Your plan chatbot limit has been reached. Upgrade your plan to add more chatbots.')]);
+        }
 
         $chatbot = Chatbot::query()->create([
             'workspace_id' => $workspace->id,

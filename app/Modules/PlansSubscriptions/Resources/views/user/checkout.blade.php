@@ -1,5 +1,6 @@
 @php
     $checkoutAmount = currency_format($payment->default_amount, currency_default_code());
+    $checkoutDisplayAmount = currency_display_code() !== currency_default_code() ? currency_display($payment->default_amount) : null;
 @endphp
 
 <x-layouts.user :title="__('Checkout')">
@@ -28,6 +29,9 @@
                             </div>
                             <div class="text-right">
                                 <p class="text-2xl font-extrabold text-title">{{ $checkoutAmount }}</p>
+                                @if ($checkoutDisplayAmount)
+                                    <p class="mt-1 text-xs text-body">{{ __('≈ :amount · charged in :code', ['amount' => $checkoutDisplayAmount, 'code' => currency_default_code()]) }}</p>
+                                @endif
                                 <p class="mt-1 text-xs font-semibold uppercase text-primary">{{ ucfirst($payment->status) }}</p>
                             </div>
                         </div>
@@ -35,7 +39,12 @@
 
                     <div class="mt-6 space-y-3 text-sm text-body leading-relaxed">
                         @if ($payment->gateway === 'checkout')
-                            <p>{{ __('Choose a payment method below to complete your plan subscription upgrade.') }}</p>
+                            <p>{{ match ($intent->value) {
+                                'renew' => __('Choose a payment method below to renew your plan. Your new period starts when the current one ends.'),
+                                'upgrade' => __('Choose a payment method below. Your upgrade starts as soon as the payment is confirmed.'),
+                                'downgrade' => __('Choose a payment method below. The new plan starts when your current period ends.'),
+                                default => __('Choose a payment method below to activate your plan.'),
+                            } }}</p>
                         @else
                             <p>{{ __('Please complete the selected payment process, then click Refresh status to continue.') }}</p>
                             <p>{{ __('Selected Gateway') }}: <span class="font-semibold text-title">{{ ucfirst($payment->gateway) }}</span></p>
@@ -118,10 +127,21 @@
                 <div class="app-card p-5">
                     <h4 class="text-xs font-bold tracking-wider text-neutral-400 uppercase">{{ __('Summary') }}</h4>
                     <div class="mt-3 space-y-2 text-sm">
+                        @if((float) data_get($payment->metadata, 'proration_credit', 0) > 0)
+                            <div class="f-between">
+                                <span class="text-body">{{ __(':plan price', ['plan' => $plan?->name ?? __('Plan')]) }}</span>
+                                <span class="font-semibold text-title">{{ currency_format((float) data_get($payment->metadata, 'plan_price'), $payment->currency, true) }}</span>
+                            </div>
+                            <div class="f-between">
+                                <span class="text-body">{{ __('Unused time credit') }}</span>
+                                <span class="font-semibold text-success">−{{ currency_format((float) data_get($payment->metadata, 'proration_credit'), $payment->currency, true) }}</span>
+                            </div>
+                        @endif
                         <div class="f-between">
                             <span class="text-body">{{ __('Subtotal') }}</span>
                             <span class="font-semibold text-title">{{ $checkoutAmount }}</span>
                         </div>
+                        <p class="text-xs text-neutral-400">{{ __('Payment method fees, if any, are shown on each method.') }}</p>
                         <div class="f-between border-t border-neutral-100 pt-2">
                             <span class="font-bold text-title">{{ __('Total Amount') }}</span>
                             <span class="font-bold text-title">{{ $checkoutAmount }}</span>
@@ -130,12 +150,7 @@
                 </div>
 
                 <div class="space-y-3">
-                    @if ($payment->status === 'completed')
-                        <form method="POST" action="{{ route('user.subscription.checkout.pay', $payment) }}">
-                            @csrf
-                            <button type="submit" class="btn btn-primary w-full">{{ __('Activate subscription') }}</button>
-                        </form>
-                    @elseif ($payment->gateway !== 'checkout')
+                    @if ($payment->gateway !== 'checkout')
                         <a href="{{ route('user.subscription.checkout.page', $payment) }}" class="btn btn-primary w-full">
                             <i class="ph ph-arrow-counter-clockwise"></i>
                             {{ __('Refresh status') }}

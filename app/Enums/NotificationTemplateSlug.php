@@ -10,6 +10,7 @@ enum NotificationTemplateSlug: string
     case PASSWORD_CHANGED = 'password-changed';
     case SUBSCRIPTION_EXPIRING_SOON = 'subscription-expiring-soon';
     case SUBSCRIPTION_EXPIRED = 'subscription-expired';
+    case SUBSCRIPTION_USAGE_LIMIT = 'subscription-usage-limit';
 
     public function template(): ?NotificationTemplate
     {
@@ -23,6 +24,7 @@ enum NotificationTemplateSlug: string
             self::PASSWORD_CHANGED => 'Password Changed',
             self::SUBSCRIPTION_EXPIRING_SOON => 'Subscription Expiring Soon',
             self::SUBSCRIPTION_EXPIRED => 'Subscription Expired',
+            self::SUBSCRIPTION_USAGE_LIMIT => 'Subscription Usage Limit',
         };
     }
 }

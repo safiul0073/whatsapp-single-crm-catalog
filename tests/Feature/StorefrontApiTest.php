@@ -817,3 +817,22 @@ it('ignores a client IP header on mobile routes when rate limiting', function ()
     $request->attributes->set('storefront_platform', true);
     expect($limiter($request)->maxAttempts)->toBe(600);
 });
+
+it('exposes the size chart for sizes the product still sells', function (): void {
+    $option = $this->product->options()->create(['workspace_id' => $this->store->id, 'name' => 'Size', 'code' => 'size', 'position' => 0]);
+    foreach (['M', 'S'] as $position => $value) {
+        $option->values()->create(['workspace_id' => $this->store->id, 'value' => $value, 'position' => $position]);
+    }
+    $this->product->update(['size_chart' => [
+        'unit' => 'cm',
+        'columns' => ['Chest', 'Length'],
+        'rows' => [['size' => 'S', 'values' => ['96', '70']], ['size' => 'XL', 'values' => ['110', '76']], ['size' => 'M', 'values' => ['100', '72']]],
+        'note' => 'Measured flat',
+    ]]);
+
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.size_chart.columns', ['Chest', 'Length'])
+        ->assertJsonPath('data.size_chart.rows', [['size' => 'M', 'values' => ['100', '72']], ['size' => 'S', 'values' => ['96', '70']]])
+        ->assertJsonPath('data.size_chart.note', 'Measured flat');
+});

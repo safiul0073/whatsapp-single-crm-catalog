@@ -50,6 +50,7 @@
       </nav>
 
       <div class="relative z-[101] flex items-center gap-2">
+        @include('currencies::components.switcher', ['variant' => 'native'])
         @if ($themeVars['show_auth_links'] ?? true)
           @if ($isUserSignedIn)
             <a href="{{ route('user.dashboard') }}" class="btn-sm btn-primary pointer-events-auto">{{ __('Open Dashboard') }}</a>

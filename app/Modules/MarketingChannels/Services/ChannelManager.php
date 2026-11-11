@@ -5,6 +5,7 @@ namespace App\Modules\MarketingChannels\Services;
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\MarketingChannels\Contracts\MarketingChannelDriver;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -36,7 +37,23 @@ class ChannelManager
             ];
         }
 
-        return $this->explainMetaError($account, $this->driver($account->provider)->sendMessage($account, $recipient, $payload));
+        $limits = app(PlanLimitService::class);
+
+        if (! $limits->allows((int) $account->workspace_id, 'messages_per_month')) {
+            return [
+                'ok' => false,
+                'error_code' => 'plan_message_quota_exceeded',
+                'error' => __('Your monthly message quota is used up. Upgrade your plan to keep sending.'),
+            ];
+        }
+
+        $result = $this->explainMetaError($account, $this->driver($account->provider)->sendMessage($account, $recipient, $payload));
+
+        if ($result['ok'] ?? false) {
+            $limits->consume((int) $account->workspace_id, 'messages_per_month');
+        }
+
+        return $result;
     }
 
     /**

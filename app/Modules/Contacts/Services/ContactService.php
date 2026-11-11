@@ -11,6 +11,7 @@ use App\Modules\Contacts\Models\ContactGroup;
 use App\Modules\Contacts\Models\ContactProviderIdentity;
 use App\Modules\Contacts\Models\ContactTag;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use Giggsey\Locale\Locale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
@@ -94,7 +95,7 @@ class ContactService
     {
         $workspace = $this->workspaces->current($user);
 
-        return $this->upsert($workspace->id, $data);
+        return $this->upsert($workspace->id, $data, enforcePlanLimit: true);
     }
 
     public function updateForUser(?User $user, string $contact, array $data): Contact
@@ -193,7 +194,11 @@ class ContactService
         return $query->findOrFail($contact);
     }
 
-    public function upsert(int $workspaceId, array $data): Contact
+    /**
+     * Inbound messages also create contacts through here; only user-driven creates (manual, import)
+     * pass $enforcePlanLimit so incoming conversations are never dropped at the contact limit.
+     */
+    public function upsert(int $workspaceId, array $data, bool $enforcePlanLimit = false): Contact
     {
         $phone = filled($data['phone'] ?? null) ? $this->normalizePhone((string) $data['phone']) : null;
         $email = filled($data['email'] ?? null) ? strtolower(trim((string) $data['email'])) : null;
@@ -261,6 +266,12 @@ class ContactService
         if ($contact) {
             $contact->update($contactData);
         } else {
+            if ($enforcePlanLimit && app(PlanLimitService::class)->reached($workspaceId, 'contacts')) {
+                throw ValidationException::withMessages([
+                    'contact' => __('Your plan contact limit has been reached. Upgrade your plan to add more contacts.'),
+                ]);
+            }
+
             $contact = Contact::query()->create(array_merge(['workspace_id' => $workspaceId], $contactData));
         }
 

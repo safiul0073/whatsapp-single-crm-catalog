@@ -35,14 +35,39 @@ document.addEventListener("DOMContentLoaded", () => {
   const mainContent = document.getElementById("mainContent");
 
   // Scroll active item into view
-  setTimeout(() => {
-    const activeItem = document.querySelector(
-      ".app-nav__module-panel:not(.is-hidden) .app-nav__link.is-active, .nav-item.active",
-    );
-    if (activeItem) {
-      activeItem.scrollIntoView({ behavior: "auto", block: "nearest" });
+  // Admin uses .submenu-item.active / .app-nav__link.is-active; the user panel uses module panels.
+  const activeItem = [
+    ".app-nav .submenu-item.active",
+    ".app-nav .app-nav__link.is-active",
+    ".app-nav__module-panel:not(.is-hidden) .app-nav__link.is-active",
+    ".nav-item.active",
+  ].reduce((found, selector) => found || document.querySelector(selector), null);
+
+  if (activeItem) {
+    const scroller = activeItem.closest(".app-nav, .sidebar-nav") || sidebar;
+    let scrolled = false;
+    const scrollToActive = () => {
+      if (scrolled || !scroller) return;
+      scrolled = true;
+      const offset =
+        activeItem.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top +
+        scroller.scrollTop;
+      scroller.scrollTop = Math.max(
+        0,
+        offset - scroller.clientHeight / 2 + activeItem.offsetHeight / 2,
+      );
+    };
+
+    // Wait for the active submenu's max-height transition, otherwise positions are measured too early.
+    const submenu = activeItem.closest(".submenu");
+    if (submenu) {
+      submenu.addEventListener("transitionend", scrollToActive, { once: true });
+      setTimeout(scrollToActive, 350);
+    } else {
+      requestAnimationFrame(scrollToActive);
     }
-  }, 50);
+  }
 
   // Restore collapse state
   const isCollapsed = localStorage.getItem("sidebar-collapsed") === "true";

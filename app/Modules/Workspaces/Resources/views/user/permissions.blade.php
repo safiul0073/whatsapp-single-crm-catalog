@@ -49,6 +49,10 @@
                 </button>
             </div>
 
+            @foreach($hiddenGrantedPermissions as $hiddenPermission)
+                <input type="hidden" name="permissions[]" value="{{ $hiddenPermission }}" />
+            @endforeach
+
             <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 @foreach($rolePermissions['groups'] as $group)
                     <section class="rounded-md border border-neutral-200 p-4">

@@ -23,12 +23,14 @@ use App\Modules\PlansSubscriptions\Models\Plan;
 use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
+use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\WithoutDefaultTestPlan;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, WithoutDefaultTestPlan::class);
 
 it('persists the campaign doctor plan feature from the admin form', function (): void {
     $user = User::factory()->create(['email_verified_at' => now()]);
@@ -125,9 +127,14 @@ it('renders the subscription dashboard from plan and subscription data', functio
         'renews_at' => now()->addMonth(),
         'usage' => [
             'messages_per_month' => 12500,
-            'team_members' => 2,
             'max_ai_credits' => 3,
         ],
+    ]);
+
+    // Team seats are counted live: the owner plus one teammate.
+    $workspace->members()->attach(User::factory()->create()->id, [
+        'workspace_role_id' => $workspace->members()->first()->pivot->workspace_role_id,
+        'status' => WorkspaceMemberStatus::Active->value,
     ]);
 
     $mockManager = Mockery::mock(PaymentGatewayManager::class)->makePartial();
@@ -381,11 +388,11 @@ it('redirects to Stripe hosted checkout page when choosing Stripe', function ():
             102.73,
             'USD',
             Mockery::on(fn (array $options): bool => $options['gateway'] === 'stripe'
-                && data_get($options, 'metadata.base_amount') === 99.0
-                && data_get($options, 'metadata.fixed_charge') === 1.25
-                && data_get($options, 'metadata.percent_charge') === 2.5
-                && data_get($options, 'metadata.charge_amount') === 3.73
-                && data_get($options, 'metadata.payable_amount') === 102.73)
+                && data_get($options, 'metadata.base_amount') === '99.00'
+                && data_get($options, 'metadata.fixed_charge') === '1.25'
+                && data_get($options, 'metadata.percent_charge') === '2.5'
+                && data_get($options, 'metadata.charge_amount') === '3.73'
+                && data_get($options, 'metadata.payable_amount') === '102.73')
         )
         ->andReturn([
             'payment' => $payment,

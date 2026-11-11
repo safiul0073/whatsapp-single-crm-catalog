@@ -483,3 +483,58 @@ it('lets only customers with a confirmed or delivered order of the product rate 
     $this->getJson('/api/storefront/v1/me/orders', $this->auth)->assertOk()
         ->assertJsonPath('data.0.reviews.shirt.rating', 4);
 });
+
+function standardPackFixture($test): array
+{
+    $p = Product::query()->create(['workspace_id' => $test->store->id, 'name' => 'Tracksuit', 'slug' => 'tracksuit', 'sku' => 'tracksuit', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'both', 'ws_enabled' => true, 'single_piece_price' => 40, 'wholesale_price' => 34, 'ws_main_moq' => 1, 'ws_color_moq' => 1]);
+    $color = ProductColor::query()->create(['workspace_id' => $test->store->id, 'product_id' => $p->id, 'name' => 'Green', 'slug' => 'green']);
+    foreach (['S', 'M', 'L'] as $size) {
+        ProductVariant::query()->create(['workspace_id' => $test->store->id, 'product_id' => $p->id, 'color_id' => $color->id, 'sku' => 'g'.$size, 'meta_retailer_id' => 'g'.$size, 'size' => $size, 'price' => 40, 'stock_quantity' => 500, 'status' => 'active']);
+    }
+    $p->update(['ws_size_ratios' => [$color->id => ['S' => 1, 'M' => 2, 'L' => 1]]]);
+
+    return [$p, $color, ['type' => 'standard_wholesale', 'product_id' => $p->id, 'colors' => [['color_id' => $color->id, 'box_count' => 1]]]];
+}
+
+it('refreshes a wholesale pack when the owner changes the ratio after it was added', function () {
+    [$p, $color, $selection] = standardPackFixture($this);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token];
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertOk();
+
+    $p->update(['ws_size_ratios' => [$color->id => ['S' => 2, 'M' => 2, 'L' => 2]]]);
+
+    $res = $this->getJson('/api/storefront/v1/cart', $h)->assertOk()
+        ->assertJsonPath('data.checkout_allowed', true)
+        ->assertJsonPath('data.groups.0.violations', [])
+        ->assertJsonCount(1, 'data.notices')
+        ->assertJsonPath('data.notices.0.before', ['S' => 1, 'M' => 2, 'L' => 1])
+        ->assertJsonPath('data.notices.0.after', ['S' => 2, 'M' => 2, 'L' => 2]);
+    expect(array_sum(array_column($res->json('data.items'), 'quantity')))->toBe(6);
+
+    $this->getJson('/api/storefront/v1/cart', $h)->assertOk()->assertJsonCount(0, 'data.notices');
+});
+
+it('does not refresh or notify when a wholesale pack is unchanged', function () {
+    [, , $selection] = standardPackFixture($this);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token];
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertOk();
+    $ids = CartItem::query()->pluck('id')->all();
+
+    $this->getJson('/api/storefront/v1/cart', $h)->assertOk()->assertJsonCount(0, 'data.notices')->assertJsonPath('data.checkout_allowed', true);
+    expect(CartItem::query()->pluck('id')->all())->toBe($ids);
+});
+
+it('keeps the pack untouched and blocked when the changed pack is no longer valid', function () {
+    [$p, $color, $selection] = standardPackFixture($this);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token];
+    $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertOk();
+    $ids = CartItem::query()->pluck('id')->all();
+
+    $p->update(['ws_color_moq' => 100]);
+
+    $this->getJson('/api/storefront/v1/cart', $h)->assertOk()->assertJsonCount(0, 'data.notices')->assertJsonPath('data.checkout_allowed', false);
+    expect(CartItem::query()->pluck('id')->all())->toBe($ids);
+});

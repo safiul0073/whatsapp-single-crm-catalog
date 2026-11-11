@@ -93,6 +93,7 @@
             'featureIconPresets' => array_column($featureIcons ?? [], 'icon'),
             'shippingCountries' => $shippingCountriesState,
             'specifications' => $specificationsState,
+            'sizeChart' => old('size_chart', $product?->size_chart),
             'variants' => $variantPreview ?? [],
             'variantPresets' => $variantPresets ?? [],
             'basePrice' => (float) ($product?->single_piece_price ?? 9.00),
@@ -102,7 +103,7 @@
         @change="dirty = true"
     >
         {{-- Hidden Media Picker Bridge: connects Alpine actions to DOM-based media picker --}}
-        <div id="commerceMediaPickerBridge" class="hidden" data-media-picker data-media-accept="image" data-media-multiple="true">
+        <div id="commerceMediaPickerBridge" class="hidden" data-media-picker data-media-accept="all" data-media-multiple="true">
             <button type="button" data-media-picker-trigger></button>
         </div>
         {{-- Header Bar --}}
@@ -421,7 +422,10 @@
                                 @keydown.arrow-left.prevent="selectGalleryOffset(-1)"
                                 @keydown.arrow-right.prevent="selectGalleryOffset(1)"
                             >
-                                <template x-if="getSelectedGalleryImage()">
+                                <template x-if="getSelectedGalleryImage()?.type === 'video'">
+                                    <video :src="getSelectedGalleryImage().url" controls preload="metadata" class="max-h-[400px] w-auto rounded-md"></video>
+                                </template>
+                                <template x-if="getSelectedGalleryImage() && getSelectedGalleryImage().type !== 'video'">
                                     <div class="relative flex max-h-[400px] items-center justify-center">
                                         <img
                                             :src="getSelectedGalleryImage().url"
@@ -521,7 +525,8 @@
                                             @dblclick="selectedGalleryPreviewId = item.id; galleryViewerOpen = true"
                                             @keydown.enter.prevent="selectedGalleryPreviewId = item.id"
                                         >
-                                            <img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
+                                            <template x-if="item.type === 'video'"><video :src="item.url" preload="metadata" muted class="absolute inset-0 h-full w-full object-cover"></video></template>
+                                            <template x-if="item.type !== 'video'"><img :src="item.url" :alt="item.alt_text || `Photo ${index + 1}`" loading="lazy" class="absolute inset-0 h-full w-full object-cover"></template>
                                             <span class="absolute bottom-1 left-1 rounded bg-neutral-900/70 px-1.5 text-[10px] font-semibold tabular-nums text-white" x-text="index + 1"></span>
                                             <span x-show="item.is_primary" class="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-xs">
                                                 <i class="ph-fill ph-star text-[9px]"></i> {{ __('Primary') }}
@@ -663,6 +668,81 @@
                             <input type="hidden" :name="`options[0][values][${sIdx}][value]`" :value="sz.value">
                             <input type="hidden" :name="`options[0][values][${sIdx}][weight]`" :value="sz.weight">
                             <input type="hidden" :name="`options[0][values][${sIdx}][weight_unit]`" :value="sz.weight_unit">
+                        </div>
+                    </template>
+                </section>
+
+                {{-- Size chart: measurements customers see on the product page --}}
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-neutral-900">{{ __('Size Chart') }}</h2>
+                            <p class="text-xs text-neutral-500 mt-0.5">{{ __('Add measurements for each size (chest, length, shoulder...). Customers see this as a "Size guide" on the product page.') }}</p>
+                        </div>
+                        <div class="inline-flex rounded-sm border border-neutral-200 overflow-hidden text-xs font-semibold">
+                            <button type="button" class="px-3 py-1.5" :class="sizeChart.unit === 'cm' ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-600'" @click="sizeChart.unit = 'cm'; dirty = true">cm</button>
+                            <button type="button" class="px-3 py-1.5" :class="sizeChart.unit === 'inch' ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-600'" @click="sizeChart.unit = 'inch'; dirty = true">inch</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <template x-for="preset in sizeChartPresets" :key="preset">
+                            <button type="button" class="rounded-full border border-dashed border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 hover:border-neutral-900 hover:text-neutral-900" x-show="!sizeChart.columns.includes(preset)" @click="addSizeChartColumn(preset)">
+                                <i class="ph ph-plus"></i> <span x-text="preset"></span>
+                            </button>
+                        </template>
+                        <div class="flex items-center gap-1">
+                            <input type="text" maxlength="30" class="form-input text-xs h-8 w-36 !py-1 !px-2.5" x-model="sizeChartCustom" placeholder="{{ __('Custom (e.g. Neck)') }}" @keydown.enter.prevent="addSizeChartColumn(sizeChartCustom)">
+                            <button type="button" class="btn btn-sm btn-outline h-8 px-2.5 text-xs" @click="addSizeChartColumn(sizeChartCustom)">{{ __('Add') }}</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 overflow-x-auto rounded-md border border-neutral-200" x-show="sizeChart.columns.length > 0 && sizes.length > 0">
+                        <table class="min-w-full text-xs">
+                            <thead class="bg-neutral-50 text-neutral-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-bold">{{ __('Size') }}</th>
+                                    <template x-for="(col, cIdx) in sizeChart.columns" :key="col">
+                                        <th class="px-3 py-2 text-left font-bold whitespace-nowrap">
+                                            <span x-text="`${col} (${sizeChart.unit})`"></span>
+                                            <button type="button" class="ml-1 text-neutral-400 hover:text-red-600" @click="removeSizeChartColumn(cIdx)" aria-label="{{ __('Remove column') }}"><i class="ph ph-x"></i></button>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-neutral-100">
+                                <template x-for="(sz, sIdx) in sizes" :key="sIdx">
+                                    <tr>
+                                        <td class="px-3 py-2 font-bold text-neutral-900" x-text="sz.value || '—'"></td>
+                                        <template x-for="(col, cIdx) in sizeChart.columns" :key="col">
+                                            <td class="px-2 py-1.5">
+                                                <input type="text" inputmode="decimal" maxlength="10" class="form-input text-xs h-8 w-20 !py-1 !px-2" x-model="sizeChartRow(sz.value)[cIdx]" placeholder="—">
+                                            </td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-4 text-xs text-neutral-400" x-show="sizeChart.columns.length === 0">{{ __('Pick a measurement above to start the chart. Leave it empty if this product needs no chart.') }}</p>
+
+                    <div class="mt-4" x-show="sizeChart.columns.length > 0">
+                        <label class="text-xs font-semibold text-neutral-700">{{ __('Note for customers (optional)') }}</label>
+                        <input type="text" maxlength="300" class="form-input text-xs h-9 w-full mt-1" x-model="sizeChart.note" placeholder="{{ __('e.g. Garment measured flat. Allow 1-2 cm tolerance.') }}">
+                    </div>
+
+                    {{-- Hidden inputs for the size chart --}}
+                    <input type="hidden" name="size_chart[unit]" :value="sizeChart.unit">
+                    <input type="hidden" name="size_chart[note]" :value="sizeChart.note">
+                    <template x-for="(col, cIdx) in sizeChart.columns" :key="col">
+                        <input type="hidden" :name="`size_chart[columns][${cIdx}]`" :value="col">
+                    </template>
+                    <template x-for="(sz, sIdx) in sizes.filter((s) => s.value)" :key="sIdx">
+                        <div>
+                            <input type="hidden" :name="`size_chart[rows][${sIdx}][size]`" :value="sz.value">
+                            <template x-for="(col, cIdx) in sizeChart.columns" :key="col">
+                                <input type="hidden" :name="`size_chart[rows][${sIdx}][values][${cIdx}]`" :value="sizeChartRow(sz.value)[cIdx] || ''">
+                            </template>
                         </div>
                     </template>
                 </section>
@@ -1428,14 +1508,14 @@
                     {{-- Feature Highlights List --}}
                     <div class="mt-5 space-y-3">
                         <template x-for="(feat, fIdx) in featureHighlights" :key="fIdx">
-                            <div class="flex items-center gap-3 p-3 rounded-md border border-neutral-200 bg-white shadow-2xs">
+                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-md border border-neutral-200 bg-white shadow-2xs">
                                 <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
                                     <i class="ph text-xl" :class="feat.icon || 'ph-check-circle'"></i>
                                 </div>
                                 <div class="w-44">
                                     <select
                                         class="form-input text-xs py-2.5"
-                                        :value="feat.icon"
+                                        x-effect="const icon = feat.icon; $nextTick(() => { $el.value = icon })"
                                         @change="onFeatureIconChange(fIdx, $event)"
                                         aria-label="{{ __('Feature icon') }}"
                                     >
@@ -1450,9 +1530,10 @@
                                 </div>
                                 <input
                                     type="text"
-                                    class="form-input text-xs font-bold py-2.5 flex-1"
+                                    class="form-input text-xs font-bold py-2.5 flex-1 min-w-48"
                                     x-model="feat.label"
-                                    placeholder="{{ __('Premium Tech Fleece') }}"
+                                    placeholder="{{ __('Feature name shown to shoppers, e.g. Premium Tech Fleece') }}"
+                                    aria-label="{{ __('Feature name') }}"
                                     required
                                 >
                                 <button type="button" class="text-neutral-400 hover:text-red-600 p-1.5 transition" @click="removeFeatureHighlight(fIdx)" aria-label="{{ __('Delete feature') }}">

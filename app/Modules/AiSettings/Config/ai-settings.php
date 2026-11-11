@@ -47,6 +47,7 @@ return [
                     'deepseek' => 'DeepSeek',
                     'mistral' => 'Mistral',
                     'ollama' => 'Ollama',
+                    'openrouter' => 'OpenRouter',
                 ],
                 'card_group' => ['label' => 'Text Generation', 'icon' => 'ph ph-chat-text', 'description' => 'Agents, prompts, and chat completions'],
             ],
@@ -57,6 +58,22 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:100',
                 'card_group' => ['label' => 'Text Generation'],
+            ],
+            'ai_text_failover_order' => [
+                'type' => 'text',
+                'label' => 'Fallback Providers',
+                'hint' => 'Comma-separated order to try when the default provider hits its limit (e.g. gemini,groq,openrouter,mistral,ollama)',
+                'default' => '',
+                'rules' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9,\\s-]*$/'],
+                'card_group' => ['label' => 'Failover', 'icon' => 'ph ph-arrows-clockwise', 'description' => 'Automatically switch to the next provider when one is rate limited or unavailable'],
+            ],
+            'ai_failover_cooldown_minutes' => [
+                'type' => 'number',
+                'label' => 'Cooldown (minutes)',
+                'hint' => 'How long to skip a provider after it reports a rate limit or exhausted quota',
+                'default' => 10,
+                'rules' => 'nullable|integer|min:0|max:1440',
+                'card_group' => ['label' => 'Failover'],
             ],
             'ai_default_image_provider' => [
                 'type' => 'select',
@@ -287,6 +304,13 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
             ],
+            'openai_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. gpt-4o-mini)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'openai_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -329,6 +353,13 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
             ],
+            'anthropic_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. claude-haiku-4-5)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'anthropic_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -370,6 +401,13 @@ return [
                 'hint' => 'Custom API base URL (leave empty for default)',
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
+            ],
+            'gemini_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. gemini-2.5-flash)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
             ],
             'gemini_logo' => [
                 'type' => 'media',
@@ -469,6 +507,13 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
             ],
+            'groq_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. llama-3.3-70b-versatile)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'groq_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -510,6 +555,13 @@ return [
                 'hint' => 'Custom API base URL (leave empty for default)',
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
+            ],
+            'xai_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. grok-3-mini)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
             ],
             'xai_logo' => [
                 'type' => 'media',
@@ -553,6 +605,13 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
             ],
+            'deepseek_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. deepseek-chat)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'deepseek_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -595,6 +654,13 @@ return [
                 'default' => '',
                 'rules' => 'nullable|string|max:500',
             ],
+            'mistral_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. mistral-small-latest)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'mistral_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -630,6 +696,13 @@ return [
                 'default' => 'http://localhost:11434',
                 'rules' => 'nullable|string|max:500',
             ],
+            'ollama_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. llama3.1)',
+                'default' => '',
+                'rules' => 'nullable|string|max:100',
+            ],
             'ollama_logo' => [
                 'type' => 'media',
                 'label' => 'Provider Logo',
@@ -637,6 +710,48 @@ return [
                 'default' => null,
                 'accept' => 'image',
                 'layout' => 'sidebar',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | OpenRouter
+    |--------------------------------------------------------------------------
+    */
+    'openrouter' => [
+        'label' => 'OpenRouter',
+        'icon' => 'ph ph-shuffle',
+        'description' => 'One API key for many models, including free (:free) models',
+        'layout' => 'full',
+        'settings' => [
+            'openrouter_enabled' => [
+                'type' => 'feature',
+                'label' => 'Enable OpenRouter',
+                'hint' => 'Use OpenRouter models for text generation',
+                'default' => false,
+            ],
+            'openrouter_api_key' => [
+                'type' => 'password',
+                'label' => 'API Key',
+                'hint' => 'Your OpenRouter API key (sk-or-...)',
+                'default' => '',
+                'rules' => 'nullable|string|max:255',
+                'encrypted' => true,
+            ],
+            'openrouter_base_url' => [
+                'type' => 'text',
+                'label' => 'Base URL',
+                'hint' => 'Custom API base URL (leave empty for default)',
+                'default' => '',
+                'rules' => 'nullable|string|max:500',
+            ],
+            'openrouter_text_model' => [
+                'type' => 'text',
+                'label' => 'Text Model',
+                'hint' => 'Model used when this provider answers text prompts or is used as a failover (e.g. meta-llama/llama-3.3-70b-instruct:free)',
+                'default' => '',
+                'rules' => 'nullable|string|max:150',
             ],
         ],
     ],

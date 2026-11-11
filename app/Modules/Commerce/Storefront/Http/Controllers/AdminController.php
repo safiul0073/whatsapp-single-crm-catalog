@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Chatbots\Models\ChatbotWidget;
+use App\Modules\Commerce\Mail\InquiryReplyMail;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\Product;
@@ -11,6 +12,7 @@ use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\LiveAdminRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\ReplyInquiryRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\TrackingSettingsRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
@@ -39,6 +41,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -459,6 +462,36 @@ class AdminController extends Controller
         $this->invalidate($w);
 
         return $this->redirectTab($r, $tab, 'Item deleted.');
+    }
+
+    public function replyInquiry(ReplyInquiryRequest $r, int $id): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        $record = StorefrontContent::query()->where('workspace_id', $w)->where('type', 'contact')->findOrFail($id);
+        $data = (array) ($record->data ?? []);
+        $email = (string) ($data['email'] ?? '');
+        abort_unless(filter_var($email, FILTER_VALIDATE_EMAIL), 422, 'This inquiry has no valid customer email.');
+
+        $owner = $r->user();
+        $senderName = (string) (Workspace::query()->whereKey($w)->value('name') ?: $owner->name);
+
+        Mail::to($email)->queue(new InquiryReplyMail(
+            replySubject: $r->validated('subject'),
+            replyMessage: $r->validated('message'),
+            ownerEmail: (string) $owner->email,
+            senderName: $senderName,
+            customerName: (string) ($data['name'] ?? 'there'),
+            originalMessage: $data['message'] ?? null,
+        ));
+
+        $record->update(['data' => array_merge($data, [
+            'replied_at' => now()->toIso8601String(),
+            'reply_subject' => $r->validated('subject'),
+            'reply_message' => $r->validated('message'),
+            'replied_by' => $owner->email,
+        ])]);
+
+        return $this->redirectTab($r, 'inquiries', 'Reply sent to '.$email.'.');
     }
 
     public function renameDomain(AdminRequest $r, int $id): RedirectResponse

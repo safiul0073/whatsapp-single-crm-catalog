@@ -95,9 +95,11 @@
                     $orderRef = $data['order_ref'] ?? null;
                     $message = $data['message'] ?? null;
                     $cleanPhone = $phone ? preg_replace('/[^0-9]/', '', $phone) : null;
+                    $repliedAt = !empty($data['replied_at']) ? \Illuminate\Support\Carbon::parse($data['replied_at']) : null;
                 @endphp
 
                 <div
+                    x-data="{ replyOpen: false }"
                     x-show="filterType === 'all' || filterType === '{{ $inquiry->type }}'"
                     class="rounded-xl border border-neutral-200 bg-neutral-50/40 p-5 transition-all hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-800/30 dark:hover:border-neutral-700 space-y-4"
                 >
@@ -124,6 +126,13 @@
                                         <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                                             <i class="ph ph-paper-plane-tilt"></i>
                                             {{ __('Newsletter Subscriber') }}
+                                        </span>
+                                    @endif
+
+                                    @if($repliedAt)
+                                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="{{ $repliedAt->toDayDateTimeString() }}">
+                                            <i class="ph ph-check-circle"></i>
+                                            {{ __('Replied') }} · {{ $repliedAt->diffForHumans() }}
                                         </span>
                                     @endif
 
@@ -171,14 +180,15 @@
 
                         {{-- Quick Action Buttons --}}
                         <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                            @if($email)
-                                <a
-                                    href="mailto:{{ $email }}?subject={{ rawurlencode('Re: ' . ($subject ?: 'Store Inquiry')) }}"
+                            @if($email && $isContact)
+                                <button
+                                    type="button"
+                                    @click="replyOpen = !replyOpen"
                                     class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-primary dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                                 >
                                     <i class="ph ph-arrow-bend-up-left text-sm text-primary"></i>
-                                    <span>{{ __('Reply Email') }}</span>
-                                </a>
+                                    <span>{{ __('Reply') }}</span>
+                                </button>
                             @endif
 
                             @if($cleanPhone)
@@ -218,6 +228,53 @@
                         <div class="rounded-xl border border-neutral-200/80 bg-white p-4 text-xs leading-relaxed text-neutral-800 shadow-2xs dark:border-neutral-700/80 dark:bg-neutral-900 dark:text-neutral-200 whitespace-pre-wrap">
                             {{ $message }}
                         </div>
+                    @endif
+
+                    @if($repliedAt && !empty($data['reply_message']))
+                        <details class="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 text-xs dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                            <summary class="cursor-pointer font-semibold text-emerald-700 dark:text-emerald-300">{{ __('Your last reply') }}: {{ $data['reply_subject'] ?? '' }}</summary>
+                            <div class="mt-2 whitespace-pre-wrap leading-relaxed text-neutral-700 dark:text-neutral-200">{{ $data['reply_message'] }}</div>
+                        </details>
+                    @endif
+
+                    @if($email && $isContact)
+                        <form
+                            x-show="replyOpen"
+                            x-cloak
+                            method="POST"
+                            action="{{ route('user.commerce.storefront.contents.reply', $inquiry->id) }}"
+                            class="space-y-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900"
+                        >
+                            @csrf
+                            <input type="hidden" name="_tab" value="inquiries">
+                            <div class="text-xs text-neutral-500">
+                                {{ __('To') }}: <span class="font-mono">{{ $email }}</span> ·
+                                {{ __('Customer replies will go to') }} <span class="font-mono">{{ auth()->user()?->email }}</span>
+                            </div>
+                            <input
+                                type="text"
+                                name="subject"
+                                required
+                                maxlength="200"
+                                value="{{ 'Re: '.($subject ?: 'Store Inquiry') }}"
+                                class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            >
+                            <textarea
+                                name="message"
+                                rows="5"
+                                required
+                                maxlength="5000"
+                                placeholder="{{ __('Write your reply...') }}"
+                                class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            ></textarea>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="replyOpen = false" class="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">{{ __('Cancel') }}</button>
+                                <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90">
+                                    <i class="ph ph-paper-plane-right text-sm"></i>
+                                    {{ __('Send Reply') }}
+                                </button>
+                            </div>
+                        </form>
                     @endif
                 </div>
             @empty

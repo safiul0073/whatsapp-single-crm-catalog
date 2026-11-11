@@ -5,6 +5,7 @@ namespace App\Modules\Workspaces\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\PlansSubscriptions\Services\PlanFeatureGate;
 use App\Modules\Workspaces\Http\Requests\User\InviteTeamMemberRequest;
 use App\Modules\Workspaces\Http\Requests\User\StoreTeamMemberRequest;
 use App\Modules\Workspaces\Http\Requests\User\UpdateRolePermissionsRequest;
@@ -63,7 +64,7 @@ class TeamController extends Controller
     public function storeRole(Request $request): RedirectResponse
     {
         $workspace = $this->workspaces->current($request->user());
-        
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -122,12 +123,32 @@ class TeamController extends Controller
         $workspace = $this->workspaces->current($request->user());
         $member = $this->resolveWorkspaceMember($workspace, $member);
         $role = $this->team->resolveRole($workspace, $member->pivot->workspace_role_id);
+        $planGate = app(PlanFeatureGate::class);
+        $inPlan = fn (string $permission): bool => $planGate->includesPermission($workspace->id, $permission);
+        $rolePermissions = $this->team->rolePermissionDetails($role);
+
+        $rolePermissions['groups'] = collect($rolePermissions['groups'])
+            ->map(function (array $group) use ($inPlan): array {
+                $group['permissions'] = array_values(array_filter(
+                    $group['permissions'],
+                    fn (array $permission): bool => $inPlan($permission['name']),
+                ));
+
+                return $group;
+            })
+            ->filter(fn (array $group): bool => $group['permissions'] !== [])
+            ->values()
+            ->all();
 
         return view('workspaces::user.permissions', [
             'workspace' => $workspace,
             'member' => $member,
             'role' => $role,
-            'rolePermissions' => $this->team->rolePermissionDetails($role),
+            'rolePermissions' => $rolePermissions,
+            'hiddenGrantedPermissions' => array_values(array_filter(
+                $rolePermissions['permissions'],
+                fn (string $permission): bool => ! $inPlan($permission),
+            )),
         ]);
     }
 

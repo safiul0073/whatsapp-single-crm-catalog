@@ -186,6 +186,7 @@ class AiSettingsService
             'deepseek' => 'deepseek',
             'mistral' => 'mistral',
             'ollama' => 'ollama',
+            'openrouter' => 'openrouter',
             'elevenlabs' => 'eleven',
             'cohere' => 'cohere',
             'jina' => 'jina',

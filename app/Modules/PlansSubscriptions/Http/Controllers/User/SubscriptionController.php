@@ -7,44 +7,249 @@ use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\PaymentGateways\Models\Payment;
 use App\Modules\PaymentGateways\Services\PaymentGatewayManager;
 use App\Modules\PaymentGateways\Services\PaymentService;
-use App\Modules\PaymentGatewaySettings\Services\PaymentGatewaySettingsService;
+use App\Modules\PlansSubscriptions\Enums\CheckoutIntent;
 use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
+use App\Modules\PlansSubscriptions\Http\Requests\InitiateCheckoutRequest;
+use App\Modules\PlansSubscriptions\Http\Requests\PayCheckoutRequest;
 use App\Modules\PlansSubscriptions\Models\Plan;
 use App\Modules\PlansSubscriptions\Models\Subscription;
-use App\Services\Onboarding\OnboardingProgress;
+use App\Modules\PlansSubscriptions\Services\PlanCheckoutService;
+use App\Modules\PlansSubscriptions\Services\PlanLimitService;
+use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
+use App\Modules\PlansSubscriptions\Services\SubscriptionManager;
+use App\Modules\Workspaces\Models\Workspace;
+use App\Services\Navigation\WorkspaceNavigationRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SubscriptionController extends Controller
 {
-    public function show(Request $request, WorkspaceResolver $workspaces, PaymentGatewayManager $gateways): View
+    public const RENEW_WINDOW_DAYS = 7;
+
+    public function __construct(
+        protected WorkspaceResolver $workspaces,
+        protected SubscriptionAccessService $access,
+        protected PlanCheckoutService $checkout,
+    ) {}
+
+    public function show(Request $request, PaymentGatewayManager $gateways, PlanLimitService $limits): View
     {
-        $workspace = $workspaces->current($request->user());
-        $subscription = $workspace
-            ? Subscription::query()->with('plan')->where('workspace_id', $workspace->id)->latest()->first()
-            : null;
-        $plans = Plan::query()->where('is_active', true)->orderBy('sort_order')->get();
-        $currentPlan = $subscription?->plan ?? $plans->firstWhere('slug', 'free') ?? $plans->first();
+        $workspace = $this->workspaces->current($request->user());
+        $subscription = $workspace ? $this->access->currentForWorkspace($workspace->id)?->load('pendingPlan') : null;
+        $plans = Plan::query()->active()->orderBy('sort_order')->get();
+        $currentPlan = $subscription?->plan ?? $plans->first(fn (Plan $plan): bool => $plan->isFree()) ?? $plans->first();
 
         return view('plans-subscriptions::user.subscription', [
             'workspace' => $workspace,
             'subscription' => $subscription,
             'currentPlan' => $currentPlan,
             'plans' => $plans,
-            'usageRows' => $this->usageRows($subscription, $currentPlan),
-            'featureRows' => $this->featureRows($currentPlan),
+            'planOptions' => $this->planOptions($workspace, $subscription, $plans),
+            'usageRows' => $subscription ? collect($limits->usageSnapshot($subscription)) : collect(),
+            'usageResetsAt' => $subscription ? $limits->currentPeriodStart($subscription)->addMonthNoOverflow() : null,
+            'featureRows' => collect($currentPlan?->features ?? [])->filter()->values(),
             'billingRows' => $this->billingRows($workspace?->id),
             'paymentMethod' => null,
             'enabledPaymentGateways' => $this->gatewayRows($gateways->getEnabledGatewayNames()),
             'statusMeta' => $this->statusMeta($subscription),
+            'isUsable' => $subscription && $this->access->subscriptionIsUsable($subscription),
+            'canRenew' => $this->canRenew($subscription),
+            'planModules' => collect(app(WorkspaceNavigationRegistry::class)->featureCatalog())
+                ->reject(fn (array $module): bool => $module['locked'])
+                ->map(fn (array $module): string => $module['label'])
+                ->all(),
         ]);
     }
 
-    private function billingRows(?int $workspaceId): Collection
+    public function initiateCheckout(InitiateCheckoutRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $plan = Plan::query()->active()->findOrFail($request->integer('plan_id'));
+        $subscription = $this->access->currentForWorkspace($workspace->id);
+
+        if ($plan->isFree()) {
+            return $this->switchToFree($workspace, $subscription, $plan, $request);
+        }
+
+        $payment = $this->checkout->start($request->user(), $workspace, $plan);
+
+        return redirect()->route('user.subscription.checkout.page', $payment);
+    }
+
+    public function checkoutPage(Request $request, Payment $payment, PaymentGatewayManager $gateways): View|RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        abort_unless($this->checkout->belongsTo($payment, $workspace), 404);
+
+        if ($payment->status === 'completed' || $payment->status === 'superseded') {
+            return redirect()->route('user.subscription.show')->with('success', __('Your payment was received and your subscription is updated.'));
+        }
+
+        $enabledGateways = $payment->gateway === 'checkout' ? $gateways->getEnabledGatewayNames() : [];
+
+        return view('plans-subscriptions::user.checkout', [
+            'payment' => $payment,
+            'plan' => Plan::query()->find(data_get($payment->metadata, 'plan_id')),
+            'intent' => CheckoutIntent::tryFrom((string) data_get($payment->metadata, 'intent')) ?? CheckoutIntent::New,
+            'gateways' => $enabledGateways,
+            'gatewayCharges' => collect($enabledGateways)
+                ->mapWithKeys(fn (string $gateway): array => [$gateway => $this->checkout->chargeBreakdown((string) $payment->amount, $gateway)])
+                ->all(),
+        ]);
+    }
+
+    public function pay(PayCheckoutRequest $request, Payment $payment): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        abort_unless($this->checkout->belongsTo($payment, $workspace), 404);
+
+        if ($payment->status === 'completed') {
+            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
+        }
+
+        if ($payment->gateway !== 'checkout' || $payment->status === 'superseded') {
+            return redirect()->route('user.subscription.checkout.page', $payment)
+                ->with('error', __('This payment is already being processed. Please complete the selected payment method.'));
+        }
+
+        $gateway = $request->string('gateway')->toString();
+        $result = $this->checkout->pay(
+            $payment,
+            $gateway,
+            route('user.subscription.payment.return', ['gateway' => $gateway]),
+            route('user.subscription.payment.cancel'),
+        );
+
+        if ($result['response']->isComplete()) {
+            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
+        }
+
+        if ($result['response']->isRedirect()) {
+            return redirect()->away($result['response']->redirectUrl);
+        }
+
+        return redirect()->route('user.subscription.checkout.page', $result['payment']);
+    }
+
+    public function paymentReturn(Request $request, PaymentService $payments): RedirectResponse
+    {
+        $payment = $payments->verify($request, $request->query('gateway'));
+        $workspace = $this->workspaces->current($request->user());
+        abort_unless($this->checkout->belongsTo($payment, $workspace), 404);
+
+        if ($payment->status === 'completed') {
+            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
+        }
+
+        return redirect()->route('user.subscription.checkout.page', $payment)
+            ->with('error', __('Payment is still pending. Please complete the payment to continue.'));
+    }
+
+    public function paymentCancel(): RedirectResponse
+    {
+        return redirect()->route('user.subscription.show')
+            ->with('error', __('Payment was cancelled. You can choose a plan again.'));
+    }
+
+    public function cancel(Request $request, SubscriptionManager $manager): RedirectResponse
+    {
+        $subscription = $this->currentOrFail($request);
+
+        if (! $this->access->subscriptionIsUsable($subscription) || ! $subscription->renews_at) {
+            return back()->with('error', __('This plan cannot be cancelled.'));
+        }
+
+        $manager->cancel($subscription, true, $request->user());
+
+        return back()->with('success', __('Your plan will end on :date and will not renew.', ['date' => $subscription->renews_at->format('M d, Y')]));
+    }
+
+    public function resume(Request $request, SubscriptionManager $manager): RedirectResponse
+    {
+        $manager->resume($this->currentOrFail($request), $request->user());
+
+        return back()->with('success', __('Your plan change has been undone.'));
+    }
+
+    protected function switchToFree(Workspace $workspace, ?Subscription $subscription, Plan $plan, Request $request): RedirectResponse
+    {
+        $manager = app(SubscriptionManager::class);
+
+        if ($subscription?->plan_id === $plan->id && $this->access->subscriptionIsUsable($subscription)) {
+            return back()->with('success', __('You are already on the :plan plan.', ['plan' => $plan->name]));
+        }
+
+        if ($subscription && $subscription->renews_at?->isFuture() && $this->access->subscriptionIsUsable($subscription)) {
+            $manager->scheduleDowngrade($subscription, $plan, $request->user());
+
+            return back()->with('success', __('You will move to the :plan plan on :date.', [
+                'plan' => $plan->name,
+                'date' => $subscription->renews_at->format('M d, Y'),
+            ]));
+        }
+
+        $manager->activate($workspace, $plan, null, $request->user());
+
+        return back()->with('success', __('The :plan plan is now active.', ['plan' => $plan->name]));
+    }
+
+    protected function currentOrFail(Request $request): Subscription
+    {
+        $workspace = $this->workspaces->current($request->user());
+
+        return $this->access->currentForWorkspace($workspace->id) ?? abort(404);
+    }
+
+    protected function canRenew(?Subscription $subscription): bool
+    {
+        $plan = $subscription?->plan;
+
+        if (! $subscription || ! $plan || $plan->neverExpires() || ! $plan->is_active) {
+            return false;
+        }
+
+        $expiresAt = $this->access->expiryDate($subscription);
+
+        return ! $this->access->subscriptionIsUsable($subscription)
+            || ($expiresAt !== null && $expiresAt->lte(now()->addDays(self::RENEW_WINDOW_DAYS)));
+    }
+
+    /**
+     * @param  Collection<int, Plan>  $plans
+     * @return Collection<int, array{plan: Plan, intent: string, label: string, amount_due: string, credit: string, disabled: bool}>
+     */
+    protected function planOptions(?Workspace $workspace, ?Subscription $subscription, Collection $plans): Collection
+    {
+        $usable = $subscription && $this->access->subscriptionIsUsable($subscription);
+
+        return $plans->map(function (Plan $plan) use ($workspace, $subscription, $usable): array {
+            $quote = $workspace && ! $plan->isFree()
+                ? $this->checkout->quote($workspace, $plan)
+                : ['intent' => $this->checkout->intentFor($subscription, $plan), 'credit' => '0.00', 'amount_due' => '0.00'];
+            $intent = $quote['intent'];
+            $isCurrent = $usable && $subscription->plan_id === $plan->id;
+            $lifetimeLocked = $usable && $subscription->plan?->isLifetime() && ! $isCurrent;
+
+            return [
+                'plan' => $plan,
+                'intent' => $intent->value,
+                'label' => match (true) {
+                    $isCurrent && $this->canRenew($subscription) => __('Renew'),
+                    $isCurrent => __('Current plan'),
+                    $intent === CheckoutIntent::Upgrade => __('Upgrade'),
+                    $intent === CheckoutIntent::Downgrade => __('Switch at period end'),
+                    default => __('Choose plan'),
+                },
+                'amount_due' => $quote['amount_due'],
+                'credit' => $quote['credit'],
+                'disabled' => $lifetimeLocked || ($isCurrent && ! $this->canRenew($subscription)),
+            ];
+        });
+    }
+
+    protected function billingRows(?int $workspaceId): Collection
     {
         if (! $workspaceId) {
             return collect();
@@ -53,17 +258,19 @@ class SubscriptionController extends Controller
         return Payment::query()
             ->where('status', 'completed')
             ->where('metadata->workspace_id', $workspaceId)
+            ->whereNotNull('metadata->plan_id')
             ->latest('paid_at')
             ->latest()
-            ->limit(12)
+            ->limit(24)
             ->get()
             ->map(fn (Payment $payment): array => [
                 'date' => ($payment->paid_at ?? $payment->created_at)?->format('M d, Y') ?? __('Unknown'),
+                'number' => data_get($payment->metadata, 'invoice_number'),
                 'description' => $payment->description ?: __('Subscription payment'),
                 'amount' => $payment->formatted_amount,
                 'status' => __(str($payment->status)->headline()->toString()),
+                'invoice_url' => route('user.subscription.invoices.show', $payment),
                 'receipt_url' => data_get($payment->metadata, 'receipt_url')
-                    ?? data_get($payment->metadata, 'receipt')
                     ?? data_get($payment->metadata, 'hosted_invoice_url'),
             ]);
     }
@@ -71,52 +278,32 @@ class SubscriptionController extends Controller
     /**
      * @param  array<string>  $gateways
      */
-    private function gatewayRows(array $gateways): Collection
+    protected function gatewayRows(array $gateways): Collection
     {
         return collect($gateways)
             ->map(fn (string $gateway): array => [
                 'key' => $gateway,
-                'label' => $this->gatewayLabel($gateway),
-                'description' => $this->gatewayDescription($gateway),
-                'icon' => $this->gatewayIcon($gateway),
+                'label' => self::gatewayLabel($gateway),
+                'description' => self::gatewayDescription($gateway),
+                'icon' => self::gatewayIcon($gateway),
             ])
             ->values();
     }
 
-    private function usageRows(?Subscription $subscription, ?Plan $plan): Collection
+    /**
+     * @return array{label: string, badge: string}
+     */
+    protected function statusMeta(?Subscription $subscription): array
     {
-        $limits = collect($plan?->limits ?? [])
-            ->filter(fn (mixed $value, string $key): bool => is_numeric($value) && ! str_contains($key, 'automation_ai_builder'));
-        $usage = $subscription?->usage ?? [];
+        if ($subscription && $subscription->hasUsableStatus() && ! $this->access->subscriptionIsUsable($subscription)) {
+            return ['label' => __('Expired'), 'badge' => 'badge-error'];
+        }
 
-        return $limits->map(function (mixed $limit, string $key) use ($usage): array {
-            $used = (int) data_get($usage, $key, 0);
-            $maximum = (int) $limit;
-            $percent = $maximum > 0 ? min(100, (int) round(($used / $maximum) * 100)) : 0;
+        if ($subscription?->cancel_at_period_end) {
+            return ['label' => __('Ends at period end'), 'badge' => 'badge-warning'];
+        }
 
-            return [
-                'key' => $key,
-                'label' => $this->limitLabel($key),
-                'used' => $used,
-                'maximum' => $maximum,
-                'percent' => $percent,
-                'tone' => $percent >= 90 ? 'warning' : 'primary',
-            ];
-        })->values();
-    }
-
-    private function featureRows(?Plan $plan): Collection
-    {
-        return collect($plan?->features ?? [])
-            ->filter()
-            ->values();
-    }
-
-    private function statusMeta(?Subscription $subscription): array
-    {
-        $status = $subscription?->status;
-
-        return match ($status) {
+        return match ($subscription?->status) {
             SubscriptionStatus::Active => ['label' => __('Active'), 'badge' => 'badge-success'],
             SubscriptionStatus::Trialing => ['label' => __('Trialing'), 'badge' => 'badge-soft'],
             SubscriptionStatus::PastDue => ['label' => __('Past due'), 'badge' => 'badge-warning'],
@@ -126,24 +313,7 @@ class SubscriptionController extends Controller
         };
     }
 
-    private function limitLabel(string $key): string
-    {
-        return match ($key) {
-            'messages_per_month' => __('Messages / month'),
-            'contacts' => __('Contacts'),
-            'whatsapp_numbers' => __('WhatsApp numbers'),
-            'ai_tokens' => __('AI tokens'),
-            'campaigns_per_month' => __('Campaigns / month'),
-            'chatbots' => __('Chatbots'),
-            'team_members', 'team_seats' => __('Team seats'),
-            'max_lead_generations_per_month' => __('Lead generations / month'),
-            'max_ai_lead_results_per_month' => __('Generated leads / month'),
-            'max_ai_credits' => __('Platform AI credits'),
-            default => __(str($key)->replace('_', ' ')->title()->toString()),
-        };
-    }
-
-    private function gatewayLabel(string $gateway): string
+    public static function gatewayLabel(string $gateway): string
     {
         return match ($gateway) {
             'stripe' => 'Stripe',
@@ -156,7 +326,7 @@ class SubscriptionController extends Controller
         };
     }
 
-    private function gatewayDescription(string $gateway): string
+    public static function gatewayDescription(string $gateway): string
     {
         return match ($gateway) {
             'stripe' => __('Credit and debit cards'),
@@ -169,7 +339,7 @@ class SubscriptionController extends Controller
         };
     }
 
-    private function gatewayIcon(string $gateway): string
+    public static function gatewayIcon(string $gateway): string
     {
         return match ($gateway) {
             'stripe' => 'ph-credit-card',
@@ -180,176 +350,5 @@ class SubscriptionController extends Controller
             'flutterwave' => 'ph-lightning',
             default => 'ph-currency-dollar',
         };
-    }
-
-    /**
-     * @return array{base_amount: float, fixed_charge: float, percent_charge: float, charge_amount: float, payable_amount: float}
-     */
-    private function gatewayChargeBreakdown(float $baseAmount, string $gateway): array
-    {
-        $settings = app(PaymentGatewaySettingsService::class);
-        $fixedCharge = (float) $settings->get("{$gateway}_fixed_charge", 0);
-        $percentCharge = (float) $settings->get("{$gateway}_percent_charge", 0);
-        $chargeAmount = round($fixedCharge + ($baseAmount * $percentCharge / 100), 2);
-
-        return [
-            'base_amount' => $baseAmount,
-            'fixed_charge' => $fixedCharge,
-            'percent_charge' => $percentCharge,
-            'charge_amount' => $chargeAmount,
-            'payable_amount' => round($baseAmount + $chargeAmount, 2),
-        ];
-    }
-
-    public function initiateCheckout(Request $request, WorkspaceResolver $workspaces): RedirectResponse
-    {
-        $workspace = $workspaces->current($request->user());
-
-        $data = $request->validate([
-            'plan_id' => ['required', 'exists:plans,id'],
-        ]);
-
-        $plan = Plan::query()->where('is_active', true)->findOrFail($data['plan_id']);
-
-        // Create a pending payment
-        $payment = Payment::query()->create([
-            'uuid' => (string) Str::uuid(),
-            'user_id' => $request->user()->getKey(),
-            'user_type' => $request->user()->getMorphClass(),
-            'gateway' => 'checkout',
-            'amount' => $plan->price,
-            'currency' => currency_default_code(),
-            'status' => 'pending',
-            'description' => __(':plan subscription', ['plan' => $plan->name]),
-            'metadata' => [
-                'plan_id' => $plan->id,
-                'workspace_id' => $workspace->id,
-                'onboarding' => false,
-                'checkout_only' => true,
-            ],
-        ]);
-
-        return redirect()->route('user.subscription.checkout.page', $payment);
-    }
-
-    public function checkoutPage(Request $request, Payment $payment, WorkspaceResolver $workspaces, PaymentGatewayManager $gateways): View|RedirectResponse
-    {
-        $workspace = $workspaces->current($request->user());
-
-        if ((int) data_get($payment->metadata, 'workspace_id') !== $workspace->id) {
-            abort(404);
-        }
-
-        if ($payment->status === 'completed') {
-            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
-        }
-
-        $enabledGateways = $payment->gateway === 'checkout' ? $gateways->getEnabledGatewayNames() : [];
-        $gatewayCharges = collect($enabledGateways)
-            ->mapWithKeys(fn (string $gateway): array => [
-                $gateway => $this->gatewayChargeBreakdown((float) $payment->default_amount, $gateway),
-            ])
-            ->all();
-
-        return view('plans-subscriptions::user.checkout', [
-            'payment' => $payment,
-            'plan' => Plan::find(data_get($payment->metadata, 'plan_id')),
-            'gateways' => $enabledGateways,
-            'gatewayCharges' => $gatewayCharges,
-        ]);
-    }
-
-    public function pay(Request $request, Payment $payment, WorkspaceResolver $workspaces, PaymentService $payments, PaymentGatewayManager $gateways): RedirectResponse
-    {
-        $workspace = $workspaces->current($request->user());
-
-        if ((int) data_get($payment->metadata, 'workspace_id') !== $workspace->id) {
-            abort(404);
-        }
-
-        if ($payment->status === 'completed') {
-            $plan = Plan::findOrFail(data_get($payment->metadata, 'plan_id'));
-            app(OnboardingProgress::class)->activatePlan($workspace, $plan);
-
-            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
-        }
-
-        if ($payment->gateway !== 'checkout') {
-            return redirect()->route('user.subscription.checkout.page', $payment)
-                ->with('error', __('This payment is already being processed. Please complete the selected payment method.'));
-        }
-
-        $enabledGateways = $gateways->getEnabledGatewayNames();
-
-        if ($enabledGateways === []) {
-            return redirect()->route('user.subscription.checkout.page', $payment)
-                ->with('error', __('No active payment gateways are available. Please contact support.'));
-        }
-
-        $data = $request->validate([
-            'gateway' => ['required', Rule::in($enabledGateways)],
-        ]);
-
-        $plan = Plan::query()->where('is_active', true)->findOrFail(data_get($payment->metadata, 'plan_id'));
-
-        $chargeBreakdown = $this->gatewayChargeBreakdown((float) $plan->price, $data['gateway']);
-
-        $payment->update(['status' => 'processing']);
-
-        $result = $payments->charge($chargeBreakdown['payable_amount'], $payment->currency, [
-            'gateway' => $data['gateway'],
-            'description' => __(':plan subscription', ['plan' => $plan->name]),
-            'return_url' => route('user.subscription.payment.return', ['gateway' => $data['gateway']]),
-            'cancel_url' => route('user.subscription.payment.cancel'),
-            'metadata' => [
-                'plan_id' => $plan->id,
-                'workspace_id' => $workspace->id,
-                'onboarding' => false,
-                'checkout_payment_id' => $payment->id,
-                'selected_gateway' => $data['gateway'],
-                ...$chargeBreakdown,
-            ],
-        ]);
-
-        $gatewayPayment = $result['payment'];
-        $response = $result['response'];
-
-        if ($response->isComplete()) {
-            app(OnboardingProgress::class)->activatePlan($workspace, $plan);
-
-            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
-        }
-
-        if ($response->isRedirect()) {
-            return redirect()->away($response->redirectUrl);
-        }
-
-        return redirect()->route('user.subscription.checkout.page', $gatewayPayment);
-    }
-
-    public function paymentReturn(Request $request, PaymentService $payments, WorkspaceResolver $workspaces): RedirectResponse
-    {
-        $payment = $payments->verify($request, $request->query('gateway'));
-        $workspace = $workspaces->current($request->user());
-
-        if ((int) data_get($payment->metadata, 'workspace_id') !== $workspace->id) {
-            abort(404);
-        }
-
-        if ($payment->status === 'completed') {
-            $plan = Plan::findOrFail(data_get($payment->metadata, 'plan_id'));
-            app(OnboardingProgress::class)->activatePlan($workspace, $plan);
-
-            return redirect()->route('user.subscription.show')->with('success', __('Your subscription is active.'));
-        }
-
-        return redirect()->route('user.subscription.checkout.page', $payment)
-            ->with('error', __('Payment is still pending. Please complete the payment to continue.'));
-    }
-
-    public function paymentCancel(): RedirectResponse
-    {
-        return redirect()->route('user.subscription.show')
-            ->with('error', __('Payment was cancelled. You can choose a plan again.'));
     }
 }

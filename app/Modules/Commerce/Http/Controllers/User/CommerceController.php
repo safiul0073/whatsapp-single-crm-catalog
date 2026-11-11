@@ -140,6 +140,9 @@ class CommerceController extends Controller
         $nextStep = $request->integer('next_step', 4);
         $product->getConnection()->transaction(function () use ($product, $request, $nextStep): void {
             $this->products->updateOptions($product, $request->validated('options'), $request->validated('colors'));
+            if ($request->has('size_chart')) {
+                $this->products->updateSizeChart($product, $request->validated('size_chart'));
+            }
             $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
         });
 
@@ -155,7 +158,7 @@ class CommerceController extends Controller
             $product->update(['wizard_step' => max($nextStep, $product->wizard_step)]);
         });
 
-        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Photos saved.'));
+        return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Gallery saved.'));
     }
 
     public function previewVariants(Request $request, Product $product): JsonResponse

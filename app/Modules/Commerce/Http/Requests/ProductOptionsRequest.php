@@ -141,7 +141,30 @@ class ProductOptionsRequest extends FormRequest
             'colors.*.hex_code' => ['nullable', 'string', 'max:30'],
             'colors.*.color_family' => ['nullable', 'string', 'max:50'],
             'colors.*.swatch_media_id' => ['nullable', 'integer', Rule::exists('media', 'id')->where('uploaded_by', $this->user()?->id)->where('type', 'image')],
+            'size_chart' => ['nullable', 'array'],
+            'size_chart.unit' => ['nullable', 'in:cm,inch'],
+            'size_chart.columns' => ['nullable', 'array', 'max:8'],
+            'size_chart.columns.*' => ['nullable', 'string', 'max:30'],
+            'size_chart.rows' => ['nullable', 'array', 'max:30'],
+            'size_chart.rows.*.size' => ['required', 'string', 'max:80'],
+            'size_chart.rows.*.values' => ['nullable', 'array', 'max:8'],
+            'size_chart.rows.*.values.*' => ['nullable', 'string', 'max:10'],
+            'size_chart.note' => ['nullable', 'string', 'max:300'],
             'next_step' => ['sometimes', 'integer', 'between:1,9'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (\Illuminate\Validation\Validator $validator): void {
+            $sizeOption = collect($this->input('options', []))->firstWhere('code', 'size');
+            $sizes = collect($sizeOption['values'] ?? [])->map(fn (mixed $v): string => (string) (is_array($v) ? ($v['value'] ?? '') : $v))->all();
+            foreach ((array) $this->input('size_chart.rows', []) as $index => $row) {
+                $size = is_array($row) ? (string) ($row['size'] ?? '') : '';
+                if ($size !== '' && ! in_array($size, $sizes, true)) {
+                    $validator->errors()->add("size_chart.rows.{$index}.size", __('The size chart row ":size" is not one of this product\'s sizes.', ['size' => $size]));
+                }
+            }
+        }];
     }
 }

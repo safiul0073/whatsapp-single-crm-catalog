@@ -191,6 +191,7 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     Route::post('contents', [$c, 'content'])->middleware('permission:commerce.storefront.pages')->name('contents.store');
     Route::put('contents/{id}', [$c, 'content'])->middleware('permission:commerce.storefront.pages')->name('contents.update');
     Route::delete('contents/{id}', [$c, 'deleteContent'])->middleware('permission:commerce.storefront.pages')->name('contents.destroy');
+    Route::post('contents/{id}/reply', [$c, 'replyInquiry'])->middleware('permission:commerce.storefront.pages')->name('contents.reply');
     Route::put('domains/{id}/handle', [$c, 'renameDomain'])->middleware('permission:commerce.storefront.domains')->name('domains.rename');
     Route::post('credentials/generate', [$c, 'generateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.generate');
     Route::put('credentials', [$c, 'updateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.update');

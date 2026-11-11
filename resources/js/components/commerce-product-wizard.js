@@ -17,6 +17,14 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     _uid: col._uid || (col.id ? `col_id_${col.id}` : `col_tmp_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`),
   })),
   sizes: config.sizes || [],
+  sizeChart: (() => {
+    const chart = config.sizeChart || {};
+    const values = {};
+    (chart.rows || []).forEach((row) => { values[row.size] = (row.values || []).map((v) => v ?? ''); });
+    return { unit: chart.unit === 'inch' ? 'inch' : 'cm', columns: [...(chart.columns || [])], note: chart.note || '', values };
+  })(),
+  sizeChartPresets: ['Chest', 'Length', 'Shoulder', 'Sleeve', 'Waist', 'Hip', 'Inseam'],
+  sizeChartCustom: '',
   
   // Modal State
   showSizeModal: false,
@@ -748,6 +756,27 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     } finally {
       this.modalSaving = false;
     }
+  },
+
+  addSizeChartColumn(name) {
+    const label = String(name || '').trim();
+    if (!label || this.sizeChart.columns.length >= 8) return;
+    if (this.sizeChart.columns.some((c) => c.toLowerCase() === label.toLowerCase())) return;
+    this.sizeChart.columns.push(label);
+    this.sizeChartCustom = '';
+    this.dirty = true;
+  },
+
+  removeSizeChartColumn(index) {
+    this.sizeChart.columns.splice(index, 1);
+    Object.values(this.sizeChart.values).forEach((row) => row.splice(index, 1));
+    this.dirty = true;
+  },
+
+  sizeChartRow(size) {
+    const key = String(size || '');
+    if (!this.sizeChart.values[key]) this.sizeChart.values[key] = [];
+    return this.sizeChart.values[key];
   },
 
   removeSize(index) {

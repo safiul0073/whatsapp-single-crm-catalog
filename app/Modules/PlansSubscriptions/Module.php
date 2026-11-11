@@ -14,7 +14,7 @@ class Module extends BasePanelModule
 
     public function permissions(): array
     {
-        return ['admin' => ['plans.view' => 'View plans', 'plans.manage' => 'Manage plans', 'subscriptions.view' => 'View subscriptions']];
+        return ['admin' => ['plans.view' => 'View plans', 'plans.manage' => 'Manage plans', 'subscriptions.view' => 'View subscriptions', 'subscriptions.manage' => 'Manage subscriptions']];
     }
 
     public function adminNavigation(NavigationBuilder $navigation): void

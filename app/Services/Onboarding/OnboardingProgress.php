@@ -9,6 +9,7 @@ use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
 use App\Modules\PlansSubscriptions\Models\Plan;
 use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
+use App\Modules\PlansSubscriptions\Services\SubscriptionManager;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -104,20 +105,18 @@ class OnboardingProgress
         return $workspace->fresh();
     }
 
+    /**
+     * Free/no-payment plan activation from onboarding. Paid plans are activated by the
+     * ActivateSubscriptionFromPayment listener once the payment completes.
+     */
     public function activatePlan(Workspace $workspace, Plan $plan, string $status = SubscriptionStatus::Active->value): Subscription
     {
-        return Subscription::query()->updateOrCreate(
-            ['workspace_id' => $workspace->id],
-            [
-                'plan_id' => $plan->id,
-                'status' => $status,
-                'starts_at' => now(),
-                'renews_at' => $plan->interval === 'year'
-                    ? now()->addYear()
-                    : ($plan->interval === 'month' ? now()->addMonth() : null),
-                'ends_at' => null,
-                'usage' => [],
-            ]
+        return app(SubscriptionManager::class)->activate(
+            $workspace,
+            $plan,
+            null,
+            $workspace->owner,
+            SubscriptionStatus::tryFrom($status) ?? SubscriptionStatus::Active,
         );
     }
 }

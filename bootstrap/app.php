@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsurePlanIncludesFeature;
+use App\Http\Middleware\EnsureSubscriptionUsable;
 use App\Http\Middleware\EnsureTwoFactorAuthenticated;
 use App\Http\Middleware\PanelAccess;
 use App\Http\Middleware\SetLocale;
@@ -31,6 +33,8 @@ $middlewareAliases = [
     'role' => RoleMiddleware::class,
     'permission' => PermissionMiddleware::class,
     '2fa' => EnsureTwoFactorAuthenticated::class,
+    'subscription.usable' => EnsureSubscriptionUsable::class,
+    'plan.feature' => EnsurePlanIncludesFeature::class,
 ];
 
 $isAdminRequest = static fn (Request $request): bool => $request->is('admin')

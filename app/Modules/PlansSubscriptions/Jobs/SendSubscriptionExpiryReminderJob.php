@@ -16,6 +16,8 @@ class SendSubscriptionExpiryReminderJob implements ShouldQueue
 {
     use Queueable;
 
+    public const REMIND_DAYS_BEFORE = 3;
+
     /**
      * The scheduler still runs this hourly when the Plans & Subscriptions module is disabled and its tables
      * were never created; exit quietly instead of failing every run.
@@ -31,10 +33,10 @@ class SendSubscriptionExpiryReminderJob implements ShouldQueue
             ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
             ->whereNotNull('renews_at')
             ->where('renews_at', '>', now())
-            ->where('renews_at', '<=', now()->addDay())
+            ->where('renews_at', '<=', now()->addDays(self::REMIND_DAYS_BEFORE))
             ->chunkById(100, function ($subscriptions) use ($access): void {
                 foreach ($subscriptions as $subscription) {
-                    if (! $access->expiresSoon($subscription) || $this->alreadySent($subscription)) {
+                    if (! $access->expiresSoon($subscription, self::REMIND_DAYS_BEFORE) || $this->alreadySent($subscription)) {
                         continue;
                     }
 

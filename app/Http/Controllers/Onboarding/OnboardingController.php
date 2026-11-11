@@ -8,10 +8,10 @@ use App\Modules\PaymentGateways\Services\PaymentGatewayManager;
 use App\Modules\PaymentGateways\Services\PaymentService;
 use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
 use App\Modules\PlansSubscriptions\Models\Plan;
+use App\Modules\PlansSubscriptions\Services\PlanCheckoutService;
 use App\Services\Onboarding\OnboardingProgress;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -83,28 +83,13 @@ class OnboardingController extends Controller
 
         $plan = Plan::query()->where('is_active', true)->findOrFail($data['plan_id']);
 
-        if ((float) $plan->price <= 0) {
-            $this->onboarding->activatePlan($workspace, $plan, SubscriptionStatus::Trialing->value);
+        if ($plan->isFree()) {
+            $this->onboarding->activatePlan($workspace, $plan, SubscriptionStatus::Active->value);
 
             return redirect()->route('user.dashboard')->with('success', __('Your free plan is active.'));
         }
 
-        $payment = Payment::query()->create([
-            'uuid' => (string) Str::uuid(),
-            'user_id' => $request->user()->getKey(),
-            'user_type' => $request->user()->getMorphClass(),
-            'gateway' => 'checkout',
-            'amount' => $plan->price,
-            'currency' => currency_default_code(),
-            'status' => 'pending',
-            'description' => __(':plan subscription', ['plan' => $plan->name]),
-            'metadata' => [
-                'plan_id' => $plan->id,
-                'workspace_id' => $workspace->id,
-                'onboarding' => true,
-                'checkout_only' => true,
-            ],
-        ]);
+        $payment = app(PlanCheckoutService::class)->start($request->user(), $workspace, $plan, onboarding: true);
 
         return redirect()->route('onboarding.checkout', $payment);
     }
@@ -133,8 +118,6 @@ class OnboardingController extends Controller
         }
 
         if ($payment->status === 'completed') {
-            $this->activateSubscriptionFromPayment($workspace, $payment);
-
             return redirect()->route('user.dashboard')->with('success', __('Your subscription is active.'));
         }
 
@@ -154,30 +137,17 @@ class OnboardingController extends Controller
             'gateway' => ['required', Rule::in($enabledGateways)],
         ]);
 
-        $plan = Plan::query()->where('is_active', true)->findOrFail(data_get($payment->metadata, 'plan_id'));
-
-        $payment->update(['status' => 'processing']);
-
-        $result = $payments->charge((float) $plan->price, $payment->currency, [
-            'gateway' => $data['gateway'],
-            'description' => __(':plan subscription', ['plan' => $plan->name]),
-            'return_url' => route('onboarding.payment.return', ['gateway' => $data['gateway']]),
-            'cancel_url' => route('onboarding.payment.cancel'),
-            'metadata' => [
-                'plan_id' => $plan->id,
-                'workspace_id' => $workspace->id,
-                'onboarding' => true,
-                'checkout_payment_id' => $payment->id,
-                'selected_gateway' => $data['gateway'],
-            ],
-        ]);
+        $result = app(PlanCheckoutService::class)->pay(
+            $payment,
+            $data['gateway'],
+            route('onboarding.payment.return', ['gateway' => $data['gateway']]),
+            route('onboarding.payment.cancel'),
+        );
 
         $gatewayPayment = $result['payment'];
         $response = $result['response'];
 
         if ($response->isComplete()) {
-            $this->onboarding->activatePlan($workspace, $plan);
-
             return redirect()->route('user.dashboard')->with('success', __('Your subscription is active.'));
         }
 
@@ -198,8 +168,6 @@ class OnboardingController extends Controller
         }
 
         if ($payment->status === 'completed') {
-            $this->activateSubscriptionFromPayment($workspace, $payment);
-
             return redirect()->route('user.dashboard')->with('success', __('Your subscription is active.'));
         }
 
@@ -211,13 +179,6 @@ class OnboardingController extends Controller
     {
         return redirect()->route('onboarding.plan')
             ->with('error', __('Payment was cancelled. You can choose a plan again.'));
-    }
-
-    protected function activateSubscriptionFromPayment($workspace, Payment $payment): void
-    {
-        $plan = Plan::findOrFail(data_get($payment->metadata, 'plan_id'));
-
-        $this->onboarding->activatePlan($workspace, $plan);
     }
 
     protected function categories(): array

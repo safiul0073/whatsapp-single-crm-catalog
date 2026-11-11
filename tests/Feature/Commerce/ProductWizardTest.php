@@ -216,3 +216,48 @@ it('offers the store feature icon presets plus More icons in step 7 and validate
         'feature_highlights' => [['icon' => 'bad icon"', 'label' => 'x']],
     ])->assertSessionHasErrors('feature_highlights.0.icon');
 });
+
+it('saves a size chart with the sizes step and drops empty columns and rows', function (): void {
+    $product = $this->productService->createDraft($this->workspace->id, ['name' => 'Chart Tee']);
+
+    $this->put(route('user.commerce.products.options.update', $product), [
+        'options' => [['name' => 'Size', 'code' => 'size', 'values' => ['S', 'M', 'L']]],
+        'size_chart' => [
+            'unit' => 'inch',
+            'columns' => ['Chest', '', 'Length'],
+            'rows' => [
+                ['size' => 'S', 'values' => ['38', '', '27']],
+                ['size' => 'M', 'values' => ['40', 'x', '28']],
+                ['size' => 'L', 'values' => ['', '', '']],
+            ],
+            'note' => 'Measured flat',
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($product->fresh()->size_chart)->toEqual([
+        'unit' => 'inch',
+        'columns' => ['Chest', 'Length'],
+        'rows' => [['size' => 'S', 'values' => ['38', '27']], ['size' => 'M', 'values' => ['40', '28']]],
+        'note' => 'Measured flat',
+    ]);
+
+    $this->put(route('user.commerce.products.options.update', $product), [
+        'options' => [['name' => 'Size', 'code' => 'size', 'values' => ['S', 'M']]],
+        'size_chart' => ['unit' => 'cm'],
+    ])->assertSessionHasNoErrors();
+    expect($product->fresh()->size_chart)->toBeNull();
+});
+
+it('rejects size chart rows for sizes the product does not have', function (): void {
+    $product = $this->productService->createDraft($this->workspace->id, ['name' => 'Chart Tee']);
+
+    $this->putJson(route('user.commerce.products.options.update', $product), [
+        'options' => [['name' => 'Size', 'code' => 'size', 'values' => ['S']]],
+        'size_chart' => ['unit' => 'cm', 'columns' => ['Chest'], 'rows' => [['size' => 'XXL', 'values' => ['60']]]],
+    ])->assertUnprocessable()->assertJsonValidationErrors('size_chart.rows.0.size');
+
+    $this->putJson(route('user.commerce.products.options.update', $product), [
+        'options' => [['name' => 'Size', 'code' => 'size', 'values' => ['S']]],
+        'size_chart' => ['unit' => 'mm', 'columns' => array_fill(0, 9, 'X')],
+    ])->assertUnprocessable()->assertJsonValidationErrors(['size_chart.unit', 'size_chart.columns']);
+});

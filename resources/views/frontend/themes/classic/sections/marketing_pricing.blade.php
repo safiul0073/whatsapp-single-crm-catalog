@@ -5,6 +5,8 @@
     $showBillingTabs = !empty($d['show_billing_cycle_tabs']) && count($billingCycles) > 1;
     $showYearlyToggle = !empty($d['show_yearly_toggle']) && ! $showBillingTabs;
     $planCount = count($plans);
+    $displaySymbol = currency_symbol(currency_display_code());
+    $displayPrice = static fn ($value) => is_numeric($value) ? (string) round(currency_display_amount($value)) : $value;
     $saveLabels = [];
     foreach ($billingCycles as $cycle) {
         if (!empty($cycle['key']) && !empty($cycle['save_text'])) {
@@ -64,13 +66,13 @@
                         <p class="font-title text-sm font-bold tracking-wide {{ $isHighlighted ? 'text-primary' : 'text-neutral-500' }} uppercase">{{ $plan['name'] ?? '' }}</p>
                         <p class="mt-3">
                             <span class="font-title text-4xl font-extrabold text-title">
-                                $<span
-                                    data-monthly="{{ $plan['monthly_price'] ?? '0' }}"
-                                    data-yearly="{{ $plan['yearly_price'] ?? $plan['monthly_price'] ?? '0' }}"
+                                {{ $displaySymbol }}<span
+                                    data-monthly="{{ $displayPrice($plan['monthly_price'] ?? '0') }}"
+                                    data-yearly="{{ $displayPrice($plan['yearly_price'] ?? $plan['monthly_price'] ?? '0') }}"
                                     @if (array_key_exists('lifetime_price', $plan))
-                                        data-lifetime="{{ $plan['lifetime_price'] ?? $plan['yearly_price'] ?? $plan['monthly_price'] ?? '0' }}"
+                                        data-lifetime="{{ $displayPrice($plan['lifetime_price'] ?? $plan['yearly_price'] ?? $plan['monthly_price'] ?? '0') }}"
                                     @endif
-                                >{{ $plan['monthly_price'] ?? '0' }}</span>
+                                >{{ $displayPrice($plan['monthly_price'] ?? '0') }}</span>
                             </span>
                             <span class="text-body" data-period="/mo">/mo</span>
                         </p>

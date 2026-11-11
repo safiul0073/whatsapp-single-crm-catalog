@@ -32,6 +32,7 @@ class Module extends BasePanelModule
             ->children([
                 ['label' => 'General Settings', 'route' => 'admin.settings.index'],
                 ['label' => 'Meta App', 'route' => 'admin.meta-app.settings.*', 'permission' => 'meta-social.settings.view'],
+                ['label' => 'TikTok App', 'route' => 'admin.tiktok.settings.*', 'permission' => 'tiktok.settings.view'],
                 ['label' => 'AI Settings', 'route' => 'admin.ai-settings.*', 'permission' => 'ai-settings.view'],
                 ['label' => 'Vector Database', 'route' => 'admin.ai-settings.vector-database.*', 'permission' => 'ai-settings.view'],
                 ['label' => 'Place API Settings', 'route' => 'admin.place-api-settings.*', 'permission' => 'place-api-settings.view'],
