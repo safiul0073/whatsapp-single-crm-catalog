@@ -97,7 +97,7 @@ class ProcessContactImportJob implements ShouldQueue
                     $contactData['opt_in_status'] = ContactOptInStatus::Subscribed->value;
                 }
 
-                $contacts->upsert($import->workspace_id, $contactData);
+                $contacts->upsert($import->workspace_id, $contactData, enforcePlanLimit: true);
                 $exists ? $updated++ : $created++;
                 $imported++;
             } catch (\Throwable $e) {

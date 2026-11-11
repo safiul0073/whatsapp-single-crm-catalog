@@ -215,9 +215,7 @@
                 class="space-y-4"
             >
                 @csrf
-                <template x-if="blogForm.id">
-                    <input type="hidden" name="_method" value="PUT">
-                </template>
+                <input type="hidden" name="_method" :value="blogForm.id ? 'PUT' : 'POST'">
                 <input type="hidden" name="_tab" value="content">
                 <input type="hidden" name="type" value="blog">
 
@@ -499,9 +497,7 @@
                 class="space-y-4"
             >
                 @csrf
-                <template x-if="faqForm.id">
-                    <input type="hidden" name="_method" value="PUT">
-                </template>
+                <input type="hidden" name="_method" :value="faqForm.id ? 'PUT' : 'POST'">
                 <input type="hidden" name="_tab" value="content">
                 <input type="hidden" name="type" value="faq">
 

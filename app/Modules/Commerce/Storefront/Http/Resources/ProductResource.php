@@ -149,6 +149,7 @@ class ProductResource extends JsonResource
             ]),
             'feature_highlights' => $this->feature_highlights ?? [],
             'specifications' => $this->specifications ?? [],
+            'size_chart' => $this->storefrontSizeChart(),
             'condition' => $this->condition ?? 'new',
             'delivery_time' => $this->delivery_time ?? '6-10 Working Days',
             'shipping_info' => $this->shipping_info ?? 'USA & Canada',
@@ -165,6 +166,32 @@ class ProductResource extends JsonResource
                     ['id' => 'home_delivery', 'name' => 'Home Delivery', 'cost' => 15.00, 'formatted_cost' => '15.00', 'estimated_delivery' => '3-5 Working Days'],
                 ],
             ],
+        ];
+    }
+
+    /**
+     * @return array{unit: string, columns: list<string>, rows: list<array{size: string, values: list<string>}>, note: ?string}|null
+     */
+    private function storefrontSizeChart(): ?array
+    {
+        $chart = $this->size_chart;
+        if (! is_array($chart) || empty($chart['columns']) || empty($chart['rows'])) {
+            return null;
+        }
+
+        $sizeOption = $this->relationLoaded('options') ? $this->options->firstWhere('code', 'size') : null;
+        $sizes = $sizeOption && $sizeOption->relationLoaded('values') ? $sizeOption->values->pluck('value')->all() : null;
+        $rows = collect($chart['rows']);
+        if ($sizes !== null) {
+            $rows = $rows->filter(fn (array $row): bool => in_array($row['size'], $sizes, true))
+                ->sortBy(fn (array $row): int => (int) array_search($row['size'], $sizes, true));
+        }
+
+        return $rows->isEmpty() ? null : [
+            'unit' => $chart['unit'] ?? 'cm',
+            'columns' => array_values($chart['columns']),
+            'rows' => $rows->values()->all(),
+            'note' => $chart['note'] ?? null,
         ];
     }
 }

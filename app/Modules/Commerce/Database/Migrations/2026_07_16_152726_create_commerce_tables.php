@@ -73,6 +73,7 @@ return new class extends Migration
             $table->text('care_information')->nullable();
             $table->json('features')->nullable();
             $table->json('feature_highlights')->nullable();
+            $table->json('size_chart')->nullable();
             $table->json('shipping_countries')->nullable();
             $table->json('specifications')->nullable();
             $table->string('fit')->nullable()->default('USA True-to-Size');

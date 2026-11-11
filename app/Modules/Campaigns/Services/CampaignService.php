@@ -115,13 +115,19 @@ class CampaignService
         $contacts = $this->audiences->contacts($workspace->id, $audience);
         $sendableCount = $contacts->filter(fn (Contact $contact): bool => $this->audiences->sendability($contact, $provider) === null)->count();
 
-        if (! $this->limits->allows($workspace->id, 'max_messages_per_month', $sendableCount)) {
+        if (! $this->limits->allows($workspace->id, 'messages_per_month', $sendableCount)) {
             throw ValidationException::withMessages([
                 'plan' => 'This campaign exceeds the current plan message quota.',
             ]);
         }
 
-        if (! $this->limits->allows($workspace->id, 'max_contacts', $contacts->count())) {
+        if (in_array($data['schedule'] ?? 'now', ['now', 'later'], true) && ! $this->limits->allows($workspace->id, 'campaigns_per_month', 1)) {
+            throw ValidationException::withMessages([
+                'plan' => 'You have reached the monthly campaign limit of your plan.',
+            ]);
+        }
+
+        if (! $this->limits->withinLimit($workspace->id, 'contacts', $contacts->count())) {
             throw ValidationException::withMessages([
                 'plan' => 'This campaign exceeds the current plan contact limit.',
             ]);
@@ -171,7 +177,7 @@ class CampaignService
         $campaign = Campaign::query()->create($attributes);
 
         if ($status !== CampaignStatus::Draft) {
-            $this->limits->consume($workspace->id, 'max_campaigns_per_month', 1);
+            $this->limits->consume($workspace->id, 'campaigns_per_month', 1);
             PrepareCampaignRecipientsJob::dispatch($campaign->id)->delay($scheduledAt);
         }
 
@@ -230,7 +236,7 @@ class CampaignService
         $campaign->update($attributes);
 
         if ($status !== CampaignStatus::Draft) {
-            $this->limits->consume($campaign->workspace_id, 'max_campaigns_per_month', 1);
+            $this->limits->consume($campaign->workspace_id, 'campaigns_per_month', 1);
             PrepareCampaignRecipientsJob::dispatch($campaign->id)->delay($scheduledAt);
         }
 
@@ -251,7 +257,7 @@ class CampaignService
             'started_at' => now(),
         ]);
 
-        $this->limits->consume($campaign->workspace_id, 'max_campaigns_per_month', 1);
+        $this->limits->consume($campaign->workspace_id, 'campaigns_per_month', 1);
         PrepareCampaignRecipientsJob::dispatch($campaign->id);
     }
 
@@ -263,7 +269,7 @@ class CampaignService
             'queued_at' => now(),
         ]);
 
-        $this->limits->consume($campaign->workspace_id, 'max_campaigns_per_month', 1);
+        $this->limits->consume($campaign->workspace_id, 'campaigns_per_month', 1);
         PrepareCampaignRecipientsJob::dispatch($campaign->id)->delay($at);
     }
 
@@ -377,7 +383,7 @@ class CampaignService
                 'completed_at' => null,
             ]);
 
-            $this->limits->consume($campaign->workspace_id, 'max_campaigns_per_month', 1);
+            $this->limits->consume($campaign->workspace_id, 'campaigns_per_month', 1);
             PrepareCampaignRecipientsJob::dispatch($campaign->id)->afterCommit();
         });
 

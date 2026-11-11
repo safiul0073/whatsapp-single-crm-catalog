@@ -13,6 +13,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Free',
                 'slug' => 'free',
+                'is_free' => true,
                 'description' => 'Free starter plan for small teams testing WhatsApp automation.',
                 'price' => 0,
                 'interval' => 'month',
@@ -25,6 +26,7 @@ class PlanSeeder extends Seeder
                     'max_ai_credits' => 50,
                     'automation_ai_builder' => false,
                     'campaign_ai_doctor' => false,
+                    Plan::BLOCKED_FEATURES => ['meta', 'commerce', 'automation:automations.index'],
                 ],
                 'features' => [
                     '10,000 messages per month',

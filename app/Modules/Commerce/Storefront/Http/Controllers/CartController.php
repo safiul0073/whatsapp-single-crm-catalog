@@ -28,7 +28,10 @@ class CartController extends Controller
 
     public function show(Request $r): JsonResponse
     {
-        return response()->json(['data' => $this->carts->summary($this->carts->resolve($r))]);
+        $cart = $this->carts->resolve($r);
+        $notices = $this->carts->refreshStalePacks($cart);
+
+        return response()->json(['data' => [...$this->carts->summary($cart), 'notices' => $notices]]);
     }
 
     public function add(CartRequest $r): JsonResponse

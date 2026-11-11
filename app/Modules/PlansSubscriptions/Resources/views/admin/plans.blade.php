@@ -38,8 +38,13 @@
                                 </td>
                                 <td data-th="{{ __('Limits') }}">
                                     <div class="flex max-w-xs flex-wrap justify-end gap-1.5 lg:justify-start">
-                                        @forelse (($plan->limits ?? []) as $key => $value)
-                                            <x-ui.badge variant="neutral">{{ str_replace('_', ' ', $key) }}: {{ number_format((int) $value) }}</x-ui.badge>
+                                        @php
+                                            $scalarLimits = collect($plan->limits ?? [])->filter(fn ($value): bool => is_scalar($value));
+                                            $includedModules = collect($featureCatalog)->keys()->filter(fn (string $module): bool => $plan->includesFeature($module))->count();
+                                        @endphp
+                                        <x-ui.badge variant="primary">{{ __(':included / :total modules', ['included' => $includedModules, 'total' => count($featureCatalog)]) }}</x-ui.badge>
+                                        @forelse ($scalarLimits as $key => $value)
+                                            <x-ui.badge variant="neutral">{{ str_replace('_', ' ', $key) }}: {{ is_bool($value) ? ($value ? __('Yes') : __('No')) : number_format((int) $value) }}</x-ui.badge>
                                         @empty
                                             <span class="text-sm text-neutral-400">{{ __('No limits set') }}</span>
                                         @endforelse

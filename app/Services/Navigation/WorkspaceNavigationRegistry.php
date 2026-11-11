@@ -5,12 +5,24 @@ namespace App\Services\Navigation;
 use App\Models\User;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\PlansSubscriptions\Services\PlanFeatureGate;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class WorkspaceNavigationRegistry
 {
+    /**
+     * Modules every plan includes; they cannot be switched off per plan.
+     */
+    public const ALWAYS_INCLUDED_MODULES = ['dashboard'];
+
+    /**
+     * @var list<array{pattern: string, score: int, module: string, module_label: string, item: string|null, label: string}>|null
+     */
+    protected ?array $routeFeatureIndex = null;
+
     /**
      * Build the filtered two-level navigation tree for the given user and request.
      *
@@ -29,8 +41,14 @@ class WorkspaceNavigationRegistry
 
         $visibleModules = [];
         $flatItems = [];
+        $workspaceId = $user instanceof User ? app(WorkspaceResolver::class)->current($user)?->id : null;
+        $planGate = $workspaceId !== null ? app(PlanFeatureGate::class) : null;
 
         foreach ($this->definitions() as $module) {
+            if ($planGate !== null && ! $planGate->allows($workspaceId, $module['id'])) {
+                continue;
+            }
+
             $filteredGroups = [];
             $firstUrl = null;
             $firstRoute = null;
@@ -48,6 +66,10 @@ class WorkspaceNavigationRegistry
 
                 foreach ($group['items'] as $item) {
                     if (! Route::has($item['route']) || ! $this->canAccess($user, $item['permission'] ?? null) || ! $this->featureEnabled($user, $item['feature'] ?? null)) {
+                        continue;
+                    }
+
+                    if ($planGate !== null && ! $planGate->allows($workspaceId, $module['id'], self::itemFeatureKey($module['id'], $item['route']))) {
                         continue;
                     }
 
@@ -176,6 +198,180 @@ class WorkspaceNavigationRegistry
         }
 
         return $groups;
+    }
+
+    /**
+     * Every module and menu item a plan can include, keyed by plan feature key.
+     *
+     * @return array<string, array{label: string, icon: string, locked: bool, items: array<string, array{label: string, group: string, icon: string, route: string}>}>
+     */
+    public function featureCatalog(): array
+    {
+        $catalog = [];
+
+        foreach ($this->definitions() as $module) {
+            $items = [];
+
+            foreach ($module['groups'] as $group) {
+                foreach ($group['items'] as $item) {
+                    $items[self::itemFeatureKey($module['id'], $item['route'])] = [
+                        'label' => $item['label'],
+                        'group' => $group['label'],
+                        'icon' => $item['icon'],
+                        'route' => $item['route'],
+                    ];
+                }
+            }
+
+            $catalog[$module['id']] = [
+                'label' => $module['label'],
+                'icon' => $module['icon'],
+                'locked' => in_array($module['id'], self::ALWAYS_INCLUDED_MODULES, true),
+                'items' => $items,
+            ];
+        }
+
+        return $catalog;
+    }
+
+    /**
+     * All feature keys (modules and items) a plan can block.
+     *
+     * @return list<string>
+     */
+    public function featureKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->featureCatalog() as $moduleKey => $module) {
+            if ($module['locked']) {
+                continue;
+            }
+
+            $keys[] = $moduleKey;
+            array_push($keys, ...array_keys($module['items']));
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * Which modules and menu items each workspace permission unlocks.
+     *
+     * @return array<string, list<array{module: string, item: string}>>
+     */
+    public function permissionFeatures(): array
+    {
+        $map = [];
+
+        foreach ($this->definitions() as $module) {
+            foreach ($module['groups'] as $group) {
+                foreach ($group['items'] as $item) {
+                    $permissions = preg_split('/[|&]/', (string) ($item['permission'] ?? ''));
+
+                    foreach (array_filter(array_map('trim', $permissions)) as $permission) {
+                        $map[$permission][] = ['module' => $module['id'], 'item' => self::itemFeatureKey($module['id'], $item['route'])];
+                    }
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Plan feature key of a menu item, e.g. "commerce:commerce.pos.index".
+     */
+    public static function itemFeatureKey(string $moduleId, string $route): string
+    {
+        return $moduleId.':'.Str::after($route, 'user.');
+    }
+
+    /**
+     * The menu items (or, failing that, modules) a route belongs to, most specific match only.
+     * An empty list means the route is not tied to any plan feature.
+     *
+     * @return list<array{module: string, item: string|null, label: string}>
+     */
+    public function featuresForRoute(string $routeName): array
+    {
+        $best = null;
+        $matches = [];
+
+        foreach ($this->routeFeatureIndex() as $entry) {
+            if (! Str::is($entry['pattern'], $routeName)) {
+                continue;
+            }
+
+            if ($best === null || $entry['score'] > $best) {
+                $best = $entry['score'];
+                $matches = [];
+            }
+
+            if ($entry['score'] === $best) {
+                $matches[] = ['module' => $entry['module'], 'item' => $entry['item'], 'label' => $entry['label']];
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Route patterns of every item and module with a specificity score. Item patterns always outrank
+     * module patterns; an item route ending in ".index" also claims its sibling routes (e.g. ".store").
+     *
+     * @return list<array{pattern: string, score: int, module: string, module_label: string, item: string|null, label: string}>
+     */
+    protected function routeFeatureIndex(): array
+    {
+        if ($this->routeFeatureIndex !== null) {
+            return $this->routeFeatureIndex;
+        }
+
+        $index = [];
+
+        foreach ($this->definitions() as $module) {
+            foreach ($module['groups'] as $group) {
+                foreach ($group['items'] as $item) {
+                    $patterns = (array) ($item['active'] ?? $item['route']);
+
+                    if (str_ends_with($item['route'], '.index')) {
+                        $patterns[] = Str::beforeLast($item['route'], '.index').'.*';
+                    }
+
+                    foreach (array_unique($patterns) as $pattern) {
+                        $index[] = [
+                            'pattern' => $pattern,
+                            'score' => 10_000 + $this->patternSpecificity($pattern),
+                            'module' => $module['id'],
+                            'module_label' => $module['label'],
+                            'item' => self::itemFeatureKey($module['id'], $item['route']),
+                            'label' => $item['label'],
+                        ];
+                    }
+                }
+            }
+
+            foreach ($module['route_patterns'] as $pattern) {
+                $index[] = [
+                    'pattern' => $pattern,
+                    'score' => $this->patternSpecificity($pattern),
+                    'module' => $module['id'],
+                    'module_label' => $module['label'],
+                    'item' => null,
+                    'label' => $module['label'],
+                ];
+            }
+        }
+
+        return $this->routeFeatureIndex = $index;
+    }
+
+    protected function patternSpecificity(string $pattern): int
+    {
+        $literal = strlen(str_replace('*', '', $pattern));
+
+        return str_contains($pattern, '*') ? $literal : $literal + 1_000;
     }
 
     /**

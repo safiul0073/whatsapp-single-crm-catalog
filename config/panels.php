@@ -50,7 +50,7 @@ return [
     'user' => [
         'name' => 'WhatsApp Marketing',
         'prefix' => 'dashboard',                      // URL: yoursite.com/dashboard/*
-        'middleware' => ['web', 'auth', 'verified', '2fa', 'panel:user'],
+        'middleware' => ['web', 'auth', 'verified', '2fa', 'panel:user', 'subscription.usable', 'plan.feature'],
         'roles' => [],                               // Empty = all authenticated users
         'guard' => 'web',                            // Uses web guard → users table
         'theme' => 'light',

@@ -46,7 +46,7 @@
                         </div>
 
                         <div class="mt-6">
-                            <span class="text-4xl font-extrabold text-title">{{ currency_format($plan->price) }}</span>
+                            <span class="text-4xl font-extrabold text-title">{{ currency_display($plan->price, $plan->currency) }}</span>
                             <span class="text-sm text-body">/{{ $plan->interval }}</span>
                         </div>
 

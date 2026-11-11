@@ -8,6 +8,7 @@ use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
 use App\Modules\PlansSubscriptions\Models\Subscription;
 use App\Modules\PlansSubscriptions\Notifications\SubscriptionStatusNotification;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
+use App\Modules\PlansSubscriptions\Services\SubscriptionManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Schema;
@@ -20,31 +21,29 @@ class ExpireSubscriptionsJob implements ShouldQueue
      * The scheduler still runs this hourly when the Plans & Subscriptions module is disabled and its tables
      * were never created; exit quietly instead of failing every run.
      */
-    public function handle(SubscriptionAccessService $access): void
+    public function handle(SubscriptionAccessService $access, ?SubscriptionManager $manager = null): void
     {
         if (! Schema::hasTable('subscriptions')) {
             return;
         }
 
+        $manager ??= app(SubscriptionManager::class);
+
         Subscription::query()
-            ->with(['workspace.owner', 'plan'])
             ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
             ->where(function ($query): void {
                 $query->where(fn ($q) => $q->whereNotNull('renews_at')->where('renews_at', '<=', now()))
                     ->orWhere(fn ($q) => $q->whereNotNull('ends_at')->where('ends_at', '<=', now()));
             })
-            ->chunkById(100, function ($subscriptions) use ($access): void {
+            ->chunkById(100, function ($subscriptions) use ($access, $manager): void {
                 foreach ($subscriptions as $subscription) {
-                    if (! $access->shouldExpire($subscription)) {
+                    $expiresAt = $access->expiryDate($subscription) ?? now();
+
+                    if (! $manager->closePeriod($subscription)) {
                         continue;
                     }
 
-                    $expiresAt = $access->expiryDate($subscription) ?? now();
-
-                    $subscription->forceFill([
-                        'status' => SubscriptionStatus::Expired,
-                        'ends_at' => $subscription->ends_at ?? $expiresAt,
-                    ])->save();
+                    $subscription = $subscription->fresh(['workspace.owner', 'plan']);
 
                     if ($this->alreadySent($subscription, $expiresAt)) {
                         continue;
@@ -56,10 +55,7 @@ class ExpireSubscriptionsJob implements ShouldQueue
                         continue;
                     }
 
-                    $owner->notify(new SubscriptionStatusNotification(
-                        $subscription->fresh(['workspace.owner', 'plan']),
-                        NotificationTemplateSlug::SUBSCRIPTION_EXPIRED,
-                    ));
+                    $owner->notify(new SubscriptionStatusNotification($subscription, NotificationTemplateSlug::SUBSCRIPTION_EXPIRED));
                 }
             });
     }

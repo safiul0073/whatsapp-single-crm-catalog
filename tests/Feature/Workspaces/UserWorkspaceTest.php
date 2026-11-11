@@ -55,8 +55,7 @@ function subscribeWorkspace(Workspace $workspace): void
         ]
     );
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
         'status' => SubscriptionStatus::Active->value,
         'starts_at' => now(),

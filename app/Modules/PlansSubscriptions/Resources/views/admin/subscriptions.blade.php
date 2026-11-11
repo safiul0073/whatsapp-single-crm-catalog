@@ -5,6 +5,12 @@
         </div>
 
         <div class="section-card">
+            <x-forms.filters action="{{ route('admin.subscriptions.index') }}">
+                <x-forms.filters.text name="search" :label="__('Search')" :placeholder="__('Workspace, owner or email')" />
+                <x-forms.filters.select name="status" :label="__('Status')" :options="$statusOptions" />
+                <x-forms.filters.select name="plan_id" :label="__('Plan')" :options="$planOptions" />
+            </x-forms.filters>
+
             <x-tables.datatable :url="route('admin.subscriptions.index')" :searchable="false" :perPageOptions="[]">
                 <x-tables.table>
                     <thead>
@@ -15,6 +21,7 @@
                             <th>{{ __('Status') }}</th>
                             <th>{{ __('Period') }}</th>
                             <th>{{ __('Usage') }}</th>
+                            <th class="text-right">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42,7 +49,10 @@
                                 </td>
                                 <td data-th="{{ __('Status') }}">
                                     <div class="flex justify-end lg:justify-start rtl:justify-start">
-                                        <x-ui.badge variant="info">{{ ucfirst(str_replace('_', ' ', $status)) }}</x-ui.badge>
+                                        <x-ui.badge :variant="match ($status) { 'active' => 'success', 'expired' => 'error', 'cancelled', 'past_due' => 'warning', default => 'info' }">{{ ucfirst(str_replace('_', ' ', $status)) }}</x-ui.badge>
+                                        @if ($subscription->pendingPlan)
+                                            <x-ui.badge variant="warning">{{ __('→ :plan', ['plan' => $subscription->pendingPlan->name]) }}</x-ui.badge>
+                                        @endif
                                     </div>
                                 </td>
                                 <td data-th="{{ __('Period') }}" class="text-sm text-neutral-600">
@@ -55,16 +65,21 @@
                                 <td data-th="{{ __('Usage') }}">
                                     <div class="flex max-w-xs flex-wrap justify-end gap-1.5 lg:justify-start">
                                         @forelse (($subscription->usage ?? []) as $key => $value)
-                                            <x-ui.badge variant="neutral">{{ str_replace('_', ' ', $key) }}: {{ is_numeric($value) ? number_format((float) $value) : $value }}</x-ui.badge>
+                                            <x-ui.badge variant="neutral">{{ \App\Modules\PlansSubscriptions\Services\PlanLimitService::label($key) }}: {{ is_numeric($value) ? number_format((float) $value) : $value }}</x-ui.badge>
                                         @empty
                                             <span class="text-sm text-neutral-400">{{ __('No usage recorded') }}</span>
                                         @endforelse
                                     </div>
                                 </td>
+                                <td data-th="{{ __('Actions') }}" class="text-right">
+                                    <x-ui.button variant="outline" size="sm" href="{{ route('admin.subscriptions.show', $subscription) }}">
+                                        <i class="ph ph-eye"></i> {{ __('Manage') }}
+                                    </x-ui.button>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="table-empty-state">{{ __('No subscriptions found.') }}</td>
+                                <td colspan="7" class="table-empty-state">{{ __('No subscriptions found.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

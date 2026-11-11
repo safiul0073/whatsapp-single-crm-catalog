@@ -45,6 +45,7 @@ class EnsureSubscriptionUsable
             || str_starts_with($routeName, 'user.profile.')
             || str_starts_with($routeName, 'user.system-notifications.')
             || $routeName === 'user.dashboard'
+            || $routeName === 'user.workspaces.switch'
             || $routeName === 'user.global-search') {
             return true;
         }

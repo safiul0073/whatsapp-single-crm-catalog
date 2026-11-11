@@ -40,8 +40,7 @@ it('renders the dashboard for authenticated users', function () {
     ]);
 
     // 2. Seed Subscription
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
         'status' => SubscriptionStatus::Active,
         'starts_at' => now()->subDays(5),

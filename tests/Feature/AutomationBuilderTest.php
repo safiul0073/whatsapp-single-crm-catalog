@@ -49,8 +49,7 @@ function activateAutomationAiPlan(User $user, bool $enabled = true): Workspace
         'sort_order' => 1,
     ]);
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
         'status' => SubscriptionStatus::Active,
         'starts_at' => now(),

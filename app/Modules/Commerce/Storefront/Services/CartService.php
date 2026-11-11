@@ -9,6 +9,7 @@ use App\Modules\Commerce\Storefront\Models\Cart;
 use App\Modules\Commerce\Storefront\Models\CartGroup;
 use App\Modules\Commerce\Storefront\Models\CartItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +33,68 @@ class CartService
         abort_if($cart->customer_id && $cart->customer_id !== $r->attributes->get('store_customer')?->id, 404);
 
         return $cart;
+    }
+
+    /**
+     * Rebuild wholesale pack lines whose saved selection now expands to different contents
+     * (the owner changed the product's pack configuration after it was added).
+     *
+     * @return list<array{group_id: int, name: string, before: array<string, int>, after: array<string, int>}>
+     */
+    public function refreshStalePacks(Cart $cart): array
+    {
+        return DB::transaction(function () use ($cart): array {
+            $notices = [];
+            $packs = app(PackSelectionService::class);
+            $groups = CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->lockForUpdate()->get();
+            $lines = CartItem::query()->where('cart_id', $cart->id)->get();
+
+            foreach ($groups as $group) {
+                if (($group->selection['type'] ?? 'retail') === 'retail') {
+                    continue;
+                }
+                try {
+                    $expanded = $packs->validate($cart->workspace_id, $group->selection);
+                } catch (ValidationException) {
+                    continue;
+                }
+                $expected = collect($expanded['rows'])->groupBy('variant_id')->map(fn ($r) => $r->sum('quantity'))->sortKeys()->all();
+                $groupLines = $lines->where('group_id', $group->id);
+                $actual = $groupLines->groupBy('variant_id')->map(fn ($r) => $r->sum('quantity'))->sortKeys()->all();
+                if ($expected === $actual) {
+                    continue;
+                }
+
+                CartItem::query()->where('cart_id', $cart->id)->where('group_id', $group->id)->delete();
+                foreach ($expanded['rows'] as $row) {
+                    CartItem::query()->create(['workspace_id' => $cart->workspace_id, 'cart_id' => $cart->id, 'group_id' => $group->id, ...collect($row)->except('mode')->all()]);
+                }
+                $notices[] = [
+                    'group_id' => $group->id,
+                    'name' => (string) ($expanded['name'] ?? ''),
+                    'before' => $this->sizeQuantities($cart->workspace_id, $actual),
+                    'after' => $this->sizeQuantities($cart->workspace_id, $expected),
+                ];
+            }
+
+            return $notices;
+        });
+    }
+
+    /**
+     * @param  array<int, int>  $byVariant
+     * @return array<string, int>
+     */
+    private function sizeQuantities(int $workspace, array $byVariant): array
+    {
+        $sizes = ProductVariant::query()->where('workspace_id', $workspace)->whereIn('id', array_keys($byVariant))->pluck('size', 'id');
+        $out = [];
+        foreach ($byVariant as $variantId => $qty) {
+            $label = (string) ($sizes[$variantId] ?? $variantId);
+            $out[$label] = ($out[$label] ?? 0) + (int) $qty;
+        }
+
+        return $out;
     }
 
     public function summary(Cart $cart): array

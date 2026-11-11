@@ -848,3 +848,50 @@ it('lists phosphor icons for the feature icon picker', function (): void {
     expect($icons)->toContain('ph-ruler')->toContain('ph-snowflake')
         ->and(count($icons))->toBeGreaterThan(500);
 });
+
+it('updates FAQs and blog posts through PUT and always renders the method spoof on both content forms', function (): void {
+    $user = User::query()->create([
+        'id' => 36,
+        'name' => 'Editorial Owner',
+        'email' => 'editor-update@example.com',
+        'password' => bcrypt('secret123'),
+        'email_verified_at' => now(),
+    ]);
+    $workspace = Workspace::query()->create([
+        'name' => 'Editorial Update Workspace',
+        'slug' => 'editorial-update-workspace-'.Str::uuid(),
+        'owner_id' => $user->id,
+        'status' => 'active',
+    ]);
+    WorkspaceMember::query()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+    $faq = StorefrontContent::query()->create([
+        'workspace_id' => $workspace->id,
+        'type' => 'faq',
+        'slug' => 'faq-accepted-payment-methods',
+        'data' => ['question' => 'What payment methods do you accept?', 'answer' => '<p>Visa</p>', 'category' => 'Orders & Shipping'],
+        'published_at' => now(),
+    ]);
+
+    $this->actingAs($user)->put(route('user.commerce.storefront.contents.update', $faq->id), [
+        'type' => 'faq',
+        'question' => 'Which payment methods do you accept?',
+        'slug' => 'faq-accepted-payment-methods',
+        'category' => 'Orders & Shipping',
+        'answer' => '<p>Visa and PayPal</p>',
+        'published' => 1,
+    ])->assertRedirect(route('user.commerce.storefront.index').'?tab=content#content');
+
+    expect($faq->refresh()->data['question'])->toBe('Which payment methods do you accept?');
+
+    $this->actingAs($user)->post(route('user.commerce.storefront.contents.update', $faq->id), ['type' => 'faq'])->assertStatus(405);
+
+    $view = file_get_contents(base_path('app/Modules/Commerce/Resources/views/user/storefront-journal-faqs.blade.php'));
+    expect($view)
+        ->toContain(':value="faqForm.id ? \'PUT\' : \'POST\'"')
+        ->toContain(':value="blogForm.id ? \'PUT\' : \'POST\'"');
+});

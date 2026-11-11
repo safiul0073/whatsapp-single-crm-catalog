@@ -3,6 +3,7 @@
 namespace App\Modules\Workspaces\Services;
 
 use App\Models\User;
+use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use App\Modules\Shared\Support\PermissionRegistrar as ModulePermissionRegistrar;
 use App\Modules\Workspaces\Enums\WorkspaceMemberStatus;
 use App\Modules\Workspaces\Mail\TeamInvitationMail;
@@ -48,14 +49,14 @@ class TeamManagementService
             'seats_used' => $seatsUsed,
             'seat_limit' => $seatLimit,
         ];
-        
+
         foreach ($roles as $role) {
-            $counts['role_' . $role->id] = $activeMembers->where('pivot.workspace_role_id', $role->id)->count();
+            $counts['role_'.$role->id] = $activeMembers->where('pivot.workspace_role_id', $role->id)->count();
             if (strtolower($role->name) === 'administrator') {
-                $counts['administrators'] = $counts['role_' . $role->id];
+                $counts['administrators'] = $counts['role_'.$role->id];
             }
             if (strtolower($role->name) === 'manager') {
-                $counts['managers'] = $counts['role_' . $role->id];
+                $counts['managers'] = $counts['role_'.$role->id];
             }
         }
         $counts['administrators'] = $counts['administrators'] ?? 0;
@@ -86,7 +87,7 @@ class TeamManagementService
 
     public function seatLimit(Workspace $workspace): ?int
     {
-        return null;
+        return app(PlanLimitService::class)->limit($workspace->id, 'team_members');
     }
 
     public function rolePermissionMatrix(Workspace $workspace): array
@@ -182,7 +183,7 @@ class TeamManagementService
 
         if (isset($data['role'])) {
             $newRole = $this->resolveRole($workspace, $data['role']);
-            
+
             if ($member->pivot->workspace_role_id !== $newRole->id) {
                 $workspace->members()->updateExistingPivot($member->id, ['workspace_role_id' => $newRole->id]);
             }
@@ -363,9 +364,10 @@ class TeamManagementService
     public function resolveRole(Workspace $workspace, mixed $roleId): WorkspaceRole
     {
         $role = WorkspaceRole::where('workspace_id', $workspace->id)->where('id', $roleId)->first();
-        if (!$role) {
+        if (! $role) {
             throw new HttpException(422, __('Invalid role selected.'));
         }
+
         return $role;
     }
 }

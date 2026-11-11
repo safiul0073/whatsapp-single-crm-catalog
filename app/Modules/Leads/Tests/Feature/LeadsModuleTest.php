@@ -66,8 +66,7 @@ function subscribeLeadWorkspace(int $workspaceId, array $limits): Subscription
         'sort_order' => 1,
     ]);
 
-    return Subscription::query()->create([
-        'workspace_id' => $workspaceId,
+    return Subscription::query()->updateOrCreate(['workspace_id' => $workspaceId], [
         'plan_id' => $plan->id,
         'status' => 'active',
         'starts_at' => now(),

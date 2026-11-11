@@ -110,6 +110,7 @@
         </button>
 
         <x-ui.language-switcher />
+        @include('currencies::components.switcher')
 
         <div class="relative" x-data="notificationBell({{ Js::from($bellConfig) }})">
             <button @click="togglePanel()" class="app-topbar__icon" aria-label="{{ __('Notifications') }}">

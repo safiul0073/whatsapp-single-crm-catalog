@@ -53,25 +53,23 @@ it('renders admin dashboard overview cards chart and unified activity', function
         'is_active' => true,
     ]);
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    // One subscription per workspace: the last write (active) is what the dashboard sees.
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
-        'status' => SubscriptionStatus::Active,
-        'starts_at' => now()->subDays(10),
+        'status' => SubscriptionStatus::Cancelled,
+        'starts_at' => now()->subMonth(),
     ]);
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
         'status' => SubscriptionStatus::Trialing,
         'starts_at' => now()->subDays(2),
     ]);
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
-        'status' => SubscriptionStatus::Cancelled,
-        'starts_at' => now()->subMonth(),
+        'status' => SubscriptionStatus::Active,
+        'starts_at' => now()->subDays(10),
     ]);
 
     Message::query()->create([

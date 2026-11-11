@@ -110,4 +110,28 @@ return [
         ],
     ],
 
+    'subscription-usage-limit' => [
+        'name' => 'Subscription Usage Limit',
+        'description' => 'Sent to workspace owners when a plan quota reaches 80% or 100%',
+        'channels' => ['email', 'in_app', 'web_push', 'mobile_push'],
+        'variables' => [
+            'user_name' => 'The workspace owner name',
+            'workspace_name' => 'The workspace name',
+            'plan_name' => 'The current plan name',
+            'limit_name' => 'The quota that is running out',
+            'used' => 'Units used this period',
+            'limit' => 'Units included in the plan',
+            'percent' => 'Percentage of the quota used',
+            'upgrade_url' => 'The subscription page URL',
+        ],
+        'defaults' => [
+            'email_subject' => 'You have used {{percent}}% of your {{limit_name}}',
+            'email_body' => '<p>Hello {{user_name}},</p><p>{{workspace_name}} has used {{used}} of {{limit}} {{limit_name}} on the {{plan_name}} plan ({{percent}}%).</p><p>Upgrade your plan to avoid interruptions.</p>',
+            'in_app_title' => '{{limit_name}}: {{percent}}% used',
+            'in_app_body' => '{{used}} of {{limit}} used on {{plan_name}}. Upgrade to get more.',
+            'push_title' => '{{limit_name}}: {{percent}}% used',
+            'push_body' => '{{used}} of {{limit}} used on {{plan_name}}.',
+        ],
+    ],
+
 ];

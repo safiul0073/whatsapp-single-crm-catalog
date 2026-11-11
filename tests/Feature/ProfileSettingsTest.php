@@ -40,8 +40,7 @@ function completeProfileSettingsOnboarding(User $user): void
         'sort_order' => 1,
     ]);
 
-    Subscription::query()->create([
-        'workspace_id' => $workspace->id,
+    Subscription::query()->updateOrCreate(['workspace_id' => $workspace->id], [
         'plan_id' => $plan->id,
         'status' => SubscriptionStatus::Active->value,
         'starts_at' => now(),

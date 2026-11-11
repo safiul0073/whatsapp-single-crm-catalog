@@ -217,6 +217,34 @@ class ProductService
         });
     }
 
+    /**
+     * Save the owner's measurement table (chest, length, ...). Empty columns and
+     * rows are dropped; an empty chart is stored as null.
+     *
+     * @param  array<string, mixed>|null  $chart
+     */
+    public function updateSizeChart(Product $product, ?array $chart): Product
+    {
+        $columns = collect($chart['columns'] ?? [])->map(fn (mixed $c): string => trim((string) $c));
+        $keep = $columns->filter(fn (string $c): bool => $c !== '')->keys();
+        $rows = collect($chart['rows'] ?? [])
+            ->map(fn (array $row): array => [
+                'size' => trim((string) $row['size']),
+                'values' => $keep->map(fn (int $i): string => trim((string) ($row['values'][$i] ?? '')))->values()->all(),
+            ])
+            ->filter(fn (array $row): bool => collect($row['values'])->contains(fn (string $v): bool => $v !== ''))
+            ->values();
+
+        $product->update(['size_chart' => $keep->isEmpty() || $rows->isEmpty() ? null : [
+            'unit' => ($chart['unit'] ?? 'cm') === 'inch' ? 'inch' : 'cm',
+            'columns' => $keep->map(fn (int $i): string => $columns[$i])->values()->all(),
+            'rows' => $rows->all(),
+            'note' => filled($chart['note'] ?? null) ? trim((string) $chart['note']) : null,
+        ]]);
+
+        return $product;
+    }
+
     public function variantPreview(Product $product): array
     {
         $product->load(['options.values', 'variants', 'colors']);
