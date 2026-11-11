@@ -20,3 +20,5 @@ $content = substr_replace($content, $step6_block . "\n", $step7_start, 0);
 
 file_put_contents($file, $content);
 echo "Moved successfully.\n";
+
+
