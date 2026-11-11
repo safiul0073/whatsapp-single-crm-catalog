@@ -10,6 +10,12 @@
             <p class="m-text mt-1">{{ __('Complete payment to activate your plan.') }}</p>
         </div>
 
+        @if (session('success'))
+            <div class="mt-5 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
         @if (session('error'))
             <div class="mt-5 rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-medium text-error">
                 {{ session('error') }}
@@ -45,12 +51,81 @@
                                 'downgrade' => __('Choose a payment method below. The new plan starts when your current period ends.'),
                                 default => __('Choose a payment method below to activate your plan.'),
                             } }}</p>
+                        @elseif ($isManual)
+                            <p>{{ __('Selected Gateway') }}: <span class="font-semibold text-title">{{ $gatewayLabel }}</span></p>
+                            @if ($canSubmitManual)
+                                <p>{{ __('Send the payment using the details below, then submit the payment information for review.') }}</p>
+                            @elseif ($payment->status === 'pending')
+                                <p class="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 font-medium text-title">{{ __('Payment details submitted. Your plan will activate once an admin approves the payment.') }}</p>
+                            @elseif ($payment->status === 'failed')
+                                <p class="rounded-md border border-error/20 bg-error/10 px-4 py-3 font-medium text-error">{{ __('This payment was rejected.') }} {{ data_get($payment->metadata, 'rejection_reason') }}</p>
+                            @endif
                         @else
                             <p>{{ __('Please complete the selected payment process, then click Refresh status to continue.') }}</p>
-                            <p>{{ __('Selected Gateway') }}: <span class="font-semibold text-title">{{ ucfirst($payment->gateway) }}</span></p>
+                            <p>{{ __('Selected Gateway') }}: <span class="font-semibold text-title">{{ $gatewayLabel }}</span></p>
                         @endif
                     </div>
                 </div>
+
+                @if ($isManual)
+                    @if ($manualInstructions !== '')
+                        <div class="app-card p-5 sm:p-6">
+                            <h3 class="heading-4">{{ __('Payment Instructions') }}</h3>
+                            <p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-body">{{ $manualInstructions }}</p>
+                        </div>
+                    @endif
+
+                    @if ($canSubmitManual)
+                        <div class="app-card p-5 sm:p-6">
+                            <h3 class="heading-4">{{ __('Submit Payment Details') }}</h3>
+                            <form method="POST" action="{{ route('user.subscription.checkout.manual', $payment) }}"
+                                enctype="multipart/form-data" class="mt-4 space-y-4">
+                                @csrf
+                                @foreach ($manualFields as $index => $field)
+                                    @php
+                                        $fieldType = $field['type'] ?? 'text';
+                                        $fieldId = 'manual-field-'.$index;
+                                    @endphp
+                                    <div>
+                                        <label for="{{ $fieldId }}" class="form-label">
+                                            {{ $field['label'] ?? __('Field') }}
+                                            @if (!empty($field['required']))
+                                                <span class="text-error">*</span>
+                                            @endif
+                                        </label>
+                                        @if ($fieldType === 'textarea')
+                                            <textarea id="{{ $fieldId }}" name="fields[{{ $index }}]" rows="3" class="textarea-field" @required(!empty($field['required']))>{{ old('fields.'.$index) }}</textarea>
+                                        @elseif ($fieldType === 'file')
+                                            <input id="{{ $fieldId }}" type="file" name="fields[{{ $index }}]" accept=".jpg,.jpeg,.png,.webp,.pdf" class="input-field" @required(!empty($field['required']))>
+                                        @else
+                                            <input id="{{ $fieldId }}" type="{{ $fieldType === 'number' ? 'number' : 'text' }}" @if ($fieldType === 'number') step="any" @endif
+                                                name="fields[{{ $index }}]" value="{{ old('fields.'.$index) }}" class="input-field" @required(!empty($field['required']))>
+                                        @endif
+                                        @error('fields.'.$index)
+                                            <p class="mt-1 text-xs text-error">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                @endforeach
+                                <button type="submit" class="btn btn-primary w-full">
+                                    <i class="ph ph-paper-plane-tilt"></i>
+                                    {{ __('I have paid — submit for review') }}
+                                </button>
+                            </form>
+                        </div>
+                    @elseif (!empty(data_get($payment->metadata, 'user_submitted_data')))
+                        <div class="app-card p-5 sm:p-6">
+                            <h3 class="heading-4">{{ __('Submitted Details') }}</h3>
+                            <dl class="mt-4 space-y-2 text-sm">
+                                @foreach ((array) data_get($payment->metadata, 'user_submitted_data') as $label => $value)
+                                    <div class="f-between gap-4">
+                                        <dt class="text-body">{{ $label }}</dt>
+                                        <dd class="font-semibold text-title">{{ $value }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        </div>
+                    @endif
+                @endif
 
                 {{-- Payment options --}}
                 @if ($payment->gateway === 'checkout')
@@ -150,8 +225,8 @@
                 </div>
 
                 <div class="space-y-3">
-                    @if ($payment->gateway !== 'checkout')
-                        <a href="{{ route('user.subscription.checkout.page', $payment) }}" class="btn btn-primary w-full">
+                    @if ($payment->gateway !== 'checkout' && !$canSubmitManual)
+                        <a href="{{ route('user.subscription.checkout.page', $payment) }}" class="btn {{ $isManual ? 'btn-outline' : 'btn-primary' }} w-full">
                             <i class="ph ph-arrow-counter-clockwise"></i>
                             {{ __('Refresh status') }}
                         </a>

@@ -118,7 +118,7 @@
 }
 
 .app-topnav {
-  @apply hidden items-center gap-0.5 rounded-md border border-neutral-200/80 bg-section/80 p-1;
+  @apply hidden min-w-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-section/80 p-1;
 }
 
 .app-topnav__link {
@@ -194,7 +194,7 @@
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1600px) {
   .app-topnav__link--overflow {
     display: inline-flex;
   }

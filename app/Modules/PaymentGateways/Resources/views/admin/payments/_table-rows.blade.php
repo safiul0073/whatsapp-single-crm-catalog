@@ -14,7 +14,7 @@
             @switch($payment->status)
                 @case('completed') <x-ui.badge variant="success">{{ __('Completed') }}</x-ui.badge> @break
                 @case('pending')
-                    @if($payment->gateway === 'manual')
+                    @if($payment->gateway === 'manual' || data_get($payment->metadata, 'driver') === 'manual')
                         <x-ui.badge variant="warning">{{ __('Awaiting Review') }}</x-ui.badge>
                     @else
                         <x-ui.badge variant="warning">{{ __('Pending') }}</x-ui.badge>

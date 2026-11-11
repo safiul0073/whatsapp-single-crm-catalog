@@ -11,8 +11,10 @@ use App\Modules\PlansSubscriptions\Enums\CheckoutIntent;
 use App\Modules\PlansSubscriptions\Enums\SubscriptionStatus;
 use App\Modules\PlansSubscriptions\Http\Requests\InitiateCheckoutRequest;
 use App\Modules\PlansSubscriptions\Http\Requests\PayCheckoutRequest;
+use App\Modules\PlansSubscriptions\Http\Requests\SubmitManualPaymentRequest;
 use App\Modules\PlansSubscriptions\Models\Plan;
 use App\Modules\PlansSubscriptions\Models\Subscription;
+use App\Modules\PlansSubscriptions\Services\ManualPaymentSubmissionService;
 use App\Modules\PlansSubscriptions\Services\PlanCheckoutService;
 use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use App\Modules\PlansSubscriptions\Services\SubscriptionAccessService;
@@ -89,8 +91,15 @@ class SubscriptionController extends Controller
 
         $enabledGateways = $payment->gateway === 'checkout' ? $gateways->getEnabledGatewayNames() : [];
 
+        $manual = app(ManualPaymentSubmissionService::class);
+
         return view('plans-subscriptions::user.checkout', [
             'payment' => $payment,
+            'isManual' => $manual->isManual($payment),
+            'canSubmitManual' => $manual->canSubmit($payment) && ! data_get($payment->metadata, 'submitted_at'),
+            'manualInstructions' => $manual->plainInstructions($payment),
+            'manualFields' => array_values(array_filter((array) data_get($payment->metadata, 'user_fields_definition', []), 'is_array')),
+            'gatewayLabel' => self::gatewayLabel((string) data_get($payment->metadata, 'selected_gateway', $payment->gateway)),
             'plan' => Plan::query()->find(data_get($payment->metadata, 'plan_id')),
             'intent' => CheckoutIntent::tryFrom((string) data_get($payment->metadata, 'intent')) ?? CheckoutIntent::New,
             'gateways' => $enabledGateways,
@@ -131,6 +140,22 @@ class SubscriptionController extends Controller
         }
 
         return redirect()->route('user.subscription.checkout.page', $result['payment']);
+    }
+
+    public function submitManualPayment(SubmitManualPaymentRequest $request, Payment $payment, ManualPaymentSubmissionService $manual): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        abort_unless($this->checkout->belongsTo($payment, $workspace), 404);
+
+        if (! $manual->canSubmit($payment)) {
+            return redirect()->route('user.subscription.checkout.page', $payment)
+                ->with('error', __('This payment can no longer be updated.'));
+        }
+
+        $manual->submit($payment, $request->fieldDefinitions(), (array) $request->file('fields', []) + (array) $request->input('fields', []));
+
+        return redirect()->route('user.subscription.checkout.page', $payment)
+            ->with('success', __('Payment details submitted. Your plan will activate once an admin approves the payment.'));
     }
 
     public function paymentReturn(Request $request, PaymentService $payments): RedirectResponse
