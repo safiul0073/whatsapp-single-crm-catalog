@@ -74,18 +74,36 @@
             {{-- Right Panel --}}
             <div class="space-y-6">
                 {{-- Manual Payment Approval --}}
-                @if($payment->gateway === 'manual' && $payment->status === 'pending')
+                @if(($payment->gateway === 'manual' || data_get($payment->metadata, 'driver') === 'manual') && $payment->status === 'pending')
                     <div class="section-card space-y-4">
                         <h3 class="text-base font-semibold text-neutral-900">{{ __('Manual Payment Review') }}</h3>
                         <p class="text-sm text-neutral-500">{{ __('This payment requires manual verification. Review the payment proof and approve or reject.') }}</p>
+
+                        @if(!empty($payment->metadata['user_submitted_data']))
+                            <dl class="space-y-2 text-sm">
+                                @foreach((array) $payment->metadata['user_submitted_data'] as $label => $value)
+                                    <div class="flex items-center justify-between gap-4">
+                                        <dt class="text-neutral-500">{{ $label }}</dt>
+                                        <dd class="font-semibold text-neutral-900 dark:text-neutral-100">{{ $value }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        @endif
 
                         @if(!empty($payment->metadata['proof_media_ids']))
                             <div>
                                 <p class="text-xs text-neutral-400 uppercase tracking-wider mb-2">{{ __('Payment Proof') }}</p>
                                 {{-- Display proof images/files --}}
                                 @foreach((array) $payment->metadata['proof_media_ids'] as $mediaId)
-                                    @if($mediaId)
-                                        <img src="{{ media_url($mediaId) }}" alt="Payment Proof" class="rounded-md max-w-full border border-neutral-200 mb-2">
+                                    @php $proofUrl = media_url($mediaId); @endphp
+                                    @if($proofUrl && str_ends_with(strtolower(parse_url($proofUrl, PHP_URL_PATH) ?? ''), '.pdf'))
+                                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mb-2">
+                                            <i class="ph ph-file-pdf"></i> {{ __('Open PDF proof') }}
+                                        </a>
+                                    @elseif($proofUrl)
+                                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener">
+                                            <img src="{{ $proofUrl }}" alt="{{ __('Payment Proof') }}" class="rounded-md max-w-full border border-neutral-200 mb-2">
+                                        </a>
                                     @endif
                                 @endforeach
                             </div>
