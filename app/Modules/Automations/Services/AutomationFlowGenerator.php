@@ -3,19 +3,18 @@
 namespace App\Modules\Automations\Services;
 
 use App\Models\User;
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use App\Modules\Contacts\Models\ContactTag;
 use App\Modules\Crm\Services\LeadAssignmentService;
 use App\Modules\Crm\Services\PipelineService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Support\Str;
-use Laravel\Ai\AnonymousAgent;
 use Throwable;
 
 class AutomationFlowGenerator
 {
     public function __construct(
-        protected AiUsageLogger $usageLogger,
+        protected AiTextGenerator $textGenerator,
         protected WorkspaceResolver $workspaces,
         protected PipelineService $pipelines,
         protected LeadAssignmentService $assignments,
@@ -34,30 +33,17 @@ class AutomationFlowGenerator
 
     protected function fromAiProvider(string $prompt, ?User $user, array $crmConfiguration): ?array
     {
-        if (! $this->hasConfiguredTextProvider()) {
+        if (! $this->textGenerator->isAvailable()) {
             return null;
         }
 
-        $provider = (string) config('ai.default', 'openai');
-        $model = data_get(config("ai.providers.{$provider}", []), 'models.text.default');
-
         try {
-            $agent = new AnonymousAgent(
+            $response = $this->textGenerator->prompt(
+                feature: 'automation_flow_generation',
                 instructions: $this->instructions($crmConfiguration),
-                messages: [],
-                tools: [],
-            );
-
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'automation_flow_generation',
-                    'user' => $user,
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
-                ],
-                fn () => $agent->prompt($prompt, timeout: 20),
-            );
+                prompt: $prompt,
+                context: ['user' => $user],
+            )['response'];
             $payload = $this->extractJson((string) $response->text);
 
             if (! is_array($payload)) {
@@ -70,18 +56,6 @@ class AutomationFlowGenerator
         } catch (Throwable) {
             return null;
         }
-    }
-
-    protected function hasConfiguredTextProvider(): bool
-    {
-        $provider = (string) config('ai.default', 'openai');
-        $config = config("ai.providers.{$provider}", []);
-
-        if (($config['driver'] ?? null) === 'ollama') {
-            return filled($config['url'] ?? null);
-        }
-
-        return filled($config['key'] ?? null);
     }
 
     protected function instructions(array $crmConfiguration): string

@@ -2,19 +2,18 @@
 
 namespace App\Modules\Inbox\Services;
 
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Laravel\Ai\AnonymousAgent;
 use Throwable;
 
 class InboxAiReplyService
 {
-    public function __construct(protected AiUsageLogger $usageLogger) {}
+    public function __construct(protected AiTextGenerator $textGenerator) {}
 
     public function isAvailable(): bool
     {
@@ -23,18 +22,7 @@ class InboxAiReplyService
 
     public function configuredProvider(): ?string
     {
-        $default = $this->platformTextProvider();
-        if ($this->hasConfiguredTextProvider($default)) {
-            return $default;
-        }
-
-        foreach (['gemini', 'openai', 'anthropic', 'groq', 'deepseek', 'mistral', 'openrouter', 'ollama'] as $candidate) {
-            if ($this->hasConfiguredTextProvider($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return null;
+        return $this->textGenerator->primaryProvider();
     }
 
     /**
@@ -50,45 +38,33 @@ class InboxAiReplyService
             ]);
         }
 
-        $model = $this->platformTextModel($provider);
-
         if (app()->runningUnitTests()) {
             return [
                 'reply' => $this->testDraft($conversation, $instruction),
                 'provider' => $provider,
-                'model' => $model,
+                'model' => $this->textGenerator->primaryModel(),
             ];
         }
 
-        try {
-            $agent = new AnonymousAgent(
-                instructions: $this->instructions(),
-                messages: [],
-                tools: [],
-            );
-            $prompt = $this->prompt($conversation, $instruction);
+        $model = null;
 
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'inbox_ai_reply',
+        try {
+            $result = $this->textGenerator->prompt(
+                feature: 'inbox_ai_reply',
+                instructions: $this->instructions(),
+                prompt: $this->prompt($conversation, $instruction),
+                context: [
                     'workspace_id' => $conversation->workspace_id,
                     'user_id' => auth()->id(),
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
                     'metadata' => [
                         'conversation_id' => $conversation->id,
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $prompt,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 20,
-                ),
             );
+            $provider = $result['provider'];
+            $model = $result['model'];
 
-            $reply = trim((string) $response->text);
+            $reply = trim((string) $result['response']->text);
 
             if ($reply === '') {
                 throw ValidationException::withMessages([
@@ -116,49 +92,6 @@ class InboxAiReplyService
                 'ai' => __('AI could not generate a reply. Check the platform AI settings and try again.'),
             ]);
         }
-    }
-
-    protected function hasConfiguredTextProvider(string $provider): bool
-    {
-        $config = config("ai.providers.{$provider}", []);
-
-        if (($config['driver'] ?? null) === 'ollama') {
-            return filled($config['url'] ?? null);
-        }
-
-        return filled($config['key'] ?? null);
-    }
-
-    protected function platformTextProvider(): string
-    {
-        $provider = filled(ai_setting('ai_default_text_provider'))
-            ? (string) ai_setting('ai_default_text_provider')
-            : (string) config('ai.default', 'openai');
-
-        return match ($provider) {
-            'azure-openai' => 'azure',
-            'elevenlabs' => 'eleven',
-            default => $provider,
-        };
-    }
-
-    protected function platformTextModel(string $provider): ?string
-    {
-        if (filled(ai_setting('ai_default_text_model'))) {
-            return (string) ai_setting('ai_default_text_model');
-        }
-
-        return match ($provider) {
-            'anthropic' => 'claude-sonnet-4-20250514',
-            'gemini' => 'gemini-3-flash',
-            'groq' => 'llama-3.3-70b-versatile',
-            'xai' => 'grok-3-mini',
-            'deepseek' => 'deepseek-chat',
-            'mistral' => 'mistral-large-latest',
-            'ollama' => 'llama3.1',
-            'openrouter' => 'openai/gpt-4o-mini',
-            default => 'gpt-4o',
-        };
     }
 
     protected function instructions(): string

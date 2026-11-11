@@ -2,27 +2,26 @@
 
 namespace App\Modules\MessageTemplates\Services;
 
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Laravel\Ai\AnonymousAgent;
 use Throwable;
 
 class MessageTemplateAiGeneratorService
 {
-    public function __construct(protected AiUsageLogger $usageLogger) {}
+    public function __construct(protected AiTextGenerator $textGenerator) {}
 
     /**
      * @return array{name: string, category: string, header: array<string, string>, body: string, body_examples: array<string, string>, footer: array<string, string>, buttons: array<int, array<string, string>>, provider: string, model: ?string}
      */
     public function generate(array $data): array
     {
-        $provider = $this->platformTextProvider();
-        $model = $this->platformTextModel($provider);
+        $provider = $this->textGenerator->primaryProvider();
+        $model = $this->textGenerator->primaryModel();
 
-        if (! $this->hasConfiguredTextProvider($provider)) {
+        if ($provider === null) {
             throw ValidationException::withMessages([
                 'ai' => __('Platform AI is not configured for template generation. Enable a text provider in AI Settings first.'),
             ]);
@@ -36,32 +35,21 @@ class MessageTemplateAiGeneratorService
         }
 
         try {
-            $agent = new AnonymousAgent(
+            $result = $this->textGenerator->prompt(
+                feature: 'message_template_generation',
                 instructions: $this->instructions(),
-                messages: [],
-                tools: [],
-            );
-            $prompt = $this->prompt($data);
-
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'message_template_generation',
+                prompt: $this->prompt($data),
+                context: [
                     'user_id' => auth()->id(),
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
                     'metadata' => [
                         'template_provider' => $data['provider'] ?? null,
                         'language' => $data['language'] ?? null,
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $prompt,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 20,
-                ),
             );
+            $provider = $result['provider'];
+            $model = $result['model'];
+            $response = $result['response'];
 
             $payload = $this->extractJson((string) $response->text);
 
@@ -90,50 +78,6 @@ class MessageTemplateAiGeneratorService
                 'ai' => __('AI could not generate a template. Check the platform AI settings and try again.'),
             ]);
         }
-    }
-
-    protected function hasConfiguredTextProvider(string $provider): bool
-    {
-        $config = config("ai.providers.{$provider}", []);
-
-        if (($config['driver'] ?? null) === 'ollama') {
-            return filled($config['url'] ?? null);
-        }
-
-        return filled($config['key'] ?? null);
-    }
-
-    protected function platformTextProvider(): string
-    {
-        $provider = filled(ai_setting('ai_default_text_provider'))
-            ? (string) ai_setting('ai_default_text_provider')
-            : (string) config('ai.default', 'openai');
-
-        return match ($provider) {
-            'azure-openai' => 'azure',
-            'elevenlabs' => 'eleven',
-            default => $provider,
-        };
-    }
-
-    protected function platformTextModel(string $provider): ?string
-    {
-
-        if (filled(ai_setting('ai_default_text_model'))) {
-            return (string) ai_setting('ai_default_text_model');
-        }
-
-        return match ($provider) {
-            'anthropic' => 'claude-sonnet-4-20250514',
-            'gemini' => 'gemini-3-flash-preview',
-            'groq' => 'llama-3.3-70b-versatile',
-            'xai' => 'grok-3-mini',
-            'deepseek' => 'deepseek-chat',
-            'mistral' => 'mistral-large-latest',
-            'ollama' => 'llama3.1',
-            'openrouter' => 'openai/gpt-4o-mini',
-            default => 'gpt-4o',
-        };
     }
 
     protected function instructions(): string
