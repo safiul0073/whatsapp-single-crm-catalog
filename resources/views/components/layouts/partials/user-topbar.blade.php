@@ -4,6 +4,15 @@
     $authUser = auth()->user();
     $navigation = app(\App\Services\Navigation\WorkspaceNavigationRegistry::class)->forUser($authUser);
     $modules = $navigation['modules'];
+    $modulesById = collect($modules)->keyBy('id');
+    $primaryModules = collect(['dashboard', 'commerce', 'crm'])
+        ->map(fn (string $id): ?array => $modulesById->get($id))
+        ->filter()
+        ->values()
+        ->all();
+    $primaryIds = array_column($primaryModules, 'id');
+    $overflowModules = array_values(array_filter($modules, fn (array $module): bool => ! in_array($module['id'], $primaryIds, true)));
+    $overflowActive = collect($overflowModules)->contains('is_active', true);
 
     $bellConfig = [
         'initialUnreadCount' => $topbarUnreadCount ?? 0,
@@ -35,23 +44,22 @@
             <span class="hidden h-5 w-px shrink-0 bg-neutral-200 lg:block" aria-hidden="true"></span>
 
             <nav class="app-topnav" aria-label="{{ __('Main modules') }}" data-topnav>
-                @foreach ($modules as $module)
+                @foreach ($primaryModules as $module)
                     <a href="{{ $module['url'] }}"
                         data-module-trigger="{{ $module['id'] }}"
                         data-module-label="{{ $module['label'] }}"
                         data-module-icon="{{ $module['icon'] }}"
-                        data-topnav-link="{{ $module['id'] }}"
                         class="app-topnav__link {{ $module['is_active'] ? 'is-active' : '' }}"
                         aria-current="{{ $module['is_active'] ? 'page' : 'false' }}">
                         <i class="ph {{ $module['icon'] }} app-topnav__icon"></i>
-                        <span>{{ $module['short_label'] }}</span>
+                        <span>{{ $module['id'] === 'commerce' ? __('Storefront') : $module['short_label'] }}</span>
                     </a>
                 @endforeach
 
-                @if (count($modules) > 1)
-                    <div class="dropdown-wrapper app-topnav__more relative" data-topnav-more hidden>
+                @if (!empty($overflowModules))
+                    <div class="dropdown-wrapper app-topnav__more relative">
                         <button type="button"
-                            class="app-topnav__link" data-topnav-more-trigger
+                            class="app-topnav__link {{ $overflowActive ? 'is-active' : '' }}"
                             data-action="toggle-dropdown"
                             data-target="topnavMoreDropdown"
                             aria-haspopup="true"
@@ -64,10 +72,8 @@
                         <div id="topnavMoreDropdown"
                             class="dropdown-panel absolute start-0 top-full z-50 mt-2 w-52 rounded-md border border-neutral-200 bg-neutral-0 p-1.5 shadow-xl"
                             role="menu">
-                            @foreach ($modules as $module)
+                            @foreach ($overflowModules as $module)
                                 <a href="{{ $module['url'] }}"
-                                    data-topnav-more-item="{{ $module['id'] }}"
-                                    hidden
                                     data-module-trigger="{{ $module['id'] }}"
                                     data-module-label="{{ $module['label'] }}"
                                     data-module-icon="{{ $module['icon'] }}"

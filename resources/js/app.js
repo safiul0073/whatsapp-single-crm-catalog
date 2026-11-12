@@ -8,7 +8,6 @@ import './components/dialog-backdrop.js';
 import './components/drawer.js';
 import './components/toast.js';
 import './components/topbar.js';
-import './components/topnav-overflow.js';
 import './components/floating-dropdown.js';
 import './components/table-selection.js';
 import './components/file-upload.js';

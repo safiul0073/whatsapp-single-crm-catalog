@@ -141,9 +141,6 @@
   @apply text-primary;
 }
 
-.app-topnav [hidden] {
-  display: none !important;
-}
 
 .app-topbar__search {
   @apply hidden h-9 w-44 items-center gap-2 rounded-sm border border-neutral-200 bg-section/80 px-3 text-xs text-neutral-400 transition-all hover:border-primary/40 hover:bg-neutral-0 sm:flex xl:w-56;
