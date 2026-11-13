@@ -9,6 +9,8 @@
         'logo' => '',
         'favicon' => '',
         'announcement' => '',
+        'recent_orders_ticker' => true,
+        'welcome_guide' => true,
         'contact_email' => '',
         'contact_phone' => '',
         'address' => '',
@@ -216,6 +218,8 @@
             logo_height: {{ Illuminate\Support\Js::from((int) ($cfg['logo_height'] ?? 68)) }},
             logo_show_name: {{ Illuminate\Support\Js::from((bool) ($cfg['logo_show_name'] ?? false)) }},
             announcement: {{ Illuminate\Support\Js::from($cfg['announcement'] ?? '') }},
+            recent_orders_ticker: {{ Illuminate\Support\Js::from((bool) ($cfg['recent_orders_ticker'] ?? true)) }},
+            welcome_guide: {{ Illuminate\Support\Js::from((bool) ($cfg['welcome_guide'] ?? true)) }},
             contact_email: {{ Illuminate\Support\Js::from($cfg['contact_email'] ?? '') }},
             contact_phone: {{ Illuminate\Support\Js::from($cfg['contact_phone'] ?? '') }},
             address: {{ Illuminate\Support\Js::from($cfg['address'] ?? '') }},
@@ -718,6 +722,54 @@
                                 placeholder="e.g. Free shipping on all orders over $50! ✨"
                             >
                             <p class="form-hint">{{ __('Displayed prominently at the very top of your storefront. Leave empty to hide.') }}</p>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <label for="store_recent_orders_ticker" class="form-label flex items-center gap-1.5 cursor-pointer">
+                                    <i class="ph ph-shopping-bag text-primary text-base"></i>
+                                    <span>{{ __('Recent Orders Scrolling Line') }}</span>
+                                </label>
+                                <p class="form-hint">{{ __('Shows a line above the header where recent orders (customer, product, quantity, time) scroll from left to right.') }}</p>
+                            </div>
+                            <div class="shrink-0">
+                                <input type="hidden" name="config[recent_orders_ticker]" value="0">
+                                <label class="relative inline-flex cursor-pointer items-center">
+                                    <input
+                                        id="store_recent_orders_ticker"
+                                        type="checkbox"
+                                        name="config[recent_orders_ticker]"
+                                        value="1"
+                                        x-model="form.recent_orders_ticker"
+                                        class="peer sr-only"
+                                    >
+                                    <div class="peer h-5 w-9 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <label for="store_welcome_guide" class="form-label flex items-center gap-1.5 cursor-pointer">
+                                    <i class="ph ph-signpost text-primary text-base"></i>
+                                    <span>{{ __('How-to-Order Welcome Popup') }}</span>
+                                </label>
+                                <p class="form-hint">{{ __('Shows first-time visitors a short animated guide to ordering wholesale packs on the home page.') }}</p>
+                            </div>
+                            <div class="shrink-0">
+                                <input type="hidden" name="config[welcome_guide]" value="0">
+                                <label class="relative inline-flex cursor-pointer items-center">
+                                    <input
+                                        id="store_welcome_guide"
+                                        type="checkbox"
+                                        name="config[welcome_guide]"
+                                        value="1"
+                                        x-model="form.welcome_guide"
+                                        class="peer sr-only"
+                                    >
+                                    <div class="peer h-5 w-9 rounded-full bg-neutral-300 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full dark:bg-neutral-700"></div>
+                                </label>
+                            </div>
                         </div>
 
                         <div>
@@ -1669,6 +1721,10 @@
 
                 {{-- Mockup Viewport Body --}}
                 <div class="bg-white text-neutral-900 select-none overflow-hidden text-xs">
+                    {{-- 0. Recent orders scrolling line --}}
+                    <div class="truncate bg-neutral-900 px-3 py-1 text-[10px] text-white/90" x-show="form.recent_orders_ticker">
+                        <span class="font-bold">John S.</span> {{ __('ordered') }} <span class="font-bold">2 ×</span> {{ __('Classic Hoodie') }} · {{ __('5 minutes ago') }}
+                    </div>
                     {{-- 1. Dynamic Top Announcement Bar --}}
                     <div
                         class="flex items-center justify-between px-3 py-1.5 text-[11px] font-medium text-white transition-colors"

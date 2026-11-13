@@ -52,7 +52,7 @@
                         class="app-topnav__link {{ $module['is_active'] ? 'is-active' : '' }}"
                         aria-current="{{ $module['is_active'] ? 'page' : 'false' }}">
                         <i class="ph {{ $module['icon'] }} app-topnav__icon"></i>
-                        <span>{{ $module['id'] === 'commerce' ? __('Storefront') : $module['short_label'] }}</span>
+                        <span>{{ $module['id'] === 'commerce' ? __('Ecommerce') : $module['short_label'] }}</span>
                     </a>
                 @endforeach
 

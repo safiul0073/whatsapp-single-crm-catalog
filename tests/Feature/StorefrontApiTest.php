@@ -97,6 +97,69 @@ it('provides whatsapp_number in product resource from storefront setting contact
     expect($res->json('data.0.whatsapp_number'))->toBe('+18801711657272');
 });
 
+it('shows the recent orders scrolling line by default and lets the owner turn it off', function (): void {
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.recent_orders_ticker', true);
+
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['recent_orders_ticker' => '0']]);
+
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.recent_orders_ticker', false);
+});
+
+it('shows the how-to-order welcome popup by default and lets the owner turn it off', function (): void {
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.welcome_guide', true);
+
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['welcome_guide' => '0']]);
+
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.welcome_guide', false);
+});
+
+it('exposes sold counts and masked recent orders', function (): void {
+    $make = function (string $status, int $qty, string $name): void {
+        $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => $status, 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0, 'customer_snapshot' => ['name' => $name, 'phone' => '+8801711111111']]);
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => $qty, 'unit_price' => 20, 'line_total' => 20 * $qty]);
+    };
+    $make('processing', 100, 'john doe');
+    $make('cancelled', 7, 'Jane Roe');
+
+    $this->getJson('/api/storefront/v1/catalog/products', $this->headers)->assertOk()->assertJsonPath('data.0.sold_count', 100);
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)->assertOk()->assertJsonPath('data.sold_count', 100);
+    $res = $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'John D.')->assertJsonPath('data.0.full_name', 'John Doe')->assertJsonPath('data.0.total_items', 100)->assertJsonPath('data.0.quantity', 100)->assertJsonPath('data.0.product_slug', 'shirt');
+    expect($res->getContent())->not->toContain('8801711111111');
+    $this->getJson('/api/storefront/v1/catalog/recent-orders', [...$this->headers, 'X-Store-Host' => 'two.localhost'])->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('returns the full name and the total items across all order lines for the recent orders ticker', function (): void {
+    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0, 'customer_snapshot' => ['name' => '  test   customer ']]);
+    foreach ([3, 2] as $qty) {
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => $qty, 'unit_price' => 20, 'line_total' => 20 * $qty]);
+    }
+
+    $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.full_name', 'Test Customer')->assertJsonPath('data.0.name', 'Test C.')->assertJsonPath('data.0.total_items', 5);
+});
+
+it('returns only a valid two-letter country code for the recent orders ticker', function (): void {
+    $make = function (?array $address, string $name): void {
+        $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0, 'customer_snapshot' => ['name' => $name], 'shipping_address' => $address]);
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
+    };
+    $make(['country' => 'bd', 'line1' => '1 Secret Road', 'city' => 'Dhaka'], 'Has Country');
+    $make(['country' => 'Bangladesh'], 'Bad Country');
+    $make(null, 'No Country');
+
+    $res = $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(3, 'data');
+    expect(collect($res->json('data'))->pluck('country', 'full_name')->all())->toBe(['No Country' => null, 'Bad Country' => null, 'Has Country' => 'BD']);
+    expect($res->getContent())->not->toContain('Secret Road')->not->toContain('Dhaka');
+});
+
+it('falls back to Someone when the recent order has no customer name', function (): void {
+    $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0]);
+    $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
+
+    $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonPath('data.0.full_name', 'Someone');
+});
+
 it('uses published workspace collections and real sale prices', function (): void {
     StorefrontContent::query()->create(['workspace_id' => $this->store->id, 'type' => 'collection', 'slug' => 'featured', 'data' => ['title' => 'Featured', 'product_ids' => [$this->product->id]], 'published_at' => now()]);
     $this->getJson('/api/storefront/v1/catalog/collections/featured', $this->headers)->assertOk()->assertJsonCount(1, 'data');
