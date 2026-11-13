@@ -33,6 +33,7 @@ $storefrontRoutes = function (): void {
     Route::get('catalog/products/{slug}', [CatalogController::class, 'show']);
     Route::get('catalog/search/suggest', [CatalogController::class, 'suggest']);
     Route::get('catalog/collections/{key}', [CatalogController::class, 'collection']);
+    Route::get('catalog/recent-orders', [CatalogController::class, 'recentOrders']);
     Route::get('catalog/sitemap', [CatalogController::class, 'sitemap']);
     Route::get('cms/settings', [CmsController::class, 'settings']);
     Route::get('cms/menus/{slot}', [CmsController::class, 'menu']);

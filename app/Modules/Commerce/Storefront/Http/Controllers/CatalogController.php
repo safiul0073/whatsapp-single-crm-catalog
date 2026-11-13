@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\Brand;
 use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\ProductOption;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Services\ProductTypeService;
@@ -15,6 +16,7 @@ use App\Modules\Commerce\Storefront\Services\CatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
 
 class CatalogController extends Controller
 {
@@ -36,6 +38,70 @@ class CatalogController extends Controller
     public function show(Request $r, string $slug): ProductResource
     {
         return new ProductResource($this->catalog->query($r->attributes->get('store_workspace')->id, ['selling_mode' => 'all'])->with('gallery.media')->where('slug', $slug)->firstOrFail());
+    }
+
+    /** Recent orders for the storefront "social proof" popup and ticker; the popup uses the masked name, the ticker the full name and total items. */
+    public function recentOrders(Request $r): JsonResponse
+    {
+        $workspace = $r->attributes->get('store_workspace')->id;
+        $data = Cache::remember('storefront_recent_orders_'.$workspace, 60, fn (): array => Order::query()
+            ->where('workspace_id', $workspace)
+            ->whereNotIn('status', CatalogService::NON_SALE_STATUSES)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->with(['contact:id,name,country', 'items.variant.product.primaryMedia'])
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(function (Order $order): ?array {
+                $item = $order->items->first(fn ($i) => $i->variant?->product?->status === 'active' && $i->variant->product->visibility === 'published');
+                if (! $item) {
+                    return null;
+                }
+                $product = $item->variant->product;
+                $customerName = $order->contact?->name ?: ($order->customer_snapshot['name'] ?? $order->shipping_address['name'] ?? null);
+
+                return [
+                    'name' => self::maskName($customerName),
+                    'full_name' => self::fullName($customerName),
+                    'country' => self::countryCode($order->shipping_address['country'] ?? $order->contact?->country),
+                    'total_items' => (int) $order->items->sum('quantity'),
+                    'product_name' => $product->name,
+                    'product_slug' => $product->slug,
+                    'image_thumb' => $product->primaryMedia?->variantUrl('thumb') ?? $product->primaryMedia?->url,
+                    'quantity' => (int) $order->items->where('variant.product_id', $product->id)->sum('quantity'),
+                    'created_at' => $order->created_at?->toIso8601String(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all());
+
+        return response()->json(['data' => $data]);
+    }
+
+    private static function countryCode(mixed $country): ?string
+    {
+        $code = strtoupper(trim((string) $country));
+
+        return preg_match('/^[A-Z]{2}$/', $code) ? $code : null;
+    }
+
+    private static function fullName(?string $name): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+
+        return $parts ? mb_convert_case(implode(' ', $parts), MB_CASE_TITLE) : 'Someone';
+    }
+
+    private static function maskName(?string $name): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+        if (! $parts) {
+            return 'Someone';
+        }
+        $first = mb_convert_case(mb_substr($parts[0], 0, 20), MB_CASE_TITLE);
+
+        return isset($parts[1]) ? $first.' '.mb_strtoupper(mb_substr($parts[1], 0, 1)).'.' : $first;
     }
 
     public function categories(Request $r): JsonResponse

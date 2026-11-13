@@ -108,6 +108,7 @@ class ProductResource extends JsonResource
                 'color_id' => $g->color_id,
             ])),
             'in_stock' => $inStock,
+            'sold_count' => (int) ($this->sold_count ?? 0),
             'stock_status' => $inStock ? 'in_stock' : 'out_of_stock',
             'variants' => $stockVariants->map(fn ($v) => [
                 'id' => $v->id,

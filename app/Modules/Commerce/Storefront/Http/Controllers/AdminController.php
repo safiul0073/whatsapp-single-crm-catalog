@@ -129,6 +129,8 @@ class AdminController extends Controller
         unset($newConfig['chat_channels']);
         $newConfig['wholesale_enabled'] = (bool) ($newConfig['wholesale_enabled'] ?? $existing['wholesale_enabled'] ?? true);
         $newConfig['retail_enabled'] = (bool) ($newConfig['retail_enabled'] ?? $existing['retail_enabled'] ?? true);
+        $newConfig['recent_orders_ticker'] = (bool) ($newConfig['recent_orders_ticker'] ?? $existing['recent_orders_ticker'] ?? true);
+        $newConfig['welcome_guide'] = (bool) ($newConfig['welcome_guide'] ?? $existing['welcome_guide'] ?? true);
         if (isset($existing['chat_channels'])) {
             $newConfig['chat_channels'] = $existing['chat_channels'];
         }

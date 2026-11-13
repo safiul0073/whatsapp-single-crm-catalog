@@ -71,6 +71,8 @@ class AdminRequest extends FormRequest
                 'config.invoice_footer' => 'nullable|string|max:500',
                 'config.footer_text' => 'nullable|string|max:500',
                 'config.app_download_enabled' => 'nullable|boolean',
+                'config.recent_orders_ticker' => 'nullable|boolean',
+                'config.welcome_guide' => 'nullable|boolean',
                 'config.wholesale_enabled' => 'nullable|boolean',
                 'config.retail_enabled' => 'nullable|boolean',
                 'config.app_download_title' => 'nullable|string|max:120',

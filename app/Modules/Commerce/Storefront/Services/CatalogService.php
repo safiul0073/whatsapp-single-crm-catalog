@@ -3,12 +3,16 @@
 namespace App\Modules\Commerce\Storefront\Services;
 
 use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\StoreFeatures;
 use Illuminate\Database\Eloquent\Builder;
 
 class CatalogService
 {
+    /** Order statuses that do not count as a real sale. */
+    public const NON_SALE_STATUSES = ['cancelled', 'refunded', 'failed', 'returned', 'draft'];
+
     public function query(int $workspace, array $filters = []): Builder
     {
         $sellingModes = match ($filters['selling_mode'] ?? null) {
@@ -31,6 +35,17 @@ class CatalogService
             ->where('visibility', 'published')
             ->whereIn('selling_mode', $sellingModes)
             ->when(! $retailOn, fn (Builder $query): Builder => $query->where('ws_enabled', true))
+            ->select('commerce_products.*')
+            ->selectSub(
+                OrderItem::query()
+                    ->selectRaw('COALESCE(SUM(commerce_order_items.quantity), 0)')
+                    ->join('commerce_orders', 'commerce_orders.id', '=', 'commerce_order_items.order_id')
+                    ->join('commerce_product_variants', 'commerce_product_variants.id', '=', 'commerce_order_items.variant_id')
+                    ->whereColumn('commerce_product_variants.product_id', 'commerce_products.id')
+                    ->where('commerce_orders.workspace_id', $workspace)
+                    ->whereNotIn('commerce_orders.status', self::NON_SALE_STATUSES),
+                'sold_count',
+            )
             ->with(['primaryMedia', 'category', 'brandRecord', 'colors.swatchMedia', 'variants', 'options.values', 'tierPrices']);
         $search = $filters['q'] ?? $filters['search'] ?? null;
         if (! empty($search)) {

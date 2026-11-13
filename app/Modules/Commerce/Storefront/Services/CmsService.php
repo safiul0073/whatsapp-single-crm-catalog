@@ -64,6 +64,8 @@ class CmsService
                 'logo_height' => 68,
                 'logo_show_name' => false,
                 'announcement' => '',
+                'recent_orders_ticker' => true,
+                'welcome_guide' => true,
                 'contact_email' => 'sales@fashionfiest.com',
                 'contact_phone' => '+1 (800) 555-0199',
                 'footer_text' => 'Direct from factory wholesale and retail streetwear, premium heavyweight hoodies, tees, and denim.',
@@ -104,6 +106,8 @@ class CmsService
         $settings['app_download_enabled'] = (bool) ($settings['app_download_enabled'] ?? true);
         $settings['logo_height'] = max(32, min(120, (int) ($settings['logo_height'] ?? 68)));
         $settings['logo_show_name'] = (bool) ($settings['logo_show_name'] ?? false);
+        $settings['recent_orders_ticker'] = (bool) ($settings['recent_orders_ticker'] ?? true);
+        $settings['welcome_guide'] = (bool) ($settings['welcome_guide'] ?? true);
 
         $settings['tracking'] = app(TrackingSettingsService::class)->public($workspace);
         $settings['chat_channels'] = array_replace_recursive(self::CHAT_CHANNEL_DEFAULTS, $settings['chat_channels'] ?? []);
