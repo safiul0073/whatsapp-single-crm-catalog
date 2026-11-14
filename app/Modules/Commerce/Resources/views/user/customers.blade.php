@@ -1,5 +1,95 @@
 <x-layouts.user :title="__('Commerce customers')">
+    @php
+        $formErrors = $errors->getBag('customerForm');
+        $countryOptions = app(\App\Modules\Contacts\Services\ContactService::class)->countryOptions();
+        $oldForm = $formErrors->any() ? [
+            'update_url' => old('form_update_url', ''),
+            'name' => old('name', ''),
+            'phone' => old('phone', ''),
+            'email' => old('email', ''),
+            'address' => [
+                'line1' => old('address.line1', ''),
+                'line2' => old('address.line2', ''),
+                'city' => old('address.city', ''),
+                'state' => old('address.state', ''),
+                'postal_code' => old('address.postal_code', ''),
+                'country' => old('address.country', ''),
+            ],
+        ] : null;
+    @endphp
     <div class="space-y-6" x-data="{
+        search: {{ Js::from((string) request('search', '')) }},
+        loadingList: false,
+        listController: null,
+        total: {{ Js::from($customers->total()) }},
+        firstItem: {{ Js::from($customers->firstItem()) }},
+        lastItem: {{ Js::from($customers->lastItem()) }},
+        formOpen: false,
+        form: null,
+        blankForm() {
+            return { update_url: '', name: '', phone: '', email: '', address: { line1: '', line2: '', city: '', state: '', postal_code: '', country: '' } };
+        },
+        init() {
+            this.form = this.blankForm();
+            this.$watch('search', () => this.fetchList(this.searchUrl()));
+            const old = {{ Js::from($oldForm) }};
+            if (old) {
+                this.form = old;
+                this.formOpen = true;
+            }
+        },
+        searchUrl() {
+            const url = new URL('{{ route('user.commerce.customers.index') }}', window.location.origin);
+            const term = this.search.trim();
+            if (term !== '') {
+                url.searchParams.set('search', term);
+            }
+            return url.toString();
+        },
+        clearSearch() {
+            this.search = '';
+        },
+        fetchList(url) {
+            if (this.listController) {
+                this.listController.abort();
+            }
+            this.listController = new AbortController();
+            this.loadingList = true;
+            fetch(url, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                signal: this.listController.signal
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.$refs.rows.innerHTML = data.html;
+                this.$refs.pagination.innerHTML = data.pagination;
+                this.total = data.total;
+                this.firstItem = data.first;
+                this.lastItem = data.last;
+                window.history.replaceState(null, '', url);
+                this.loadingList = false;
+            })
+            .catch(error => {
+                if (error.name !== 'AbortError') {
+                    this.loadingList = false;
+                }
+            });
+        },
+        paginate(event) {
+            const link = event.target.closest('a[href]');
+            if (link) {
+                event.preventDefault();
+                this.fetchList(link.href);
+            }
+        },
+        openForm(customer = null) {
+            this.form = customer ? JSON.parse(JSON.stringify(customer)) : this.blankForm();
+            this.activeCustomer = null;
+            this.formOpen = true;
+        },
+        closeForm() {
+            this.formOpen = false;
+        },
         activeCustomer: null,
         loadingDetails: false,
         openDetails(customer) {
@@ -10,7 +100,9 @@
             })
             .then(res => res.json())
             .then(data => {
-                this.activeCustomer = data.customer;
+                const edit = this.activeCustomer ? this.activeCustomer.edit : null;
+                const summary = this.activeCustomer || {};
+                this.activeCustomer = { ...summary, ...data.customer, name: summary.name, phone: summary.phone, email: summary.email, registered_at: summary.registered_at, verified_at: summary.verified_at, addresses: summary.addresses, edit: edit };
                 this.activeCustomer.orders = data.orders || [];
                 this.loadingDetails = false;
             })
@@ -30,6 +122,12 @@
                 <p class="mt-1 text-sm text-body">{{ __('Customers registered and authenticated through Storefront and Mobile App.') }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2.5">
+                @can('commerce.customers.manage')
+                    <button type="button" @click="openForm()" class="btn btn-sm btn-primary inline-flex items-center gap-1.5 shadow-xs">
+                        <i class="ph ph-user-plus text-base"></i>
+                        <span>{{ __('Add customer') }}</span>
+                    </button>
+                @endcan
                 <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.orders.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                     <i class="ph ph-package text-base"></i>
                     <span>{{ __('Orders') }}</span>
@@ -55,50 +153,30 @@
 
         {{-- Filters & Search Bar --}}
         <div class="card p-4 sm:p-5">
-            <form method="GET" action="{{ route('user.commerce.customers.index') }}" class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                {{-- Search Box --}}
+            <form method="GET" action="{{ route('user.commerce.customers.index') }}" @submit.prevent="fetchList(searchUrl())" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                {{-- Instant Search Box --}}
                 <div class="relative flex-1">
-                    <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400"></i>
+                    <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400" x-show="!loadingList"></i>
+                    <i class="ph ph-spinner animate-spin pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-primary" x-show="loadingList" x-cloak></i>
                     <input
                         type="search"
                         name="search"
+                        x-model.debounce.350ms="search"
                         value="{{ request('search') }}"
+                        autocomplete="off"
+                        aria-label="{{ __('Search customers') }}"
                         placeholder="{{ __('Search customer name, phone, email, or city...') }}"
                         class="form-input input-search !pl-11 !pr-10 w-full py-2 text-sm rounded-lg border-neutral-200 bg-neutral-0 placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                     />
-                    @if(request('search'))
-                        <a href="{{ request()->fullUrlWithQuery(['search' => null, 'page' => null]) }}" class="absolute top-1/2 right-3 -translate-y-1/2 flex items-center text-neutral-400 hover:text-neutral-600" title="{{ __('Clear search') }}">
-                            <i class="ph ph-x text-sm"></i>
-                        </a>
-                    @endif
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button type="submit" class="btn btn-sm btn-primary inline-flex items-center gap-1.5 shadow-xs">
-                        <i class="ph ph-funnel text-base"></i>
-                        <span>{{ __('Filter') }}</span>
+                    <button type="button" x-show="search !== ''" x-cloak @click="clearSearch()" class="absolute top-1/2 right-3 -translate-y-1/2 flex items-center text-neutral-400 hover:text-neutral-600" title="{{ __('Clear search') }}">
+                        <i class="ph ph-x text-sm"></i>
                     </button>
-
-                    @if(request()->filled('search'))
-                        <a href="{{ route('user.commerce.customers.index') }}" class="btn btn-sm btn-outline inline-flex items-center gap-1.5 text-neutral-600 hover:text-error hover:border-error" title="{{ __('Clear search') }}">
-                            <i class="ph ph-arrow-counter-clockwise text-base"></i>
-                            <span>{{ __('Reset') }}</span>
-                        </a>
-                    @endif
                 </div>
+                <p class="text-xs text-neutral-500 sm:w-48 sm:text-right">
+                    <span x-show="search === ''">{{ __('Results update as you type.') }}</span>
+                    <span x-show="search !== ''" x-cloak>{{ __('Matches for') }} "<span class="font-semibold text-title" x-text="search"></span>"</span>
+                </p>
             </form>
-
-            @if(request()->filled('search'))
-                <div class="mt-3.5 pt-3 border-t border-border-soft flex items-center gap-2 text-xs">
-                    <span class="text-neutral-500 font-medium">{{ __('Search query:') }}</span>
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-neutral-700">
-                        <i class="ph ph-magnifying-glass text-neutral-400"></i>
-                        <span>"{{ request('search') }}"</span>
-                        <a href="{{ route('user.commerce.customers.index') }}" class="text-neutral-400 hover:text-error"><i class="ph ph-x"></i></a>
-                    </span>
-                    <a href="{{ route('user.commerce.customers.index') }}" class="text-xs text-primary hover:underline ml-1 font-semibold">{{ __('Clear search') }}</a>
-                </div>
-            @endif
         </div>
 
         {{-- Customers Table Section --}}
@@ -107,14 +185,11 @@
             <div class="flex flex-col gap-2 border-b border-border-soft px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between bg-neutral-50/50">
                 <div class="flex items-center gap-2">
                     <h2 class="text-sm font-semibold text-title">{{ __('Customers list') }}</h2>
-                    <span class="rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-bold text-neutral-600">{{ $customers->total() }}</span>
+                    <span class="rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-bold text-neutral-600" x-text="total">{{ $customers->total() }}</span>
                 </div>
                 <div class="text-xs text-body">
-                    @if($customers->total() > 0)
-                        {{ __('Showing') }} <span class="font-semibold text-title">{{ $customers->firstItem() }}</span>–<span class="font-semibold text-title">{{ $customers->lastItem() }}</span> {{ __('of') }} <span class="font-semibold text-title">{{ $customers->total() }}</span>
-                    @else
-                        {{ __('0 customers found') }}
-                    @endif
+                    <span x-show="total > 0">{{ __('Showing') }} <span class="font-semibold text-title" x-text="firstItem"></span>–<span class="font-semibold text-title" x-text="lastItem"></span> {{ __('of') }} <span class="font-semibold text-title" x-text="total"></span></span>
+                    <span x-show="total === 0" x-cloak>{{ __('0 customers found') }}</span>
                 </div>
             </div>
 
@@ -132,202 +207,14 @@
                             <th class="py-3 px-4 text-right">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border-soft">
-                        @forelse($customers as $customer)
-                            @php
-                                $contact = $customer->contact;
-                                $name = $contact?->name ?: __('Guest Customer');
-                                $phone = $customer->verified_phone ?: ($contact?->phone ?: '—');
-                                $email = $contact?->email;
-                                $initial = mb_substr($name, 0, 1);
-
-                                $defaultAddr = $customer->addresses->firstWhere('is_default', true) ?? $customer->addresses->first();
-                                $addrCity = $defaultAddr?->address['city'] ?? $contact?->city;
-                                $addrCountry = $defaultAddr?->address['country'] ?? $contact?->country;
-
-                                $ordersCount = $customer->orders_count ?? 0;
-                                $contactSpend = $spending->get($customer->contact_id, collect());
-                                $spendSummary = $contactSpend->map(function ($row) {
-                                    $currency = strtoupper((string) ($row->currency ?? 'USD'));
-                                    $symbol = match ($currency) {
-                                        'USD' => '$',
-                                        'BDT' => '৳',
-                                        'EUR' => '€',
-                                        'GBP' => '£',
-                                        'INR' => '₹',
-                                        default => $currency . ' ',
-                                    };
-                                    return $symbol . number_format((float) $row->total_spent, 2);
-                                })->implode(', ');
-                            @endphp
-                            <tr class="hover:bg-neutral-50/70 transition-colors">
-                                {{-- Customer Identity --}}
-                                <td class="py-3 px-4">
-                                    <div class="flex items-center gap-3">
-                                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary border border-primary/20 uppercase shrink-0">
-                                            {{ $initial }}
-                                        </span>
-                                        <div class="min-w-0">
-                                            <div class="font-medium text-title truncate" title="{{ $name }}">{{ $name }}</div>
-                                            <div class="text-xs text-neutral-500 font-mono flex items-center gap-1.5 mt-0.5">
-                                                <span>{{ $phone }}</span>
-                                                @if($email)
-                                                    <span class="text-neutral-300">·</span>
-                                                    <span class="truncate max-w-[160px]" title="{{ $email }}">{{ $email }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                {{-- Channel / Source --}}
-                                <td class="py-3 px-4">
-                                    @if($customer->source === 'mobile_app')
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-                                            <i class="ph ph-device-mobile text-sm"></i>
-                                            <span>{{ __('Mobile App') }}</span>
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                                            <i class="ph ph-globe text-sm"></i>
-                                            <span>{{ __('Storefront') }}</span>
-                                        </span>
-                                    @endif
-                                </td>
-
-                                {{-- Status / Verification --}}
-                                <td class="py-3 px-4">
-                                    @if($customer->verified_at)
-                                        <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700" title="{{ __('Verified at') }}: {{ $customer->verified_at->format('M j, Y') }}">
-                                            <i class="ph ph-check-circle text-sm text-emerald-600"></i>
-                                            <span>{{ __('Verified') }}</span>
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
-                                            <i class="ph ph-circle text-xs text-neutral-400"></i>
-                                            <span>{{ __('Unverified') }}</span>
-                                        </span>
-                                    @endif
-                                </td>
-
-                                {{-- Orders & Spend --}}
-                                <td class="py-3 px-4">
-                                    <div class="text-xs">
-                                        @if($ordersCount > 0)
-                                            <div class="font-semibold text-title">
-                                                {{ trans_choice(':count order|:count orders', $ordersCount, ['count' => $ordersCount]) }}
-                                            </div>
-                                            <div class="text-emerald-700 font-medium mt-0.5">
-                                                {{ $spendSummary ?: __('No paid total') }}
-                                            </div>
-                                        @else
-                                            <span class="text-neutral-400">{{ __('No orders yet') }}</span>
-                                        @endif
-                                    </div>
-                                </td>
-
-                                {{-- Default Address --}}
-                                <td class="py-3 px-4">
-                                    @if($addrCity || $addrCountry)
-                                        <div class="text-xs font-medium text-title">
-                                            {{ implode(', ', array_filter([$addrCity, $addrCountry])) }}
-                                        </div>
-                                        @if($defaultAddr && !empty($defaultAddr->address['line1']))
-                                            <div class="text-[11px] text-neutral-400 truncate max-w-[180px]" title="{{ $defaultAddr->address['line1'] }}">
-                                                {{ $defaultAddr->address['line1'] }}
-                                            </div>
-                                        @endif
-                                    @else
-                                        <span class="text-neutral-300">—</span>
-                                    @endif
-                                </td>
-
-                                {{-- Registered Date --}}
-                                <td class="py-3 px-4">
-                                    <div class="text-xs font-medium text-title" title="{{ $customer->registered_at?->format('M j, Y · g:i A') ?? $customer->created_at->format('M j, Y · g:i A') }}">
-                                        {{ ($customer->registered_at ?? $customer->created_at)->diffForHumans() }}
-                                    </div>
-                                    <div class="text-[11px] text-neutral-400">
-                                        {{ ($customer->registered_at ?? $customer->created_at)->format('M j, Y') }}
-                                    </div>
-                                </td>
-
-                                {{-- Actions --}}
-                                <td class="py-3 px-4 text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
-                                        {{-- View Customer Orders --}}
-                                        @if($customer->contact_id)
-                                            <a href="{{ route('user.commerce.orders.index', ['contact_id' => $customer->contact_id]) }}" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('View customer orders') }}">
-                                                <i class="ph ph-shopping-bag text-base"></i>
-                                                <span class="sr-only">{{ __('View orders') }}</span>
-                                            </a>
-                                        @endif
-
-                                        {{-- Open Details Drawer --}}
-                                        <button
-                                            type="button"
-                                            @click="openDetails({{ Js::from([
-                                                'id' => $customer->id,
-                                                'name' => $name,
-                                                'phone' => $phone,
-                                                'email' => $email,
-                                                'verified_at' => $customer->verified_at?->format('M j, Y · g:i A'),
-                                                'registered_at' => ($customer->registered_at ?? $customer->created_at)->format('M j, Y · g:i A'),
-                                                'source' => $customer->source,
-                                                'channel_label' => $customer->channelLabel(),
-                                                'contact_id' => $customer->contact_id,
-                                                'orders_count' => $ordersCount,
-                                                'spend_summary' => $spendSummary,
-                                                'addresses' => $customer->addresses->map(fn($a) => [
-                                                    'label' => $a->label,
-                                                    'is_default' => $a->is_default,
-                                                    'address' => $a->address,
-                                                ])->values()->all(),
-                                            ]) }})"
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs"
-                                            title="{{ __('View customer details') }}"
-                                        >
-                                            <i class="ph ph-eye text-base"></i>
-                                            <span class="sr-only">{{ __('View details') }}</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="p-12 text-center">
-                                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 mb-3">
-                                        <i class="ph ph-users text-2xl"></i>
-                                    </div>
-                                    <h3 class="text-base font-semibold text-title">{{ __('No customers found') }}</h3>
-                                    <p class="mt-1 text-sm text-body max-w-sm mx-auto">
-                                        @if(request()->filled('search'))
-                                            {{ __('No customers matched your search query. Try searching with a different name, phone, or email.') }}
-                                        @else
-                                            {{ __('Customers who register or sign in on the Storefront or Mobile App will appear here automatically.') }}
-                                        @endif
-                                    </p>
-                                    @if(request()->filled('search'))
-                                        <div class="mt-4">
-                                            <a href="{{ route('user.commerce.customers.index') }}" class="btn btn-sm btn-outline inline-flex items-center gap-1.5">
-                                                <i class="ph ph-arrow-counter-clockwise"></i>
-                                                <span>{{ __('Clear search') }}</span>
-                                            </a>
-                                        </div>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforelse
+                    <tbody class="divide-y divide-border-soft transition-opacity" x-ref="rows" :class="loadingList && 'opacity-50'">
+                        @include('commerce::user.partials.customers.rows', ['customers' => $customers, 'spending' => $spending])
                     </tbody>
                 </table>
             </div>
 
             {{-- Pagination Footer --}}
-            @if($customers->hasPages())
-                <div class="border-t border-border-soft px-5 py-4">
-                    {{ $customers->links() }}
-                </div>
-            @endif
+            <div x-ref="pagination" @click="paginate($event)" class="border-t border-border-soft px-5 py-4 empty:hidden">@if($customers->hasPages()){{ $customers->links() }}@endif</div>
         </section>
 
         {{-- Slide-over Drawer / Modal for Customer Details --}}
@@ -476,6 +363,14 @@
 
                     {{-- Drawer Footer --}}
                     <div class="border-t border-border-soft p-4 bg-neutral-50/50 flex items-center justify-end gap-2">
+                        @can('commerce.customers.manage')
+                            <template x-if="activeCustomer && activeCustomer.edit">
+                                <button type="button" @click="openForm(activeCustomer.edit)" class="btn btn-sm btn-outline inline-flex items-center gap-1.5">
+                                    <i class="ph ph-pencil-simple"></i>
+                                    <span>{{ __('Edit') }}</span>
+                                </button>
+                            </template>
+                        @endcan
                         <template x-if="activeCustomer && activeCustomer.contact_id">
                             <a :href="'{{ route('user.commerce.orders.index') }}?contact_id=' + activeCustomer.contact_id" class="btn btn-sm btn-primary inline-flex items-center gap-1.5 shadow-xs">
                                 <i class="ph ph-shopping-bag"></i>
@@ -489,5 +384,115 @@
                 </div>
             </div>
         </div>
+        @can('commerce.customers.manage')
+            {{-- Add / Edit Customer Modal --}}
+            <div x-show="formOpen" x-cloak class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="customer-form-title" @keydown.escape.window="formOpen && closeForm()">
+                <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs" @click="closeForm()"></div>
+                <form
+                    method="POST"
+                    :action="form && form.update_url ? form.update_url : {{ Js::from(route('user.commerce.customers.store')) }}"
+                    class="relative w-full max-w-lg rounded-xl bg-neutral-0 shadow-2xl"
+                    x-show="formOpen"
+                    x-transition
+                >
+                    @csrf
+                    <template x-if="form && form.update_url">
+                        <input type="hidden" name="_method" value="PUT">
+                    </template>
+                    <input type="hidden" name="form_update_url" :value="form ? form.update_url : ''">
+
+                    <div class="flex items-center justify-between border-b border-border-soft px-5 py-4">
+                        <h3 id="customer-form-title" class="text-base font-semibold text-title" x-text="form && form.update_url ? {{ Js::from(__('Edit customer')) }} : {{ Js::from(__('Add customer')) }}"></h3>
+                        <button type="button" @click="closeForm()" class="rounded-md p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition">
+                            <i class="ph ph-x text-lg"></i>
+                        </button>
+                    </div>
+
+                    <template x-if="form">
+                        <div class="space-y-4 p-5">
+                            @if($formErrors->any())
+                                <div class="rounded-lg border border-error/30 bg-error/5 p-3 text-xs text-error">
+                                    <ul class="list-disc space-y-0.5 pl-4">
+                                        @foreach($formErrors->all() as $message)
+                                            <li>{{ $message }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            <div>
+                                <label for="customer-name" class="form-label">{{ __('Full name') }} <span class="text-error">*</span></label>
+                                <input id="customer-name" type="text" name="name" x-model="form.name" maxlength="150" required class="form-input w-full">
+                            </div>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="customer-phone" class="form-label">{{ __('Phone / WhatsApp') }} <span class="text-error">*</span></label>
+                                    <x-ui.phone-input id="customer-phone" name="phone" x-model="form.phone" :required="true" />
+                                </div>
+                                <div>
+                                    <label for="customer-email" class="form-label">{{ __('Email') }}</label>
+                                    <input id="customer-email" type="email" name="email" x-model="form.email" maxlength="255" class="form-input w-full">
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="customer-password" class="form-label">{{ __('Password') }}</label>
+                                    <input id="customer-password" type="password" name="password" minlength="8" autocomplete="new-password" class="form-input w-full">
+                                </div>
+                                <div>
+                                    <label for="customer-password-confirmation" class="form-label">{{ __('Confirm password') }}</label>
+                                    <input id="customer-password-confirmation" type="password" name="password_confirmation" minlength="8" autocomplete="new-password" class="form-input w-full">
+                                </div>
+                                <p class="text-[11px] text-neutral-500 sm:col-span-2" x-text="form.update_url ? {{ Js::from(__('Leave blank to keep the current password.')) }} : {{ Js::from(__('Optional. Without a password the customer signs in with a WhatsApp code.')) }}"></p>
+                            </div>
+
+                            <div class="space-y-3 rounded-lg border border-border-soft p-4">
+                                <h4 class="text-xs font-semibold uppercase tracking-wider text-neutral-500">{{ __('Default shipping address') }}</h4>
+                                <div>
+                                    <label for="customer-line1" class="form-label">{{ __('Address line 1') }}</label>
+                                    <input id="customer-line1" type="text" name="address[line1]" x-model="form.address.line1" maxlength="255" class="form-input w-full">
+                                </div>
+                                <div>
+                                    <label for="customer-line2" class="form-label">{{ __('Address line 2') }}</label>
+                                    <input id="customer-line2" type="text" name="address[line2]" x-model="form.address.line2" maxlength="255" class="form-input w-full">
+                                </div>
+                                <div class="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label for="customer-city" class="form-label">{{ __('City') }}</label>
+                                        <input id="customer-city" type="text" name="address[city]" x-model="form.address.city" maxlength="120" :required="form.address.line1 !== ''" class="form-input w-full">
+                                    </div>
+                                    <div>
+                                        <label for="customer-state" class="form-label">{{ __('State / Region') }}</label>
+                                        <input id="customer-state" type="text" name="address[state]" x-model="form.address.state" maxlength="120" class="form-input w-full">
+                                    </div>
+                                    <div>
+                                        <label for="customer-postal" class="form-label">{{ __('Postal code') }}</label>
+                                        <input id="customer-postal" type="text" name="address[postal_code]" x-model="form.address.postal_code" maxlength="30" class="form-input w-full">
+                                    </div>
+                                    <div>
+                                        <label for="customer-country" class="form-label">{{ __('Country') }}</label>
+                                        <select id="customer-country" name="address[country]" x-model="form.address.country" class="form-input w-full">
+                                            <option value="">{{ __('Select country') }}</option>
+                                            @foreach($countryOptions as $iso => $option)
+                                                <option value="{{ $iso }}">{{ $option['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="flex items-center justify-end gap-2 border-t border-border-soft bg-neutral-50/50 px-5 py-4">
+                        <button type="button" @click="closeForm()" class="btn btn-sm btn-outline">{{ __('Cancel') }}</button>
+                        <button type="submit" class="btn btn-sm btn-primary inline-flex items-center gap-1.5">
+                            <i class="ph ph-floppy-disk"></i>
+                            <span x-text="form && form.update_url ? {{ Js::from(__('Save changes')) }} : {{ Js::from(__('Add customer')) }}"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        @endcan
     </div>
 </x-layouts.user>

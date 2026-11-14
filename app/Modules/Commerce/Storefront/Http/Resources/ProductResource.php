@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use App\Modules\Commerce\Storefront\Services\CatalogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -108,7 +109,8 @@ class ProductResource extends JsonResource
                 'color_id' => $g->color_id,
             ])),
             'in_stock' => $inStock,
-            'sold_count' => (int) ($this->sold_count ?? 0),
+            'sold_count' => ($sold = (int) ($this->sold_count ?? 0)) >= CatalogService::soldBadgeMinimum() ? $sold : 0,
+            'is_best_seller' => in_array((int) $this->id, app(CatalogService::class)->bestSellerIds((int) $this->workspace_id), true),
             'stock_status' => $inStock ? 'in_stock' : 'out_of_stock',
             'variants' => $stockVariants->map(fn ($v) => [
                 'id' => $v->id,
