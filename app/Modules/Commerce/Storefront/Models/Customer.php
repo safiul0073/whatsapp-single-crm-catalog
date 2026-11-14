@@ -48,6 +48,7 @@ class Customer extends Authenticatable
     {
         return match ($this->source) {
             'mobile_app' => __('Mobile App'),
+            'admin' => __('Added by staff'),
             default => __('Storefront'),
         };
     }
@@ -56,6 +57,7 @@ class Customer extends Authenticatable
     {
         return match ($this->source) {
             'mobile_app' => 'ph-device-mobile',
+            'admin' => 'ph-user-plus',
             default => 'ph-globe',
         };
     }

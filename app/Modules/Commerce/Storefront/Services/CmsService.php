@@ -13,7 +13,6 @@ use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSection;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -489,17 +488,12 @@ class CmsService
             $ids = StorefrontContent::query()->where('workspace_id', $workspace)->where('type', 'collection')->where('slug', 'featured')->where('published_at', '<=', now())->first()?->data['product_ids'] ?? [];
             $q->whereIn('id', $ids);
         } elseif (($config['source'] ?? '') === 'best-sellers') {
-            $sold = DB::table('commerce_order_items as oi')
-                ->join('commerce_product_variants as v', 'v.id', '=', 'oi.variant_id')
-                ->join('commerce_orders as o', 'o.id', '=', 'oi.order_id')
-                ->where('oi.workspace_id', $workspace)
-                ->where('o.status', '!=', 'cancelled')
-                ->whereNull('o.deleted_at')
-                ->groupBy('v.product_id')
-                ->selectRaw('v.product_id, SUM(oi.quantity) as sold_qty');
-            $q->joinSub($sold, 'sold', 'sold.product_id', '=', 'commerce_products.id')
-                ->select('commerce_products.*')
-                ->orderByDesc('sold.sold_qty');
+            // Rank by recent sales, then all-time sales, then newest, so new or quiet stores still fill the carousel.
+            $catalog = app(CatalogService::class);
+            $q->leftJoinSub($catalog->soldQuantities($workspace, now()->subDays(CatalogService::BEST_SELLER_WINDOW_DAYS)), 'sold_recent', 'sold_recent.product_id', '=', 'commerce_products.id')
+                ->leftJoinSub($catalog->soldQuantities($workspace), 'sold_all', 'sold_all.product_id', '=', 'commerce_products.id')
+                ->orderByRaw('COALESCE(sold_recent.sold_qty, 0) DESC')
+                ->orderByRaw('COALESCE(sold_all.sold_qty, 0) DESC');
         } elseif (($config['source'] ?? '') === 'deals') {
             $q->whereHas('variants', fn ($variants) => $variants->where('status', 'active')->whereColumn('compare_at_price', '>', 'price'));
         }

@@ -216,6 +216,44 @@ it('keeps draft changes out of published pages and scopes preview tokens', funct
     expect(app(CmsService::class)->verifyPreview($this->other->id, 'home', $token))->toBeFalse();
 });
 
+it('hides small sold counts and ranks top sellers by recent real sales with a fallback', function (): void {
+    $product = function (string $slug): ProductVariant {
+        $p = Product::query()->create(['workspace_id' => $this->store->id, 'name' => ucfirst($slug), 'slug' => $slug, 'sku' => $slug, 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'retail', 'single_piece_price' => 20]);
+
+        return ProductVariant::query()->create(['workspace_id' => $this->store->id, 'product_id' => $p->id, 'sku' => $slug.'-m', 'meta_retailer_id' => $slug.'-m', 'size' => 'M', 'price' => 20, 'stock_quantity' => 5, 'status' => 'active']);
+    };
+    $sell = function (ProductVariant $variant, int $qty, string $status = 'processing', int $daysAgo = 0, bool $deleted = false): void {
+        $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => $status, 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0]);
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $variant->id, 'retailer_id' => $variant->sku, 'sku' => $variant->sku, 'product_name' => $variant->sku, 'quantity' => $qty, 'unit_price' => 20, 'line_total' => 20 * $qty]);
+        $order->forceFill(['created_at' => now()->subDays($daysAgo)])->save();
+        if ($deleted) {
+            $order->delete();
+        }
+    };
+    $old = $product('old-hit');
+    $recent = $product('recent-hit');
+    $refunded = $product('refunded');
+    $product('quiet');
+    $sell($old, 50, daysAgo: 200);
+    $sell($recent, 12);
+    $sell($refunded, 100, 'refunded');
+    $sell($refunded, 100, deleted: true);
+    $sell($this->variant, 3);
+
+    $page = StorefrontPage::query()->where('workspace_id', $this->store->id)->where('slug', 'home')->firstOrFail();
+    $page->update(['status' => 'published', 'published_at' => now(), 'published_content' => ['title' => 'Home', 'sections' => [
+        ['id' => 1, 'type' => 'product_carousel', 'config' => ['source' => 'best-sellers', 'limit' => 24]],
+    ]]]);
+    $carousel = collect($this->getJson('/api/storefront/v1/cms/pages/home', $this->headers)->assertOk()->json('data.sections'))
+        ->firstWhere('config.source', 'best-sellers');
+
+    expect(array_column($carousel['data'], 'slug'))->toBe(['recent-hit', 'shirt', 'old-hit', 'quiet', 'refunded'])
+        ->and(array_column($carousel['data'], 'sold_count'))->toBe([12, 0, 50, 0, 0])
+        ->and(array_column($carousel['data'], 'is_best_seller'))->toBe([true, false, false, false, false]);
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)->assertOk()
+        ->assertJsonPath('data.sold_count', 0)->assertJsonPath('data.is_best_seller', false);
+});
+
 it('orders home sections slider, new arrivals, top sellers, categories, then the rest', function (): void {
     [$headers, $data] = storefrontCheckoutFixture($this);
     $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated();

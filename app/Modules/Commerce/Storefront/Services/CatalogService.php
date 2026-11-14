@@ -6,12 +6,60 @@ use App\Modules\Commerce\Models\Category;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Services\StoreFeatures;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class CatalogService
 {
     /** Order statuses that do not count as a real sale. */
     public const NON_SALE_STATUSES = ['cancelled', 'refunded', 'failed', 'returned', 'draft'];
+
+    /** Recent sales window that ranks "Top Sellers" and the best seller badge. */
+    public const BEST_SELLER_WINDOW_DAYS = 90;
+
+    /** Smallest sold count worth showing as social proof ("🔥 N sold", best seller badge). */
+    public static function soldBadgeMinimum(): int
+    {
+        return max(1, (int) config('storefront.sold_badge_min', 10));
+    }
+
+    /** Units sold per product (product_id, sold_qty) across real sales, optionally only since a date. */
+    public function soldQuantities(int $workspace, ?CarbonInterface $since = null): QueryBuilder
+    {
+        return DB::table('commerce_order_items as oi')
+            ->join('commerce_orders as o', 'o.id', '=', 'oi.order_id')
+            ->join('commerce_product_variants as v', 'v.id', '=', 'oi.variant_id')
+            ->where('o.workspace_id', $workspace)
+            ->whereNotIn('o.status', self::NON_SALE_STATUSES)
+            ->whereNull('o.deleted_at')
+            ->when($since, fn (QueryBuilder $q): QueryBuilder => $q->where('o.created_at', '>=', $since))
+            ->groupBy('v.product_id')
+            ->selectRaw('v.product_id, SUM(oi.quantity) as sold_qty');
+    }
+
+    /**
+     * Published products that sold best in the recent window and passed the badge minimum.
+     *
+     * @return list<int>
+     */
+    public function bestSellerIds(int $workspace): array
+    {
+        return Cache::memo()->remember('storefront_best_sellers_'.$workspace, 600, fn (): array => DB::query()
+            ->fromSub($this->soldQuantities($workspace, now()->subDays(self::BEST_SELLER_WINDOW_DAYS)), 'sold')
+            ->join('commerce_products as p', 'p.id', '=', 'sold.product_id')
+            ->where('p.status', 'active')
+            ->where('p.visibility', 'published')
+            ->where('sold.sold_qty', '>=', self::soldBadgeMinimum())
+            ->orderByDesc('sold.sold_qty')
+            ->orderByDesc('sold.product_id')
+            ->limit(max(1, (int) config('storefront.best_seller_count', 10)))
+            ->pluck('sold.product_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all());
+    }
 
     public function query(int $workspace, array $filters = []): Builder
     {
@@ -43,7 +91,8 @@ class CatalogService
                     ->join('commerce_product_variants', 'commerce_product_variants.id', '=', 'commerce_order_items.variant_id')
                     ->whereColumn('commerce_product_variants.product_id', 'commerce_products.id')
                     ->where('commerce_orders.workspace_id', $workspace)
-                    ->whereNotIn('commerce_orders.status', self::NON_SALE_STATUSES),
+                    ->whereNotIn('commerce_orders.status', self::NON_SALE_STATUSES)
+                    ->whereNull('commerce_orders.deleted_at'),
                 'sold_count',
             )
             ->with(['primaryMedia', 'category', 'brandRecord', 'colors.swatchMedia', 'variants', 'options.values', 'tierPrices']);

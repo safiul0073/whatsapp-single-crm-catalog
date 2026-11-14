@@ -115,6 +115,11 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('visitors/{visitor}', [VisitorController::class, 'show'])->whereNumber('visitor')->middleware('permission:commerce.customers.view')->name('visitors.show');
     Route::get('customers', [CommerceController::class, 'customers'])->middleware('permission:commerce.customers.view')->name('customers.index');
     Route::get('customers/{customer}', [CommerceController::class, 'customer'])->middleware('permission:commerce.customers.view')->name('customers.show');
+    Route::middleware('permission:commerce.customers.manage')->group(function (): void {
+        Route::post('customers', [CommerceController::class, 'storeCustomerAccount'])->name('customers.store');
+        Route::put('customers/{customer}', [CommerceController::class, 'updateCustomerAccount'])->name('customers.update');
+        Route::delete('customers/{customer}', [CommerceController::class, 'destroyCustomerAccount'])->name('customers.destroy');
+    });
     $controller = OrderManagementController::class;
     Route::middleware('permission:commerce.orders.create')->group(function () use ($controller): void {
         Route::get('orders/create', [$controller, 'create'])->name('orders.create');

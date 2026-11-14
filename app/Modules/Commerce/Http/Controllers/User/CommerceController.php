@@ -9,6 +9,7 @@ use App\Modules\Commerce\Http\Requests\BulkDeleteCommerceRequest;
 use App\Modules\Commerce\Http\Requests\CatalogRequest;
 use App\Modules\Commerce\Http\Requests\CategoryRequest;
 use App\Modules\Commerce\Http\Requests\CommerceSettingsRequest;
+use App\Modules\Commerce\Http\Requests\CustomerAccountRequest;
 use App\Modules\Commerce\Http\Requests\DeleteOrdersRequest;
 use App\Modules\Commerce\Http\Requests\ExtendOrderHoldRequest;
 use App\Modules\Commerce\Http\Requests\ProductDetailsRequest;
@@ -51,6 +52,7 @@ use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
+use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -61,6 +63,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -745,7 +748,7 @@ class CommerceController extends Controller
         ]);
     }
 
-    public function customers(Request $request): View
+    public function customers(Request $request): View|JsonResponse
     {
         $workspace = $this->workspaces->current($request->user());
 
@@ -755,7 +758,7 @@ class CommerceController extends Controller
             ->where('workspace_id', $workspace->id);
 
         if ($request->filled('search')) {
-            $search = trim($request->string('search')->toString());
+            $search = addcslashes(trim($request->string('search')->toString()), '\\%_');
             $query->where(function ($q) use ($search) {
                 $q->where('verified_phone', 'like', "%{$search}%")
                     ->orWhereHas('contact', function ($cq) use ($search) {
@@ -780,9 +783,129 @@ class CommerceController extends Controller
             ->get()
             ->groupBy('contact_id');
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html' => view('commerce::user.partials.customers.rows', ['customers' => $customers, 'spending' => $spending])->render(),
+                'pagination' => $customers->hasPages() ? $customers->links()->toHtml() : '',
+                'total' => $customers->total(),
+                'first' => $customers->firstItem(),
+                'last' => $customers->lastItem(),
+            ]);
+        }
+
         return view('commerce::user.customers', [
             'customers' => $customers,
             'spending' => $spending,
+        ]);
+    }
+
+    public function storeCustomerAccount(CustomerAccountRequest $request): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $data = $request->validated();
+
+        $customer = DB::transaction(function () use ($workspace, $data): Customer {
+            $contact = Contact::query()->where('workspace_id', $workspace->id)->where('phone', $data['phone'])->first();
+            if ($contact) {
+                $contact->update(array_filter([
+                    'name' => $data['name'],
+                    'email' => $data['email'] ?? null,
+                ]));
+            } else {
+                $contact = Contact::query()->create([
+                    'workspace_id' => $workspace->id,
+                    'phone' => $data['phone'],
+                    'name' => $data['name'],
+                    'email' => $data['email'] ?? null,
+                    'country' => $data['address']['country'] ?? null,
+                    'city' => $data['address']['city'] ?? null,
+                ]);
+            }
+
+            $customer = Customer::query()->create(array_filter([
+                'workspace_id' => $workspace->id,
+                'contact_id' => $contact->id,
+                'source' => 'admin',
+                'registered_at' => now(),
+                'password' => $data['password'] ?? null,
+            ], fn ($value): bool => $value !== null));
+
+            $this->saveDefaultCustomerAddress($customer, $data);
+
+            return $customer;
+        });
+
+        return redirect()->route('user.commerce.customers.index')->with('success', __('Customer :name added.', ['name' => $customer->contact?->name]));
+    }
+
+    public function updateCustomerAccount(CustomerAccountRequest $request, Customer $customer): RedirectResponse
+    {
+        $this->assertWorkspace($request, $customer->workspace_id);
+        $data = $request->validated();
+
+        DB::transaction(function () use ($customer, $data): void {
+            $contact = $customer->contact;
+            $phoneChanged = $contact?->phone !== $data['phone'];
+
+            $contact?->update([
+                'name' => $data['name'],
+                'phone' => $data['phone'],
+                'email' => $data['email'] ?? null,
+            ]);
+
+            if ($phoneChanged && $customer->verified_phone !== $data['phone']) {
+                $customer->verified_phone = null;
+                $customer->verified_at = null;
+            }
+            if (filled($data['password'] ?? null)) {
+                $customer->password = $data['password'];
+            }
+            $customer->save();
+
+            $this->saveDefaultCustomerAddress($customer, $data);
+        });
+
+        return back()->with('success', __('Customer :name updated.', ['name' => $data['name']]));
+    }
+
+    public function destroyCustomerAccount(Request $request, Customer $customer): RedirectResponse
+    {
+        $this->assertWorkspace($request, $customer->workspace_id);
+        $name = $customer->contact?->name;
+
+        DB::transaction(function () use ($customer): void {
+            $customer->tokens()->delete();
+            $customer->addresses()->delete();
+            $customer->delete();
+        });
+
+        return redirect()->route('user.commerce.customers.index')->with('success', __('Customer :name deleted. Their contact and orders were kept.', ['name' => $name]));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function saveDefaultCustomerAddress(Customer $customer, array $data): void
+    {
+        $address = collect($data['address'] ?? [])->only(['line1', 'line2', 'city', 'state', 'postal_code', 'country'])->filter(fn ($value): bool => filled($value));
+        if (blank($address->get('line1'))) {
+            return;
+        }
+
+        $record = $customer->addresses()->where('is_default', true)->first() ?? $customer->addresses()->oldest('id')->first();
+        $payload = ['name' => $data['name'], 'phone' => $data['phone'], ...$address->all()];
+
+        if ($record) {
+            $record->update(['address' => [...($record->address ?? []), ...$payload], 'is_default' => true]);
+
+            return;
+        }
+
+        $customer->addresses()->create([
+            'workspace_id' => $customer->workspace_id,
+            'label' => 'Home',
+            'address' => $payload,
+            'is_default' => true,
         ]);
     }
 
