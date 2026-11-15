@@ -40,17 +40,17 @@ class CatalogController extends Controller
         return new ProductResource($this->catalog->query($r->attributes->get('store_workspace')->id, ['selling_mode' => 'all'])->with('gallery.media')->where('slug', $slug)->firstOrFail());
     }
 
-    /** Recent orders for the storefront "social proof" popup and ticker; the popup uses the masked name, the ticker the full name and total items. */
+    /** Recent orders for the storefront "social proof" popup and ticker; the popup uses the masked name, the ticker the first name and total items. */
     public function recentOrders(Request $r): JsonResponse
     {
         $workspace = $r->attributes->get('store_workspace')->id;
         $data = Cache::remember('storefront_recent_orders_'.$workspace, 60, fn (): array => Order::query()
             ->where('workspace_id', $workspace)
             ->whereNotIn('status', CatalogService::NON_SALE_STATUSES)
-            ->where('created_at', '>=', now()->subDays(7))
+            ->where('created_at', '>=', now()->subDays(30))
             ->with(['contact:id,name,country', 'items.variant.product.primaryMedia'])
             ->latest('id')
-            ->limit(10)
+            ->limit(5)
             ->get()
             ->map(function (Order $order): ?array {
                 $item = $order->items->first(fn ($i) => $i->variant?->product?->status === 'active' && $i->variant->product->visibility === 'published');
@@ -62,7 +62,7 @@ class CatalogController extends Controller
 
                 return [
                     'name' => self::maskName($customerName),
-                    'full_name' => self::fullName($customerName),
+                    'first_name' => self::firstName($customerName),
                     'country' => self::countryCode($order->shipping_address['country'] ?? $order->contact?->country),
                     'total_items' => (int) $order->items->sum('quantity'),
                     'product_name' => $product->name,
@@ -86,11 +86,11 @@ class CatalogController extends Controller
         return preg_match('/^[A-Z]{2}$/', $code) ? $code : null;
     }
 
-    private static function fullName(?string $name): string
+    private static function firstName(?string $name): string
     {
         $parts = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
 
-        return $parts ? mb_convert_case(implode(' ', $parts), MB_CASE_TITLE) : 'Someone';
+        return $parts ? mb_convert_case(mb_substr($parts[0], 0, 20), MB_CASE_TITLE) : 'Someone';
     }
 
     private static function maskName(?string $name): string

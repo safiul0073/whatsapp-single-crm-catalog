@@ -109,6 +109,7 @@ it('prints the owner details, invoice number, ship to and payment totals on the 
         ->and($pdf)->toContain('Fashion Fiest')
         ->and($pdf)->toContain('House 12, Road 5, Uttara, Dhaka')
         ->and($pdf)->toContain('sales@fashionfiest.test')
+        ->and($pdf)->not->toContain('+8801700000000')
         ->and($pdf)->toContain('BILL TO')
         ->and($pdf)->toContain('SHIP TO')
         ->and($pdf)->toContain('Paid:')

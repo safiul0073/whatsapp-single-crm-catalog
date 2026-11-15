@@ -148,7 +148,6 @@ class InvoiceService
         $store = [
             'name' => $storeName,
             'address' => trim((string) ($storeSetting?->config['address'] ?? '')),
-            'phone' => trim((string) ($storeSetting?->config['contact_phone'] ?? '')),
             'email' => trim((string) ($storeSetting?->config['contact_email'] ?? '')),
             'tax_id' => trim((string) ($storeSetting?->config['tax_id'] ?? '')),
         ];
@@ -635,7 +634,7 @@ class InvoiceService
      * @param  array<int, array{title: string, subtitle: string, breakdown: string, type_label: string, qty: string, unit_price: string, line_total: string, image_url: ?string}>  $rows
      * @param  array<string, mixed>  $document
      * @param  array<string, string>  $imageUrlToName
-     * @param  array{name: string, address: string, phone: string, email: string}  $store
+     * @param  array{name: string, address: string, email: string, tax_id: string}  $store
      * @param  array{name: string, w: float, h: float}|null  $logo
      */
     private function renderPageStream(
@@ -668,7 +667,7 @@ class InvoiceService
         }
         foreach (array_filter([
             $store['address'] !== '' ? $this->truncate($store['address'], 62) : null,
-            trim(implode('  |  ', array_filter([$store['phone'], $store['email']]))) ?: null,
+            $store['email'] !== '' ? $store['email'] : null,
             ($store['tax_id'] ?? '') !== '' ? 'Tax ID: '.$store['tax_id'] : null,
         ]) as $line) {
             $ops[] = $this->text($textLeft, $nameY, $this->truncate((string) $line, 62), 'F1', 8.5, [0.30, 0.35, 0.43]);
