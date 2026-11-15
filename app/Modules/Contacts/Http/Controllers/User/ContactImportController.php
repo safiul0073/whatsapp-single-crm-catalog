@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ContactImportController extends Controller
 {
@@ -50,9 +51,18 @@ class ContactImportController extends Controller
         return response()->json($service->show((int) $import, $request->user()));
     }
 
-    public function history(Request $request, WorkspaceResolver $workspaces): JsonResponse
+    public function history(Request $request, WorkspaceResolver $workspaces): JsonResponse|View
     {
         $workspace = $workspaces->current($request->user());
+
+        if (! $request->expectsJson()) {
+            return view('contacts::user.imports', [
+                'imports' => ContactImport::query()
+                    ->where('workspace_id', $workspace->id)
+                    ->latest()
+                    ->paginate(20),
+            ]);
+        }
 
         $imports = ContactImport::query()
             ->where('workspace_id', $workspace->id)

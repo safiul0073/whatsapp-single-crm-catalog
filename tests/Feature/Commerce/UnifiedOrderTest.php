@@ -920,3 +920,73 @@ it('rejects deleting orders from another workspace', function () {
     $this->delete(route('user.commerce.orders.bulk-destroy'), ['ids' => []])->assertSessionHasErrors('ids');
     expect(Order::query()->count())->toBe(1);
 });
+
+it('takes stock on payment only for the lines an edited order still contains', function () {
+    $c = unifiedContext();
+    $zone = ShippingZone::create(['workspace_id' => $c['workspace']->id, 'name' => 'US', 'code' => 'US', 'is_active' => true]);
+    $zone->countries()->create(['workspace_id' => $c['workspace']->id, 'country_code' => 'US']);
+    $method = ShippingMethod::create(['workspace_id' => $c['workspace']->id, 'name' => 'Air', 'code' => 'AIR', 'type' => 'air', 'is_active' => true]);
+    $zone->rates()->create(['workspace_id' => $c['workspace']->id, 'shipping_method_id' => $method->id, 'min_weight_kg' => 0, 'price' => 5, 'price_per_kg' => 0, 'currency' => 'USD', 'is_active' => true]);
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    app(UnifiedOrderService::class)->updateOrder($order, $c['workspace'], ['submission_reference' => (string) Str::uuid(), 'groups' => [['product_id' => $c['product']->id, 'mode' => 'retail', 'variant_id' => $c['variants'][0]->id, 'quantity' => 2]]]);
+    expect($order->reservations()->where('state', 'released')->count())->toBe(2);
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
+
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(98)
+        ->and($c['variants'][1]->fresh()->stock_quantity)->toBe(100)
+        ->and($c['variants'][2]->fresh()->stock_quantity)->toBe(100);
+});
+
+it('keeps holding stock for an order whose payment proof awaits review', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
+    Storage::fake('local');
+    $c['workspace']->update(['settings' => ['commerce' => ['payment_methods' => [['id' => 'remitly', 'name' => 'Remitly', 'active' => true, 'recipient_details' => 'Store account', 'instructions' => 'Transfer', 'sort_order' => 0, 'fields' => []]]]]]);
+    $this->travel(23)->hours();
+    $this->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/evidence', ['payment_method_id' => 'remitly', 'transaction_id' => 'ABC', 'receipts' => [UploadedFile::fake()->image('one.png')]])->assertOk();
+
+    $this->travel(2)->hours();
+    app(OrderInventoryService::class)->expire();
+    expect($order->fresh()->status)->toBe('awaiting_payment')
+        ->and($order->reservations()->where('state', 'reserved')->where('expires_at', '>', now())->count())->toBe(3);
+
+    $this->travel(30)->hours();
+    app(OrderInventoryService::class)->expire();
+    expect($order->fresh()->status)->toBe('awaiting_payment')
+        ->and($order->reservations()->where('state', 'reserved')->where('expires_at', '>', now())->count())->toBe(3);
+
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(94);
+});
+
+it('refuses store API cancellation of a paid order and keeps its stock taken', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => 5]);
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
+
+    $this->postJson('/api/commerce/store/orders/'.$order->submission_reference.'/cancel')->assertUnprocessable();
+    expect($order->fresh()->status)->toBe('paid')->and($c['variants'][0]->fresh()->stock_quantity)->toBe(94);
+
+    $unpaid = app(UnifiedOrderService::class)->create($c['workspace'], [...$c['data'], 'submission_reference' => (string) Str::uuid()]);
+    $this->postJson('/api/commerce/store/orders/'.$unpaid->submission_reference.'/cancel')->assertOk();
+    expect($unpaid->fresh()->status)->toBe('cancelled');
+});
+
+it('releases held stock when an unpaid order is deleted and still expires holds of deleted orders', function () {
+    $c = unifiedContext();
+    $deleted = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    app(OrderWorkflowService::class)->delete($deleted);
+    expect($deleted->reservations()->where('state', 'reserved')->count())->toBe(0);
+
+    $legacyDeleted = app(UnifiedOrderService::class)->create($c['workspace'], [...$c['data'], 'submission_reference' => (string) Str::uuid()]);
+    $legacyDeleted->delete();
+    $live = app(UnifiedOrderService::class)->create($c['workspace'], [...$c['data'], 'submission_reference' => (string) Str::uuid()]);
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+
+    expect($legacyDeleted->reservations()->where('state', 'reserved')->count())->toBe(0)
+        ->and($live->fresh()->status)->toBe('cancelled');
+});

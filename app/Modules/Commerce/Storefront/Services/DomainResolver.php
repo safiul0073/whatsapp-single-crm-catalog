@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Storefront\Services;
 
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Workspaces\Models\Workspace;
 
@@ -24,7 +25,7 @@ class DomainResolver
         $workspace = Workspace::query()->where('status', 'active')->findOrFail($domain->workspace_id);
         $primary = StoreDomain::query()->where('workspace_id', $workspace->id)->where('status', 'active')->where('is_primary', true)->firstOrFail();
 
-        return ['store_id' => $workspace->id, 'name' => $workspace->name, 'primary_host' => $primary->host, 'host' => $host, 'status' => 'active'];
+        return ['store_id' => $workspace->id, 'name' => $workspace->name, 'primary_host' => $primary->host, 'host' => $host, 'status' => 'active', 'store_type' => StoreFeatures::type($workspace->id)];
     }
 
     public static function sibling(string $host): string

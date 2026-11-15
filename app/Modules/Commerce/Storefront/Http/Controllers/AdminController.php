@@ -68,6 +68,8 @@ class AdminController extends Controller
 
         return view('commerce::user.storefront', [
             'settings' => $settings,
+            'businessType' => StoreFeatures::type($w),
+            'businessTypes' => (array) config('business_types.types'),
             'featureIcons' => app(FeatureIconCatalog::class)->presets($w),
             'featureIconDefaults' => FeatureIconCatalog::DEFAULTS,
             'tracking' => app(TrackingSettingsService::class)->admin($w),
@@ -179,6 +181,10 @@ class AdminController extends Controller
         }
 
         StorefrontSetting::query()->updateOrCreate(['workspace_id' => $w], ['config' => $newConfig]);
+        if ($r->filled('business_type')) {
+            $workspace = Workspace::query()->findOrFail($w);
+            $workspace->update(['settings' => [...(array) $workspace->settings, 'business_type' => $r->validated('business_type')]]);
+        }
         StoreFeatures::flush();
         $this->invalidate($w);
 

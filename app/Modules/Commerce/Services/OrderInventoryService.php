@@ -44,7 +44,7 @@ class OrderInventoryService
             return;
         }
         $this->reserve($order);
-        foreach ($order->reservations()->orderBy('variant_id')->get() as $reservation) {
+        foreach ($order->reservations()->where('state', 'reserved')->orderBy('variant_id')->get() as $reservation) {
             $variant = ProductVariant::query()->lockForUpdate()->findOrFail($reservation->variant_id);
             $variant->decrement('stock_quantity', $reservation->quantity);
             $reservation->update(['state' => 'consumed']);
@@ -179,13 +179,27 @@ class OrderInventoryService
         $count = 0;
         foreach (OrderReservation::query()->where('state', 'reserved')->where('expires_at', '<=', now())->distinct()->pluck('order_id') as $id) {
             DB::transaction(function () use ($id, &$count): void {
-                $order = Order::query()->lockForUpdate()->findOrFail($id);
+                $order = Order::query()->withTrashed()->lockForUpdate()->find($id);
+                if (! $order) {
+                    OrderReservation::query()->where('order_id', $id)->where('state', 'reserved')->update(['state' => 'expired']);
+
+                    return;
+                }
+                if (! $order->trashed() && $order->payment_state !== 'unpaid') {
+                    $order->reservations()->where('state', 'reserved')->where('expires_at', '<=', now())
+                        ->update(['expires_at' => now()->addHours(StoreOrderSetting::forWorkspace($order->workspace_id)->reservation_hours)]);
+
+                    return;
+                }
                 $reservations = $order->reservations()->where('state', 'reserved')->where('expires_at', '<=', now())->get();
                 foreach ($reservations as $reservation) {
                     $this->recordReservation($order, $reservation, 'expired');
                     $reservation->update(['state' => 'expired']);
                 }
                 $expired = $reservations->count();
+                if ($order->trashed()) {
+                    return;
+                }
                 if ($expired) {
                     app(UnifiedOrderService::class)->event($order, 'reservation_expired', 'Stock reservation expired');
                     $count++;

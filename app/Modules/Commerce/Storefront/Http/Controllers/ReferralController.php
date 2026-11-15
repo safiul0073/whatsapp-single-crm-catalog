@@ -5,12 +5,15 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderMoney;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\ReferralRequest;
 use App\Modules\Commerce\Storefront\Models\Referral;
 use App\Modules\Commerce\Storefront\Models\ReferralTransaction;
 use App\Modules\Commerce\Storefront\Models\RewardLedgerEntry;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\Commerce\Storefront\Services\RefundRequestService;
 use App\Modules\Commerce\Storefront\Services\RewardWalletService;
+use App\Modules\Commerce\Storefront\Services\WithdrawalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -39,6 +42,9 @@ class ReferralController extends Controller
             'max_redeem_percent' => $s->max_redeem_percent,
             'min_spend_balance' => $s->min_spend_balance,
             'terms' => $s->terms,
+            'store_type' => StoreFeatures::type($w),
+            'refunds_enabled' => app(RefundRequestService::class)->enabled($w),
+            'withdrawals_enabled' => app(WithdrawalService::class)->enabled($w),
         ]]);
     }
 

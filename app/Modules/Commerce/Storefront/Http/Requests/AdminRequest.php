@@ -6,6 +6,7 @@ use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AdminRequest extends FormRequest
 {
@@ -74,6 +75,7 @@ class AdminRequest extends FormRequest
                 'config.recent_orders_ticker' => 'nullable|boolean',
                 'config.welcome_guide' => 'nullable|boolean',
                 'config.wholesale_enabled' => 'nullable|boolean',
+                'business_type' => ['nullable', 'string', Rule::in(array_keys((array) config('business_types.types')))],
                 'config.retail_enabled' => 'nullable|boolean',
                 'config.app_download_title' => 'nullable|string|max:120',
                 'config.app_download_subtitle' => 'nullable|string|max:200',
