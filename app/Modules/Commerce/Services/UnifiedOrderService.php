@@ -329,7 +329,7 @@ class UnifiedOrderService
                 $this->inventory->releaseRemoved($locked);
             }
 
-            if (! $isPaid && $locked->payments->isNotEmpty() && $locked->total !== null) {
+            if (! $isPaid && ! in_array($locked->payment_state, ['refunded', 'partially_refunded'], true) && $locked->payments->isNotEmpty() && $locked->total !== null) {
                 $paid = OrderMoney::minor($locked->balanceDue(), $locked->moneyPrecision()) === 0;
                 $locked->update(['payment_state' => $paid ? 'paid' : 'partially_paid', 'paid_at' => $paid ? now() : null]);
             }

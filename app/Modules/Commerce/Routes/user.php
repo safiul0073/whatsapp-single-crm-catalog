@@ -9,6 +9,8 @@ use App\Modules\Commerce\Http\Controllers\User\VisitorController;
 use App\Modules\Commerce\Storefront\Http\Controllers\AdminController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackTemplateAdminController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ReferralAdminController;
+use App\Modules\Commerce\Storefront\Http\Controllers\RefundAdminController;
+use App\Modules\Commerce\Storefront\Http\Controllers\WithdrawalAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commerce')->name('commerce.')->group(function (): void {
@@ -226,5 +228,29 @@ Route::prefix('commerce/referrals')->name('commerce.referrals.')->group(function
         Route::delete('rules/{id}', [$c, 'deleteRule'])->name('rules.destroy');
         Route::post('wallets/adjust', [$c, 'adjustWallet'])->name('wallets.adjust');
         Route::put('cashins/{id}', [$c, 'updateCashin'])->name('cashins.update');
+    });
+});
+
+Route::prefix('commerce/refunds')->name('commerce.refunds.')->group(function (): void {
+    $c = RefundAdminController::class;
+    Route::middleware('permission:commerce.refunds.view')->group(function () use ($c): void {
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('{id}', [$c, 'show'])->whereNumber('id')->name('show');
+    });
+    Route::middleware('permission:commerce.refunds.manage')->group(function () use ($c): void {
+        Route::put('settings', [$c, 'saveSettings'])->name('settings');
+        Route::put('{id}', [$c, 'transition'])->whereNumber('id')->name('transition');
+    });
+});
+
+Route::prefix('commerce/withdrawals')->name('commerce.withdrawals.')->group(function (): void {
+    $c = WithdrawalAdminController::class;
+    Route::middleware('permission:commerce.referrals.view')->group(function () use ($c): void {
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('export', [$c, 'export'])->name('export');
+    });
+    Route::middleware('permission:commerce.referrals.manage')->group(function () use ($c): void {
+        Route::put('schedule', [$c, 'saveSchedule'])->name('schedule');
+        Route::put('{id}', [$c, 'update'])->whereNumber('id')->name('update');
     });
 });

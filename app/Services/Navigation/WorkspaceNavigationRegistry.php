@@ -379,11 +379,15 @@ class WorkspaceNavigationRegistry
      */
     public function featureEnabled(?Authenticatable $user, ?string $feature): bool
     {
-        if ($feature !== 'wholesale' || ! $user instanceof User) {
+        if (! $feature || ! $user instanceof User) {
             return true;
         }
 
-        return StoreFeatures::wholesaleEnabled(app(WorkspaceResolver::class)->current($user)?->id);
+        $workspaceId = app(WorkspaceResolver::class)->current($user)?->id;
+
+        return $feature === 'wholesale'
+            ? StoreFeatures::wholesaleEnabled($workspaceId)
+            : StoreFeatures::typeHas($workspaceId, $feature);
     }
 
     /**
@@ -968,6 +972,24 @@ class WorkspaceNavigationRegistry
                                 'icon' => 'ph-gift',
                                 'permission' => 'commerce.referrals.view',
                                 'keywords' => 'referral refer earn rewards wallet cash-in cashin target slabs',
+                            ],
+                            [
+                                'label' => __('Refund Management'),
+                                'route' => 'user.commerce.refunds.index',
+                                'active' => 'user.commerce.refunds.*',
+                                'icon' => 'ph-arrow-u-up-left',
+                                'permission' => 'commerce.refunds.view',
+                                'feature' => 'referral',
+                                'keywords' => 'refund return money back referrer review approve reject',
+                            ],
+                            [
+                                'label' => __('Withdrawals'),
+                                'route' => 'user.commerce.withdrawals.index',
+                                'active' => 'user.commerce.withdrawals.*',
+                                'icon' => 'ph-hand-coins',
+                                'permission' => 'commerce.referrals.view',
+                                'feature' => 'referral',
+                                'keywords' => 'withdraw withdrawal schedule payout bkash nagad rocket bank window weekly monthly',
                             ],
                         ],
                     ],

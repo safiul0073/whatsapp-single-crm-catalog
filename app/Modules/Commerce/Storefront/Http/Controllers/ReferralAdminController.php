@@ -14,12 +14,12 @@ use App\Modules\Commerce\Storefront\Models\ReferralTransaction;
 use App\Modules\Commerce\Storefront\Models\RewardLedgerEntry;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\Commerce\Storefront\Services\RewardWalletService;
+use App\Modules\Commerce\Storefront\Services\WithdrawalService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -146,16 +146,7 @@ class ReferralAdminController extends Controller
     public function updateCashin(ReferralAdminRequest $r, int $id): RedirectResponse
     {
         $w = $this->workspace($r);
-        $status = $r->validated('status');
-        DB::transaction(function () use ($w, $id, $status, $r): void {
-            $cashin = CashinRequest::query()->where('workspace_id', $w)->lockForUpdate()->findOrFail($id);
-            $allowed = ['pending' => ['approved', 'rejected', 'paid'], 'approved' => ['paid', 'rejected']][$cashin->status] ?? [];
-            abort_unless(in_array($status, $allowed, true), 422, __('This cash-in request can no longer be changed to :status.', ['status' => $status]));
-            if ($status === 'rejected') {
-                $this->wallet->post($w, $cashin->customer_id, $cashin->amount_minor, 'cashin_refund', 'cashin-refund:'.$cashin->id, $cashin, 'Cash-in rejected');
-            }
-            $cashin->update(['status' => $status, 'admin_note' => $r->validated('admin_note'), 'processed_by' => $r->user()->id, 'processed_at' => now()]);
-        });
+        app(WithdrawalService::class)->decide($w, $id, $r->validated('status'), $r->validated('admin_note'), null, $r->user()->id);
 
         return $this->back('cashins', __('Cash-in request updated.'));
     }

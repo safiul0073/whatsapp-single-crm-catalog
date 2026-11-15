@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Support\Once;
 
 class StoreFeatures
@@ -26,6 +27,29 @@ class StoreFeatures
         }
 
         return self::flag($workspaceId, 'retail_enabled');
+    }
+
+    /**
+     * The business type the owner picked for this workspace (see config/business_types.php).
+     */
+    public static function type(?int $workspaceId): string
+    {
+        $default = (string) config('business_types.default');
+        if (! $workspaceId) {
+            return $default;
+        }
+
+        $type = once(fn (): ?string => Workspace::query()->whereKey($workspaceId)->value('settings')['business_type'] ?? null);
+
+        return is_string($type) && array_key_exists($type, (array) config('business_types.types')) ? $type : $default;
+    }
+
+    /**
+     * Whether the workspace's business type switches on a store-level feature such as "referral".
+     */
+    public static function typeHas(?int $workspaceId, string $feature): bool
+    {
+        return in_array($feature, (array) config('business_types.types.'.self::type($workspaceId).'.features'), true);
     }
 
     public static function flush(): void

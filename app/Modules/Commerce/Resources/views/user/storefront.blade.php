@@ -1294,6 +1294,33 @@
 
                 @include('commerce::user.partials.storefront-feature-icons-card')
 
+                {{-- Business Type Card --}}
+                <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                    <div class="flex items-center gap-2.5">
+                        <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <i class="ph ph-storefront text-lg"></i>
+                        </span>
+                        <div>
+                            <h2 class="heading-4 text-title text-base font-semibold">{{ __('Store Type') }}</h2>
+                            <p class="text-xs text-body">{{ __('Choose how this business runs. Changing the type never deletes orders, wallets or requests.') }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        @foreach ($businessTypes as $typeKey => $type)
+                            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 p-4 has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:border-neutral-800">
+                                <input type="radio" name="business_type" value="{{ $typeKey }}" class="mt-1" @checked(old('business_type', $businessType) === $typeKey)>
+                                <span>
+                                    <span class="block text-sm font-semibold text-title">{{ __($type['label']) }}</span>
+                                    <span class="mt-0.5 block text-xs text-body">{{ __($type['description']) }}</span>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('business_type')
+                        <p class="mt-2 text-[11px] text-rose-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 {{-- Retail Selling Card --}}
                 <div class="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div class="flex items-center justify-between gap-4">

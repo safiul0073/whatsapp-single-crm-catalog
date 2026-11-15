@@ -12,6 +12,6 @@ class ReferralSetting extends Model
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'cashin_enabled' => 'boolean', 'cashin_methods' => 'array', 'max_redeem_percent' => 'integer', 'max_referrals_per_customer' => 'integer'];
+        return ['enabled' => 'boolean', 'cashin_enabled' => 'boolean', 'cashin_methods' => 'array', 'max_redeem_percent' => 'integer', 'max_referrals_per_customer' => 'integer', 'refunds_enabled' => 'boolean', 'withdrawal_weekly_day' => 'integer', 'withdrawal_monthly_day' => 'integer'];
     }
 }

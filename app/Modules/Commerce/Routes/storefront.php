@@ -14,7 +14,9 @@ use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ReferralController;
+use App\Modules\Commerce\Storefront\Http\Controllers\RefundRequestController;
 use App\Modules\Commerce\Storefront\Http\Controllers\TrackingController;
+use App\Modules\Commerce\Storefront\Http\Controllers\WithdrawalController;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticateCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticatePlatform;
 use App\Modules\Commerce\Storefront\Http\Middleware\OptionalCustomer;
@@ -109,6 +111,16 @@ $storefrontRoutes = function (): void {
         Route::get('catalog/products/{slug}/review-eligibility', [EngagementController::class, 'reviewEligibility']);
         Route::get('me/referral', [ReferralController::class, 'show']);
         Route::get('me/rewards', [ReferralController::class, 'rewards']);
+        Route::get('me/refund-requests', [RefundRequestController::class, 'index']);
+        Route::post('me/refund-requests', [RefundRequestController::class, 'store']);
+        Route::get('me/refund-requests/{ref}', [RefundRequestController::class, 'show']);
+        Route::get('me/orders/{ref}/refund-eligibility', [RefundRequestController::class, 'eligibility']);
+        Route::get('me/referral/refund-requests', [RefundRequestController::class, 'review']);
+        Route::get('me/referral/refund-requests/{ref}', [RefundRequestController::class, 'reviewShow']);
+        Route::post('me/referral/refund-requests/{ref}/decision', [RefundRequestController::class, 'decide']);
+        Route::get('me/withdrawals', [WithdrawalController::class, 'index']);
+        Route::post('me/withdrawals', [WithdrawalController::class, 'store']);
+        Route::post('me/withdrawals/{id}/cancel', [WithdrawalController::class, 'cancel'])->whereNumber('id');
     });
 };
 

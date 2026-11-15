@@ -17,8 +17,10 @@ use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
+use App\Modules\Commerce\Storefront\Models\CashinRequest;
 use App\Modules\Commerce\Storefront\Models\Coupon;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
@@ -26,6 +28,8 @@ use App\Modules\Commerce\Storefront\Models\LegacyMapping;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\ReferralSetting;
 use App\Modules\Commerce\Storefront\Models\ReferralTransaction;
+use App\Modules\Commerce\Storefront\Models\RefundRequest;
+use App\Modules\Commerce\Storefront\Models\RewardLedgerEntry;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontContent;
 use App\Modules\Commerce\Storefront\Models\StorefrontPage;
@@ -34,12 +38,16 @@ use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\LegacyImportService;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
+use App\Modules\Commerce\Storefront\Services\RefundRequestService;
 use App\Modules\Commerce\Storefront\Services\RewardWalletService;
+use App\Modules\Commerce\Storefront\Services\WithdrawalService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Models\ShippingZone;
 use App\Modules\Workspaces\Models\Workspace;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -347,7 +355,7 @@ it('submits payment evidence without marking the order paid', function (): void 
     expect($this->variant->fresh()->stock_quantity)->toBe(5);
 });
 
-it('cancels an unpaid order when its stock hold expires, even with payment proof', function (): void {
+it('keeps the stock hold for an order whose payment proof awaits review', function (): void {
     Storage::fake('local');
     [$headers,$data] = storefrontCheckoutFixture($this);
     $order = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
@@ -356,10 +364,21 @@ it('cancels an unpaid order when its stock hold expires, even with payment proof
     $this->travel(25)->hours();
     app(OrderInventoryService::class)->expire();
     $model = Order::query()->findOrFail($order['id']);
+    expect($model->status)->toBe('awaiting_payment')
+        ->and($model->events()->where('key', 'hold_expired')->exists())->toBeFalse()
+        ->and(OrderReservation::query()->where('order_id', $model->id)->where('state', 'reserved')->where('expires_at', '>', now())->exists())->toBeTrue()
+        ->and($this->variant->fresh()->stock_quantity)->toBe(5);
+});
+
+it('cancels an unpaid order without payment proof when its stock hold expires', function (): void {
+    [$headers,$data] = storefrontCheckoutFixture($this);
+    $order = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+    $model = Order::query()->findOrFail($order['id']);
     expect($model->status)->toBe('cancelled')
         ->and($model->events()->where('key', 'hold_expired')->exists())->toBeTrue()
-        ->and(OrderReservation::query()->where('order_id', $model->id)->where('state', 'reserved')->exists())->toBeFalse()
-        ->and($this->variant->fresh()->stock_quantity)->toBe(5);
+        ->and(OrderReservation::query()->where('order_id', $model->id)->where('state', 'reserved')->exists())->toBeFalse();
 });
 
 it('places a held order without choosing a payment method', function (): void {
@@ -595,14 +614,214 @@ it('caps reward use at the owner-set share of the order total', function (): voi
         ->assertJsonPath('data.total', '35.00');
 });
 
-it('does not let customers withdraw their reward balance', function (): void {
-    ReferralSetting::query()->create(['workspace_id' => $this->store->id, 'enabled' => true]);
+function referralStore($test, array $settings = []): ReferralSetting
+{
+    $test->store->update(['settings' => [...(array) $test->store->settings, 'business_type' => 'referral']]);
+    StoreFeatures::flush();
+
+    return ReferralSetting::query()->updateOrCreate(['workspace_id' => $test->store->id], ['enabled' => true, 'cashin_enabled' => true, 'refunds_enabled' => true, 'reward_type' => 'fixed', 'reward_value' => 10, 'reward_scope' => 'every_order', 'withdrawal_frequency' => 'weekly', 'withdrawal_weekly_day' => 5, 'withdrawal_opens_at' => '09:00', 'withdrawal_closes_at' => '18:00', 'min_cashin_balance' => 5, 'max_cashin_amount' => 50, ...$settings]);
+}
+
+function storefrontCustomer($test, string $name, string $phone): array
+{
+    $contact = Contact::withoutEvents(fn () => Contact::query()->create(['workspace_id' => $test->store->id, 'name' => $name, 'phone' => $phone, 'source' => 'website', 'opt_in_status' => 'unknown']));
+    $customer = app(CustomerService::class)->enroll($contact, true);
+
+    return [$customer, [...$test->headers, 'Authorization' => 'Bearer '.$customer->createToken('test', ['storefront'], now()->addDay())->plainTextToken]];
+}
+
+it('keeps withdrawals and refund requests off for traditional stores', function (): void {
+    ReferralSetting::query()->create(['workspace_id' => $this->store->id, 'enabled' => true, 'cashin_enabled' => true, 'refunds_enabled' => true]);
     app(RewardWalletService::class)->post($this->store->id, $this->customer->id, 800, 'adjustment');
-    expect($this->postJson('/api/storefront/v1/me/cashin-requests', ['amount' => 5, 'method' => 'bKash', 'account_details' => '017'], $this->auth)->status())->toBeIn([404, 405]);
-    $this->getJson('/api/storefront/v1/me/rewards', $this->auth)->assertOk()->assertJsonPath('data.balance', '8.00')->assertJsonMissingPath('data.cashin');
-    $this->getJson('/api/storefront/v1/referral/program', $this->headers)->assertOk()->assertJsonMissingPath('data.cashin_enabled');
+    $this->getJson('/internal/stores/resolve?host=one.localhost', $this->headers)->assertOk()->assertJsonPath('data.store_type', 'traditional');
+    $this->postJson('/api/storefront/v1/me/withdrawals', ['amount' => 5, 'method' => 'bkash', 'account_details' => '01700000000'], [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertNotFound();
+    $this->getJson('/api/storefront/v1/me/withdrawals', $this->auth)->assertNotFound();
+    $this->getJson('/api/storefront/v1/me/refund-requests', $this->auth)->assertNotFound();
+    $this->getJson('/api/storefront/v1/me/rewards', $this->auth)->assertOk()->assertJsonPath('data.balance', '8.00');
+    $this->getJson('/api/storefront/v1/referral/program', $this->headers)->assertOk()->assertJsonPath('data.withdrawals_enabled', false)->assertJsonPath('data.refunds_enabled', false);
     expect(app(RewardWalletService::class)->balance($this->store->id, $this->customer->id))->toBe(800);
     expect(fn () => app(RewardWalletService::class)->post($this->store->id, $this->customer->id, -900, 'redeem'))->toThrow(HttpException::class);
+});
+
+it('lets customers withdraw only inside the window and reserves the amount at once', function (): void {
+    referralStore($this);
+    $wallet = app(RewardWalletService::class);
+    $wallet->post($this->store->id, $this->customer->id, 6000, 'adjustment');
+    $this->getJson('/internal/stores/resolve?host=one.localhost', $this->headers)->assertOk()->assertJsonPath('data.store_type', 'referral');
+    $body = ['amount' => '20', 'method' => 'bkash', 'account_details' => '01700000000'];
+    $key = (string) Str::uuid();
+
+    // Thursday in Dhaka: the weekly Friday window is closed.
+    $this->travelTo(CarbonImmutable::parse('2026-11-19 12:00', 'Asia/Dhaka'));
+    $this->auth = [...$this->headers, 'Authorization' => 'Bearer '.$this->customer->createToken('test', ['storefront'], now()->addDays(30))->plainTextToken];
+    $this->getJson('/api/storefront/v1/me/withdrawals', $this->auth)->assertOk()->assertJsonPath('data.schedule.open', false)->assertJsonPath('data.schedule.next_opens_at', '2026-11-20T09:00:00+06:00')->assertJsonPath('data.balance', '60.00');
+    $this->postJson('/api/storefront/v1/me/withdrawals', $body, [...$this->auth, 'Idempotency-Key' => $key])->assertStatus(422);
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(6000);
+
+    // Friday 10:00 in Dhaka: open.
+    $this->travelTo(CarbonImmutable::parse('2026-11-20 10:00', 'Asia/Dhaka'));
+    $this->postJson('/api/storefront/v1/me/withdrawals', [...$body, 'amount' => '2'], [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    $this->postJson('/api/storefront/v1/me/withdrawals', [...$body, 'amount' => '55'], [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    $this->postJson('/api/storefront/v1/me/withdrawals', [...$body, 'method' => 'paypal'], [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    $id = $this->postJson('/api/storefront/v1/me/withdrawals', $body, [...$this->auth, 'Idempotency-Key' => $key])->assertCreated()->assertJsonPath('data.status', 'pending')->json('data.id');
+    $this->postJson('/api/storefront/v1/me/withdrawals', $body, [...$this->auth, 'Idempotency-Key' => $key])->assertOk()->assertJsonPath('data.id', $id);
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(4000)
+        ->and(CashinRequest::query()->count())->toBe(1);
+    $this->getJson('/api/storefront/v1/me/withdrawals', $this->auth)->assertOk()->assertJsonPath('data.schedule.open', true)->assertJsonPath('data.balance', '40.00')->assertJsonPath('data.reserved', '20.00');
+
+    // The reserved amount cannot be spent twice.
+    $this->postJson('/api/storefront/v1/me/withdrawals', [...$body, 'amount' => '45'], [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+
+    // Another customer cannot cancel it; the owner cancels nothing by repeating a decision.
+    [, $strangerAuth] = storefrontCustomer($this, 'Stranger', '+8801700000007');
+    $this->postJson("/api/storefront/v1/me/withdrawals/{$id}/cancel", [], $strangerAuth)->assertNotFound();
+
+    // A later schedule change leaves the submitted request and its window untouched.
+    $window = CashinRequest::query()->findOrFail($id)->window_starts_at;
+    ReferralSetting::query()->where('workspace_id', $this->store->id)->update(['withdrawal_frequency' => 'monthly', 'withdrawal_monthly_day' => 1]);
+    expect(CashinRequest::query()->findOrFail($id)->window_starts_at->equalTo($window))->toBeTrue()
+        ->and(CashinRequest::query()->findOrFail($id)->status)->toBe('pending');
+
+    $service = app(WithdrawalService::class);
+    $service->decide($this->store->id, $id, 'rejected', 'Wrong number', null, 1);
+    $service->decide($this->store->id, $id, 'rejected', 'Wrong number', null, 1);
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(6000);
+    expect(fn () => $service->decide($this->store->id, $id, 'paid', null, 'TX1', 1))->toThrow(HttpException::class);
+});
+
+it('keeps the debit when a withdrawal is paid and releases it when the customer cancels', function (): void {
+    referralStore($this, ['withdrawal_frequency' => 'monthly', 'withdrawal_monthly_day' => 31]);
+    $wallet = app(RewardWalletService::class);
+    $wallet->post($this->store->id, $this->customer->id, 6000, 'adjustment');
+    // February has no 31st, so the window falls on the 28th.
+    $this->travelTo(CarbonImmutable::parse('2027-02-28 09:30', 'Asia/Dhaka'));
+    $this->auth = [...$this->headers, 'Authorization' => 'Bearer '.$this->customer->createToken('test', ['storefront'], now()->addDays(30))->plainTextToken];
+    $body = ['amount' => '10', 'method' => 'bank', 'account_details' => 'Bank Asia 1234567'];
+    $paid = $this->postJson('/api/storefront/v1/me/withdrawals', $body, [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data.id');
+    $cancelled = $this->postJson('/api/storefront/v1/me/withdrawals', $body, [...$this->auth, 'Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data.id');
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(4000);
+
+    $this->postJson("/api/storefront/v1/me/withdrawals/{$cancelled}/cancel", [], $this->auth)->assertOk()->assertJsonPath('data.status', 'cancelled');
+    $this->postJson("/api/storefront/v1/me/withdrawals/{$cancelled}/cancel", [], $this->auth)->assertOk();
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(5000);
+
+    $service = app(WithdrawalService::class);
+    $service->decide($this->store->id, $paid, 'processing', null, null, 1);
+    $service->decide($this->store->id, $paid, 'paid', null, 'TX-99', 1);
+    $this->postJson("/api/storefront/v1/me/withdrawals/{$paid}/cancel", [], $this->auth)->assertStatus(422);
+    expect($wallet->balance($this->store->id, $this->customer->id))->toBe(5000)
+        ->and(RewardLedgerEntry::query()->where('customer_id', $this->customer->id)->pluck('type')->all())->toBe(['adjustment', 'cashin_hold', 'cashin_hold', 'cashin_refund']);
+    $this->getJson('/api/storefront/v1/me/withdrawals', $this->auth)->assertOk()->assertJsonPath('data.requests.1.payout_reference', 'TX-99');
+});
+
+it('sends a refund request to the referrer first and lets only the owner complete it', function (): void {
+    referralStore($this);
+    $wallet = app(RewardWalletService::class);
+    $refunds = app(RefundRequestService::class);
+    $referrer = $this->customer;
+    $referrerAuth = $this->auth;
+    $code = app(ReferralService::class)->codeFor($referrer)->code;
+    [$friend, $friendAuth] = storefrontCustomer($this, 'Friend', '+8801700000009');
+    [, $strangerAuth] = storefrontCustomer($this, 'Stranger', '+8801700000007');
+    app(ReferralService::class)->attach($friend, $code);
+
+    $this->customer = $friend;
+    $this->auth = $friendAuth;
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    // The checkout fixture rewrites the workspace settings, so the store type is set again.
+    referralStore($this);
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    $ref = $order->submission_reference;
+
+    // Unpaid orders cannot be refunded.
+    $this->getJson("/api/storefront/v1/me/orders/{$ref}/refund-eligibility", $friendAuth)->assertOk()->assertJsonPath('data.eligible', false);
+    app(OrderWorkflowService::class)->transition($order, 'paid');
+    $order->refresh()->update(['status' => 'shipped']);
+    app(OrderWorkflowService::class)->transition($order, 'completed');
+    expect($wallet->balance($this->store->id, $referrer->id))->toBe(1000);
+    $this->getJson("/api/storefront/v1/me/orders/{$ref}/refund-eligibility", $friendAuth)->assertOk()->assertJsonPath('data.eligible', true)->assertJsonPath('data.refundable', '45.00');
+
+    $key = (string) Str::uuid();
+    $body = ['order' => $ref, 'amount' => '45', 'reason' => 'damaged', 'details' => 'Torn sleeve'];
+    $this->postJson('/api/storefront/v1/me/refund-requests', [...$body, 'amount' => '50'], [...$friendAuth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$strangerAuth, 'Idempotency-Key' => (string) Str::uuid()])->assertNotFound();
+    $reference = $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$friendAuth, 'Idempotency-Key' => $key])->assertCreated()->assertJsonPath('data.status', 'pending_referrer')->json('data.reference');
+    $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$friendAuth, 'Idempotency-Key' => $key])->assertOk()->assertJsonPath('data.reference', $reference);
+    $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$friendAuth, 'Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    expect(RefundRequest::query()->count())->toBe(1);
+
+    // Customers see only their own requests; referrers see only requests from people they referred.
+    $this->getJson("/api/storefront/v1/me/refund-requests/{$reference}", $friendAuth)->assertOk();
+    $this->getJson("/api/storefront/v1/me/refund-requests/{$reference}", $strangerAuth)->assertNotFound();
+    $this->getJson("/api/storefront/v1/me/refund-requests/{$reference}", $referrerAuth)->assertNotFound();
+    $this->getJson("/api/storefront/v1/me/referral/refund-requests/{$reference}", $strangerAuth)->assertNotFound();
+    $this->getJson("/api/storefront/v1/me/referral/refund-requests/{$reference}", $friendAuth)->assertNotFound();
+    $this->postJson("/api/storefront/v1/me/referral/refund-requests/{$reference}/decision", ['decision' => 'approved'], $strangerAuth)->assertNotFound();
+    $this->getJson('/api/storefront/v1/me/referral/refund-requests?status=pending', $referrerAuth)->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.can_decide', true)->assertJsonPath('data.0.customer.name', 'Friend');
+
+    // The referrer's approval moves no money.
+    $this->postJson("/api/storefront/v1/me/referral/refund-requests/{$reference}/decision", ['decision' => 'rejected'], $referrerAuth)->assertStatus(422);
+    $this->postJson("/api/storefront/v1/me/referral/refund-requests/{$reference}/decision", ['decision' => 'approved', 'comment' => 'Seen the photos'], $referrerAuth)->assertOk()->assertJsonPath('data.status', 'awaiting_admin');
+    $this->postJson("/api/storefront/v1/me/referral/refund-requests/{$reference}/decision", ['decision' => 'rejected', 'comment' => 'Changed my mind'], $referrerAuth)->assertStatus(422);
+    expect($wallet->balance($this->store->id, $referrer->id))->toBe(1000)
+        ->and($order->fresh()->payment_state)->toBe('paid');
+
+    // The owner completes it once: wallet credit, order payment state and commission reversal.
+    $request = RefundRequest::query()->where('reference', $reference)->firstOrFail();
+    expect(fn () => $refunds->adminTransition($this->store->id, $request->id, 'completed', ['payout_method' => 'wallet'], 1))->toThrow(HttpException::class);
+    expect(fn () => $refunds->adminTransition($this->other->id, $request->id, 'processing', [], 1))->toThrow(ModelNotFoundException::class);
+    $refunds->adminTransition($this->store->id, $request->id, 'processing', [], 1);
+    $refunds->adminTransition($this->store->id, $request->id, 'completed', ['payout_method' => 'wallet'], 1);
+    $refunds->adminTransition($this->store->id, $request->id, 'completed', ['payout_method' => 'wallet'], 1);
+    expect($wallet->balance($this->store->id, $friend->id))->toBe(4500)
+        ->and($wallet->balance($this->store->id, $referrer->id))->toBe(0)
+        ->and($order->fresh()->payment_state)->toBe('refunded')
+        ->and($order->fresh()->refunded_amount)->toEqual('45.0000')
+        ->and($request->fresh()->commission_reversed_minor)->toBe(1000)
+        ->and($request->fresh()->commission_shortfall_minor)->toBe(0)
+        ->and($request->events()->pluck('to_status')->all())->toBe(['pending_referrer', 'awaiting_admin', 'processing', 'completed'])
+        ->and(RewardLedgerEntry::query()->where('type', 'order_refund')->count())->toBe(1)
+        ->and(RewardLedgerEntry::query()->where('type', 'referral_reversal')->count())->toBe(1);
+    $this->getJson("/api/storefront/v1/me/orders/{$ref}/refund-eligibility", $friendAuth)->assertOk()->assertJsonPath('data.eligible', false);
+    expect(fn () => $request->events()->first()->update(['comment' => 'edited']))->toThrow(LogicException::class);
+});
+
+it('records the customer of a rejected refund and a shortfall when the referrer already spent the commission', function (): void {
+    referralStore($this);
+    $wallet = app(RewardWalletService::class);
+    $refunds = app(RefundRequestService::class);
+    $referrer = $this->customer;
+    $referrerAuth = $this->auth;
+    [$friend, $friendAuth] = storefrontCustomer($this, 'Friend', '+8801700000009');
+    app(ReferralService::class)->attach($friend, app(ReferralService::class)->codeFor($referrer)->code);
+    $this->customer = $friend;
+    $this->auth = $friendAuth;
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    // The checkout fixture rewrites the workspace settings, so the store type is set again.
+    referralStore($this);
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+    app(OrderWorkflowService::class)->transition($order, 'paid');
+    $order->refresh()->update(['status' => 'shipped']);
+    app(OrderWorkflowService::class)->transition($order, 'completed');
+    $wallet->post($this->store->id, $referrer->id, -700, 'adjustment');
+
+    $body = ['order' => $order->submission_reference, 'amount' => '22.50', 'reason' => 'other'];
+    $first = $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$friendAuth, 'Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data.reference');
+    $this->postJson("/api/storefront/v1/me/referral/refund-requests/{$first}/decision", ['decision' => 'rejected', 'comment' => 'Item was fine'], $referrerAuth)->assertOk()->assertJsonPath('data.status', 'referrer_rejected');
+    $this->getJson("/api/storefront/v1/me/refund-requests/{$first}", $friendAuth)->assertOk()->assertJsonPath('data.referrer_comment', 'Item was fine');
+    expect($order->fresh()->payment_state)->toBe('paid');
+
+    // A rejected request is closed, so the customer may ask again; half the order is refunded by hand.
+    $second = $this->postJson('/api/storefront/v1/me/refund-requests', $body, [...$friendAuth, 'Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data.reference');
+    $request = RefundRequest::query()->where('reference', $second)->firstOrFail();
+    $refunds->adminTransition($this->store->id, $request->id, 'processing', [], 1);
+    $refunds->adminTransition($this->store->id, $request->id, 'completed', ['payout_method' => 'manual', 'payout_channel' => 'bkash', 'payout_reference' => 'TX5'], 1);
+    expect($order->fresh()->payment_state)->toBe('partially_refunded')
+        ->and($wallet->balance($this->store->id, $friend->id))->toBe(0)
+        ->and($wallet->balance($this->store->id, $referrer->id))->toBe(0)
+        ->and($request->fresh()->commission_reversed_minor)->toBe(300)
+        ->and($request->fresh()->commission_shortfall_minor)->toBe(200)
+        ->and($request->fresh()->payout_reference)->toBe('TX5');
 });
 
 it('seeds full demo journal articles with covers for a single store', function (): void {

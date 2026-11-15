@@ -56,10 +56,12 @@ class StoreOrderController extends Controller
 
     public function cancel(Request $request, string $reference, OrderWorkflowService $workflow, UnifiedOrderService $orders): JsonResponse
     {
-        $order = $this->find($request, $reference);
-        $workflow->transition($order, 'cancelled');
+        return DB::transaction(function () use ($request, $reference, $workflow, $orders): JsonResponse {
+            $order = Order::query()->where('workspace_id', $request->attributes->get('store_workspace')->id)->where('submission_reference', $reference)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($order->status, ['requested', 'needs_details', 'quoted', 'awaiting_payment'], true) && $order->payment_state === 'unpaid', 422, 'Contact the store to cancel this order.');
 
-        return response()->json(['data' => $orders->payload($order->fresh())]);
+            return response()->json(['data' => $orders->payload($workflow->transition($order, 'cancelled'))]);
+        });
     }
 
     public function evidence(PaymentEvidenceRequest $request, string $reference): JsonResponse
@@ -85,6 +87,8 @@ class StoreOrderController extends Controller
                 }
                 throw $exception;
             }
+            $holdUntil = now()->addHours(StoreOrderSetting::forWorkspace($order->workspace_id)->reservation_hours);
+            $order->reservations()->where('state', 'reserved')->where('expires_at', '<', $holdUntil)->update(['expires_at' => $holdUntil]);
             app(UnifiedOrderService::class)->event($order, 'payment_submitted', 'Payment evidence submitted');
         });
 

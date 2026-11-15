@@ -42,6 +42,8 @@ class Module extends BasePanelModule
             'commerce.storefront.credentials' => 'Manage storefront credentials',
             'commerce.referrals.view' => 'View referrals',
             'commerce.referrals.manage' => 'Manage referrals',
+            'commerce.refunds.view' => 'View refund requests',
+            'commerce.refunds.manage' => 'Decide and complete refund requests',
             'commerce.pack-templates.manage' => 'Manage pack templates',
         ]];
     }

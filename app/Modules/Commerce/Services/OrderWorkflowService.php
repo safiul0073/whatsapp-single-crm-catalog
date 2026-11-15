@@ -263,6 +263,10 @@ class OrderWorkflowService
                 $this->restoreInventory($order);
                 $order->save();
             }
+            if (! $order->inventory_adjusted_at && $order->reservations()->where('state', 'reserved')->exists()) {
+                app(OrderInventoryService::class)->release($order);
+                $order->save();
+            }
             $order->events()->create(['key' => 'deleted', 'label' => 'Order deleted by owner', 'occurred_at' => now()]);
             $order->delete();
         });

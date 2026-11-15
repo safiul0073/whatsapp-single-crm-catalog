@@ -682,3 +682,25 @@ it('shows no balance due once an order is marked paid without a recorded payment
 
     expect($order->balanceDue())->toBe('1400.00');
 });
+
+it('keeps holding stock for a paid delivery sale past the hold window so it cannot be oversold', function () {
+    $c = posContext();
+    $c['variants'][0]->update(['stock_quantity' => 2]);
+    $c['data']['fulfillment_type'] = 'delivery';
+    $c['data']['shipping_address'] = ['name' => 'Buyer', 'phone' => '+15555550123', 'line1' => 'Main Street', 'city' => 'Boston', 'country' => 'US'];
+    $service = app(PosService::class);
+    $order = $service->checkout($c['workspace'], $c['data'], $c['user']);
+    app(OrderWorkflowService::class)->quote($order, ['shipping_address' => $c['data']['shipping_address'], 'shipping_amount' => '5']);
+    $service->recordPayment($order->fresh(), posPayment('25.00'), $c['user']);
+    expect($order->fresh()->payment_state)->toBe('paid')->and($c['variants'][0]->fresh()->stock_quantity)->toBe(2);
+
+    $this->travel(25)->hours();
+    app(OrderInventoryService::class)->expire();
+    $c['data']['submission_reference'] = (string) Str::uuid();
+    expect(fn () => $service->checkout($c['workspace'], $c['data'], $c['user']))->toThrow(ValidationException::class);
+
+    $box = app(OrderPackingService::class)->addRetailBox($order->fresh(), [$order->items[0]->id => 2]);
+    app(OrderPackingService::class)->markPacked($order->fresh(), $box->id);
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'shipped', ['tracking_number' => 'POS-TRACK']);
+    expect($c['variants'][0]->fresh()->stock_quantity)->toBe(0);
+});
