@@ -124,7 +124,7 @@ it('exposes sold counts and masked recent orders', function (): void {
     $this->getJson('/api/storefront/v1/catalog/products', $this->headers)->assertOk()->assertJsonPath('data.0.sold_count', 100);
     $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)->assertOk()->assertJsonPath('data.sold_count', 100);
     $res = $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.name', 'John D.')->assertJsonPath('data.0.full_name', 'John Doe')->assertJsonPath('data.0.total_items', 100)->assertJsonPath('data.0.quantity', 100)->assertJsonPath('data.0.product_slug', 'shirt');
+        ->assertJsonPath('data.0.name', 'John D.')->assertJsonPath('data.0.first_name', 'John')->assertJsonMissingPath('data.0.full_name')->assertJsonPath('data.0.total_items', 100)->assertJsonPath('data.0.quantity', 100)->assertJsonPath('data.0.product_slug', 'shirt');
     expect($res->getContent())->not->toContain('8801711111111');
     $this->getJson('/api/storefront/v1/catalog/recent-orders', [...$this->headers, 'X-Store-Host' => 'two.localhost'])->assertOk()->assertJsonCount(0, 'data');
 });
@@ -136,7 +136,28 @@ it('returns the full name and the total items across all order lines for the rec
     }
 
     $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.full_name', 'Test Customer')->assertJsonPath('data.0.name', 'Test C.')->assertJsonPath('data.0.total_items', 5);
+        ->assertJsonPath('data.0.first_name', 'Test')->assertJsonPath('data.0.name', 'Test C.')->assertJsonPath('data.0.total_items', 5);
+});
+
+it('shows recent orders from the last 30 days only', function (): void {
+    foreach (['In Window' => 29, 'Too Old' => 31] as $name => $daysAgo) {
+        $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0, 'customer_snapshot' => ['name' => $name]]);
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
+        $order->forceFill(['created_at' => now()->subDays($daysAgo)])->save();
+    }
+
+    $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('data.0.first_name', 'In');
+});
+
+it('shows only the five newest recent orders, newest first', function (): void {
+    foreach (['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as $name) {
+        $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0, 'customer_snapshot' => ['name' => $name]]);
+        $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
+    }
+
+    $res = $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(5, 'data');
+    expect(array_column($res->json('data'), 'first_name'))->toBe(['Six', 'Five', 'Four', 'Three', 'Two']);
 });
 
 it('returns only a valid two-letter country code for the recent orders ticker', function (): void {
@@ -149,7 +170,7 @@ it('returns only a valid two-letter country code for the recent orders ticker', 
     $make(null, 'No Country');
 
     $res = $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonCount(3, 'data');
-    expect(collect($res->json('data'))->pluck('country', 'full_name')->all())->toBe(['No Country' => null, 'Bad Country' => null, 'Has Country' => 'BD']);
+    expect(collect($res->json('data'))->pluck('country', 'first_name')->all())->toBe(['No' => null, 'Bad' => null, 'Has' => 'BD']);
     expect($res->getContent())->not->toContain('Secret Road')->not->toContain('Dhaka');
 });
 
@@ -157,7 +178,7 @@ it('falls back to Someone when the recent order has no customer name', function 
     $order = Order::query()->create(['workspace_id' => $this->store->id, 'contact_id' => null, 'number' => 'T-'.Str::random(6), 'status' => 'processing', 'currency' => 'BDT', 'subtotal' => 0, 'total' => 0]);
     $order->items()->create(['workspace_id' => $this->store->id, 'variant_id' => $this->variant->id, 'retailer_id' => 'shirt-m', 'sku' => 'shirt-m', 'product_name' => 'Shirt', 'quantity' => 1, 'unit_price' => 20, 'line_total' => 20]);
 
-    $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonPath('data.0.full_name', 'Someone');
+    $this->getJson('/api/storefront/v1/catalog/recent-orders', $this->headers)->assertOk()->assertJsonPath('data.0.first_name', 'Someone');
 });
 
 it('uses published workspace collections and real sale prices', function (): void {
