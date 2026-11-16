@@ -51,6 +51,7 @@
                 @if($order->boxes->isNotEmpty())@include('commerce::user.partials.order.packing')@endif
                 @if($unpackedItems->isNotEmpty())@include('commerce::user.partials.order.items')@endif
                 @if($showStatusForm || in_array($order->status, ['shipped', 'completed'], true))@include('commerce::user.partials.order.shipping')@endif
+                @can('shipping.shipments.view')@include('shipping::user.partials.order-shipments')@endcan
                 @include('commerce::user.partials.order.payments')
                 @include('commerce::user.partials.order.activity')
             </div>

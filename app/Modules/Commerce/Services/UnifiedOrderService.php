@@ -12,6 +12,7 @@ use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Storefront\Services\PackSelectionService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Shipping\Models\ShippingRate;
+use App\Modules\Shipping\Services\CustomerShipmentPresenter;
 use App\Modules\Shipping\Services\ShippingCalculatorService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -446,6 +447,7 @@ class UnifiedOrderService
                 'groups' => $order->groups->toArray(),
                 'boxes' => $order->boxes->toArray(),
                 'shipment' => $order->shipment?->toArray(),
+                'shipments' => CustomerShipmentPresenter::forOrder($order),
                 'timeline' => $order->trackingTimeline(),
             ]
         );

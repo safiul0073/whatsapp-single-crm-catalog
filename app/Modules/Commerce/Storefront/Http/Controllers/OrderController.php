@@ -10,6 +10,8 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Services\InvoiceService;
+use App\Modules\Shipping\Models\Shipment;
+use App\Modules\Shipping\Services\CustomerShipmentPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,7 +109,8 @@ class OrderController extends Controller
                 $q->where('number', $ref)
                     ->orWhere('tracking_code', $ref)
                     ->orWhere('tracking_number', $ref)
-                    ->orWhere('submission_reference', $ref);
+                    ->orWhere('submission_reference', $ref)
+                    ->orWhereIn('id', Shipment::query()->select('order_id')->where('tracking_number', $ref));
             })
             ->first();
 
@@ -124,6 +127,7 @@ class OrderController extends Controller
                 'tracking_url' => $order->tracking_url,
                 'delivery_method' => $order->delivery_method,
                 'timeline' => $order->trackingTimeline(),
+                'shipments' => CustomerShipmentPresenter::forOrder($order),
             ],
         ]);
     }
