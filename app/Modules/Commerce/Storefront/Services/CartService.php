@@ -228,6 +228,7 @@ class CartService
                 'color_image' => $colorImage,
                 'size' => $variant?->size,
                 'sku' => $variant?->sku,
+                'retailer_id' => $variant?->meta_retailer_id,
                 'quantity' => $line->quantity,
                 'price' => OrderMoney::decimal($price, $precision),
                 'minor_total' => $available ? $lineTotal : 0,

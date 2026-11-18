@@ -24,6 +24,7 @@ class TrackingSettingsRequest extends FormRequest
             'tiktok_events_token' => ['nullable', 'string', 'max:1000'],
             'clear_tiktok_token' => ['nullable', 'boolean'],
             'tiktok_test_event_code' => ['nullable', 'regex:/^[A-Za-z0-9_]{1,40}$/D'],
+            'consent_required' => ['nullable', 'boolean'],
         ];
     }
 

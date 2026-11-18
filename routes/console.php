@@ -2,7 +2,10 @@
 
 use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Jobs\SendCustomerWhatsAppWelcome;
+use App\Modules\Commerce\Jobs\SendOrderReviewRequest;
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Storefront\Models\StorefrontPageView;
@@ -11,6 +14,8 @@ use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\MarketingChannels\Services\ChannelReadiness\ChannelReadinessService;
 use App\Modules\MetaSocial\Services\MetaPagePostService;
 use App\Modules\SchedulerQueue\Jobs\RunManagedSchedulerJob;
+use App\Modules\Shipping\Jobs\SyncShipmentTracking;
+use App\Modules\Shipping\Services\TrackingService;
 use App\Modules\TikTok\Services\TikTokPostService;
 use App\Modules\TikTok\Services\TikTokTokenService;
 use Illuminate\Support\Facades\Schedule;
@@ -26,6 +31,17 @@ Schedule::call(function (): void {
         $query->whereNull('staff_notified_at')->orWhereNull('customer_notified_at')->orWhereNull('whatsapp_notified_at');
     })->eachById(fn ($event) => NotifyOrderEvent::dispatch($event->id));
 })->name('commerce-recover-event-notifications')->everyFiveMinutes()->withoutOverlapping();
+
+Schedule::call(function (): void {
+    Order::query()->where('status', 'completed')->whereNull('review_request_sent_at')
+        ->whereBetween('delivered_at', [now()->subDays(7), now()->subHours(1)])
+        ->eachById(function (Order $order): void {
+            $settings = StoreOrderSetting::forWorkspace($order->workspace_id);
+            if ($settings->review_request_enabled && $order->delivered_at->lte(now()->subHours((int) $settings->review_request_delay_hours))) {
+                SendOrderReviewRequest::dispatch($order->id);
+            }
+        });
+})->name('commerce-recover-review-requests')->hourly()->withoutOverlapping();
 
 Schedule::call(function (): void {
     WhatsAppCustomerRegistration::query()->where('welcome_status', 'processing')->where('updated_at', '<', now()->subMinutes(10))->update(['welcome_status' => 'uncertain']);
@@ -44,6 +60,9 @@ Schedule::call(function (): void {
     StorefrontPageView::query()->where('viewed_at', '<', $cutoff)->delete();
     StorefrontVisitor::query()->where('last_seen_at', '<', $cutoff)->delete();
 })->name('commerce-prune-storefront-visits')->dailyAt('02:45')->withoutOverlapping();
+
+// Courier tracking for booked shipments; only reads tracking, never books or pays.
+Schedule::call(fn () => app(TrackingService::class)->due()->each(fn ($shipment) => SyncShipmentTracking::dispatch($shipment->id)))->name('shipping-sync-tracking')->everyThirtyMinutes()->withoutOverlapping();
 
 Schedule::call(fn () => app(MetaPagePostService::class)->publishDue())->name('meta-page-posts')->everyMinute()->withoutOverlapping();
 Schedule::call(fn () => app(TikTokPostService::class)->refreshPending())->name('tiktok-post-status')->everyMinute()->withoutOverlapping();

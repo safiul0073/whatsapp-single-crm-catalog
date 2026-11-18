@@ -19,6 +19,7 @@ use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\AddressAutocompleteService;
 use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderMoney;
+use App\Modules\Commerce\Services\PosCustomerAddressResolver;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\PostalCodeLookupService;
 use App\Modules\Commerce\Services\StoreFeatures;
@@ -26,7 +27,6 @@ use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\Workspaces\Models\Workspace;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,7 +35,11 @@ use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function __construct(protected WorkspaceResolver $workspaces, protected PosService $pos) {}
+    public function __construct(
+        protected WorkspaceResolver $workspaces,
+        protected PosService $pos,
+        protected PosCustomerAddressResolver $customerAddresses,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -215,10 +219,10 @@ class PosController extends Controller
 
         $contacts = Contact::query()->where('workspace_id', $workspace->id)
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$search.'%')->orWhere('phone', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
-            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'email']);
-        $addresses = ContactAddress::query()->where('workspace_id', $workspace->id)->whereIn('contact_id', $contacts->pluck('id'))->orderByDesc('is_default')->latest('id')->get()->groupBy('contact_id');
+            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'email', 'country', 'city', 'custom_fields']);
+        $addresses = $this->customerAddresses->resolveForContacts($workspace, $contacts);
 
-        return response()->json(['data' => $contacts->map(fn (Contact $contact): array => $this->customerPayload($contact, $addresses->get($contact->id, new Collection)))]);
+        return response()->json(['data' => $contacts->map(fn (Contact $contact): array => $this->customerPayload($contact, $addresses[(int) $contact->id] ?? []))]);
     }
 
     public function storeCustomer(PosCustomerRequest $request): JsonResponse
@@ -238,7 +242,7 @@ class PosController extends Controller
             $this->saveAddress($contact, $data['address']);
         }
 
-        return response()->json(['data' => $this->customerPayload($contact, ContactAddress::query()->where('workspace_id', $workspace->id)->where('contact_id', $contact->id)->orderByDesc('is_default')->latest('id')->get())], 201);
+        return response()->json(['data' => $this->customerPayload($contact, $this->customerAddresses->resolveForContact($workspace, $contact))], 201);
     }
 
     public function storeAddress(PosContactAddressRequest $request, Contact $contact): JsonResponse
@@ -265,23 +269,16 @@ class PosController extends Controller
      */
     private function saveAddress(Contact $contact, array $data): ContactAddress
     {
-        $attributes = collect($data)->only(['name', 'phone', 'line1', 'line2', 'city', 'state', 'postal_code', 'country'])->all();
-        $address = ContactAddress::query()->firstOrNew(['workspace_id' => $contact->workspace_id, 'contact_id' => $contact->id, 'line1' => $attributes['line1'], 'postal_code' => $attributes['postal_code'] ?? null]);
-        $address->fill([...$attributes, 'country' => $attributes['country'] ?? 'US']);
-        if (! $address->exists) {
-            $address->is_default = ! ContactAddress::query()->where('contact_id', $contact->id)->exists();
-        }
-        $address->save();
-
-        return $address;
+        return $this->customerAddresses->saveContactAddress($contact, $data);
     }
 
     /**
+     * @param  list<array<string, mixed>>  $addresses
      * @return array<string, mixed>
      */
-    private function customerPayload(Contact $contact, Collection $addresses): array
+    private function customerPayload(Contact $contact, array $addresses): array
     {
-        return [...$contact->only(['id', 'name', 'phone', 'email']), 'addresses' => $addresses->take(5)->map(fn (ContactAddress $address): array => $this->addressPayload($address))->values()->all()];
+        return [...$contact->only(['id', 'name', 'phone', 'email']), 'addresses' => array_slice($addresses, 0, 5)];
     }
 
     /**

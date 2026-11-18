@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Modules\AuditLog\Services\AuditLogService;
 use App\Modules\Commerce\Database\Seeders\StorefrontBlogSeeder;
+use App\Modules\Commerce\Jobs\SendMetaEvent;
 use App\Modules\Commerce\Jobs\SendMetaPurchaseEvent;
 use App\Modules\Commerce\Jobs\SendTikTokPurchaseEvent;
 use App\Modules\Commerce\Models\Category;
@@ -13,11 +14,13 @@ use App\Modules\Commerce\Models\ProductOption;
 use App\Modules\Commerce\Models\ProductType;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\WhatsAppAuthChallenge;
+use App\Modules\Commerce\Services\MetaConversionsService;
 use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
 use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
+use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Commerce\Storefront\Jobs\VerifyStoreDomainJob;
 use App\Modules\Commerce\Storefront\Models\CashinRequest;
@@ -40,11 +43,13 @@ use App\Modules\Commerce\Storefront\Services\LegacyImportService;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\Commerce\Storefront\Services\RefundRequestService;
 use App\Modules\Commerce\Storefront\Services\RewardWalletService;
+use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\Commerce\Storefront\Services\WithdrawalService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Models\ShippingZone;
+use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use App\Modules\Workspaces\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -906,21 +911,101 @@ it('keeps non-apparel products retail-only', function (): void {
     expect($product->selling_mode)->toBe('retail')->and($product->ws_enabled)->toBeFalse();
 });
 
-it('queues one Meta purchase event per new order with validated browser details', function (): void {
+function enableMetaCapi($test, array $extra = []): void
+{
+    app(TrackingSettingsService::class)->save($test->store->id, ['meta_pixel_id' => '123456789012', 'meta_capi_enabled' => true, 'meta_capi_token' => 'EAAB-secret', ...$extra]);
+}
+
+it('waits for payment confirmation before queueing one Purchase per order', function (): void {
     Queue::fake();
     [$headers, $data] = storefrontCheckoutFixture($this);
-    $headers = [...$headers, 'X-Client-Ip' => '203.0.113.9', 'X-Client-User-Agent' => 'Mozilla/5.0', 'X-Meta-Fbp' => 'fb.1.1710000000.123', 'X-Meta-Fbc' => 'not valid'];
+    $headers = [...$headers, 'X-Client-Ip' => '203.0.113.9', 'X-Client-User-Agent' => 'Mozilla/5.0', 'X-Meta-Fbp' => 'fb.1.1710000000.123', 'X-Meta-Fbc' => 'not valid', 'X-Event-Source-Url' => 'https://evil.example/checkout'];
 
-    $order = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
+    $created = $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data');
     $this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertOk();
+    $order = Order::query()->findOrFail($created['id']);
+
+    Queue::assertNotPushed(SendMetaPurchaseEvent::class);
+    Queue::assertNotPushed(SendTikTokPurchaseEvent::class);
+    expect(MetaConversionsService::rememberedClient($order))->toMatchArray(['ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0', 'fbp' => 'fb.1.1710000000.123', 'fbc' => null, 'source_url' => null, 'origin' => 'web']);
+
+    app(OrderWorkflowService::class)->transition($order, 'paid');
+    app(OrderWorkflowService::class)->transition($order->fresh(), 'paid');
+    app(UnifiedOrderService::class)->event($order->fresh(), 'paid', 'Payment confirmed');
 
     Queue::assertPushed(SendMetaPurchaseEvent::class, 1);
     Queue::assertPushed(SendTikTokPurchaseEvent::class, 1);
-    Queue::assertPushed(SendMetaPurchaseEvent::class, fn (SendMetaPurchaseEvent $job): bool => $job->orderId === $order['id']
-        && $job->client['ip'] === '203.0.113.9'
-        && $job->client['user_agent'] === 'Mozilla/5.0'
-        && $job->client['fbp'] === 'fb.1.1710000000.123'
-        && $job->client['fbc'] === null);
+    Queue::assertPushed(SendMetaPurchaseEvent::class, fn (SendMetaPurchaseEvent $job): bool => $job->orderId === $order->id && $job->client === []);
+    expect($this->getJson('/api/storefront/v1/me/orders/'.$order->submission_reference, $this->auth)->assertOk()->json('data.paid_at'))->not->toBeNull();
+});
+
+it('sends the paid Purchase once with the checkout browser details and never for unpaid orders', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['events_received' => 1])]);
+    $this->mock(WhatsAppSettingsService::class, fn ($mock) => $mock->shouldReceive('graphApiVersion')->andReturn('v24.0'));
+    enableMetaCapi($this);
+    [$headers, $data] = storefrontCheckoutFixture($this);
+    $headers = [...$headers, 'X-Client-Ip' => '203.0.113.9', 'X-Meta-Fbp' => 'fb.1.1710000000.123', 'X-Event-Source-Url' => 'https://one.localhost/en/checkout'];
+    $order = Order::query()->findOrFail($this->postJson('/api/storefront/v1/checkout/orders', $data, $headers)->assertCreated()->json('data.id'));
+
+    (new SendMetaPurchaseEvent($order->id))->handle(app(MetaConversionsService::class));
+    Http::assertNothingSent();
+
+    app(OrderWorkflowService::class)->transition($order, 'paid');
+    (new SendMetaPurchaseEvent($order->id))->handle(app(MetaConversionsService::class));
+    (new SendMetaPurchaseEvent($order->id))->handle(app(MetaConversionsService::class));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => $request['data'][0]['event_name'] === 'Purchase'
+        && $request['data'][0]['event_id'] === 'purchase-'.$order->number
+        && $request['data'][0]['action_source'] === 'website'
+        && $request['data'][0]['event_source_url'] === 'https://one.localhost/en/checkout'
+        && $request['data'][0]['user_data']['client_ip_address'] === '203.0.113.9'
+        && $request['data'][0]['user_data']['fbp'] === 'fb.1.1710000000.123'
+        && $request['data'][0]['custom_data']['value'] === 45.0
+        && $request['data'][0]['custom_data']['currency'] === 'USD'
+        && $request['data'][0]['custom_data']['content_ids'] === ['shirt-m']);
+});
+
+it('pairs AddToCart, ViewContent, InitiateCheckout and PageView with the browser event id', function (): void {
+    Queue::fake();
+    enableMetaCapi($this);
+    $client = [...$this->headers, 'X-Meta-Event-Id' => 'evt_add_123456', 'X-Client-Ip' => '203.0.113.9', 'X-Event-Source-Url' => 'https://one.localhost/en/products/shirt'];
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->assertCreated()->json('data.cart_token');
+
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 9], [...$client, 'X-Cart-Token' => $token])->assertUnprocessable();
+    Queue::assertNotPushed(SendMetaEvent::class);
+
+    $this->postJson('/api/storefront/v1/cart/items', ['variant_id' => $this->variant->id, 'quantity' => 2], [...$client, 'X-Cart-Token' => $token])->assertOk();
+    $this->postJson('/api/storefront/v1/track/view-content', ['product_id' => $this->product->id], [...$client, 'X-Meta-Event-Id' => 'evt_view_123456'])->assertNoContent();
+    $this->postJson('/api/storefront/v1/track/initiate-checkout', [], [...$client, 'X-Meta-Event-Id' => 'evt_checkout_123', 'X-Cart-Token' => $token])->assertNoContent();
+    $this->postJson('/api/storefront/v1/track/page-view', ['visitor_key' => (string) Str::uuid(), 'path' => '/en'], [...$client, 'X-Meta-Event-Id' => 'evt_page_1234567'])->assertNoContent();
+
+    $events = collect(Queue::pushed(SendMetaEvent::class))->mapWithKeys(fn (SendMetaEvent $job): array => [$job->event['event_name'] => $job->event]);
+    expect($events->keys()->all())->toEqualCanonicalizing(['AddToCart', 'ViewContent', 'InitiateCheckout', 'PageView'])
+        ->and($events['AddToCart'])->toMatchArray(['event_id' => 'evt_add_123456', 'action_source' => 'website', 'event_source_url' => 'https://one.localhost/en/products/shirt'])
+        ->and($events['AddToCart']['custom_data'])->toMatchArray(['currency' => 'USD', 'value' => 40.0, 'content_type' => 'product', 'content_ids' => ['shirt-m'], 'num_items' => 2])
+        ->and($events['ViewContent']['custom_data'])->toMatchArray(['content_type' => 'product_group', 'content_ids' => ['product-'.$this->product->id], 'value' => 20.0, 'content_name' => 'Shirt'])
+        ->and($events['InitiateCheckout']['custom_data'])->toMatchArray(['value' => 40.0, 'num_items' => 2, 'content_ids' => ['shirt-m']])
+        ->and($events['PageView']['event_id'])->toBe('evt_page_1234567')
+        ->and($events['PageView']['user_data']['client_ip_address'])->toBe('203.0.113.9');
+    $this->getJson('/api/storefront/v1/cart', [...$this->headers, 'X-Cart-Token' => $token])->assertOk()->assertJsonPath('data.items.0.retailer_id', 'shirt-m');
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', $this->headers)->assertOk()->assertJsonPath('data.variants.0.retailer_id', 'shirt-m');
+});
+
+it('skips server events without consent, without CAPI, or from the mobile app', function (): void {
+    Queue::fake();
+    $page = fn (array $headers, string $prefix = '/api/storefront/v1') => $this->postJson($prefix.'/track/page-view', ['visitor_key' => (string) Str::uuid(), 'path' => '/'], [...$headers, 'X-Meta-Event-Id' => 'evt_page_'.Str::random(8)])->assertNoContent();
+
+    $page($this->headers);
+    enableMetaCapi($this, ['consent_required' => true]);
+    $page($this->headers);
+    $page([...$this->headers, 'X-Tracking-Consent' => 'denied']);
+    $page(['X-Store-Host' => 'one.localhost', 'X-Tracking-Consent' => 'granted'], '/api/v1/mobile/storefront');
+    Queue::assertNotPushed(SendMetaEvent::class);
+
+    $page([...$this->headers, 'X-Tracking-Consent' => 'granted']);
+    Queue::assertPushed(SendMetaEvent::class, 1);
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)->assertOk()->assertJsonPath('data.tracking.consent_required', true);
 });
 
 function fakeDnsJob(int $domainId, array $records): VerifyStoreDomainJob

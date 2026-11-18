@@ -5,6 +5,7 @@ namespace App\Modules\Commerce\Jobs;
 use App\Modules\Commerce\Models\MobileCustomerDevice;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderOwnerWhatsAppNotificationService;
 use App\Modules\Commerce\Services\OrderWhatsAppNotificationService;
 use App\Modules\NotificationTemplates\Notifications\MobileAlert;
@@ -55,6 +56,12 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         $order = Order::query()->with('contact')->findOrFail($event->order_id);
         if ($event->key === 'shipped') {
             SendOrderInvoiceWhatsApp::dispatch($order->id);
+        }
+        if ($event->key === 'completed' && ! $order->review_request_sent_at && Cache::add('order-review-request-queued:'.$order->id, true, now()->addDays(2))) {
+            $settings = StoreOrderSetting::forWorkspace($order->workspace_id);
+            if ($settings->review_request_enabled) {
+                SendOrderReviewRequest::dispatch($order->id)->delay(now()->addHours(max(0, (int) $settings->review_request_delay_hours)));
+            }
         }
         if (filled($order->customer_reference) && Cache::add('mobile-order-alert:'.$event->id, true, now()->addDays(7))) {
             MobileCustomerDevice::query()->where('workspace_id', $order->workspace_id)

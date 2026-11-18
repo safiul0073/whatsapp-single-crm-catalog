@@ -1,0 +1,42 @@
+/* ── Shipping management: tabs that join related pages under one menu item ── */
+.shipping-tabs {
+  @apply flex gap-1 overflow-x-auto rounded-md border border-border-soft bg-section p-1;
+  scrollbar-width: none;
+}
+
+.shipping-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.shipping-tab {
+  @apply inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1.5 text-sm font-medium text-body transition hover:text-title sm:px-3;
+}
+
+/* ── Shipment page: grouped products card ── */
+.shipment-products {
+  @apply mt-3 divide-y divide-border-soft;
+}
+
+.shipment-product {
+  @apply py-3 first:pt-0 last:pb-0;
+}
+
+.shipment-product-color {
+  @apply flex items-start gap-3 rounded-sm bg-section p-2;
+}
+
+.shipment-product-thumb {
+  @apply flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border-soft bg-bg-elevated;
+}
+
+.size-chip {
+  @apply inline-flex items-center gap-1 rounded-sm border border-border-soft bg-bg-elevated px-1.5 py-0.5 text-xs font-medium text-title;
+}
+
+.size-chip-qty {
+  @apply font-normal tabular-nums text-body;
+}
+
+.shipping-tab-active {
+  @apply bg-bg-elevated text-title shadow-sm;
+}

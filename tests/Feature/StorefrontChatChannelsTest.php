@@ -100,13 +100,13 @@ it('keeps the selected widget when temporarily disabling contact channels', func
 });
 
 it('saves tracking settings, keeps them across general settings saves and rejects bad pixel ids', function (): void {
-    $this->put('/dashboard/commerce/storefront/tracking', ['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456', 'meta_capi_enabled' => '1', 'meta_capi_token' => 'EAAB-secret'])->assertRedirect()->assertSessionHasNoErrors();
+    $this->put('/dashboard/commerce/storefront/tracking', ['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456', 'meta_capi_enabled' => '1', 'meta_capi_token' => 'EAAB-secret', 'consent_required' => '1'])->assertRedirect()->assertSessionHasNoErrors();
     Queue::assertPushed(RevalidateStorefront::class, fn ($job) => $job->workspace === $this->workspace->id);
 
     $this->put('/dashboard/commerce/storefront/settings', ['config' => ['name' => 'Changed', 'primary' => '#123456', 'hover' => '#123456', 'footer_color' => '#123456']])->assertSessionHasNoErrors();
 
     $public = app(CmsService::class)->settings($this->workspace->id);
-    expect($public['tracking'])->toBe(['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456'])
+    expect($public['tracking'])->toBe(['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456', 'consent_required' => true])
         ->and(json_encode($public))->not->toContain('EAAB-secret')
         ->and(StorefrontSetting::query()->first()->config['tracking']['meta_capi_token'])->not->toBe('EAAB-secret');
 

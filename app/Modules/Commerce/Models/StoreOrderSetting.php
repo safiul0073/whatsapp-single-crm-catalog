@@ -12,12 +12,14 @@ class StoreOrderSetting extends Model
 
     protected $table = 'commerce_store_order_settings';
 
-    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'order_number_prefix', 'order_number_digits', 'next_order_sequence'];
+    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'order_number_prefix', 'order_number_digits', 'next_order_sequence', 'review_request_enabled', 'review_request_delay_hours'];
 
     protected function casts(): array
     {
         return [
             'whatsapp_notifications' => 'boolean',
+            'review_request_enabled' => 'boolean',
+            'review_request_delay_hours' => 'integer',
             'reservation_hours' => 'integer',
             'order_number_digits' => 'integer',
             'next_order_sequence' => 'integer',
@@ -29,12 +31,14 @@ class StoreOrderSetting extends Model
         $workspace = Workspace::findOrFail($workspaceId);
         $currency = $workspace->settings['commerce']['currency'] ?? Catalog::query()->where('workspace_id', $workspaceId)->value('currency') ?? 'USD';
 
-        return static::query()->firstOrCreate(['workspace_id' => $workspaceId], [
+        $settings = static::query()->firstOrCreate(['workspace_id' => $workspaceId], [
             'currency' => strtoupper($currency),
             'order_number_prefix' => 'ORD-',
             'order_number_digits' => 5,
             'next_order_sequence' => 1,
         ]);
+
+        return $settings->wasRecentlyCreated ? $settings->refresh() : $settings;
     }
 
     public function formatOrderNumber(int $sequence): string

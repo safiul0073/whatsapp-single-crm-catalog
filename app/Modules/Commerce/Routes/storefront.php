@@ -49,6 +49,7 @@ $storefrontRoutes = function (): void {
     Route::get('auth/status', [AuthController::class, 'status']);
     Route::get('referral/program', [ReferralController::class, 'program']);
     Route::post('track/page-view', [TrackingController::class, 'pageView']);
+    Route::post('track/view-content', [TrackingController::class, 'viewContent']);
     Route::middleware('throttle:storefront-auth')->group(function (): void {
         Route::post('auth/whatsapp/challenges', [AuthController::class, 'challenge']);
         Route::post('auth/whatsapp/challenges/{id}/resend', [AuthController::class, 'resend']);
@@ -62,6 +63,7 @@ $storefrontRoutes = function (): void {
     Route::middleware(OptionalCustomer::class)->group(function (): void {
         Route::post('cart', [CartController::class, 'create']);
         Route::get('cart', [CartController::class, 'show']);
+        Route::post('track/initiate-checkout', [TrackingController::class, 'initiateCheckout']);
         Route::post('cart/groups/preview', [PackController::class, 'preview']);
         Route::post('cart/groups', [PackController::class, 'store']);
         Route::put('cart/groups/{id}', [PackController::class, 'update']);

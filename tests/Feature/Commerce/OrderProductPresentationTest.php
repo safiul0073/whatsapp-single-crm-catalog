@@ -50,7 +50,7 @@ it('shows compact packs without codes prices or sku size fallbacks', function ()
     $order = ($this->createOrder)([$this->wholesale]);
     $order->items()->first()->update(['attributes' => ['color' => 'Red']]);
     $response = $this->get(route('user.commerce.orders.show', $order))->assertOk();
-    $response->assertDontSee('Pack 1 of 1')->assertDontSee('Wholesale')->assertSee('Color: Red')->assertSee('No image')->assertDontSee('BOX-1')
+    $response->assertDontSee('Pack 1 of 1')->assertDontSee('Wholesale')->assertSee('No image')->assertDontSee('BOX-1')
         ->assertDontSee('shirt-S')->assertDontSee('Ordered items')->assertSee('USD 18.00');
     $document = new DOMDocument;
     $previousErrors = libxml_use_internal_errors(true);
@@ -59,7 +59,7 @@ it('shows compact packs without codes prices or sku size fallbacks', function ()
     libxml_use_internal_errors($previousErrors);
     $xpath = new DOMXPath($document);
     $pack = $xpath->query('//*[@data-pack-card]')->item(0)->textContent;
-    expect($pack)->not->toContain('USD')->toContain('—');
+    expect($pack)->not->toContain('USD')->toContain('Red')->toContain('3 pcs')->toContain('1:1:1');
 });
 
 it('shows retail photos snapshot attributes and prices', function () {
@@ -242,12 +242,12 @@ it('gives each colour its own packing slip card', function () {
         ->and($html)->toContain('6 pcs</strong> · #2–3');
 });
 
-it('shows the store email instead of the customer phone on the packing slip', function () {
+it('shows the customer contact rather than the store email on the packing slip', function () {
     StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->workspace->id], ['config' => ['contact_email' => 'hello@shop.test']]);
     $order = ($this->createOrder)([$this->wholesale]);
 
     $this->get(route('user.commerce.orders.packing-slip', $order))
         ->assertOk()
-        ->assertSee('hello@shop.test')
-        ->assertDontSee('+15555550100');
+        ->assertSee('+15555550100')
+        ->assertDontSee('hello@shop.test');
 });

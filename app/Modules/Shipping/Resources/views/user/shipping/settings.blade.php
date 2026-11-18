@@ -8,6 +8,7 @@
             <h1 class="text-2xl md:text-3xl text-neutral-800 font-bold">{{ __('Shipping Settings') }}</h1>
             <p class="text-sm text-neutral-500 mt-1">{{ __('Configure global packaging weight and delivery defaults.') }}</p>
         </div>
+        @include('shipping::user.management.partials.section-tabs', ['section' => 'storefront'])
 
         <div class="bg-white shadow-xs rounded-md border border-neutral-200 p-6">
             <form action="{{ route('user.shipping.settings.update') }}" method="POST" class="space-y-6">

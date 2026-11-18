@@ -12,6 +12,8 @@ use App\Modules\Commerce\Services\OrderInventoryService;
 use App\Modules\Commerce\Services\OrderPackingService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
+use App\Modules\Commerce\Storefront\Models\Customer;
+use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
@@ -703,4 +705,135 @@ it('keeps holding stock for a paid delivery sale past the hold window so it cann
     app(OrderPackingService::class)->markPacked($order->fresh(), $box->id);
     app(OrderWorkflowService::class)->transition($order->fresh(), 'shipped', ['tracking_number' => 'POS-TRACK']);
     expect($c['variants'][0]->fresh()->stock_quantity)->toBe(0);
+});
+
+it('resolves customer shipping addresses from past orders, account address books, and POS saved addresses without leaking across workspaces', function () {
+    $c = posContext();
+    posManager($c['user']);
+    $other = posContext();
+    $this->actingAs($c['user'])->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $orderCustomer = Contact::withoutEvents(fn () => Contact::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'name' => 'Order Only Buyer',
+        'phone' => '+8801700000000',
+        'source' => 'manual',
+        'opt_in_status' => 'unknown',
+    ]));
+
+    Order::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'contact_id' => $orderCustomer->id,
+        'number' => 'ORD-PAST-100',
+        'source' => 'storefront',
+        'fulfillment_type' => 'delivery',
+        'status' => 'completed',
+        'payment_state' => 'paid',
+        'currency' => 'USD',
+        'subtotal' => '40.00',
+        'shipping_amount' => '5.00',
+        'total' => '45.00',
+        'shipping_address' => [
+            'name' => 'Order Only Buyer',
+            'phone' => '+8801700000000',
+            'line1' => 'House 12, Road 5',
+            'line2' => 'Dhanmondi',
+            'city' => 'Dhaka',
+            'state' => 'Dhaka',
+            'postal_code' => '1209',
+            'country' => 'bd',
+        ],
+    ]);
+
+    $accountContact = Contact::withoutEvents(fn () => Contact::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'name' => 'Account Buyer',
+        'phone' => '+13055550199',
+        'source' => 'manual',
+        'opt_in_status' => 'unknown',
+    ]));
+    $customer = Customer::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'contact_id' => $accountContact->id,
+        'source' => 'storefront',
+    ]);
+    $accountAddress = CustomerAddress::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'customer_id' => $customer->id,
+        'label' => 'Warehouse',
+        'is_default' => true,
+        'address' => [
+            'address_line1' => '500 Biscayne Blvd',
+            'address_line2' => 'Suite 400',
+            'city' => 'Miami',
+            'region' => 'FL',
+            'zip' => '33132',
+            'country' => 'US',
+        ],
+    ]);
+
+    Order::query()->create([
+        'workspace_id' => $other['workspace']->id,
+        'contact_id' => $orderCustomer->id,
+        'number' => 'ORD-OTHER-WS',
+        'source' => 'storefront',
+        'fulfillment_type' => 'delivery',
+        'status' => 'completed',
+        'payment_state' => 'paid',
+        'currency' => 'USD',
+        'subtotal' => '20.00',
+        'shipping_amount' => '0.00',
+        'total' => '20.00',
+        'shipping_address' => [
+            'name' => 'Leaked Address',
+            'phone' => '+8801700000000',
+            'line1' => '999 Secret Ave',
+            'city' => 'Boston',
+            'postal_code' => '02108',
+            'country' => 'US',
+        ],
+    ]);
+
+    $orderRes = $this->getJson(route('user.commerce.pos.customers', ['q' => 'Order Only']))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonCount(1, 'data.0.addresses')
+        ->assertJsonPath('data.0.addresses.0.line1', 'House 12, Road 5')
+        ->assertJsonPath('data.0.addresses.0.line2', 'Dhanmondi')
+        ->assertJsonPath('data.0.addresses.0.city', 'Dhaka')
+        ->assertJsonPath('data.0.addresses.0.postal_code', '1209')
+        ->assertJsonPath('data.0.addresses.0.country', 'BD')
+        ->assertJsonPath('data.0.addresses.0.is_default', true);
+    expect($orderRes->json('data.0.addresses.0.id'))->toStartWith('order-');
+
+    $this->getJson(route('user.commerce.pos.customers', ['q' => 'Account Buyer']))
+        ->assertOk()
+        ->assertJsonCount(1, 'data.0.addresses')
+        ->assertJsonPath('data.0.addresses.0.id', 'account-'.$accountAddress->id)
+        ->assertJsonPath('data.0.addresses.0.name', 'Account Buyer')
+        ->assertJsonPath('data.0.addresses.0.phone', '+13055550199')
+        ->assertJsonPath('data.0.addresses.0.line1', '500 Biscayne Blvd')
+        ->assertJsonPath('data.0.addresses.0.line2', 'Suite 400')
+        ->assertJsonPath('data.0.addresses.0.city', 'Miami')
+        ->assertJsonPath('data.0.addresses.0.state', 'FL')
+        ->assertJsonPath('data.0.addresses.0.postal_code', '33132')
+        ->assertJsonPath('data.0.addresses.0.country', 'US')
+        ->assertJsonPath('data.0.addresses.0.is_default', true);
+
+    $savedPosAddress = $this->postJson(route('user.commerce.pos.customers.addresses.store', $orderCustomer->id), [
+        'name' => 'Order Only Buyer',
+        'phone' => '+8801700000000',
+        'line1' => 'House 12, Road 5',
+        'line2' => 'Dhanmondi',
+        'city' => 'Dhaka',
+        'state' => 'Dhaka',
+        'postal_code' => '1209',
+        'country' => 'BD',
+    ])->assertCreated()->json('data');
+
+    $this->getJson(route('user.commerce.pos.customers', ['q' => 'Order Only']))
+        ->assertOk()
+        ->assertJsonCount(1, 'data.0.addresses')
+        ->assertJsonPath('data.0.addresses.0.id', $savedPosAddress['id'])
+        ->assertJsonPath('data.0.addresses.0.is_default', true);
 });
