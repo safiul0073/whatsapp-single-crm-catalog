@@ -184,6 +184,8 @@ class ProductDetailsRequest extends FormRequest
             foreach ($this->input('ws_size_ratios', []) ?? [] as $colorId => $ratios) {
                 if (! in_array((string) $colorId, $colors, true) || array_diff(array_keys($ratios ?? []), $sizes) !== []) {
                     $validator->errors()->add('ws_size_ratios', 'Size ratios must reference this product’s colors and sizes.');
+                } elseif (array_sum(array_map('intval', $ratios ?? [])) < 1) {
+                    $validator->errors()->add('ws_size_ratios', 'Each color needs at least one size with quantity above 0.');
                 }
             }
         }];

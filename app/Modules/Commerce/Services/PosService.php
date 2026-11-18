@@ -31,6 +31,9 @@ class PosService
             if ($order->contact_id && (blank($order->contact?->name) || blank($order->contact?->phone))) {
                 $this->invalid('customer', 'An identified customer must have a name and phone number.');
             }
+            if ($order->contact && $order->fulfillment_type === 'delivery' && is_array($order->shipping_address) && filled($order->shipping_address['line1'] ?? null) && filled($order->shipping_address['city'] ?? null)) {
+                app(PosCustomerAddressResolver::class)->saveContactAddress($order->contact, $order->shipping_address);
+            }
             if (! $order->shipping_quote_required) {
                 $order->update(['status' => 'processing']);
             }

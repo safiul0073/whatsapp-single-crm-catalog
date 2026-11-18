@@ -5,6 +5,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
   options: config.options || [],
   variants: config.variants || [],
   variantPresets: config.variantPresets || [],
+  presetStoreUrl: config.presetStoreUrl || '/dashboard/commerce/variants',
   featureIconPresets: config.featureIconPresets || [],
   colors: (config.colors || []).map((col, idx) => ({
     id: col.id || '',
@@ -729,7 +730,7 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     this.modalError = '';
     
     try {
-      const response = await window.axios.post('/user/commerce/variants', {
+      const response = await window.axios.post(this.presetStoreUrl, {
         name: this.modalNewSize.name,
         type: 'size',
         weight: this.modalNewSize.weight ? parseFloat(this.modalNewSize.weight) : null,

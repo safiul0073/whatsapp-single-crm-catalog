@@ -22,15 +22,19 @@ class ProductVariant extends Model
         'attributes',
         'price',
         'compare_at_price',
+        'cost_price',
         'stock_quantity',
         'weight_kg',
         'package_dimensions',
         'status',
     ];
 
+    /** The cost price is internal: it must never appear in customer-facing responses. */
+    protected $hidden = ['cost_price'];
+
     protected function casts(): array
     {
-        return ['attributes' => 'array', 'package_dimensions' => 'array', 'price' => 'decimal:4', 'compare_at_price' => 'decimal:4', 'stock_quantity' => 'integer', 'weight_kg' => 'decimal:3'];
+        return ['attributes' => 'array', 'package_dimensions' => 'array', 'price' => 'decimal:4', 'compare_at_price' => 'decimal:4', 'cost_price' => 'decimal:4', 'stock_quantity' => 'integer', 'weight_kg' => 'decimal:3'];
     }
 
     /**

@@ -6,6 +6,8 @@ return [
 
     'meta' => [
         'webhook_signature' => env('META_WEBHOOK_SIGNATURE', 'enforce'),
+        // Global kill switch for server-side Conversions API events; stores still opt in per storefront.
+        'capi_enabled' => (bool) env('META_CAPI_ENABLED', true),
     ],
 
     /*

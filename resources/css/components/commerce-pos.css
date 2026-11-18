@@ -16,11 +16,23 @@
 }
 
 .pos-lines {
-  @apply max-h-[40dvh] space-y-2 overflow-y-auto;
+  @apply shrink-0 space-y-2.5;
 }
 
 .pos-line {
-  @apply rounded-md border border-border-default px-3 py-2.5;
+  @apply rounded-xl border border-border-default bg-bg-elevated p-3;
+}
+
+.pos-ws-group {
+  @apply space-y-2.5 rounded-xl border border-border-default bg-bg-elevated p-3;
+}
+
+.pos-ws-badge {
+  @apply inline-flex items-center rounded-full bg-warning/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-warning;
+}
+
+.pos-ws-item {
+  @apply rounded-lg border border-border-default bg-section/40 p-2.5;
 }
 
 .pos-tile {
@@ -101,6 +113,47 @@
 
 .pos-swatch-active {
   @apply border-primary ring-2 ring-primary/30;
+}
+
+/* Wholesale product modal builder */
+.pos-color-pill {
+  @apply relative inline-flex items-center gap-2.5 rounded-xl border border-border-default bg-bg-elevated py-2 pr-3 pl-2 text-left transition hover:border-primary/60 hover:bg-section focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.pos-color-pill-selected {
+  @apply border-primary/50 bg-primary/5;
+}
+
+.pos-color-pill-active {
+  @apply border-primary bg-primary/10 ring-2 ring-primary/25;
+}
+
+.pos-size-tile {
+  @apply flex flex-col justify-between gap-2 rounded-lg border border-border-default bg-bg-elevated p-2.5 transition;
+}
+
+.pos-size-tile-active {
+  @apply border-primary/40 bg-primary/5;
+}
+
+.pos-tier-pill {
+  @apply flex flex-col rounded-lg border border-border-default bg-bg-elevated px-3 py-2 text-xs transition;
+}
+
+.pos-tier-pill-active {
+  @apply border-primary bg-primary/10 ring-1 ring-primary/30;
+}
+
+.pos-moq-track {
+  @apply h-2 w-full overflow-hidden rounded-full bg-section;
+}
+
+.pos-moq-fill {
+  @apply h-full rounded-full bg-primary transition-all duration-300;
+}
+
+.pos-modal-footer {
+  @apply sticky bottom-0 z-10 mt-2 border-t border-border-default bg-bg-elevated/95 pt-3 pb-1 backdrop-blur-sm;
 }
 
 /* Create Order colour and size pickers */

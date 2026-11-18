@@ -60,7 +60,7 @@ class TikTokEventsService
 
         return array_filter([
             'event' => 'CompletePayment',
-            'event_time' => ($order->created_at ?? now())->getTimestamp(),
+            'event_time' => ($order->paid_at ?? $order->created_at ?? now())->getTimestamp(),
             'event_id' => MetaConversionsService::eventId($order),
             'user' => array_filter([
                 'email' => $email !== '' ? hash('sha256', $email) : null,

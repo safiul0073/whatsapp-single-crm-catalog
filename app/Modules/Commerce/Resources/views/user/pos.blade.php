@@ -91,34 +91,135 @@
                         <i class="ph ph-shopping-cart-simple text-3xl"></i>
                         <span>{{ __('Scan a barcode or tap a product to start.') }}</span>
                     </div>
-                    <template x-for="(group, index) in groups" :key="group.key">
-                        <article class="pos-line">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-medium text-title" x-text="group.product.name"></p>
-                                    <p class="text-xs text-body">
-                                        <span class="pos-badge" :class="group.mode === 'wholesale' && 'pos-badge-ws'" x-text="group.mode === 'retail' ? 'Retail' : (group.packs ? 'Packs' : 'Wholesale')"></span>
-                                        <span x-text="group.mode === 'retail' ? variantLabel(group) : colorName(group)"></span>
-                                    </p>
-                                    <p x-show="group.mode === 'wholesale' && group.ratio" class="mt-0.5 text-xs text-body" x-text="ratio(group)"></p>
-                                </div>
-                                <span class="shrink-0 text-sm font-semibold text-title" x-text="lineTotal(index) === null ? '…' : money(lineTotal(index))"></span>
-                            </div>
-                            <div class="mt-2 flex items-center justify-between gap-2">
-                                <div x-show="group.mode === 'retail' || group.packs" class="pos-stepper">
-                                    <button type="button" @click="group.mode === 'retail' ? stepQuantity(group, -1) : stepGroupPacks(group, -1)" aria-label="{{ __('Decrease') }}"><i class="ph ph-minus"></i></button>
-                                    <span x-text="group.mode === 'retail' ? group.count : `${group.packs} × ${packPieces(group)}`"></span>
-                                    <button type="button" @click="group.mode === 'retail' ? stepQuantity(group, 1) : stepGroupPacks(group, 1)" aria-label="{{ __('Increase') }}"><i class="ph ph-plus"></i></button>
-                                </div>
-                                <span x-show="group.mode === 'wholesale' && !group.packs"></span>
-                                <div class="flex items-center gap-2">
-                                    @if($canDiscount)
-                                        <label class="flex items-center gap-1 text-xs text-body">{{ __('Disc.') }}<input type="number" min="0" step="0.01" class="pos-mini-input" x-model="group.discount" @input.debounce.400ms="invalidate()" :aria-label="`Discount for ${group.product.name}`"></label>
-                                    @endif
-                                    <button type="button" class="pos-icon-btn hover:text-error" @click="remove(group.key)" :aria-label="`Remove ${group.product.name}`"><i class="ph ph-x"></i></button>
-                                </div>
-                            </div>
-                        </article>
+                    <template x-for="section in cartSections()" :key="section.key">
+                        <div>
+                            {{-- Retail card --}}
+                            <template x-if="section.type === 'retail'">
+                                <article class="pos-line">
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border-default bg-section p-0.5">
+                                            <img x-show="colorThumbUrl(section.group)" :src="colorThumbUrl(section.group)" :alt="section.group.product.name" class="h-full w-full object-contain">
+                                            <i x-show="!colorThumbUrl(section.group)" class="ph ph-image text-base text-body" aria-hidden="true"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="min-w-0">
+                                                    <p class="truncate text-sm font-medium text-title" x-text="section.group.product.name"></p>
+                                                    <p class="text-xs text-body">
+                                                        <span class="pos-badge">{{ __('Retail') }}</span>
+                                                        <span x-text="variantLabel(section.group)"></span>
+                                                    </p>
+                                                </div>
+                                                <div class="shrink-0 text-right">
+                                                    <p x-show="unitPiecePrice(section) !== null" class="text-[11px] text-body" x-text="`${money(unitPiecePrice(section))} / pc`"></p>
+                                                    <p class="text-sm font-semibold text-title tabular-nums" x-text="lineTotal(section.index) === null ? '…' : money(lineTotal(section.index))"></p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 flex items-center justify-between gap-2">
+                                                <div class="pos-stepper">
+                                                    <button type="button" @click="stepQuantity(section.group, -1)" aria-label="{{ __('Decrease') }}"><i class="ph ph-minus"></i></button>
+                                                    <span x-text="section.group.count"></span>
+                                                    <button type="button" @click="stepQuantity(section.group, 1)" aria-label="{{ __('Increase') }}"><i class="ph ph-plus"></i></button>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    @if($canDiscount)
+                                                        <label class="flex items-center gap-1 text-xs text-body">{{ __('Disc.') }}<input type="number" min="0" step="0.01" class="pos-mini-input" x-model="section.group.discount" @input.debounce.400ms="invalidate()" :aria-label="`Discount for ${section.group.product.name}`"></label>
+                                                    @endif
+                                                    <button type="button" class="pos-icon-btn hover:text-error" @click="remove(section.group.key)" :aria-label="`Remove ${section.group.product.name}`"><i class="ph ph-trash"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            </template>
+
+                            {{-- Wholesale grouped pack card --}}
+                            <template x-if="section.type === 'wholesale'">
+                                <article class="pos-ws-group">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0 space-y-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="pos-ws-badge" x-text="section.product.pack_pricing ? '{{ __('Wholesale pack') }}' : '{{ __('Wholesale') }}'"></span>
+                                                <span class="text-xs font-medium text-body" x-text="`${sectionPieces(section)} pcs`"></span>
+                                            </div>
+                                            <p class="truncate text-sm font-semibold text-title" x-text="section.product.name"></p>
+                                        </div>
+                                        <button type="button" class="pos-icon-btn text-error/80 hover:bg-error/10 hover:text-error" @click="removeProductGroup(section.product.id)" :aria-label="`Remove ${section.product.name}`"><i class="ph ph-trash"></i></button>
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border-default bg-section p-0.5">
+                                            <img x-show="section.product.image_url" :src="section.product.image_url" :alt="section.product.name" class="h-full w-full object-contain">
+                                            <i x-show="!section.product.image_url" class="ph ph-package text-lg text-body" aria-hidden="true"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1 space-y-1">
+                                            <p class="text-xs text-body">
+                                                <span x-text="`${sectionPieces(section)} pieces`"></span>
+                                                <span> · </span>
+                                                <strong class="text-title tabular-nums" x-text="sectionTotal(section) === null ? '…' : money(sectionTotal(section))"></strong>
+                                            </p>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <button type="button" class="rounded-md border border-border-default bg-bg-elevated px-2.5 py-1 text-xs font-medium text-title transition hover:border-primary/50 hover:bg-section" @click="togglePackDetails(section.product.id)" x-text="expandedPackDetails[section.product.id] ? '{{ __('Hide pack details') }}' : '{{ __('View pack details') }}'"></button>
+                                                <button type="button" class="pos-link" @click="openProduct(section.product, $event.currentTarget)">+ {{ __('Add color') }}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div x-show="expandedPackDetails[section.product.id]" x-cloak class="rounded-lg border border-border-default bg-section/60 p-2.5 text-xs text-body space-y-1">
+                                        <p class="font-semibold text-title">{{ __('Pack & color breakdown') }}</p>
+                                        <template x-for="entry in section.entries" :key="`detail-${entry.group.key}`">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="truncate" x-text="`${colorName(entry.group)}${entry.group.packs ? ` (${entry.group.packs} × ${packPieces(entry.group)} pcs)` : ''}: ${groupSizeSummary(entry.group)}`"></span>
+                                                <span class="shrink-0 font-medium text-title" x-text="`${groupPieces(entry.group)} pcs`"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <template x-for="entry in section.entries" :key="entry.group.key">
+                                            <div class="pos-ws-item">
+                                                <div class="flex items-start justify-between gap-2.5">
+                                                    <div class="min-w-0 flex-1 space-y-1.5">
+                                                        <p class="flex items-center gap-1.5 text-xs">
+                                                            <span class="size-2.5 shrink-0 rounded-full border border-black/15" :style="{ backgroundColor: colorDot(entry.group) }"></span>
+                                                            <strong class="text-title" x-text="`${groupPieces(entry.group)} pieces`"></strong>
+                                                            <span class="truncate text-body" x-text="`(${colorName(entry.group)}${entry.group.packs ? ` · ${entry.group.packs} ${entry.group.packs === 1 ? 'pack' : 'packs'}` : ''})`"></span>
+                                                        </p>
+                                                        <p x-show="groupSizeSummary(entry.group)" class="text-[11px] leading-4 text-body" x-text="groupSizeSummary(entry.group)"></p>
+                                                        <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                                                            <div x-show="entry.group.packs" class="pos-stepper bg-bg-elevated">
+                                                                <button type="button" @click="stepGroupPacks(entry.group, -1)" aria-label="{{ __('Decrease packs') }}"><i class="ph ph-minus"></i></button>
+                                                                <span x-text="entry.group.packs"></span>
+                                                                <button type="button" @click="stepGroupPacks(entry.group, 1)" :disabled="entry.group.packs >= maxPacksForGroup(entry.group)" aria-label="{{ __('Increase packs') }}"><i class="ph ph-plus"></i></button>
+                                                            </div>
+                                                            @if($canDiscount)
+                                                                <label class="flex items-center gap-1 text-[11px] text-body">{{ __('Disc.') }}<input type="number" min="0" step="0.01" class="pos-mini-input h-7! w-14!" x-model="entry.group.discount" @input.debounce.400ms="invalidate()" :aria-label="`Discount for ${colorName(entry.group)}`"></label>
+                                                            @endif
+                                                            <button type="button" class="pos-icon-btn size-7! hover:text-error" @click="remove(entry.group.key)" :aria-label="`Remove ${colorName(entry.group)}`"><i class="ph ph-x"></i></button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex shrink-0 items-center gap-2">
+                                                        <div class="text-right">
+                                                            <p x-show="unitPiecePrice(entry) !== null" class="text-[11px] text-body tabular-nums" x-text="`${money(unitPiecePrice(entry))} / pc`"></p>
+                                                            <p class="text-sm font-semibold text-title tabular-nums" x-text="lineTotal(entry.index) === null ? '…' : money(lineTotal(entry.index))"></p>
+                                                        </div>
+                                                        <div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border-default bg-bg-elevated p-0.5">
+                                                            <img x-show="colorThumbUrl(entry.group)" :src="colorThumbUrl(entry.group)" :alt="colorName(entry.group)" class="h-full w-full object-contain">
+                                                            <i x-show="!colorThumbUrl(entry.group)" class="ph ph-image text-sm text-body" aria-hidden="true"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="flex items-center justify-between border-t border-border-default pt-2 text-xs">
+                                        <span class="text-body">{{ __('Wholesale group') }}</span>
+                                        <span class="text-body">{{ __('Group total:') }} <strong class="text-sm text-title tabular-nums" x-text="sectionTotal(section) === null ? '…' : money(sectionTotal(section))"></strong></span>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
                     </template>
                 </div>
 
@@ -262,19 +363,35 @@
         </div>
 
         {{-- Product dialog --}}
-        <dialog x-ref="posProductModal" aria-labelledby="pos-product-title" class="pos-dialog max-w-3xl" @close="closeProductModal()">
+        <dialog x-ref="posProductModal" aria-labelledby="pos-product-title" class="pos-dialog max-w-4xl" @close="closeProductModal()">
             <template x-if="selectedProduct">
                 <div class="space-y-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div><p class="text-xs font-medium uppercase tracking-wide text-primary" x-text="mode === 'retail' ? 'Retail' : (selectedProduct.pack_pricing ? 'Wholesale packs' : 'Wholesale')"></p><h2 id="pos-product-title" class="mt-1 text-lg font-semibold text-title" x-text="selectedProduct.name"></h2><p class="text-sm text-body" x-text="selectedProduct.sku"></p></div>
+                    <div class="flex items-start justify-between gap-3 border-b border-border-default pb-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-primary" x-text="mode === 'retail' ? 'Retail' : (selectedProduct.pack_pricing ? 'Wholesale · Pack order' : 'Wholesale')"></p>
+                            <h2 id="pos-product-title" class="mt-0.5 text-lg font-semibold text-title" x-text="selectedProduct.name"></h2>
+                            <p class="text-xs text-body" x-text="selectedProduct.sku"></p>
+                        </div>
                         <button type="button" class="pos-icon-btn" autofocus @click="$refs.posProductModal.close()" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button>
                     </div>
-                    <div class="grid gap-5 md:grid-cols-[14rem_minmax(0,1fr)]">
-                        <button type="button" class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-section p-3" @click="openGallery(selectedProduct.gallery, selectedProduct.name, $event.currentTarget)" :disabled="!selectedProduct.gallery.length" :aria-label="`View images for ${selectedProduct.name}`">
-                            <img x-show="selectedProduct.image_url && !detailImageFailed" :src="selectedProduct.image_url" :alt="selectedProduct.name" class="max-h-full max-w-full object-contain" x-on:error="detailImageFailed = true">
-                            <span x-show="!selectedProduct.image_url || detailImageFailed" class="text-sm text-body">{{ __('No image') }}</span>
-                        </button>
-                        <div class="space-y-4">
+                    <div class="grid gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
+                        <div class="space-y-2.5">
+                            <button type="button" class="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-border-default bg-section p-3 transition hover:border-primary/50" @click="openGallery(activePreviewImages(), activePreviewTitle(), $event.currentTarget)" :disabled="!activePreviewImages().length" :aria-label="`View images for ${activePreviewTitle()}`">
+                                <img x-show="activePreviewImage() && !detailImageFailed" :src="activePreviewImage()" :alt="activePreviewTitle()" class="max-h-full max-w-full object-contain transition group-hover:scale-[1.02]" x-on:error="detailImageFailed = true">
+                                <span x-show="!activePreviewImage() || detailImageFailed" class="text-sm text-body">{{ __('No image') }}</span>
+                                <span x-show="activePreviewImages().length" class="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-bg-elevated/90 px-2.5 py-1 text-[11px] font-medium text-title shadow-sm backdrop-blur-xs">
+                                    <i class="ph ph-images"></i> <span x-text="activePreviewImages().length"></span>
+                                </span>
+                            </button>
+                            <div x-show="activePreviewColor()" class="flex items-center justify-between gap-2 rounded-lg bg-section px-3 py-2 text-xs">
+                                <span class="flex min-w-0 items-center gap-2 font-medium text-title">
+                                    <span class="size-3.5 shrink-0 rounded-full border border-black/15" :style="{ backgroundColor: activePreviewColor()?.swatch_image_url ? 'transparent' : colorHex(activePreviewColor()), backgroundImage: activePreviewColor()?.swatch_image_url ? `url('${activePreviewColor().swatch_image_url}')` : 'none' }"></span>
+                                    <span class="truncate" x-text="activePreviewColor()?.name"></span>
+                                </span>
+                                <span class="shrink-0 text-body" x-text="`${activePreviewColor()?.available ?? 0} in stock`"></span>
+                            </div>
+                        </div>
+                        <div class="min-w-0 space-y-4">
                             {{-- Retail --}}
                             <template x-if="mode === 'retail'">
                                 <div class="space-y-4">
@@ -293,54 +410,202 @@
                             </template>
                             {{-- Wholesale whole packs --}}
                             <template x-if="mode === 'wholesale' && selectedProduct.pack_pricing">
-                                <div class="space-y-3">
-                                    <div class="rounded-md border border-border-default">
-                                        <template x-for="row in selectedProduct.pack_prices" :key="row.packs"><div class="flex justify-between border-b border-border-default px-3 py-1.5 text-sm last:border-0"><span class="text-body" x-text="`${row.packs} packs`"></span><span class="font-medium text-title" x-text="money(row.price)"></span></div></template>
+                                <div class="space-y-4">
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="row in selectedProduct.pack_prices" :key="row.packs">
+                                            <div class="pos-tier-pill" :class="activePackTier()?.packs === row.packs && 'pos-tier-pill-active'">
+                                                <span class="font-semibold text-title" x-text="`${row.packs} ${row.packs === 1 ? 'pack' : 'packs'} · ${money(row.price)}`"></span>
+                                                <span class="text-[11px] text-body" x-text="`${money(Number(row.price) / row.packs)} / pack`"></span>
+                                            </div>
+                                        </template>
                                     </div>
-                                    <p class="text-xs text-body" x-text="`1 pack = 1 color box. Minimum ${selectedProduct.min_packs} packs.`"></p>
-                                    <div class="space-y-2"><template x-for="color in selectedProduct.colors.filter(item => item.available > 0)" :key="color.id">
-                                        <div class="flex items-center gap-3 rounded-md bg-section px-3 py-2">
-                                            <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
-                                            <span class="min-w-0 flex-1 text-sm text-title"><span x-text="color.name"></span> <span class="text-xs text-body" x-text="`· ${packPiecesFor(color.id)} pcs/pack`"></span></span>
-                                            <div class="pos-stepper"><button type="button" @click="stepPack(color.id, -1)" aria-label="{{ __('Fewer packs') }}"><i class="ph ph-minus"></i></button><span x-text="packCounts[color.id] || 0"></span><button type="button" @click="stepPack(color.id, 1)" aria-label="{{ __('More packs') }}"><i class="ph ph-plus"></i></button></div>
+
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <h3 class="text-xs font-semibold uppercase tracking-wide text-body">{{ __('1. Choose colors') }}</h3>
+                                            <span class="text-xs text-body" x-text="`Min ${selectedProduct.min_packs} packs`"></span>
                                         </div>
-                                    </template></div>
-                                    <div class="flex items-center justify-between gap-3">
-                                        <span class="text-sm text-body" x-text="`${totalPacks()} packs · ${money(packTotal(selectedProduct, totalPacks()))}`"></span>
-                                        <button type="button" class="btn btn-primary" @click="addPackSelection()" :disabled="!totalPacks()">{{ __('Add packs') }}</button>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-for="color in selectedProduct.colors.filter(item => item.available > 0)" :key="color.id">
+                                                <button type="button" class="pos-color-pill"
+                                                    :class="{ 'pos-color-pill-selected': (packCounts[color.id] || 0) > 0, 'pos-color-pill-active': selectedWholesaleColorId === String(color.id) && (packCounts[color.id] || 0) > 0 }"
+                                                    :disabled="maxPacksFor(color.id) < 1"
+                                                    :aria-pressed="(packCounts[color.id] || 0) > 0"
+                                                    @click="togglePackColor(color)">
+                                                    <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
+                                                    <span class="min-w-0">
+                                                        <span class="block truncate text-xs font-semibold text-title" x-text="color.name"></span>
+                                                        <span class="block text-[11px] text-body" x-text="(packCounts[color.id] || 0) > 0 ? `${packCounts[color.id]} pack${packCounts[color.id] === 1 ? '' : 's'}` : `${maxPacksFor(color.id)} packs avail`"></span>
+                                                    </span>
+                                                    <i x-show="(packCounts[color.id] || 0) > 0" class="ph-fill ph-check-circle text-sm text-primary" aria-hidden="true"></i>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <h3 class="text-xs font-semibold uppercase tracking-wide text-body">{{ __('2. Pack counts & size breakdown') }}</h3>
+                                        <div x-show="!totalPacks()" class="rounded-lg border border-dashed border-border-default bg-section/60 px-4 py-5 text-center text-xs text-body">
+                                            {{ __('Tap one or more colors above to add packs and preview sizes.') }}
+                                        </div>
+                                        <div x-show="totalPacks() > 0" class="max-h-56 space-y-2 overflow-y-auto pr-0.5">
+                                            <template x-for="color in selectedProduct.colors.filter(item => (packCounts[item.id] || 0) > 0)" :key="color.id">
+                                                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition"
+                                                    :class="selectedWholesaleColorId === String(color.id) ? 'border-primary bg-primary/5' : 'border-border-default bg-bg-elevated'">
+                                                    <button type="button" class="flex min-w-0 flex-1 items-center gap-2.5 text-left" @click="selectedWholesaleColorId = String(color.id); detailImageFailed = false;">
+                                                        <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
+                                                        <span class="min-w-0">
+                                                            <span class="block truncate text-sm font-medium text-title" x-text="color.name"></span>
+                                                            <span class="block truncate text-xs text-body" x-text="packRatioText(color.id) ? `${packRatioText(color.id)} · ${packPiecesFor(color.id)} pcs/pack` : `${color.available} available`"></span>
+                                                        </span>
+                                                    </button>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="pos-stepper">
+                                                            <button type="button" @click="stepPack(color.id, -1)" aria-label="{{ __('Fewer packs') }}"><i class="ph ph-minus"></i></button>
+                                                            <input type="number" min="1" :max="maxPacksFor(color.id)" class="w-10 border-0 bg-transparent text-center text-xs font-semibold text-title" :value="packCounts[color.id] || 0" @change="setPackCount(color.id, $event.target.value)" aria-label="{{ __('Packs') }}">
+                                                            <button type="button" @click="stepPack(color.id, 1)" :disabled="(packCounts[color.id] || 0) >= maxPacksFor(color.id)" aria-label="{{ __('More packs') }}"><i class="ph ph-plus"></i></button>
+                                                        </div>
+                                                        <span x-show="packPiecesFor(color.id) > 0" class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary tabular-nums" x-text="`${(packCounts[color.id] || 0) * packPiecesFor(color.id)} pcs`"></span>
+                                                        <button type="button" class="pos-icon-btn hover:text-error" @click="stepPack(color.id, -(packCounts[color.id] || 0))" :aria-label="`Remove ${color.name}`"><i class="ph ph-trash"></i></button>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="pos-modal-footer space-y-2.5">
+                                        <div class="space-y-1">
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="font-medium text-title" x-text="`${totalPacks()} ${totalPacks() === 1 ? 'pack' : 'packs'}${totalPackPieces() ? ` · ${totalPackPieces()} pcs` : ''}`"></span>
+                                                <span class="text-body" x-text="`MOQ: ${wholesaleStats().combined} / ${wholesaleStats().target} packs`"></span>
+                                            </div>
+                                            <div class="pos-moq-track"><div class="pos-moq-fill" :style="`width: ${wholesaleStats().progress}%`"></div></div>
+                                        </div>
+                                        <p x-show="totalPacks() > 0 && packSelectionError()" class="text-xs text-error" x-text="packSelectionError()"></p>
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <span class="block text-[11px] text-body">{{ __('Estimated total') }}</span>
+                                                <span class="text-lg font-semibold text-title tabular-nums" x-text="money(packTotal(selectedProduct, totalPacks()))"></span>
+                                            </div>
+                                            <button type="button" class="btn btn-primary px-5" @click="addPackSelection()" :disabled="!canAddPackSelection()" x-text="totalPacks() ? `Add ${totalPacks()} ${totalPacks() === 1 ? 'pack' : 'packs'}` : 'Add packs'"></button>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
-                            {{-- Wholesale custom sizes --}}
+                            {{-- Wholesale custom sizes & inline pack builder --}}
                             <template x-if="mode === 'wholesale' && !selectedProduct.pack_pricing">
-                                <div class="space-y-3">
-                                    <p x-show="selectedProduct.wholesale_price" class="text-lg font-semibold text-title" x-text="`${money(selectedProduct.wholesale_price)} / pc`"></p>
-                                    <p class="text-xs text-body" x-text="`At least ${selectedProduct.minimum_sizes} sizes per color, ${selectedProduct.color_minimum} pcs per size, ${selectedProduct.minimum} pcs per product.`"></p>
-                                    <div class="space-y-2"><template x-for="color in selectedProduct.colors.filter(item => item.available > 0)" :key="color.id">
-                                        <button type="button" class="flex w-full items-center gap-3 rounded-md border border-border-default px-3 py-2 text-left transition hover:border-primary/50" @click="openWholesaleColor(color, $event.currentTarget)" :aria-pressed="selectedWholesaleColorIds.includes(String(color.id))">
-                                            <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
-                                            <span class="min-w-0 flex-1"><span class="block text-sm text-title" x-text="color.name"></span><span class="text-xs text-body" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? Object.entries(wholesaleSizeQuantities[color.id] || {}).filter(([, q]) => Number(q) > 0).map(([s, q]) => `${s}: ${q}`).join(' · ') : `${color.available} available`"></span></span>
-                                            <span class="flex flex-col items-end gap-0.5 text-right"><span class="text-xs font-medium text-primary" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? 'Edit' : 'Select'"></span><span class="text-xs text-body" x-text="`${wholesaleRemainingStock(color)} in stock`"></span></span>
-                                        </button>
-                                    </template></div>
-                                    <p class="text-xs text-error" x-show="selectedWholesaleColorIds.length && !canAddWholesaleSelection()" x-text="wholesaleSelectionError()"></p>
-                                    <button type="button" class="btn btn-primary w-full" @click="addWholesaleSelection()" :disabled="!canAddWholesaleSelection()">{{ __('Add selected colors') }}</button>
+                                <div class="space-y-4">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <p x-show="selectedProduct.wholesale_price" class="text-xl font-semibold text-title" x-text="`${money(selectedProduct.wholesale_price)} / pc`"></p>
+                                        <div class="flex flex-wrap gap-1.5 text-[11px]">
+                                            <span class="rounded-full bg-section px-2.5 py-1 font-medium text-body" x-text="`Min ${selectedProduct.minimum} pcs`"></span>
+                                            <span class="rounded-full bg-section px-2.5 py-1 font-medium text-body" x-text="`${selectedProduct.minimum_sizes}+ sizes/color`"></span>
+                                            <span class="rounded-full bg-section px-2.5 py-1 font-medium text-body" x-text="`${selectedProduct.color_minimum}+ pc/size`"></span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Step 1: Visual Color Picker --}}
+                                    <div class="space-y-2">
+                                        <h3 class="text-xs font-semibold uppercase tracking-wide text-body">{{ __('1. Choose colors (tap to add & edit)') }}</h3>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-for="color in selectedProduct.colors.filter(item => item.available > 0)" :key="color.id">
+                                                <button type="button" class="pos-color-pill"
+                                                    :class="{ 'pos-color-pill-selected': selectedWholesaleColorIds.includes(String(color.id)), 'pos-color-pill-active': selectedWholesaleColorId === String(color.id) && selectedWholesaleColorIds.includes(String(color.id)) }"
+                                                    :aria-pressed="selectedWholesaleColorIds.includes(String(color.id))"
+                                                    @click="toggleWholesaleColor(color)">
+                                                    <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: color.swatch_image_url ? 'transparent' : colorHex(color), backgroundImage: color.swatch_image_url ? `url('${color.swatch_image_url}')` : 'none' }"></span>
+                                                    <span class="min-w-0">
+                                                        <span class="block truncate text-xs font-semibold text-title" x-text="color.name"></span>
+                                                        <span class="block text-[11px] text-body" x-text="selectedWholesaleColorIds.includes(String(color.id)) ? `${wholesaleColorPieces(color.id)} pcs` : `${color.available} avail`"></span>
+                                                    </span>
+                                                    <i x-show="selectedWholesaleColorIds.includes(String(color.id))" class="ph-fill ph-check-circle text-sm text-primary" aria-hidden="true"></i>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    {{-- Step 2: Inline Packs & Size Quantities --}}
+                                    <div class="space-y-2.5">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <h3 class="text-xs font-semibold uppercase tracking-wide text-body">{{ __('2. Adjust packs & size quantities') }}</h3>
+                                            <div x-show="selectedWholesaleColorIds.length > 1" class="flex flex-wrap gap-1.5">
+                                                <template x-for="colorId in selectedWholesaleColorIds" :key="colorId">
+                                                    <button type="button" class="pos-chip flex items-center gap-1.5" :class="selectedWholesaleColorId === colorId && 'pos-chip-active'" @click="focusWholesaleColor(colorId)">
+                                                        <span x-text="`${wholesaleColorName(colorId)} · ${wholesaleColorPieces(colorId)}`"></span>
+                                                        <span class="opacity-70 hover:opacity-100" @click.stop="removeWholesaleColor(colorId)" :aria-label="`Remove ${wholesaleColorName(colorId)}`">×</span>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="!selectedWholesaleColorIds.length" class="rounded-lg border border-dashed border-border-default bg-section/60 px-4 py-5 text-center text-xs text-body">
+                                            {{ __('Tap one or more colors above to set pack counts and size quantities.') }}
+                                        </div>
+
+                                        <template x-if="selectedWholesaleColorId && selectedWholesaleColorIds.includes(selectedWholesaleColorId) && wholesaleSizeQuantities[selectedWholesaleColorId]">
+                                            <div class="space-y-3 rounded-xl border border-border-default bg-section/40 p-3.5">
+                                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="pos-swatch pos-swatch-sm" :style="{ backgroundColor: activePreviewColor()?.swatch_image_url ? 'transparent' : colorHex(activePreviewColor()), backgroundImage: activePreviewColor()?.swatch_image_url ? `url('${activePreviewColor().swatch_image_url}')` : 'none' }"></span>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-title" x-text="wholesaleColorName(selectedWholesaleColorId)"></p>
+                                                            <p class="text-[11px] text-body" x-text="`${wholesaleColorPieces(selectedWholesaleColorId)} pcs selected · ${wholesaleRemainingStock(activePreviewColor() || { id: selectedWholesaleColorId, available: 0 })} left`"></p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="flex items-center gap-1.5 rounded-lg border border-border-default bg-bg-elevated px-2 py-1 text-xs">
+                                                            <span class="font-medium text-body">{{ __('Packs') }}</span>
+                                                            <div class="pos-stepper border-0">
+                                                                <button type="button" class="size-7!" @click="stepWholesaleColorPack(selectedWholesaleColorId, -1)" :disabled="wholesalePackCount(selectedWholesaleColorId) <= 1" aria-label="{{ __('Decrease packs') }}"><i class="ph ph-minus"></i></button>
+                                                                <span class="min-w-6! px-1! font-semibold" x-text="wholesalePackCount(selectedWholesaleColorId)"></span>
+                                                                <button type="button" class="size-7!" @click="stepWholesaleColorPack(selectedWholesaleColorId, 1)" aria-label="{{ __('Increase packs') }}"><i class="ph ph-plus"></i></button>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="pos-icon-btn hover:text-error" @click="removeWholesaleColor(selectedWholesaleColorId)" :aria-label="`Remove ${wholesaleColorName(selectedWholesaleColorId)}`"><i class="ph ph-trash"></i></button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                                    <template x-for="variant in selectedProduct.variants.filter(item => String(item.color_id) === selectedWholesaleColorId)" :key="variant.id">
+                                                        <div class="pos-size-tile" :class="Number(wholesaleSizeQuantities[selectedWholesaleColorId][variant.size] || 0) > 0 && 'pos-size-tile-active'">
+                                                            <div class="flex items-baseline justify-between gap-1">
+                                                                <span class="text-sm font-semibold text-title" x-text="variant.size"></span>
+                                                                <span class="text-[11px] text-body" x-text="`${variant.available} avail`"></span>
+                                                            </div>
+                                                            <div class="pos-stepper w-full justify-between bg-bg-elevated">
+                                                                <button type="button" @click="stepWholesaleSize(selectedWholesaleColorId, variant.size, -1)" :disabled="variant.available < 1 || Number(wholesaleSizeQuantities[selectedWholesaleColorId][variant.size] || 0) < 1" aria-label="{{ __('Decrease size') }}"><i class="ph ph-minus"></i></button>
+                                                                <input type="number" min="0" step="1" class="w-12 border-0 bg-transparent text-center text-xs font-semibold text-title" :max="variant.available" :disabled="variant.available < 1" x-model.number="wholesaleSizeQuantities[selectedWholesaleColorId][variant.size]" @change="clampWholesaleSize(selectedWholesaleColorId, variant.size)" :aria-label="`${variant.size} pieces`">
+                                                                <button type="button" @click="stepWholesaleSize(selectedWholesaleColorId, variant.size, 1)" :disabled="variant.available < 1 || Number(wholesaleSizeQuantities[selectedWholesaleColorId][variant.size] || 0) >= variant.available" aria-label="{{ __('Increase size') }}"><i class="ph ph-plus"></i></button>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                <p x-show="wholesaleColorSelectionError(selectedWholesaleColorId)" class="text-xs text-error" x-text="wholesaleColorSelectionError(selectedWholesaleColorId)"></p>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="pos-modal-footer space-y-2.5">
+                                        <div class="space-y-1">
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="font-medium text-title" x-text="`${selectedWholesaleColorIds.length} ${selectedWholesaleColorIds.length === 1 ? 'color' : 'colors'} · ${wholesaleStats().totalPieces} pcs`"></span>
+                                                <span class="text-body" x-text="`MOQ: ${wholesaleStats().combined} / ${wholesaleStats().target} pcs`"></span>
+                                            </div>
+                                            <div class="pos-moq-track"><div class="pos-moq-fill" :style="`width: ${wholesaleStats().progress}%`"></div></div>
+                                        </div>
+                                        <p class="text-xs text-error" x-show="selectedWholesaleColorIds.length && wholesaleSelectionError() && !wholesaleColorSelectionError(selectedWholesaleColorId)" x-text="wholesaleSelectionError()"></p>
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <span class="block text-[11px] text-body">{{ __('Estimated total') }}</span>
+                                                <span class="text-lg font-semibold text-title tabular-nums" x-text="money(wholesaleStats().estimatedTotal)"></span>
+                                            </div>
+                                            <button type="button" class="btn btn-primary px-5" @click="addWholesaleSelection()" :disabled="!canAddWholesaleSelection()" x-text="selectedWholesaleColorIds.length ? `Add ${selectedWholesaleColorIds.length} ${selectedWholesaleColorIds.length === 1 ? 'color' : 'colors'} (${wholesaleStats().totalPieces} pcs)` : '{{ __('Add selected colors') }}'"></button>
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                         </div>
                     </div>
-                </div>
-            </template>
-        </dialog>
-
-        {{-- Wholesale color sizes --}}
-        <dialog x-ref="posWholesaleColorModal" aria-labelledby="pos-wholesale-color-title" class="pos-dialog max-w-lg" @close="closeWholesaleColor()">
-            <template x-if="selectedProduct && wholesaleSizeQuantities[selectedWholesaleColorId]">
-                <div class="space-y-4">
-                    <div class="flex items-start justify-between gap-3"><div><h2 id="pos-wholesale-color-title" class="font-semibold text-title" x-text="`${selectedProduct.name} · ${wholesaleColorName()}`"></h2><p class="text-xs text-body">{{ __('Pieces to sell by size') }}</p></div><button type="button" class="pos-icon-btn" autofocus @click="$refs.posWholesaleColorModal.close()" aria-label="{{ __('Close') }}"><i class="ph ph-x"></i></button></div>
-                    <div class="space-y-2"><template x-for="variant in selectedProduct.variants.filter(item => String(item.color_id) === selectedWholesaleColorId)" :key="variant.id"><label class="flex items-center justify-between gap-3 rounded-md bg-section px-3 py-2"><span class="text-sm text-title"><span x-text="variant.size"></span> <span class="text-xs text-body" x-text="`· ${variant.available} available`"></span></span><input type="number" min="0" step="1" class="form-input w-24" :max="variant.available" :disabled="variant.available < 1" x-model.number="wholesaleSizeQuantities[selectedWholesaleColorId][variant.size]" :aria-label="`${variant.size} pieces`"></label></template></div>
-                    <p x-show="wholesaleColorSelectionError()" class="text-xs text-error" x-text="wholesaleColorSelectionError()"></p>
-                    <button type="button" class="btn btn-primary w-full" @click="saveWholesaleColor()" :disabled="Boolean(wholesaleColorSelectionError())" x-text="selectedWholesaleColorIds.includes(selectedWholesaleColorId) ? 'Update color' : 'Add color'"></button>
                 </div>
             </template>
         </dialog>

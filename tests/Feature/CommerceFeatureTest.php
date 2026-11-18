@@ -912,6 +912,8 @@ it('provides reusable variant size presets CRUD and allows applying same sizes a
         ->assertOk()
         ->assertSee('Variant options')
         ->assertSee('Reusable variant options')
+        ->assertSee(route('user.commerce.variants.update', '__PRESET__'), false)
+        ->assertDontSee('/user/commerce/variants/', false)
         ->assertSee('Large')
         ->assertSee('L');
 

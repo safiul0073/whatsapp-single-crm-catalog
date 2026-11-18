@@ -38,6 +38,8 @@ class StoreOrderSettingsRequest extends FormRequest
             'payment_methods.*.fields.*.label' => ['required', 'string', 'max:100'],
             'payment_methods.*.fields.*.required' => ['required', 'boolean'],
             'whatsapp_notifications' => ['sometimes', 'boolean'],
+            'review_request_enabled' => ['sometimes', 'boolean'],
+            'review_request_delay_hours' => ['sometimes', 'integer', 'min:0', 'max:720'],
             'whatsapp_channel_id' => ['nullable', 'integer'],
             'whatsapp_template_id' => ['nullable', 'integer'],
             'owner_whatsapp_number' => ['nullable', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'],

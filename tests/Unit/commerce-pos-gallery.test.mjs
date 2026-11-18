@@ -109,26 +109,31 @@ test('retail product modal adds selected variants and quantities to the multi-it
     assert.deepEqual(JSON.parse(JSON.stringify(state.payload().groups)), [{ product_id: 12, mode: 'retail', variant_id: 91, quantity: 2 }]);
 });
 
-test('wholesale color rows open quantity details without opening the gallery', () => {
+test('wholesale color selection edits pack and size quantities inline without opening the gallery or a nested modal', () => {
     const state = pos();
     state.mode = 'wholesale';
     const product = {
-        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true, available: 200,
+        id: 12, name: 'Shirt', mode: 'both', wholesale_enabled: true, available: 200, wholesale_price: 10.5,
         colors: [{ id: 4, name: 'Red', available: 100 }, { id: 5, name: 'Blue', available: 100 }],
         variants: ['S', 'M', 'L'].flatMap((size, index) => [4, 5].map(colorId => ({ id: index * 2 + colorId, color_id: colorId, size, available: 100 }))),
-        ratios: { 4: { M: 3 } }, multiplier: 1, minimum: 6, minimum_sizes: 3, color_minimum: 1,
+        gallery: [{ url: 'red.jpg', color_id: 4 }, { url: 'blue.jpg', color_id: 5 }],
+        ratios: { 4: { S: 1, M: 2, L: 1 } }, multiplier: 1, minimum: 6, minimum_sizes: 3, color_minimum: 1,
     };
-    state.selectedProduct = product;
-    state.openWholesaleColor(product.colors[0], { focus() { this.focused = true; } });
-    assert.equal(state.colorModalOpened, true);
+    state.openProduct(product, null);
+    state.toggleWholesaleColor(product.colors[0]);
+    assert.equal(state.colorModalOpened, undefined);
     assert.equal(state.opened, undefined);
     assert.equal(state.selectedWholesaleColorId, '4');
-    state.wholesaleSizeQuantities[4] = { S: 1, M: 2, L: 1 };
-    state.saveWholesaleColor();
-    assert.deepEqual(Array.from(state.selectedWholesaleColorIds), ['4']);
-    state.openWholesaleColor(product.colors[1], null);
-    state.wholesaleSizeQuantities[5] = { S: 1, M: 1, L: 1 };
-    state.saveWholesaleColor();
+    assert.equal(state.activePreviewImage(), 'red.jpg');
+    assert.deepEqual(JSON.parse(JSON.stringify(state.wholesaleSizeQuantities[4])), { S: 1, M: 2, L: 1 });
+    state.stepWholesaleColorPack(4, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(state.wholesaleSizeQuantities[4])), { S: 2, M: 4, L: 2 });
+    state.stepWholesaleColorPack(4, -1);
+    assert.deepEqual(JSON.parse(JSON.stringify(state.wholesaleSizeQuantities[4])), { S: 1, M: 2, L: 1 });
+
+    state.toggleWholesaleColor(product.colors[1]);
+    assert.equal(state.selectedWholesaleColorId, '5');
+    assert.equal(state.activePreviewImage(), 'blue.jpg');
     state.addWholesaleSelection();
     assert.equal(state.groups.length, 2);
     assert.equal(state.itemCount(), 7);
@@ -141,4 +146,71 @@ test('wholesale color rows open quantity details without opening the gallery', (
     assert.equal(state.productModalOpened, true);
     state.clearCart();
     assert.equal(state.groups.length, 0);
+});
+
+test('wholesale pack mode toggles colors, computes pack ratios and enforces pack MOQ', () => {
+    const state = pos();
+    state.mode = 'wholesale';
+    const product = {
+        id: 21, name: 'Pack Tee', mode: 'wholesale', wholesale_enabled: true, available: 120, pack_pricing: true,
+        pack_prices: [{ packs: 2, price: 100 }, { packs: 4, price: 180 }], min_packs: 2,
+        colors: [{ id: 8, name: 'Black', available: 60 }, { id: 9, name: 'White', available: 60 }],
+        variants: ['S', 'M'].flatMap((size, index) => [8, 9].map(colorId => ({ id: index * 2 + colorId, color_id: colorId, size, available: 30 }))),
+        gallery: [{ url: 'black.jpg', color_id: 8 }],
+        ratios: { 8: { S: 2, M: 3 }, 9: { S: 2, M: 3 } }, multiplier: 1,
+    };
+    state.openProduct(product, null);
+    state.togglePackColor(product.colors[0]);
+    assert.equal(state.totalPacks(), 1);
+    assert.equal(state.totalPackPieces(), 5);
+    assert.equal(state.canAddPackSelection(), false);
+
+    state.togglePackColor(product.colors[1]);
+    assert.equal(state.totalPacks(), 2);
+    assert.equal(state.totalPackPieces(), 10);
+    assert.equal(state.activePackTier()?.packs, 2);
+    assert.equal(state.canAddPackSelection(), true);
+
+    state.addPackSelection();
+    assert.equal(state.groups.length, 2);
+    assert.equal(state.itemCount(), 10);
+});
+
+test('cartSections groups wholesale lines by product with color thumbnails, size breakdown and group totals', () => {
+    const state = pos();
+    state.config = { currency: 'USD', precision: 2 };
+    const product = {
+        id: 55, name: 'Tracksuit', image_url: 'main.jpg', pack_pricing: true,
+        colors: [{ id: 1, name: 'Khaki', hex_code: '#8b7355' }, { id: 2, name: 'Green', hex_code: '#1b4d3e' }],
+        gallery: [{ url: 'khaki.jpg', color_id: 1 }, { url: 'green.jpg', color_id: 2 }],
+        ratios: { 1: { S: 1, M: 2 }, 2: { S: 1, M: 2 } }, multiplier: 1,
+        variants: [],
+    };
+    state.groups = [
+        { key: 'g1', product, mode: 'wholesale', color_id: 1, packs: 1, discount: '' },
+        { key: 'g2', product, mode: 'wholesale', color_id: 2, packs: 2, discount: '' },
+        { key: 'r1', product: { id: 99, name: 'Cap', image_url: 'cap.jpg', colors: [], gallery: [], variants: [] }, mode: 'retail', variant_id: 1, color_id: null, count: 2, discount: '' },
+    ];
+    state.quote = {
+        groups: [
+            { items: [{ line_total: '150.00' }] },
+            { items: [{ line_total: '300.00' }] },
+            { items: [{ line_total: '40.00' }] },
+        ],
+    };
+
+    const sections = state.cartSections();
+    assert.equal(sections.length, 2);
+    assert.equal(sections[0].type, 'wholesale');
+    assert.equal(sections[0].entries.length, 2);
+    assert.equal(state.sectionPieces(sections[0]), 9);
+    assert.equal(state.sectionTotal(sections[0]), 450);
+    assert.equal(state.unitPiecePrice(sections[0].entries[0]), 50);
+    assert.equal(state.groupSizeSummary(sections[0].entries[0].group), 'S: 1, M: 2');
+    assert.equal(state.colorThumbUrl(sections[0].entries[1].group), 'green.jpg');
+    assert.equal(sections[1].type, 'retail');
+
+    state.removeProductGroup(55);
+    assert.equal(state.groups.length, 1);
+    assert.equal(state.groups[0].key, 'r1');
 });

@@ -91,7 +91,6 @@ class ProductDetailResource extends JsonResource
                 'sku' => $variant->sku,
                 'price' => (float) $variant->price,
                 'compare_at_price' => (float) $variant->compare_at_price,
-                'cost_price' => (float) $variant->cost_price,
                 'stock_quantity' => (int) $variant->stock_quantity,
                 'available_quantity' => $variant->availableQuantity($reserved[$variant->id] ?? 0),
                 'in_stock' => $variant->availableQuantity($reserved[$variant->id] ?? 0) > 0,

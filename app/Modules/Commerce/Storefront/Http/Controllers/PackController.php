@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Resources\ProductDetailResource;
+use App\Modules\Commerce\Services\MetaConversionsService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\PackRequest;
 use App\Modules\Commerce\Storefront\Models\CartGroup;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class PackController extends Controller
 {
-    public function __construct(private CartService $carts, private PackSelectionService $packs) {}
+    public function __construct(private CartService $carts, private PackSelectionService $packs, private MetaConversionsService $conversions) {}
 
     public function templates(Request $r): JsonResponse
     {
@@ -110,6 +111,9 @@ class PackController extends Controller
                 ] : null;
                 $connection->rollBack();
             } else {
+                if (! $id) {
+                    $this->conversions->queueAddToCart($r, $summary, collect($summary['items'])->where('group_id', $group->id)->values()->all());
+                }
                 $connection->commit();
             }
 
