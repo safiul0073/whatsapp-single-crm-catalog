@@ -8,3 +8,6 @@
     </div>
     @isset($actions)<div class="flex flex-wrap gap-2">{{ $actions }}</div>@endisset
 </div>
+@isset($tabs)
+    @include('shipping::user.management.partials.section-tabs', ['section' => $tabs])
+@endisset

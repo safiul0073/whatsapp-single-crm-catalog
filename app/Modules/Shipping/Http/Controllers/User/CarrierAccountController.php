@@ -4,6 +4,8 @@ namespace App\Modules\Shipping\Http\Controllers\User;
 
 use App\Modules\Shipping\Http\Requests\CarrierAccountRequest;
 use App\Modules\Shipping\Models\CarrierAccount;
+use App\Modules\Shipping\Services\Carriers\CarrierApiException;
+use App\Modules\Shipping\Services\Carriers\CarrierClientManager;
 use App\Modules\Shipping\Services\ShippingAuditService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -20,9 +22,13 @@ class CarrierAccountController extends ShippingBaseController
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('shipping::user.management.carriers.form', ['account' => new CarrierAccount(['environment' => 'sandbox', 'dim_divisor' => 5000, 'weight_rounding_step' => '0.5', 'is_active' => true])]);
+        return view('shipping::user.management.carriers.form', [
+            'account' => new CarrierAccount(['environment' => 'sandbox', 'dim_divisor' => 5000, 'weight_rounding_step' => '0.5', 'exchange_rate' => '1', 'is_active' => true]),
+            'countries' => $this->countries(),
+            'storeCurrency' => $this->storeCurrency($request),
+        ]);
     }
 
     public function store(CarrierAccountRequest $request): RedirectResponse
@@ -37,13 +43,13 @@ class CarrierAccountController extends ShippingBaseController
     {
         $this->assertWorkspace($request, $carrier);
 
-        return view('shipping::user.management.carriers.form', ['account' => $carrier]);
+        return view('shipping::user.management.carriers.form', ['account' => $carrier, 'countries' => $this->countries(), 'storeCurrency' => $this->storeCurrency($request)]);
     }
 
     public function update(CarrierAccountRequest $request, CarrierAccount $carrier): RedirectResponse
     {
         $this->assertWorkspace($request, $carrier);
-        $old = $carrier->only(['dim_divisor', 'weight_rounding_step', 'environment', 'is_active']);
+        $old = $carrier->only(['dim_divisor', 'weight_rounding_step', 'environment', 'exchange_rate', 'is_active', 'booking_enabled']);
         $carrier->update($request->accountData($carrier));
         $this->audit->record($carrier->workspace_id, 'carrier.updated', 'Courier account updated: '.$carrier->name, null, $old, $carrier->only(array_keys($old)));
 
@@ -57,5 +63,25 @@ class CarrierAccountController extends ShippingBaseController
         $this->audit->record($this->workspaceId($request), 'carrier.deleted', 'Courier account removed: '.$carrier->name);
 
         return redirect()->route('user.shipping.carriers.index')->with('success', __('Courier account removed.'));
+    }
+
+    public function test(Request $request, CarrierAccount $carrier, CarrierClientManager $clients): RedirectResponse
+    {
+        $this->assertWorkspace($request, $carrier);
+        $gaps = array_diff($carrier->liveRateGaps(), ['ship-from address']);
+        if ($gaps !== []) {
+            return back()->with('error', __('Add these before testing: :fields.', ['fields' => implode(', ', $gaps)]));
+        }
+
+        try {
+            $message = $clients->for($carrier)->testConnection($carrier);
+            $carrier->forceFill(['last_error' => null, 'last_error_at' => null])->saveQuietly();
+
+            return back()->with('success', $message);
+        } catch (CarrierApiException $exception) {
+            $carrier->forceFill(['last_error' => mb_substr($exception->summary(), 0, 500), 'last_error_at' => now()])->saveQuietly();
+
+            return back()->with('error', __('Connection failed — :message', ['message' => $exception->summary()]));
+        }
     }
 }

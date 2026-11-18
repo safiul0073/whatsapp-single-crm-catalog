@@ -53,6 +53,7 @@ class QuoteApprovalService
                 'shipping_carrier_account_id' => $quote->shipping_carrier_account_id,
                 'carrier' => $quote->carrier,
                 'service' => $quote->service,
+                'service_code' => $quote->service_code,
                 'status' => in_array($shipment->status, ['pending', 'quoted', 'approved'], true) ? 'approved' : $shipment->status,
             ]);
 

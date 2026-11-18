@@ -538,3 +538,17 @@ it('keeps the pack untouched and blocked when the changed pack is no longer vali
     $this->getJson('/api/storefront/v1/cart', $h)->assertOk()->assertJsonCount(0, 'data.notices')->assertJsonPath('data.checkout_allowed', false);
     expect(CartItem::query()->pluck('id')->all())->toBe($ids);
 });
+
+it('builds a standard pack from the remaining sizes when the owner sets a sold-out size to zero', function () {
+    [$p, $color, $selection] = standardPackFixture($this);
+    $p->variants()->where('size', 'L')->update(['stock_quantity' => 0]);
+    $p->update(['ws_size_ratios' => [$color->id => ['S' => 0, 'M' => 2, 'L' => 0]]]);
+    $token = $this->postJson('/api/storefront/v1/cart', [], $this->headers)->json('data.cart_token');
+    $h = [...$this->headers, 'X-Cart-Token' => $token];
+    $selection['colors'][0]['box_count'] = 3;
+
+    $res = $this->postJson('/api/storefront/v1/cart/groups', ['selection' => $selection], [...$h, 'Idempotency-Key' => (string) Str::uuid()])->assertOk();
+
+    expect($res->json('data.items'))->toHaveCount(1)
+        ->and($res->json('data.items.0.quantity'))->toBe(6);
+});

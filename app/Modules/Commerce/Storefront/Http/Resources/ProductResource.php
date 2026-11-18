@@ -115,6 +115,7 @@ class ProductResource extends JsonResource
             'variants' => $stockVariants->map(fn ($v) => [
                 'id' => $v->id,
                 'sku' => $v->sku,
+                'retailer_id' => $v->meta_retailer_id,
                 'size' => $v->size,
                 'color_id' => $v->color_id,
                 'attributes' => (object) ($v->attributes ?? []),

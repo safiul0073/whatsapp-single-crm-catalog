@@ -3,13 +3,18 @@
 namespace App\Modules\Commerce\Jobs;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Services\MetaConversionsService;
 use App\Modules\Commerce\Services\TikTokEventsService;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Arr;
 
-class SendTikTokPurchaseEvent implements ShouldQueue
+class SendTikTokPurchaseEvent implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    public int $uniqueFor = 3600;
 
     public int $tries = 3;
 
@@ -18,20 +23,31 @@ class SendTikTokPurchaseEvent implements ShouldQueue
      */
     public function __construct(public int $orderId, public array $client = []) {}
 
+    public function uniqueId(): string
+    {
+        return 'tiktok-purchase:'.$this->orderId;
+    }
+
     public function backoff(): array
     {
         return [30, 300];
     }
 
-    public function handle(TikTokEventsService $events): void
+    public function handle(TikTokEventsService $events, MetaConversionsService $conversions): void
     {
         $order = Order::query()->find($this->orderId);
 
-        if (! $order) {
+        if (! $order || $order->payment_state !== 'paid' || $order->status === 'cancelled') {
             return;
         }
 
-        $response = $events->sendPurchase($order, $this->client);
+        $client = $this->client ?: Arr::only(MetaConversionsService::rememberedClient($order), ['ip', 'user_agent', 'ttp', 'host', 'consent']);
+
+        if (! $conversions->consented((int) $order->workspace_id, $client)) {
+            return;
+        }
+
+        $response = $events->sendPurchase($order, $client);
 
         if ($response && $response->serverError()) {
             $response->throw();

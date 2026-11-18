@@ -11,6 +11,7 @@ use App\Modules\Shipping\Http\Requests\UpdateShipmentRequest;
 use App\Modules\Shipping\Models\CarrierAccount;
 use App\Modules\Shipping\Models\Shipment;
 use App\Modules\Shipping\Models\ShippingAgent;
+use App\Modules\Shipping\Services\BookingService;
 use App\Modules\Shipping\Services\RateComparisonService;
 use App\Modules\Shipping\Services\RemoteAreaService;
 use App\Modules\Shipping\Services\ShipmentService;
@@ -32,7 +33,8 @@ class ShipmentController extends ShippingBaseController
             'counts' => [
                 'pending' => $base()->whereIn('status', ['pending', 'quoted'])->count(),
                 'approved' => $base()->where('status', 'approved')->count(),
-                'moving' => $base()->whereIn('status', ['booked', 'in_transit'])->count(),
+                'moving' => $base()->whereIn('status', ['booked', 'in_transit', 'out_for_delivery'])->count(),
+                'exceptions' => $base()->where('status', 'exception')->count(),
                 'delivered' => $base()->whereIn('status', ['delivered', 'closed'])->count(),
                 'review' => $base()->where('needs_review', true)->count(),
                 'unpaid' => $base()->whereNotNull('final_cost')->where('payment_status', '!=', 'paid')->count(),
@@ -110,10 +112,10 @@ class ShipmentController extends ShippingBaseController
         return redirect()->route('user.shipping.shipments.show', $shipment)->with('success', __('Shipment :reference created.', ['reference' => $shipment->reference]));
     }
 
-    public function show(Request $request, Shipment $shipment, ShipmentWeightCalculator $weights, RateComparisonService $comparison, RemoteAreaService $remoteAreas): View
+    public function show(Request $request, Shipment $shipment, ShipmentWeightCalculator $weights, RateComparisonService $comparison, RemoteAreaService $remoteAreas, BookingService $bookings): View
     {
         $this->assertWorkspace($request, $shipment);
-        $shipment->load(['order.items', 'cartons', 'agent', 'carrierAccount', 'approver', 'charges', 'approvedQuote']);
+        $shipment->load(['order.items.variant.product.gallery.media', 'order.items.variant.product.primaryMedia', 'order.items.variant.color.swatchMedia', 'cartons', 'agent', 'carrierAccount', 'approver', 'charges', 'approvedQuote', 'booker', 'voidRequester', 'documents', 'trackingEvents']);
         $user = $request->user();
         $canViewCosts = $user->can('shipping.costs.view');
         $provider = $shipment->agent ?? $shipment->carrierAccount;
@@ -132,6 +134,9 @@ class ShipmentController extends ShippingBaseController
             'auditEntries' => $user->can('shipping.audit.view') ? $shipment->auditEntries()->with('user')->limit(30)->get() : collect(),
             'canViewCosts' => $canViewCosts,
             'canManage' => $user->can('shipping.shipments.manage'),
+            'canBook' => $user->can('shipping.bookings.create'),
+            'canVoid' => $user->can('shipping.bookings.void'),
+            'bookingBlockers' => $user->can('shipping.bookings.create') ? $bookings->blockers($shipment) : [],
             'countries' => $this->countries(),
             'storeCurrency' => $shipment->currency,
         ]);

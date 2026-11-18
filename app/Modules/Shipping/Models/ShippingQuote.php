@@ -27,6 +27,7 @@ class ShippingQuote extends Model
         'shipping_agent_id',
         'carrier',
         'service',
+        'service_code',
         'source',
         'billable_weight_kg',
         'base_rate',

@@ -1,6 +1,6 @@
 <x-layouts.user :title="__('Courier Rate Comparison')">
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
-        @include('shipping::user.management.partials.page-header', ['heading' => __('Courier Rate Comparison'), 'intro' => __('Shipments waiting for a carrier or agent decision. Open one to compare every quotation line by line and approve.')])
+        @include('shipping::user.management.partials.page-header', ['tabs' => 'rates', 'heading' => __('Courier Rate Comparison'), 'intro' => __('Shipments waiting for a carrier or agent decision. Open one to compare every quotation line by line and approve.')])
 
         <section class="section-card">
             @if($shipments->isEmpty())

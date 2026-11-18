@@ -5,7 +5,7 @@ Alpine.data('commercePos', () => {
 
     return {
         config: {}, products: [], groups: [], mode: 'retail', category: '',
-        selectedProduct: null, selectedColorId: '', selectedVariantId: '', selectedQuantity: 1, selectedWholesaleColorIds: [], wholesaleSizeQuantities: {}, selectedWholesaleColorId: '', packCounts: {}, productModalTrigger: null, wholesaleColorTrigger: null, detailImageFailed: false,
+        selectedProduct: null, selectedColorId: '', selectedVariantId: '', selectedQuantity: 1, selectedWholesaleColorIds: [], wholesaleSizeQuantities: {}, wholesalePackCounts: {}, selectedWholesaleColorId: '', packCounts: {}, productModalTrigger: null, wholesaleColorTrigger: null, detailImageFailed: false,
         search: '', quote: null, error: '', busy: false, searching: false, previewing: false,
         searchVersion: 0, revision: 0, previewTimer: null, fulfillment: 'pickup', customerType: 'walk_in', contactId: '', contactLabel: '',
         customerQuery: '', customerResults: [], customerSearching: false, customerView: 'search', addressView: 'create',
@@ -14,7 +14,7 @@ Alpine.data('commercePos', () => {
         suggestions: [], suggestIndex: -1, suggestVersion: 0, suggestTimer: null, postalStatus: '', postalVersion: 0, countryTouched: false, formError: '', savingCustomer: false, savingAddress: false,
         shippingMethod: '', handover: true, paymentType: 'full', payments: [], balances: [],
         discountType: 'amount', discountValue: '',
-        held: [], heldOpen: false,
+        held: [], heldOpen: false, expandedPackDetails: {},
         submission: '',
         galleryImages: [], galleryTitle: '', galleryIndex: 0, galleryFailures: {}, galleryTrigger: null,
         init() {
@@ -127,6 +127,7 @@ Alpine.data('commercePos', () => {
             }
             this.selectedWholesaleColorId = '';
             this.wholesaleSizeQuantities = {};
+            this.wholesalePackCounts = {};
             this.selectedProduct = product;
             this.selectedColorId = String(product.colors.find(color => color.available > 0)?.id || product.colors[0]?.id || '');
             this.selectedVariantId = String(product.variants.find(variant => variant.available > 0 && (!this.selectedColorId || String(variant.color_id) === this.selectedColorId))?.id || '');
@@ -140,8 +141,32 @@ Alpine.data('commercePos', () => {
         closeProductModal() { this.selectedWholesaleColorId = ''; this.productModalTrigger?.focus(); },
         selectColor(color) {
             this.selectedColorId = String(color.id);
+            this.detailImageFailed = false;
             const variant = this.selectedProduct?.variants.find(item => item.available > 0 && String(item.color_id) === this.selectedColorId);
             this.selectedVariantId = String(variant?.id || '');
+        },
+        activePreviewColor() {
+            if (!this.selectedProduct?.colors?.length) return null;
+            const id = this.mode === 'retail'
+                ? this.selectedColorId
+                : (this.selectedWholesaleColorId || this.selectedWholesaleColorIds[0] || this.selectedColorId);
+            return this.selectedProduct.colors.find(color => String(color.id) === String(id)) || null;
+        },
+        activePreviewImages() {
+            if (!this.selectedProduct) return [];
+            const color = this.activePreviewColor();
+            if (color) {
+                const scoped = this.colorGallery(this.selectedProduct, color);
+                if (scoped.length) return scoped;
+            }
+            return this.selectedProduct.gallery || [];
+        },
+        activePreviewImage() {
+            return this.activePreviewImages()[0]?.url || this.selectedProduct?.image_url || null;
+        },
+        activePreviewTitle() {
+            const color = this.activePreviewColor();
+            return color ? `${this.selectedProduct?.name || ''} · ${color.name}` : (this.selectedProduct?.name || '');
         },
         selectVariant(variant) { this.selectedVariantId = String(variant.id); },
         addRetailLine(product, variant, quantity) {
@@ -171,24 +196,101 @@ Alpine.data('commercePos', () => {
         },
 
         // ---- Wholesale: whole packs (pack price list) ----------------------------------------
-        packPiecesFor(colorId) {
+        packRatioEntries(colorId) {
             const product = this.selectedProduct;
             const ratio = product?.ratios?.[colorId] || product?.ratios?.[String(colorId)] || {};
-            return Object.values(ratio).reduce((sum, qty) => sum + Number(qty || 0), 0) * Math.max(1, Number(product?.multiplier || 1));
+            const multiplier = Math.max(1, Number(product?.multiplier || 1));
+            return Object.entries(ratio)
+                .map(([size, qty]) => [size, Number(qty || 0) * multiplier])
+                .filter(([, qty]) => qty > 0);
+        },
+        packRatioText(colorId) {
+            return this.packRatioEntries(colorId).map(([size, qty]) => `${size}: ${qty}`).join(' · ');
+        },
+        packPiecesFor(colorId) {
+            return this.packRatioEntries(colorId).reduce((sum, [, qty]) => sum + qty, 0);
+        },
+        maxPacksFor(colorId) {
+            const product = this.selectedProduct;
+            const entries = this.packRatioEntries(colorId);
+            if (!entries.length) {
+                const color = product?.colors?.find(item => String(item.id) === String(colorId));
+                return Math.max(0, Number(color?.available || 0));
+            }
+            return entries.reduce((minPacks, [size, perPack]) => {
+                const variant = product.variants.find(item => String(item.color_id) === String(colorId) && item.size === size);
+                const available = Math.floor(Number(variant?.available || 0) / perPack);
+                return Math.min(minPacks, available);
+            }, 500);
         },
         totalPacks() { return Object.values(this.packCounts).reduce((sum, count) => sum + Number(count || 0), 0); },
+        totalPackPieces() {
+            return Object.entries(this.packCounts).reduce((sum, [colorId, count]) => sum + Number(count || 0) * this.packPiecesFor(colorId), 0);
+        },
+        activePackTier(packs = this.totalPacks()) {
+            return [...(this.selectedProduct?.pack_prices || [])].reverse().find(item => item.packs <= packs) || null;
+        },
+        togglePackColor(color) {
+            if (!color || Number(color.available) < 1) return;
+            const colorId = String(color.id);
+            const current = Number(this.packCounts[colorId] || 0);
+            this.detailImageFailed = false;
+            if (current < 1) {
+                const max = this.maxPacksFor(colorId);
+                if (max < 1) { this.notify(`${color.name} has insufficient stock for a full pack.`); return; }
+                this.packCounts = { ...this.packCounts, [colorId]: 1 };
+                this.selectedWholesaleColorId = colorId;
+                return;
+            }
+            if (this.selectedWholesaleColorId !== colorId) {
+                this.selectedWholesaleColorId = colorId;
+                return;
+            }
+            this.stepPack(colorId, -current);
+        },
         stepPack(colorId, delta) {
-            const next = Math.max(0, Number(this.packCounts[colorId] || 0) + delta);
-            this.packCounts = { ...this.packCounts, [colorId]: next };
+            const max = Math.max(0, this.maxPacksFor(colorId));
+            const next = Math.min(max, Math.max(0, Number(this.packCounts[colorId] || 0) + delta));
+            const updated = { ...this.packCounts, [colorId]: next };
+            if (next < 1) delete updated[colorId];
+            this.packCounts = updated;
+            if (next > 0) {
+                this.selectedWholesaleColorId = String(colorId);
+                this.detailImageFailed = false;
+            } else if (this.selectedWholesaleColorId === String(colorId)) {
+                const fallbackId = Object.keys(updated).find(id => Number(updated[id]) > 0) || '';
+                this.selectedWholesaleColorId = fallbackId;
+            }
+        },
+        setPackCount(colorId, value) {
+            const parsed = Math.max(0, Math.floor(Number(value || 0)));
+            const current = Number(this.packCounts[colorId] || 0);
+            this.stepPack(colorId, parsed - current);
         },
         packTotal(product, packs) {
             const row = [...(product?.pack_prices || [])].reverse().find(item => item.packs <= packs);
             return row ? (Number(row.price) / row.packs) * packs : 0;
         },
+        packCartCountForProduct(product = this.selectedProduct) {
+            if (!product) return 0;
+            return this.groups
+                .filter(group => group.mode === 'wholesale' && group.packs && group.product.id === product.id)
+                .reduce((sum, group) => sum + Number(group.packs || 0), 0);
+        },
+        packSelectionError() {
+            const product = this.selectedProduct;
+            if (!product) return '';
+            if (!this.totalPacks()) return 'Select at least one color pack.';
+            const combined = this.totalPacks() + this.packCartCountForProduct(product);
+            const minPacks = Math.max(1, Number(product.min_packs || 1));
+            if (combined < minPacks) return `Add ${minPacks - combined} more pack${minPacks - combined === 1 ? '' : 's'} to reach the ${minPacks}-pack minimum.`;
+            return '';
+        },
+        canAddPackSelection() { return this.totalPacks() > 0 && this.packSelectionError() === ''; },
         addPackSelection() {
             const product = this.selectedProduct;
-            const packs = this.totalPacks() + this.groups.filter(group => group.mode === 'wholesale' && group.packs && group.product.id === product.id).reduce((sum, group) => sum + group.packs, 0);
-            if (packs < Number(product.min_packs || 1)) { this.notify(`${product.name} needs at least ${product.min_packs} packs.`); return; }
+            const error = this.packSelectionError();
+            if (error) { this.notify(error); return; }
             for (const [colorId, count] of Object.entries(this.packCounts)) {
                 if (Number(count) < 1) continue;
                 const existing = this.groups.find(group => group.mode === 'wholesale' && group.packs && group.product.id === product.id && String(group.color_id) === String(colorId));
@@ -198,26 +300,69 @@ Alpine.data('commercePos', () => {
             this.invalidate();
             this.$refs.posProductModal.close();
         },
-        stepGroupPacks(group, delta) {
-            group.packs = Number(group.packs) + delta;
-            if (group.packs < 1) { this.remove(group.key); return; }
-            this.invalidate();
-        },
 
-        // ---- Wholesale: custom size quantities -------------------------------------------------
+        // ---- Wholesale: custom size quantities & inline pack builder -------------------------
+        baseWholesalePack(colorId) {
+            const product = this.selectedProduct;
+            const id = String(colorId);
+            const variants = (product?.variants || []).filter(variant => String(variant.color_id) === id);
+            const configured = product?.ratios?.[colorId] || product?.ratios?.[id] || {};
+            const multiplier = Math.max(1, Number(product?.multiplier || 1));
+            const hasConfigured = Object.values(configured).some(qty => Number(qty || 0) > 0);
+            if (hasConfigured) {
+                return Object.fromEntries(variants.map(variant => [
+                    variant.size,
+                    Number(variant.available) > 0 ? Math.min(Number(variant.available), Math.max(0, Number(configured[variant.size] || 0) * multiplier)) : 0,
+                ]));
+            }
+            const minSizes = Math.max(1, Number(product?.minimum_sizes || 1));
+            const colorMin = Math.max(1, Number(product?.color_minimum || 1));
+            let remainingSizes = minSizes;
+            return Object.fromEntries(variants.map(variant => {
+                if (Number(variant.available) > 0 && remainingSizes > 0) {
+                    remainingSizes--;
+                    return [variant.size, Math.min(Number(variant.available), colorMin)];
+                }
+                return [variant.size, 0];
+            }));
+        },
+        ensureWholesaleColorQuantities(colorId) {
+            const id = String(colorId);
+            if (!this.wholesaleSizeQuantities[id]) {
+                this.wholesaleSizeQuantities[id] = this.baseWholesalePack(id);
+                this.wholesalePackCounts[id] = 1;
+            }
+        },
         openWholesaleColor(color, trigger) {
             if (!color || !this.selectedProduct) return;
             const colorId = String(color.id);
             this.wholesaleColorTrigger = trigger;
-            if (!this.wholesaleSizeQuantities[colorId]) {
-                const configured = this.selectedProduct.ratios?.[color.id] || this.selectedProduct.ratios?.[colorId] || {};
-                const multiplier = Math.max(1, Number(this.selectedProduct.multiplier || 1));
-                this.wholesaleSizeQuantities[colorId] = Object.fromEntries(this.selectedProduct.variants
-                    .filter(variant => String(variant.color_id) === colorId)
-                    .map(variant => [variant.size, Number(variant.available) > 0 ? Math.max(0, Number(configured[variant.size] || 0) * multiplier) : 0]));
+            this.ensureWholesaleColorQuantities(colorId);
+            if (!this.selectedWholesaleColorIds.includes(colorId)) {
+                this.selectedWholesaleColorIds = [...this.selectedWholesaleColorIds, colorId];
             }
             this.selectedWholesaleColorId = colorId;
-            this.$refs.posWholesaleColorModal.showModal();
+            this.detailImageFailed = false;
+        },
+        focusWholesaleColor(colorId) {
+            const id = String(colorId);
+            this.ensureWholesaleColorQuantities(id);
+            this.selectedWholesaleColorId = id;
+            this.detailImageFailed = false;
+        },
+        toggleWholesaleColor(color) {
+            if (!color || Number(color.available) < 1) return;
+            const colorId = String(color.id);
+            const isSelected = this.selectedWholesaleColorIds.includes(colorId);
+            if (!isSelected) {
+                this.openWholesaleColor(color, null);
+                return;
+            }
+            if (this.selectedWholesaleColorId !== colorId) {
+                this.focusWholesaleColor(colorId);
+                return;
+            }
+            this.removeWholesaleColor(colorId);
         },
         closeWholesaleColor() { this.wholesaleColorTrigger?.focus(); },
         wholesaleRemainingStock(color) {
@@ -228,6 +373,50 @@ Alpine.data('commercePos', () => {
         },
         wholesaleColorName(colorId = this.selectedWholesaleColorId) {
             return this.selectedProduct?.colors.find(color => String(color.id) === String(colorId))?.name || '';
+        },
+        wholesaleColorPieces(colorId = this.selectedWholesaleColorId) {
+            return Object.values(this.wholesaleSizeQuantities[String(colorId)] || {}).reduce((sum, quantity) => sum + Number(quantity || 0), 0);
+        },
+        wholesalePackCount(colorId = this.selectedWholesaleColorId) {
+            return Math.max(1, Number(this.wholesalePackCounts[String(colorId)] || 1));
+        },
+        stepWholesaleColorPack(colorId, delta) {
+            const id = String(colorId);
+            const base = this.baseWholesalePack(id);
+            const current = this.wholesaleSizeQuantities[id] || { ...base };
+            const currentPacks = this.wholesalePackCount(id);
+            if (delta < 0 && currentPacks <= 1) return;
+            const nextQuantities = { ...current };
+            for (const variant of (this.selectedProduct?.variants || []).filter(item => String(item.color_id) === id)) {
+                const step = Number(base[variant.size] || 0);
+                if (step < 1) continue;
+                nextQuantities[variant.size] = Math.min(Number(variant.available), Math.max(0, Number(current[variant.size] || 0) + delta * step));
+            }
+            const nextTotal = Object.values(nextQuantities).reduce((sum, q) => sum + Number(q || 0), 0);
+            if (delta < 0 && nextTotal < 1) return;
+            this.wholesaleSizeQuantities[id] = nextQuantities;
+            this.wholesalePackCounts[id] = Math.max(1, currentPacks + delta);
+        },
+        stepWholesaleSize(colorId, size, delta) {
+            const id = String(colorId);
+            const variant = this.selectedProduct?.variants?.find(item => String(item.color_id) === id && item.size === size);
+            const max = Number(variant?.available || 0);
+            const current = Number(this.wholesaleSizeQuantities[id]?.[size] || 0);
+            const next = Math.min(max, Math.max(0, current + delta));
+            this.wholesaleSizeQuantities[id] = { ...(this.wholesaleSizeQuantities[id] || {}), [size]: next };
+        },
+        clampWholesaleSize(colorId, size) {
+            const id = String(colorId);
+            const variant = this.selectedProduct?.variants?.find(item => String(item.color_id) === id && item.size === size);
+            const max = Number(variant?.available || 0);
+            const parsed = Math.floor(Number(this.wholesaleSizeQuantities[id]?.[size] || 0));
+            this.wholesaleSizeQuantities[id] = { ...(this.wholesaleSizeQuantities[id] || {}), [size]: Math.min(max, Math.max(0, Number.isFinite(parsed) ? parsed : 0)) };
+        },
+        wholesaleColorSummary(colorId) {
+            return Object.entries(this.wholesaleSizeQuantities[String(colorId)] || {})
+                .filter(([, q]) => Number(q) > 0)
+                .map(([s, q]) => `${s}: ${q}`)
+                .join(' · ');
         },
         wholesaleColorSelectionError(colorId = this.selectedWholesaleColorId) {
             const product = this.selectedProduct;
@@ -247,14 +436,59 @@ Alpine.data('commercePos', () => {
             const colorId = this.selectedWholesaleColorId;
             if (!colorId || this.wholesaleColorSelectionError(colorId)) return;
             if (!this.selectedWholesaleColorIds.includes(colorId)) this.selectedWholesaleColorIds = [...this.selectedWholesaleColorIds, colorId];
-            this.$refs.posWholesaleColorModal.close();
         },
-        removeWholesaleColor(colorId) { this.selectedWholesaleColorIds = this.selectedWholesaleColorIds.filter(id => id !== String(colorId)); },
+        removeWholesaleColor(colorId) {
+            const id = String(colorId);
+            this.selectedWholesaleColorIds = this.selectedWholesaleColorIds.filter(existing => existing !== id);
+            if (this.selectedWholesaleColorId === id) {
+                this.selectedWholesaleColorId = this.selectedWholesaleColorIds[0] || '';
+                this.detailImageFailed = false;
+            }
+        },
+        wholesaleCartPiecesForProduct(product = this.selectedProduct) {
+            if (!product) return 0;
+            return this.groups
+                .filter(group => group.mode === 'wholesale' && group.ratio && group.product.id === product.id)
+                .reduce((sum, group) => sum + Object.values(group.ratio).reduce((total, qty) => total + Number(qty), 0), 0);
+        },
+        wholesaleStats() {
+            const product = this.selectedProduct;
+            if (!product) return { totalPieces: 0, target: 1, progress: 0, moqMet: false, estimatedTotal: 0, unit: 'pcs', currentCount: 0 };
+            if (product.pack_pricing) {
+                const selected = this.totalPacks();
+                const inCart = this.packCartCountForProduct(product);
+                const target = Math.max(1, Number(product.min_packs || 1));
+                const combined = selected + inCart;
+                return {
+                    currentCount: selected,
+                    totalPieces: this.totalPackPieces(),
+                    combined,
+                    target,
+                    progress: Math.min(100, Math.round((combined / target) * 100)),
+                    moqMet: combined >= target && selected > 0,
+                    estimatedTotal: this.packTotal(product, selected),
+                    unit: 'packs',
+                };
+            }
+            const selectedPieces = this.selectedWholesaleColorIds.reduce((sum, id) => sum + this.wholesaleColorPieces(id), 0);
+            const inCart = this.wholesaleCartPiecesForProduct(product);
+            const target = Math.max(1, Number(product.minimum || 1));
+            const combined = selectedPieces + inCart;
+            return {
+                currentCount: selectedPieces,
+                totalPieces: selectedPieces,
+                combined,
+                target,
+                progress: Math.min(100, Math.round((combined / target) * 100)),
+                moqMet: combined >= target && selectedPieces > 0,
+                estimatedTotal: Number(product.wholesale_price || 0) * selectedPieces,
+                unit: 'pcs',
+            };
+        },
         wholesaleSelectionError() {
             if (!this.selectedWholesaleColorIds.length) return 'Select at least one color.';
             const product = this.selectedProduct;
-            let orderPieces = this.groups.filter(group => group.mode === 'wholesale' && group.ratio && group.product.id === product.id)
-                .reduce((sum, group) => sum + Object.values(group.ratio).reduce((total, qty) => total + Number(qty), 0), 0);
+            let orderPieces = this.wholesaleCartPiecesForProduct(product);
             for (const colorId of this.selectedWholesaleColorIds) {
                 const error = this.wholesaleColorSelectionError(colorId);
                 if (error) return error;
@@ -322,13 +556,115 @@ Alpine.data('commercePos', () => {
             this.groups = this.groups.filter(group => group.key !== key);
             this.invalidate();
         },
+        removeProductGroup(productId) {
+            this.groups = this.groups.filter(group => !(group.mode === 'wholesale' && Number(group.product?.id) === Number(productId)));
+            this.invalidate();
+        },
         clearCart() {
             this.groups = [];
+            this.expandedPackDetails = {};
             this.discountValue = '';
             this.invalidate();
         },
+        cartSections() {
+            const sections = [];
+            const wholesaleByProduct = new Map();
+            this.groups.forEach((group, index) => {
+                if (group.mode !== 'wholesale' || !group.product?.id) {
+                    sections.push({ type: 'retail', key: group.key, group, index });
+                    return;
+                }
+                const pid = Number(group.product.id);
+                let bucket = wholesaleByProduct.get(pid);
+                if (!bucket) {
+                    bucket = { type: 'wholesale', key: `ws-${pid}`, product: group.product, entries: [] };
+                    wholesaleByProduct.set(pid, bucket);
+                    sections.push(bucket);
+                }
+                bucket.entries.push({ group, index });
+            });
+            return sections;
+        },
+        togglePackDetails(productId) {
+            const key = String(productId);
+            this.expandedPackDetails = { ...this.expandedPackDetails, [key]: !this.expandedPackDetails[key] };
+        },
+        groupColor(group) {
+            return group.product?.colors?.find(color => String(color.id) === String(group.color_id)) || null;
+        },
+        colorDot(group) {
+            return this.colorHex(this.groupColor(group));
+        },
+        colorThumbUrl(group) {
+            const color = this.groupColor(group);
+            if (color && Array.isArray(group.product?.gallery)) {
+                const scoped = this.colorGallery(group.product, color);
+                if (scoped[0]?.url) return scoped[0].url;
+            }
+            return color?.swatch_image_url || group.product?.image_url || null;
+        },
+        groupPieces(group) {
+            if (group.mode === 'retail') return Number(group.count || 0);
+            if (group.packs) return Number(group.packs || 0) * this.packPieces(group);
+            return Object.values(group.ratio || {}).reduce((total, qty) => total + Number(qty || 0), 0);
+        },
+        groupSizeSummary(group) {
+            if (group.ratio) {
+                return Object.entries(group.ratio)
+                    .filter(([, qty]) => Number(qty || 0) > 0)
+                    .map(([size, qty]) => `${size}: ${qty}`)
+                    .join(', ');
+            }
+            if (group.packs) {
+                const ratio = group.product?.ratios?.[group.color_id] || group.product?.ratios?.[String(group.color_id)] || {};
+                const multiplier = Math.max(1, Number(group.product?.multiplier || 1));
+                return Object.entries(ratio)
+                    .map(([size, qty]) => [size, Number(qty || 0) * multiplier])
+                    .filter(([, qty]) => qty > 0)
+                    .map(([size, qty]) => `${size}: ${qty}`)
+                    .join(', ');
+            }
+            return '';
+        },
+        maxPacksForGroup(group) {
+            const ratio = group.product?.ratios?.[group.color_id] || group.product?.ratios?.[String(group.color_id)] || {};
+            const multiplier = Math.max(1, Number(group.product?.multiplier || 1));
+            const entries = Object.entries(ratio)
+                .map(([size, qty]) => [size, Number(qty || 0) * multiplier])
+                .filter(([, qty]) => qty > 0);
+            if (!entries.length || !Array.isArray(group.product?.variants)) return 500;
+            return entries.reduce((minPacks, [size, perPack]) => {
+                const variant = group.product.variants.find(item => String(item.color_id) === String(group.color_id) && item.size === size);
+                return Math.min(minPacks, Math.floor(Number(variant?.available || 0) / perPack));
+            }, 500);
+        },
+        stepGroupPacks(group, delta) {
+            const next = Number(group.packs || 0) + delta;
+            if (next < 1) { this.remove(group.key); return; }
+            const max = Math.max(1, this.maxPacksForGroup(group));
+            group.packs = Math.min(next, max);
+            this.invalidate();
+        },
+        sectionPieces(section) {
+            return section.entries.reduce((sum, entry) => sum + this.groupPieces(entry.group), 0);
+        },
+        sectionTotal(section) {
+            let sum = 0;
+            for (const entry of section.entries) {
+                const total = this.lineTotal(entry.index);
+                if (total === null) return null;
+                sum += Number(total);
+            }
+            return sum;
+        },
+        unitPiecePrice(entry) {
+            const total = this.lineTotal(entry.index);
+            const pieces = this.groupPieces(entry.group);
+            if (total === null || pieces < 1) return null;
+            return Number(total) / pieces;
+        },
         itemCount() {
-            return this.groups.reduce((sum, group) => sum + (group.mode === 'retail' ? Number(group.count) : group.packs ? group.packs * this.packPieces(group) : Object.values(group.ratio || {}).reduce((total, qty) => total + Number(qty), 0)), 0);
+            return this.groups.reduce((sum, group) => sum + this.groupPieces(group), 0);
         },
         packPieces(group) {
             const ratio = group.product.ratios?.[group.color_id] || group.product.ratios?.[String(group.color_id)] || {};

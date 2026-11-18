@@ -2,7 +2,11 @@
 
 use App\Modules\Shipping\Http\Controllers\User\AgentController;
 use App\Modules\Shipping\Http\Controllers\User\BillingController;
+use App\Modules\Shipping\Http\Controllers\User\BookingController;
 use App\Modules\Shipping\Http\Controllers\User\CarrierAccountController;
+use App\Modules\Shipping\Http\Controllers\User\DocumentController;
+use App\Modules\Shipping\Http\Controllers\User\InvoiceController;
+use App\Modules\Shipping\Http\Controllers\User\PaymentController;
 use App\Modules\Shipping\Http\Controllers\User\QuoteController;
 use App\Modules\Shipping\Http\Controllers\User\RemoteAreaController;
 use App\Modules\Shipping\Http\Controllers\User\ReportController;
@@ -10,6 +14,7 @@ use App\Modules\Shipping\Http\Controllers\User\ShipmentController;
 use App\Modules\Shipping\Http\Controllers\User\ShippingController;
 use App\Modules\Shipping\Http\Controllers\User\ShippingMethodController;
 use App\Modules\Shipping\Http\Controllers\User\ToolsController;
+use App\Modules\Shipping\Http\Controllers\User\TrackingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('permission:shipping.manage')->group(function () {
@@ -46,9 +51,20 @@ Route::prefix('shipping')->name('shipping.')->group(function () {
         Route::put('shipments/{shipment}/cartons', [ShipmentController::class, 'cartons'])->name('shipments.cartons');
         Route::put('shipments/{shipment}/booking', [ShipmentController::class, 'booking'])->name('shipments.booking');
         Route::put('shipments/{shipment}/status', [ShipmentController::class, 'status'])->name('shipments.status');
+        Route::post('shipments/{shipment}/tracking/refresh', [TrackingController::class, 'refresh'])->name('tracking.refresh');
+        Route::post('shipments/{shipment}/documents', [DocumentController::class, 'store'])->name('documents.store');
+        Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+        Route::post('shipments/{shipment}/void-request', [BookingController::class, 'requestVoid'])->name('bookings.void-request');
     });
 
     Route::get('shipments/{shipment}', [ShipmentController::class, 'show'])->middleware('permission:shipping.shipments.view')->name('shipments.show');
+    Route::get('documents/{document}', [DocumentController::class, 'download'])->middleware('permission:shipping.shipments.view')->name('documents.download');
+
+    Route::post('shipments/{shipment}/book', [BookingController::class, 'store'])->middleware('permission:shipping.bookings.create')->name('bookings.store');
+    Route::middleware('permission:shipping.bookings.void')->group(function () {
+        Route::post('shipments/{shipment}/void', [BookingController::class, 'approveVoid'])->name('bookings.void');
+        Route::delete('shipments/{shipment}/void-request', [BookingController::class, 'rejectVoid'])->name('bookings.void-reject');
+    });
 
     Route::get('comparison', [ToolsController::class, 'comparison'])->middleware('permission:shipping.costs.view')->name('comparison');
 
@@ -80,12 +96,33 @@ Route::prefix('shipping')->name('shipping.')->group(function () {
     });
 
     Route::middleware('permission:shipping.carriers.manage')->group(function () {
+        Route::post('carriers/{carrier}/test', [CarrierAccountController::class, 'test'])->name('carriers.test');
         Route::resource('carriers', CarrierAccountController::class)->except(['show'])->parameters(['carriers' => 'carrier']);
     });
 
     Route::get('billing', [BillingController::class, 'index'])->middleware('permission:shipping.billing.view')->name('billing.index');
     Route::put('shipments/{shipment}/billing', [BillingController::class, 'update'])->middleware('permission:shipping.billing.manage')->name('billing.update');
     Route::put('shipments/{shipment}/review', [BillingController::class, 'review'])->middleware('permission:shipping.billing.approve')->name('billing.review');
+
+    Route::middleware('permission:shipping.billing.view')->group(function () {
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->whereNumber('invoice')->name('invoices.show');
+        Route::get('invoices/{invoice}/file', [InvoiceController::class, 'file'])->name('invoices.file');
+        Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
+        Route::get('agents/{agent}/statement', [PaymentController::class, 'statement'])->name('payments.statement');
+    });
+    Route::middleware('permission:shipping.billing.manage')->group(function () {
+        Route::get('invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+        Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+        Route::post('invoices/{invoice}/reconcile', [InvoiceController::class, 'reconcile'])->name('invoices.reconcile');
+        Route::post('invoices/{invoice}/lines', [InvoiceController::class, 'storeLine'])->name('invoices.lines.store');
+        Route::put('invoice-lines/{line}', [InvoiceController::class, 'resolveLine'])->name('invoices.lines.resolve');
+        Route::delete('invoice-lines/{line}', [InvoiceController::class, 'destroyLine'])->name('invoices.lines.destroy');
+        Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+        Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+    });
 
     Route::get('reports', [ReportController::class, 'index'])->middleware('permission:shipping.reports.view')->name('reports.index');
     Route::get('product-costs', [ReportController::class, 'productCosts'])->middleware('permission:shipping.product_costs.manage')->name('product-costs.index');

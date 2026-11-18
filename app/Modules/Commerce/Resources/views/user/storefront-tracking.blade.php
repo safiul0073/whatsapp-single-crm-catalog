@@ -19,7 +19,8 @@
             <legend class="px-2 font-semibold">Meta (Facebook & Instagram)</legend>
             <label class="grid gap-1 text-sm">{{ __('Meta Pixel ID') }}<input name="meta_pixel_id" value="{{ old('meta_pixel_id', $trackingConfig['meta_pixel_id']) }}" inputmode="numeric" maxlength="20" class="rounded-lg border border-neutral-300 bg-transparent p-2"></label>
             <input type="hidden" name="meta_capi_enabled" value="0">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="meta_capi_enabled" value="1" @checked(old('meta_capi_enabled', $trackingConfig['meta_capi_enabled']))>{{ __('Also send purchases from our server (Conversions API)') }}</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="meta_capi_enabled" value="1" @checked(old('meta_capi_enabled', $trackingConfig['meta_capi_enabled']))>{{ __('Also send events from our server (Conversions API)') }}</label>
+            <p class="text-xs text-neutral-500">{{ __('Purchases are reported when you mark an order as paid.') }}</p>
             <label class="grid gap-1 text-sm">{{ __('Conversions API access token') }}<input type="password" name="meta_capi_token" autocomplete="off" placeholder="{{ ($trackingConfig['meta_capi_token_set'] ?? false) ? __('Saved. Leave blank to keep it.') : __('Paste the token from Events Manager') }}" class="rounded-lg border border-neutral-300 bg-transparent p-2"></label>
             @if ($trackingConfig['meta_capi_token_set'] ?? false)
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="clear_token" value="1">{{ __('Remove the saved token') }}</label>
@@ -36,6 +37,12 @@
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="clear_tiktok_token" value="1">{{ __('Remove the saved token') }}</label>
             @endif
             <label class="grid gap-1 text-sm">{{ __('Test event code (optional)') }}<input name="tiktok_test_event_code" value="{{ old('tiktok_test_event_code', $trackingConfig['tiktok_test_event_code']) }}" maxlength="40" class="rounded-lg border border-neutral-300 bg-transparent p-2"><span class="text-xs text-neutral-500">{{ __('Use while testing in TikTok Events Manager, then clear it.') }}</span></label>
+        </fieldset>
+        <fieldset class="space-y-2 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
+            <legend class="px-2 font-semibold">{{ __('Privacy') }}</legend>
+            <input type="hidden" name="consent_required" value="0">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="consent_required" value="1" @checked(old('consent_required', $trackingConfig['consent_required']))>{{ __('Ask visitors for tracking consent (cookie banner)') }}</label>
+            <p class="text-xs text-neutral-500">{{ __('When on, pixels and server events wait until the visitor accepts tracking.') }}</p>
         </fieldset>
         <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">{{ __('Save tracking settings') }}</button>
     </form>

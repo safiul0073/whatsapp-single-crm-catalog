@@ -333,6 +333,9 @@ class UnifiedOrderService
             if (! $isPaid && ! in_array($locked->payment_state, ['refunded', 'partially_refunded'], true) && $locked->payments->isNotEmpty() && $locked->total !== null) {
                 $paid = OrderMoney::minor($locked->balanceDue(), $locked->moneyPrecision()) === 0;
                 $locked->update(['payment_state' => $paid ? 'paid' : 'partially_paid', 'paid_at' => $paid ? now() : null]);
+                if ($paid) {
+                    MetaConversionsService::queuePurchase($locked);
+                }
             }
 
             $precision = $locked->moneyPrecision();
@@ -376,6 +379,9 @@ class UnifiedOrderService
         $event = $order->events()->firstOrCreate(['key' => $key], ['label' => $label, 'occurred_at' => now()]);
         if ($event->wasRecentlyCreated && $key !== 'draft') {
             DB::afterCommit(fn () => rescue(fn () => NotifyOrderEvent::dispatch($event->id), report: true));
+        }
+        if ($event->wasRecentlyCreated && $key === 'paid') {
+            MetaConversionsService::queuePurchase($order);
         }
     }
 
@@ -441,6 +447,7 @@ class UnifiedOrderService
             ]),
             [
                 'created_at' => $order->created_at?->toIso8601String(),
+                'paid_at' => $order->paid_at?->toIso8601String(),
                 'hold_lapsed' => $order->status === 'cancelled' && ! $order->paid_at && $order->events->contains('key', 'hold_expired'),
                 'hold_expires_at' => $order->status === 'awaiting_payment' && $order->payment_state !== 'paid' ? $this->inventory->holdExpiresAt($order)?->toIso8601String() : null,
                 'items' => $order->items->toArray(),

@@ -16,6 +16,7 @@
                 </x-ui.button>
             </div>
         </div>
+        @include('shipping::user.management.partials.section-tabs', ['section' => 'storefront'])
 
         <div class="bg-white shadow-xs rounded-md border border-neutral-200">
             @if($methods->isEmpty())

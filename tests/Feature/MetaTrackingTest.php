@@ -56,7 +56,7 @@ it('saves tracking settings with an encrypted token that never reaches the publi
 
     expect($raw)->not->toContain('EAAB-secret')
         ->and(json_encode(app(CmsService::class)->settings($workspace->id)))->not->toContain('EAAB-secret')
-        ->and($public)->toBe(['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456'])
+        ->and($public)->toBe(['meta_pixel_id' => '123456789012', 'tiktok_pixel_id' => 'CABC123DEF456', 'consent_required' => false])
         ->and($tracking->admin($workspace->id)['meta_capi_token_set'])->toBeTrue()
         ->and($tracking->metaConversions($workspace->id))->toBe(['pixel_id' => '123456789012', 'token' => 'EAAB-secret', 'test_event_code' => 'TEST123']);
 
@@ -81,6 +81,9 @@ it('builds a hashed, deduplicated Purchase event', function (): void {
         ->and($event['user_data']['ct'])->toBe([hash('sha256', 'dhaka')])
         ->and($event['user_data']['country'])->toBe([hash('sha256', 'bd')])
         ->and($event['user_data']['client_ip_address'])->toBe('203.0.113.9')
+        ->and($event['user_data']['client_user_agent'])->toBe('Mozilla/5.0')
+        ->and($event['action_source'])->toBe('website')
+        ->and($event['custom_data']['content_ids'])->toBe(['sku-1-m'])
         ->and($event['custom_data'])->toMatchArray(['currency' => 'BDT', 'value' => 2500.0, 'order_id' => 'FF-1001', 'num_items' => 2])
         ->and($event['custom_data']['contents'])->toBe([['id' => 'sku-1-m', 'quantity' => 2, 'item_price' => 1250.0]]);
 });
@@ -90,11 +93,11 @@ it('posts the Purchase event to the pixel only when Conversions API is enabled',
     $workspace = trackingWorkspace();
     $conversions = app(MetaConversionsService::class);
 
-    expect($conversions->sendPurchase(trackingOrder($workspace)))->toBeNull();
+    expect($conversions->sendPurchase(trackingOrder($workspace)))->toBe(MetaConversionsService::SKIPPED);
     Http::assertNothingSent();
 
     app(TrackingSettingsService::class)->save($workspace->id, ['meta_pixel_id' => '123456789012', 'meta_capi_enabled' => true, 'meta_capi_token' => 'EAAB-secret', 'meta_test_event_code' => 'TEST123']);
-    $conversions->sendPurchase(trackingOrder($workspace));
+    expect($conversions->sendPurchase(trackingOrder($workspace)))->toBe(MetaConversionsService::SENT);
 
     Http::assertSent(fn ($request): bool => str_contains($request->url(), '/123456789012/events')
         && $request->hasHeader('Authorization', 'Bearer EAAB-secret')
@@ -141,4 +144,33 @@ it('posts to the TikTok Events API only when it is enabled, keeping the token en
 
     $tracking->save($workspace->id, ['tiktok_pixel_id' => 'CABC123DEF456', 'tiktok_events_enabled' => true, 'clear_tiktok_token' => true]);
     expect($tracking->tiktokEvents($workspace->id))->toBeNull();
+});
+
+it('classifies Conversions API failures without throwing', function (int $status, array $body, string $outcome): void {
+    Http::fake(['graph.facebook.com/*' => Http::response($body, $status)]);
+    $workspace = trackingWorkspace();
+    app(TrackingSettingsService::class)->save($workspace->id, ['meta_pixel_id' => '123456789012', 'meta_capi_enabled' => true, 'meta_capi_token' => 'EAAB-secret']);
+
+    expect(app(MetaConversionsService::class)->sendPurchase(trackingOrder($workspace)))->toBe($outcome);
+})->with([
+    'expired token' => [400, ['error' => ['code' => 190, 'message' => 'Session has expired']], MetaConversionsService::DROPPED],
+    'rate limited' => [400, ['error' => ['code' => 613, 'message' => 'Calls limit reached']], MetaConversionsService::RATE_LIMITED],
+    'too many requests' => [429, [], MetaConversionsService::RATE_LIMITED],
+    'server error' => [503, [], MetaConversionsService::RETRY],
+    'invalid payload' => [400, ['error' => ['code' => 100, 'message' => 'Invalid parameter']], MetaConversionsService::DROPPED],
+]);
+
+it('honours the global kill switch and reports mobile orders without browser identifiers', function (): void {
+    $workspace = trackingWorkspace();
+    $tracking = app(TrackingSettingsService::class);
+    $tracking->save($workspace->id, ['meta_pixel_id' => '123456789012', 'meta_capi_enabled' => true, 'meta_capi_token' => 'EAAB-secret']);
+
+    config(['services.meta.capi_enabled' => false]);
+    expect($tracking->metaConversions($workspace->id))->toBeNull();
+
+    $event = app(MetaConversionsService::class)->purchaseEvent(trackingOrder($workspace), ['origin' => 'mobile', 'ip' => '203.0.113.9', 'host' => 'shop.example.com']);
+    expect($event['action_source'])->toBe('other')
+        ->and($event)->not->toHaveKey('event_source_url')
+        ->and($event['user_data'])->not->toHaveKey('client_ip_address')
+        ->and($event['user_data']['em'])->toBe([hash('sha256', 'ayesha@example.com')]);
 });

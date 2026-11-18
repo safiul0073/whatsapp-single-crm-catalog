@@ -141,6 +141,28 @@
             </section>
 
             <section class="section-card space-y-4 rounded-md border border-neutral-200">
+                <h2 class="heading-4 text-title">{{ __('Product rating requests') }}</h2>
+
+                <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
+                    <div>
+                        <input type="hidden" name="review_request_enabled" value="0">
+                        <label class="flex min-h-11 cursor-pointer items-center gap-2.5">
+                            <input type="checkbox" name="review_request_enabled" value="1" @checked(old('review_request_enabled', $settings->review_request_enabled ?? true)) class="rounded border-neutral-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-title">{{ __('Ask customers to rate their products') }}</span>
+                        </label>
+                        <p class="text-xs text-body">{{ __('Sent by WhatsApp, app notification and email once an order is completed.') }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="review_request_delay_hours">{{ __('Send after (hours)') }}</label>
+                        <input id="review_request_delay_hours" type="number" min="0" max="720" name="review_request_delay_hours" value="{{ old('review_request_delay_hours', $settings->review_request_delay_hours ?? 24) }}" class="form-input">
+                        @error('review_request_delay_hours')<p class="text-xs text-error mt-1">{{ $message }}</p>@enderror
+                        <p class="mt-1 text-xs text-body">{{ __('0 sends right after the order is completed.') }}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section-card space-y-4 rounded-md border border-neutral-200">
                 <h2 class="heading-4 text-title">{{ __('WhatsApp notifications') }}</h2>
 
                 <div class="grid gap-4 sm:grid-cols-2 sm:items-end">

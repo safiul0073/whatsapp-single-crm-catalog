@@ -2,7 +2,7 @@
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
         @include('shipping::user.management.partials.page-header', ['heading' => __('Shipping Overview'), 'intro' => __('Where every shipment stands, and what needs attention.')])
 
-        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
             @foreach([
                 ['label' => __('Awaiting quotes'), 'value' => $counts['pending'], 'href' => route('user.shipping.shipments.index', ['status' => 'pending'])],
                 ['label' => __('Approved, not booked'), 'value' => $counts['approved'], 'href' => route('user.shipping.shipments.index', ['status' => 'approved'])],
@@ -11,6 +11,7 @@
             ] as $card)
                 <a href="{{ $card['href'] }}" class="section-card block"><span class="text-sm text-body">{{ $card['label'] }}</span><span class="heading-4 block text-title">{{ $card['value'] }}</span></a>
             @endforeach
+            <a href="{{ route('user.shipping.shipments.index', ['status' => 'exception']) }}" class="section-card block"><span class="text-sm text-body">{{ __('Delivery exceptions') }}</span><span @class(['heading-4 block', 'text-error' => $counts['exceptions'] > 0, 'text-title' => $counts['exceptions'] === 0])>{{ $counts['exceptions'] }}</span></a>
             @can('shipping.billing.view')
                 <a href="{{ route('user.shipping.billing.index', ['filter' => 'review']) }}" class="section-card block"><span class="text-sm text-body">{{ __('Charges to review') }}</span><span @class(['heading-4 block', 'text-error' => $counts['review'] > 0, 'text-title' => $counts['review'] === 0])>{{ $counts['review'] }}</span></a>
                 <a href="{{ route('user.shipping.billing.index', ['filter' => 'unpaid']) }}" class="section-card block"><span class="text-sm text-body">{{ __('Bills unpaid') }}</span><span class="heading-4 block text-title">{{ $counts['unpaid'] }}</span></a>

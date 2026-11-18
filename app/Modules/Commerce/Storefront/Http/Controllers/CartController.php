@@ -4,6 +4,7 @@ namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Services\MetaConversionsService;
 use App\Modules\Commerce\Storefront\Http\Requests\CartRequest;
 use App\Modules\Commerce\Storefront\Models\Cart;
 use App\Modules\Commerce\Storefront\Models\CartGroup;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 
 class CartController extends Controller
 {
-    public function __construct(private CartService $carts) {}
+    public function __construct(private CartService $carts, private MetaConversionsService $conversions) {}
 
     public function create(Request $r): JsonResponse
     {
@@ -53,8 +54,13 @@ class CartController extends Controller
             $item->price_snapshot = $v->product->single_piece_price ?? $v->price;
             $item->save();
             $group->update(['selection' => ['type' => 'retail', 'variant_id' => $v->id, 'quantity' => $item->quantity]]);
+            $summary = $this->carts->summary($cart);
+            $line = collect($summary['items'])->first(fn (array $i): bool => (int) $i['variant_id'] === $v->id && (int) $i['group_id'] === $group->id);
+            if ($line) {
+                $this->conversions->queueAddToCart($r, $summary, [array_merge($line, ['quantity' => $r->integer('quantity')])]);
+            }
 
-            return response()->json(['data' => $this->carts->summary($cart)]);
+            return response()->json(['data' => $summary]);
         });
     }
 

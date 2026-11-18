@@ -52,6 +52,16 @@ class ShippingAgent extends Model
         return $this->hasMany(AgentRateChart::class, 'shipping_agent_id');
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(ShippingInvoice::class, 'shipping_agent_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(ShippingPayment::class, 'shipping_agent_id');
+    }
+
     public function carrierLabel(): ?string
     {
         return $this->carrier ? (CarrierAccount::CARRIERS[$this->carrier] ?? strtoupper($this->carrier)) : null;

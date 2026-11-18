@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\OrderShipment;
 use App\Modules\Shipping\Models\Shipment;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
 use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,13 @@ class ShipmentService
     public function __construct(
         private ShippingAuditService $audit,
         private SystemNotificationService $notifications,
+        private ShippingAlertService $alerts,
     ) {}
+
+    /**
+     * Order of normal progress; a tracking update never moves a shipment backwards.
+     */
+    private const PROGRESS = ['booked' => 1, 'in_transit' => 2, 'out_for_delivery' => 3, 'delivered' => 4];
 
     /**
      * Opens the first shipping record for an order. Safe to call more than once.
@@ -125,13 +132,16 @@ class ShipmentService
         if ($shipment->approved_quote_id === null) {
             throw ValidationException::withMessages(['tracking_number' => __('Approve a carrier or agent before saving tracking details.')]);
         }
+        if ($shipment->wasBookedThroughApi() && filled($shipment->tracking_number) && $data['tracking_number'] !== $shipment->tracking_number) {
+            throw ValidationException::withMessages(['tracking_number' => __('This shipment was booked through the courier API. Cancel that booking instead of changing its tracking number.')]);
+        }
 
         $old = $shipment->only(['tracking_number', 'tracking_url', 'status']);
         $status = $data['status'] ?? (in_array($shipment->status, ['approved', 'quoted', 'pending'], true) ? 'booked' : $shipment->status);
 
         $shipment->update([
             'tracking_number' => $data['tracking_number'],
-            'tracking_url' => $data['tracking_url'] ?? null,
+            'tracking_url' => ($data['tracking_url'] ?? null) ?: Shipment::publicTrackingUrl($shipment->carrier, $data['tracking_number']),
             'status' => $status,
             'shipped_at' => in_array($status, ['in_transit', 'delivered'], true) ? ($shipment->shipped_at ?? now()) : $shipment->shipped_at,
             'delivered_at' => $status === 'delivered' ? ($shipment->delivered_at ?? now()) : $shipment->delivered_at,
@@ -143,6 +153,46 @@ class ShipmentService
         return $shipment;
     }
 
+    /**
+     * Applies the latest courier status from a tracking update. Closed, cancelled and
+     * delivered shipments are left alone, and normal progress never goes backwards.
+     */
+    public function applyTrackingStatus(Shipment $shipment, ?string $status, ?string $description = null, ?string $deliveredAt = null): bool
+    {
+        $current = $shipment->status;
+        if ($status === null || $status === $current || in_array($current, ['delivered', 'closed', 'cancelled'], true)) {
+            return false;
+        }
+        if ($status !== 'exception' && $current !== 'exception' && (self::PROGRESS[$status] ?? 0) < (self::PROGRESS[$current] ?? 0)) {
+            return false;
+        }
+        if ($status === 'booked' && $current === 'exception') {
+            return false;
+        }
+
+        $shipment->update([
+            'status' => $status,
+            'shipped_at' => in_array($status, ['in_transit', 'out_for_delivery', 'exception', 'delivered'], true) ? ($shipment->shipped_at ?? now()) : $shipment->shipped_at,
+            'delivered_at' => $status === 'delivered' ? ($deliveredAt ? Carbon::parse($deliveredAt) : now()) : $shipment->delivered_at,
+            'exception_reason' => $status === 'exception' ? mb_substr((string) ($description ?: 'Courier reported a delivery problem'), 0, 255) : null,
+            'exception_at' => $status === 'exception' ? now() : null,
+        ]);
+
+        $this->mirrorToOrder($shipment);
+        $this->audit->record($shipment->workspace_id, 'tracking.status_changed', $shipment->reference.' moved from '.$current.' to '.$status.' by courier tracking'.($description ? ': '.$description : ''), $shipment, ['status' => $current], ['status' => $status], null);
+
+        if ($status === 'exception') {
+            $this->alerts->notify(
+                $shipment,
+                __('Delivery exception — :reference', ['reference' => $shipment->reference]),
+                (string) $shipment->exception_reason,
+                'shipping.shipments.manage',
+            );
+        }
+
+        return true;
+    }
+
     public function setStatus(Shipment $shipment, string $status, ?User $user = null): Shipment
     {
         $old = $shipment->status;
@@ -152,9 +202,11 @@ class ShipmentService
 
         $shipment->update([
             'status' => $status,
-            'shipped_at' => in_array($status, ['in_transit', 'delivered'], true) ? ($shipment->shipped_at ?? now()) : $shipment->shipped_at,
+            'shipped_at' => in_array($status, ['in_transit', 'out_for_delivery', 'delivered'], true) ? ($shipment->shipped_at ?? now()) : $shipment->shipped_at,
             'delivered_at' => in_array($status, ['delivered', 'closed'], true) ? ($shipment->delivered_at ?? now()) : $shipment->delivered_at,
             'closed_at' => $status === 'closed' ? now() : null,
+            'exception_reason' => $status === 'exception' ? $shipment->exception_reason : null,
+            'exception_at' => $status === 'exception' ? ($shipment->exception_at ?? now()) : null,
         ]);
 
         $this->mirrorToOrder($shipment);

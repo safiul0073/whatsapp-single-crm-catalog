@@ -7,6 +7,7 @@
             </div>
             @if($canManage)<x-ui.button :href="route('user.shipping.agents.create')"><i class="ph ph-plus"></i> {{ __('Add agent') }}</x-ui.button>@endif
         </div>
+        @include('shipping::user.management.partials.section-tabs', ['section' => 'partners'])
 
         <div class="section-card">
             @if($agents->isEmpty())

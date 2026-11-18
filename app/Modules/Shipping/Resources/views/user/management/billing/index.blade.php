@@ -1,6 +1,6 @@
 <x-layouts.user :title="__('Invoice & Billing')">
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
-        @include('shipping::user.management.partials.page-header', ['heading' => __('Invoice & Billing'), 'intro' => __('Compare the estimate, the approved cost and what was actually billed. Open a shipment to enter its bill.')])
+        @include('shipping::user.management.partials.page-header', ['tabs' => 'billing', 'heading' => __('Invoice & Billing'), 'intro' => __('Compare the estimate, the approved cost and what was actually billed. Open a shipment to enter its bill.')])
 
         <div class="flex flex-wrap gap-2">
             @foreach(['' => __('All approved'), 'unbilled' => __('Not billed yet'), 'review' => __('Needs review'), 'unpaid' => __('Unpaid')] as $value => $label)

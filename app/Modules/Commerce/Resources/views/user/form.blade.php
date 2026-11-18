@@ -96,6 +96,7 @@
             'sizeChart' => old('size_chart', $product?->size_chart),
             'variants' => $variantPreview ?? [],
             'variantPresets' => $variantPresets ?? [],
+            'presetStoreUrl' => route('user.commerce.variants.store'),
             'basePrice' => (float) ($product?->single_piece_price ?? 9.00),
             'productSlug' => $product?->slug ?? 'PROD',
             'previewUrl' => $isEdit ? route('user.commerce.products.variants.preview', $product) : null
@@ -1377,7 +1378,7 @@
                                             <span class="text-[11px] text-neutral-500 font-mono flex-1 truncate" x-text="colorRatioSummary(color.id || cIdx)"></span>
 
                                             {{-- Total Badge --}}
-                                            <span class="rounded-sm bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 shrink-0" x-text="'= ' + colorTotalPcs(color.id || cIdx) + ' pcs'"></span>
+                                            <span class="rounded-sm text-[10px] font-bold px-2.5 py-0.5 shrink-0" :class="colorTotalPcs(color.id || cIdx) === 0 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'" x-text="'= ' + colorTotalPcs(color.id || cIdx) + ' pcs'"></span>
 
                                             {{-- Edit Button --}}
                                             <button type="button" class="btn btn-sm btn-outline text-[10px] px-3 py-1 shrink-0" @click="editingColorKey = color.id || cIdx">
@@ -1413,19 +1414,20 @@
                                     {{-- Modal Body — Size Ratio Grid --}}
                                     <div class="px-6 py-5">
                                         <p class="text-[11px] text-neutral-500 mb-4">{{ __('Set the number of pieces for each size. These values define how many units per size the buyer gets when selecting this color.') }}</p>
+                                        <p class="text-[11px] text-neutral-500 -mt-2 mb-4">{{ __('Set 0 for a size that is not in this pack (e.g. out of stock), and raise the other sizes, e.g. M: 2, L: 0.') }}</p>
                                         <div class="grid gap-px bg-neutral-200 rounded-md overflow-hidden" :style="`grid-template-columns: repeat(${Math.min(productSizes.length, 8)}, 1fr)`">
                                             <template x-for="sz in productSizes" :key="sz">
                                                 <div class="bg-white p-3 flex flex-col items-center gap-2">
                                                     <span class="text-[10px] font-black uppercase tracking-wider text-neutral-600" x-text="sz"></span>
                                                     <input
                                                         type="number"
-                                                        min="1"
+                                                        min="0"
                                                         class="form-input text-center text-sm font-bold h-10 w-full"
                                                         :name="`ws_size_ratios[${editingColorKey}][${sz}]`"
                                                         x-model="wsRatios[editingColorKey][sz]"
-                                                        placeholder="1"
+                                                        placeholder="0"
                                                     >
-                                                    <span class="text-[9px] text-neutral-500" x-text="'×' + (parseInt(wsRatioMultiplier) || 1) + ' = ' + ((parseInt(wsRatios[editingColorKey]?.[sz]) || 1) * (parseInt(wsRatioMultiplier) || 1))"></span>
+                                                    <span class="text-[9px] text-neutral-500" x-text="'×' + (parseInt(wsRatioMultiplier) || 1) + ' = ' + ((parseInt(wsRatios[editingColorKey]?.[sz]) || 0) * (parseInt(wsRatioMultiplier) || 1))"></span>
                                                 </div>
                                             </template>
                                         </div>
@@ -1435,6 +1437,7 @@
                                             <span class="text-xs text-neutral-600">{{ __('Total for this color:') }}</span>
                                             <span class="text-sm font-black text-neutral-900" x-text="colorTotalPcs(editingColorKey) + ' pcs'"></span>
                                         </div>
+                                        <p x-show="colorTotalPcs(editingColorKey) === 0" class="mt-2 text-xs font-semibold text-red-600">{{ __('At least one size needs a quantity above 0.') }}</p>
                                     </div>
 
                                     {{-- Modal Footer --}}
@@ -1450,7 +1453,7 @@
                             <template x-if="(color.id || cIdx) != editingColorKey">
                                 <div>
                                     <template x-for="sz in productSizes" :key="sz">
-                                        <input type="hidden" :name="`ws_size_ratios[${color.id || cIdx}][${sz}]`" :value="wsRatios[color.id || cIdx]?.[sz] ?? 1">
+                                        <input type="hidden" :name="`ws_size_ratios[${color.id || cIdx}][${sz}]`" :value="wsRatios[color.id || cIdx]?.[sz] ?? 0">
                                     </template>
                                 </div>
                             </template>

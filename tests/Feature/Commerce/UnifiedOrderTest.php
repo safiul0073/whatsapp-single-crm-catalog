@@ -749,6 +749,18 @@ it('validates and normalizes the owner WhatsApp number in order settings', funct
     expect($c['settings']->fresh()->owner_whatsapp_number)->toBe('+8801711223344');
 });
 
+it('saves the product rating request settings', function () {
+    $c = unifiedContext();
+    Permission::findOrCreate('commerce.manage', 'web');
+    $c['user']->givePermissionTo('commerce.manage');
+    $payload = ['currency' => 'USD', 'reservation_hours' => 24, 'whatsapp_notifications' => 0];
+
+    $this->actingAs($c['user'])->put(route('user.commerce.orders.settings.update'), $payload + ['review_request_enabled' => 0, 'review_request_delay_hours' => 48])->assertSessionHasNoErrors();
+    expect($c['settings']->fresh()->review_request_enabled)->toBeFalse()->and($c['settings']->fresh()->review_request_delay_hours)->toBe(48);
+
+    $this->actingAs($c['user'])->put(route('user.commerce.orders.settings.update'), $payload + ['review_request_delay_hours' => 1000])->assertSessionHasErrors('review_request_delay_hours');
+});
+
 it('accepts wholesale packs with fewer sizes than the minimum sizes setting because customers never choose sizes', function () {
     $c = unifiedContext();
     $c['product']->update(['ws_min_sizes' => 5, 'ws_ratio_multiplier' => 1, 'ws_ratio_multiplier' => 1, 'ws_size_ratios' => [$c['color']->id => ['S' => 3, 'M' => 3]]]);

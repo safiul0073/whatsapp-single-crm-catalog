@@ -36,6 +36,7 @@ class QuoteService
                 'shipping_agent_id' => $data['shipping_agent_id'] ?? null,
                 'carrier' => $data['carrier'] ?? null,
                 'service' => $data['service'] ?? null,
+                'service_code' => $data['service_code'] ?? null,
                 'source' => $data['source'],
                 'billable_weight_kg' => $data['billable_weight_kg'] ?? null,
                 'base_rate' => ShippingMoney::round($data['base_rate'] ?? 0, $precision),

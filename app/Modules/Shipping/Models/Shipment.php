@@ -17,6 +17,8 @@ class Shipment extends Model
         'approved' => 'Approved',
         'booked' => 'Booked',
         'in_transit' => 'In Transit',
+        'out_for_delivery' => 'Out for Delivery',
+        'exception' => 'Exception',
         'delivered' => 'Delivered',
         'closed' => 'Closed',
         'cancelled' => 'Cancelled',
@@ -25,6 +27,11 @@ class Shipment extends Model
     public const ADDRESS_TYPES = ['residential' => 'Residential', 'commercial' => 'Commercial'];
 
     public const PAYMENT_STATUSES = ['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'];
+
+    /**
+     * Statuses a courier's tracking feed can still move forward.
+     */
+    public const TRACKABLE_STATUSES = ['booked', 'in_transit', 'out_for_delivery', 'exception'];
 
     protected $table = 'shipping_shipments';
 
@@ -47,6 +54,7 @@ class Shipment extends Model
         'shipping_agent_id',
         'carrier',
         'service',
+        'service_code',
         'total_sets',
         'total_pieces',
         'currency',
@@ -61,6 +69,21 @@ class Shipment extends Model
         'approved_at',
         'tracking_number',
         'tracking_url',
+        'booking_source',
+        'booking_reference',
+        'package_tracking_numbers',
+        'booked_by',
+        'booked_at',
+        'void_requested_by',
+        'void_requested_at',
+        'void_reason',
+        'voided_by',
+        'voided_at',
+        'tracking_status',
+        'tracking_synced_at',
+        'tracking_error',
+        'exception_reason',
+        'exception_at',
         'payment_status',
         'paid_at',
         'needs_review',
@@ -85,6 +108,12 @@ class Shipment extends Model
             'billed_amount' => 'decimal:4',
             'billed_exchange_rate' => 'decimal:8',
             'approved_at' => 'datetime',
+            'package_tracking_numbers' => 'array',
+            'booked_at' => 'datetime',
+            'void_requested_at' => 'datetime',
+            'voided_at' => 'datetime',
+            'tracking_synced_at' => 'datetime',
+            'exception_at' => 'datetime',
             'paid_at' => 'datetime',
             'needs_review' => 'boolean',
             'reviewed_at' => 'datetime',
@@ -134,6 +163,31 @@ class Shipment extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function trackingEvents(): HasMany
+    {
+        return $this->hasMany(TrackingEvent::class, 'shipping_shipment_id')->orderByDesc('occurred_at')->orderByDesc('id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ShippingDocument::class, 'shipping_shipment_id')->latest('id');
+    }
+
+    public function invoiceLines(): HasMany
+    {
+        return $this->hasMany(InvoiceLine::class, 'shipping_shipment_id');
+    }
+
+    public function booker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'booked_by');
+    }
+
+    public function voidRequester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'void_requested_by');
+    }
+
     public function auditEntries(): HasMany
     {
         return $this->hasMany(ShippingAuditEntry::class, 'shipping_shipment_id')->latest('id');
@@ -159,6 +213,26 @@ class Shipment extends Model
         }
 
         return $this->carrierAccount?->name ?? $this->carrierLabel();
+    }
+
+    public function wasBookedThroughApi(): bool
+    {
+        return $this->booking_source === 'api' && filled($this->booking_reference);
+    }
+
+    public function hasPendingVoidRequest(): bool
+    {
+        return $this->void_requested_at !== null && $this->voided_at === null;
+    }
+
+    /**
+     * The courier's public tracking page for a tracking number, when the courier is known.
+     */
+    public static function publicTrackingUrl(?string $carrier, ?string $trackingNumber): ?string
+    {
+        $pattern = config('shipping_carriers.tracking_urls.'.$carrier);
+
+        return is_string($pattern) && filled($trackingNumber) ? sprintf($pattern, rawurlencode((string) $trackingNumber)) : null;
     }
 
     public function hasCompleteAddress(): bool

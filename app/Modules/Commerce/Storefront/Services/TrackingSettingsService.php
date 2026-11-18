@@ -19,6 +19,7 @@ class TrackingSettingsService
         'meta_test_event_code' => '',
         'tiktok_events_enabled' => false,
         'tiktok_test_event_code' => '',
+        'consent_required' => false,
     ];
 
     /**
@@ -35,13 +36,21 @@ class TrackingSettingsService
     }
 
     /**
-     * @return array{meta_pixel_id: string, tiktok_pixel_id: string}
+     * @return array{meta_pixel_id: string, tiktok_pixel_id: string, consent_required: bool}
      */
     public function public(int $workspace): array
     {
         $tracking = $this->normalized($this->stored($workspace));
 
-        return ['meta_pixel_id' => $tracking['meta_pixel_id'], 'tiktok_pixel_id' => $tracking['tiktok_pixel_id']];
+        return ['meta_pixel_id' => $tracking['meta_pixel_id'], 'tiktok_pixel_id' => $tracking['tiktok_pixel_id'], 'consent_required' => $tracking['consent_required']];
+    }
+
+    /**
+     * Whether the store asks visitors for tracking consent before any pixel or server event.
+     */
+    public function consentRequired(int $workspace): bool
+    {
+        return $this->normalized($this->stored($workspace))['consent_required'];
     }
 
     /**
@@ -55,7 +64,7 @@ class TrackingSettingsService
         $tracking = $this->normalized($stored);
         $token = $this->decryptToken($stored['meta_capi_token'] ?? null);
 
-        if (! $tracking['meta_capi_enabled'] || $tracking['meta_pixel_id'] === '' || $token === '') {
+        if (! config('services.meta.capi_enabled', true) || ! $tracking['meta_capi_enabled'] || $tracking['meta_pixel_id'] === '' || $token === '') {
             return null;
         }
 
@@ -110,7 +119,7 @@ class TrackingSettingsService
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{meta_pixel_id: string, tiktok_pixel_id: string, meta_capi_enabled: bool, meta_test_event_code: string, tiktok_events_enabled: bool, tiktok_test_event_code: string}
+     * @return array{meta_pixel_id: string, tiktok_pixel_id: string, meta_capi_enabled: bool, meta_test_event_code: string, tiktok_events_enabled: bool, tiktok_test_event_code: string, consent_required: bool}
      */
     protected function normalized(array $data): array
     {
@@ -121,6 +130,7 @@ class TrackingSettingsService
             'meta_test_event_code' => trim((string) ($data['meta_test_event_code'] ?? '')),
             'tiktok_events_enabled' => (bool) ($data['tiktok_events_enabled'] ?? false),
             'tiktok_test_event_code' => trim((string) ($data['tiktok_test_event_code'] ?? '')),
+            'consent_required' => (bool) ($data['consent_required'] ?? false),
         ];
     }
 

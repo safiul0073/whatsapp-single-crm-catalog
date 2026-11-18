@@ -15,6 +15,8 @@ class CustomerShipmentPresenter
     private const CUSTOMER_STATUS = [
         'booked' => 'shipped',
         'in_transit' => 'in_transit',
+        'out_for_delivery' => 'in_transit',
+        'exception' => 'in_transit',
         'delivered' => 'delivered',
         'closed' => 'delivered',
     ];

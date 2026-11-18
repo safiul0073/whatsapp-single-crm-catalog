@@ -1,6 +1,6 @@
 <x-layouts.user :title="__('Remote Area Checker')">
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
-        @include('shipping::user.management.partials.page-header', ['heading' => __('Remote Area Checker'), 'intro' => __('Check a destination against what each courier and agent has confirmed. Without a confirmed entry the answer is "Unknown / Pending Verification".')])
+        @include('shipping::user.management.partials.page-header', ['tabs' => 'rates', 'heading' => __('Remote Area Checker'), 'intro' => __('Check a destination against what each courier and agent has confirmed. Without a confirmed entry the answer is "Unknown / Pending Verification".')])
 
         <form method="GET" action="{{ route('user.shipping.remote-areas.index') }}" class="section-card grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
             <div>

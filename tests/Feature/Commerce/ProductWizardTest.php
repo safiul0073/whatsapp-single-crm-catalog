@@ -87,6 +87,13 @@ it('round trips all nine wizard steps without resetting previously saved fields'
         ->and($product->variants)->toHaveCount(3)
         ->and($product->variants->pluck('stock_quantity')->unique()->all())->toBe([15])
         ->and($product->gallery->sole()->color_id)->toBe($color->id);
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Wizard Tee', 'ws_size_ratios' => [$color->id => ['S' => 0, 'M' => 2, 'L' => 0]],
+    ])->assertSessionHasNoErrors();
+    expect($product->fresh()->ws_size_ratios[$color->id])->toEqual(['S' => 0, 'M' => 2, 'L' => 0]);
+    $this->putJson(route('user.commerce.products.details.update', $product), [
+        'name' => 'Wizard Tee', 'ws_size_ratios' => [$color->id => ['S' => 0, 'M' => 0, 'L' => 0]],
+    ])->assertUnprocessable()->assertJsonValidationErrors('ws_size_ratios');
     for ($step = 1; $step <= 9; $step++) {
         $this->get(route('user.commerce.products.edit', ['product' => $product, 'step' => $step]))->assertSuccessful();
     }

@@ -122,14 +122,14 @@
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <h2 class="heading-5 text-title">{{ __('Rate comparison') }}</h2>
                             @if($canQuote)
-                                <form method="POST" action="{{ route('user.shipping.quotes.request', $shipment) }}">@csrf<x-forms.submit class="btn-sm" :label="__('Request rates from agent charts')" /></form>
+                                <form method="POST" action="{{ route('user.shipping.quotes.request', $shipment) }}">@csrf<x-forms.submit class="btn-sm" :label="__('Request live and agent rates')" /></form>
                             @endif
                         </div>
                         @error('quote')<p class="form-hint text-error">{{ $message }}</p>@enderror
                         @error('cartons')<p class="form-hint text-error">{{ $message }}</p>@enderror
                         @error('status')<p class="form-hint text-error">{{ $message }}</p>@enderror
                         @if($quotes->isEmpty())
-                            <p class="mt-3 text-sm text-body">{{ __('No quotations yet. Request rates from agent charts or enter a quotation received by WhatsApp or from a courier.') }}</p>
+                            <p class="mt-3 text-sm text-body">{{ __('No quotations yet. Request live courier and agent rates, or enter a quotation received by WhatsApp or from a courier.') }}</p>
                         @else
                             <div class="table-responsive mt-4">
                                 <table class="table w-full text-sm whitespace-nowrap">
@@ -275,26 +275,93 @@
                     <h2 class="heading-5 text-title">{{ __('Courier and tracking') }}</h2>
                     <dl class="mt-3 space-y-2 text-sm">
                         <div class="flex justify-between gap-3"><dt class="text-body">{{ __('Courier') }}</dt><dd class="text-title">{{ ($canViewCosts ? $shipment->providerLabel() : $shipment->carrierLabel()) ?: __('Not approved yet') }}</dd></div>
+                        @if($shipment->service)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Service') }}</dt><dd class="text-right text-title">{{ $shipment->service }}</dd></div>@endif
                         <div class="flex justify-between gap-3"><dt class="text-body">{{ __('Tracking number') }}</dt><dd class="text-title">@if($shipment->tracking_url)<a class="text-primary" href="{{ $shipment->tracking_url }}" target="_blank" rel="noopener">{{ $shipment->tracking_number }}</a>@else{{ $shipment->tracking_number ?: '—' }}@endif</dd></div>
+                        @if(count($shipment->package_tracking_numbers ?? []) > 1)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Package numbers') }}</dt><dd class="text-right text-title">{{ implode(', ', $shipment->package_tracking_numbers) }}</dd></div>@endif
+                        @if($shipment->wasBookedThroughApi())<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Booked through API') }}</dt><dd class="text-right text-title">{{ $shipment->booker?->name ?? '—' }} · {{ $shipment->booked_at?->format('d M Y H:i') }}</dd></div>@endif
+                        @if($shipment->tracking_status)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Courier status') }}</dt><dd class="text-right text-title">{{ $shipment->tracking_status }}</dd></div>@endif
+                        @if($shipment->tracking_synced_at)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Last checked') }}</dt><dd class="text-title">{{ $shipment->tracking_synced_at->diffForHumans() }}</dd></div>@endif
                         @if($shipment->shipped_at)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Shipped') }}</dt><dd class="text-title">{{ $shipment->shipped_at->format('d M Y') }}</dd></div>@endif
                         @if($shipment->delivered_at)<div class="flex justify-between gap-3"><dt class="text-body">{{ __('Delivered') }}</dt><dd class="text-title">{{ $shipment->delivered_at->format('d M Y') }}</dd></div>@endif
                     </dl>
+                    @if($shipment->status === 'exception' && $shipment->exception_reason)
+                        <p class="mt-3 text-sm text-error"><i class="ph ph-warning"></i> {{ $shipment->exception_reason }}</p>
+                    @endif
+                    @if($shipment->tracking_error)
+                        <p class="mt-3 text-sm text-error">{{ __('Tracking: :message', ['message' => $shipment->tracking_error]) }}</p>
+                    @endif
+                    @error('booking')<p class="mt-3 form-hint text-error">{{ $message }}</p>@enderror
+                    @error('void')<p class="mt-3 form-hint text-error">{{ $message }}</p>@enderror
+
+                    @if($canManage && $shipment->tracking_number && in_array($shipment->status, \App\Modules\Shipping\Models\Shipment::TRACKABLE_STATUSES, true) && array_key_exists((string) $shipment->carrier, \App\Modules\Shipping\Models\CarrierAccount::CARRIERS))
+                        <form method="POST" action="{{ route('user.shipping.tracking.refresh', $shipment) }}" class="mt-3">@csrf<button class="btn btn-outline btn-sm" type="submit"><i class="ph ph-arrows-clockwise"></i> {{ __('Check tracking now') }}</button></form>
+                    @endif
+
+                    {{-- API booking --}}
+                    @if($canBook && ! $shipment->tracking_number && $shipment->approved_quote_id && $shipment->carrierAccount && ! $shipment->agent)
+                        <div class="mt-4 border-t border-border-soft pt-4">
+                            <h3 class="text-sm font-semibold text-title">{{ __('Book with :courier', ['courier' => $shipment->carrierLabel()]) }}</h3>
+                            @if($bookingBlockers)
+                                <ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-body">@foreach($bookingBlockers as $blocker)<li>{{ $blocker }}</li>@endforeach</ul>
+                            @else
+                                <form method="POST" action="{{ route('user.shipping.bookings.store', $shipment) }}" class="mt-2 space-y-3">
+                                    @csrf
+                                    <p class="text-sm text-body">{{ __('Creates the shipment on :account (:environment) with :service, and saves the label here.', ['account' => $shipment->carrierAccount->name, 'environment' => __($shipment->carrierAccount->environment), 'service' => $shipment->service]) }}</p>
+                                    <label class="inline-label flex items-start gap-2 text-sm text-title"><input type="checkbox" name="confirm" value="1" required> {{ __('I confirm this creates a real, billable shipment with :courier.', ['courier' => $shipment->carrierLabel()]) }}</label>
+                                    @error('confirm')<p class="form-hint text-error">{{ $message }}</p>@enderror
+                                    <x-forms.submit :label="__('Book shipment and get label')" />
+                                </form>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- Cancellation --}}
+                    @if($shipment->wasBookedThroughApi() && $shipment->status === 'booked')
+                        <div class="mt-4 border-t border-border-soft pt-4">
+                            @if($shipment->hasPendingVoidRequest())
+                                <p class="text-sm text-title">{{ __('Cancellation requested by :name: :reason', ['name' => $shipment->voidRequester?->name ?? '—', 'reason' => $shipment->void_reason]) }}</p>
+                                @if($canVoid)
+                                    <form method="POST" action="{{ route('user.shipping.bookings.void', $shipment) }}" class="mt-2 space-y-2">
+                                        @csrf
+                                        <label class="inline-label flex items-start gap-2 text-sm text-body"><input type="checkbox" name="already_cancelled" value="1"> {{ __('Already cancelled in the courier portal (do not call the courier)') }}</label>
+                                        <button class="btn btn-primary btn-sm" type="submit">{{ __('Approve and cancel booking') }}</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('user.shipping.bookings.void-reject', $shipment) }}" class="mt-2">@csrf @method('DELETE')<button class="btn btn-ghost btn-sm" type="submit">{{ __('Keep the booking') }}</button></form>
+                                @else
+                                    <p class="form-hint">{{ __('Waiting for the owner to approve.') }}</p>
+                                @endif
+                            @elseif($canManage)
+                                <details>
+                                    <summary class="cursor-pointer text-sm font-semibold text-title">{{ __('Request cancellation') }}</summary>
+                                    <form method="POST" action="{{ route('user.shipping.bookings.void-request', $shipment) }}" class="mt-2 space-y-2">
+                                        @csrf
+                                        <div><label class="form-label" for="void_reason">{{ __('Reason') }}</label><input id="void_reason" class="form-input" name="reason" maxlength="255" required>@error('reason')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
+                                        <button class="btn btn-outline btn-sm" type="submit">{{ __('Ask the owner to cancel') }}</button>
+                                    </form>
+                                </details>
+                            @endif
+                        </div>
+                    @endif
+
                     @if($canManage)
-                        @if($shipment->approved_quote_id)
-                            <form method="POST" action="{{ route('user.shipping.shipments.booking', $shipment) }}" class="mt-4 space-y-3">
-                                @csrf @method('PUT')
-                                <div><label class="form-label" for="tracking_number">{{ __('Tracking number') }}</label><input id="tracking_number" class="form-input" name="tracking_number" maxlength="80" required value="{{ old('tracking_number', $shipment->tracking_number) }}">@error('tracking_number')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
-                                <div><label class="form-label" for="tracking_url">{{ __('Tracking link') }}</label><input id="tracking_url" class="form-input" type="url" name="tracking_url" maxlength="500" value="{{ old('tracking_url', $shipment->tracking_url) }}" placeholder="https://...">@error('tracking_url')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
-                                <div>
-                                    <label class="form-label" for="booking_status">{{ __('Progress') }}</label>
-                                    <select id="booking_status" class="form-input" name="status">
-                                        @foreach(['booked' => 'Booked', 'in_transit' => 'In Transit', 'delivered' => 'Delivered'] as $value => $label)<option value="{{ $value }}" @selected(old('status', $shipment->status) === $value)>{{ __($label) }}</option>@endforeach
-                                    </select>
-                                </div>
-                                <x-forms.submit :label="__('Save tracking')" />
-                                <p class="form-hint">{{ __('The customer sees the courier, tracking number and progress only. Booking with the courier is done by you; nothing is sent automatically.') }}</p>
-                            </form>
-                        @else
+                        @if($shipment->approved_quote_id && ! $shipment->wasBookedThroughApi())
+                            <details class="mt-4 border-t border-border-soft pt-4" @if($errors->hasAny(['tracking_number', 'tracking_url']) || ! $shipment->tracking_number) open @endif>
+                                <summary class="cursor-pointer text-sm font-semibold text-title">{{ __('Enter tracking by hand') }}</summary>
+                                <form method="POST" action="{{ route('user.shipping.shipments.booking', $shipment) }}" class="mt-3 space-y-3">
+                                    @csrf @method('PUT')
+                                    <div><label class="form-label" for="tracking_number">{{ __('Tracking number') }}</label><input id="tracking_number" class="form-input" name="tracking_number" maxlength="80" required value="{{ old('tracking_number', $shipment->tracking_number) }}">@error('tracking_number')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
+                                    <div><label class="form-label" for="tracking_url">{{ __('Tracking link') }}</label><input id="tracking_url" class="form-input" type="url" name="tracking_url" maxlength="500" value="{{ old('tracking_url', $shipment->tracking_url) }}" placeholder="https://..."><p class="form-hint">{{ __('Leave blank for UPS, FedEx and Aramex: their public tracking page is used.') }}</p>@error('tracking_url')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
+                                    <div>
+                                        <label class="form-label" for="booking_status">{{ __('Progress') }}</label>
+                                        <select id="booking_status" class="form-input" name="status">
+                                            @foreach(['booked' => 'Booked', 'in_transit' => 'In Transit', 'delivered' => 'Delivered'] as $value => $label)<option value="{{ $value }}" @selected(old('status', $shipment->status) === $value)>{{ __($label) }}</option>@endforeach
+                                        </select>
+                                    </div>
+                                    <x-forms.submit :label="__('Save tracking')" />
+                                    <p class="form-hint">{{ __('For agent shipments or bookings made in the courier portal. The customer sees the courier, tracking number and progress only.') }}</p>
+                                </form>
+                            </details>
+                        @elseif(! $shipment->approved_quote_id)
                             <p class="mt-3 text-sm text-body">{{ __('Approve a carrier or agent before adding tracking.') }}</p>
                         @endif
                         <form method="POST" action="{{ route('user.shipping.shipments.status', $shipment) }}" class="mt-4 flex items-end gap-2 border-t border-border-soft pt-4">
@@ -304,6 +371,51 @@
                                 <select id="shipment_status" class="form-input" name="status">@foreach(\App\Modules\Shipping\Models\Shipment::STATUSES as $value => $label)<option value="{{ $value }}" @selected($shipment->status === $value)>{{ __($label) }}</option>@endforeach</select>
                             </div>
                             <button class="btn btn-outline" type="submit">{{ __('Update') }}</button>
+                        </form>
+                    @endif
+                </section>
+
+                {{-- Tracking history --}}
+                @if($shipment->trackingEvents->isNotEmpty())
+                    <section class="section-card">
+                        <h2 class="heading-5 text-title">{{ __('Tracking history') }}</h2>
+                        <ol class="mt-3 space-y-3 text-sm">
+                            @foreach($shipment->trackingEvents->take(40) as $event)
+                                <li @class(['border-s-2 ps-3', 'border-error' => $event->status === 'exception', 'border-success' => $event->status === 'delivered', 'border-border-soft' => ! in_array($event->status, ['exception', 'delivered'], true)])>
+                                    <span class="block text-title">{{ $event->description }}</span>
+                                    <span class="block text-xs text-body">{{ $event->occurred_at?->format('d M Y H:i') ?? '—' }}@if($event->location) · {{ $event->location }}@endif</span>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </section>
+                @endif
+
+                {{-- Documents --}}
+                <section class="section-card" id="documents">
+                    <h2 class="heading-5 text-title">{{ __('Labels and documents') }}</h2>
+                    @if($shipment->documents->isEmpty())
+                        <p class="mt-2 text-sm text-body">{{ __('No labels or customs papers yet.') }}</p>
+                    @else
+                        <ul class="mt-3 space-y-2 text-sm">
+                            @foreach($shipment->documents as $document)
+                                <li class="flex items-center justify-between gap-2">
+                                    <a class="text-primary" href="{{ route('user.shipping.documents.download', $document) }}"><i class="ph ph-file-arrow-down"></i> {{ __($document->typeLabel()) }}<span class="block text-xs text-body">{{ $document->original_name }} · {{ $document->created_at?->format('d M Y') }}</span></a>
+                                    @if($canManage && $document->source === 'upload')
+                                        <form method="POST" action="{{ route('user.shipping.documents.destroy', $document) }}">@csrf @method('DELETE')<button class="btn btn-ghost btn-sm" type="submit" aria-label="{{ __('Remove') }}"><i class="ph ph-trash"></i></button></form>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    @if($canManage)
+                        <form method="POST" action="{{ route('user.shipping.documents.store', $shipment) }}" enctype="multipart/form-data" class="mt-4 space-y-2 border-t border-border-soft pt-4">
+                            @csrf
+                            <div>
+                                <label class="form-label" for="document_type">{{ __('Document type') }}</label>
+                                <select id="document_type" class="form-input" name="type">@foreach(\App\Modules\Shipping\Models\ShippingDocument::TYPES as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach</select>
+                            </div>
+                            <div><label class="form-label" for="document_file">{{ __('File (PDF or image)') }}</label><input id="document_file" class="form-input" type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif" required>@error('file')<p class="form-hint text-error">{{ $message }}</p>@enderror</div>
+                            <button class="btn btn-outline btn-sm" type="submit">{{ __('Upload') }}</button>
                         </form>
                     @endif
                 </section>
@@ -329,13 +441,57 @@
                 </section>
 
                 {{-- Products --}}
-                <section class="section-card">
-                    <h2 class="heading-5 text-title">{{ __('Products in this order') }}</h2>
-                    <ul class="mt-3 space-y-1 text-sm text-body">
-                        @foreach($shipment->order?->items ?? [] as $item)
-                            <li class="flex justify-between gap-3"><span>{{ $item->product_name }} @if($item->attributes)<span class="text-xs">({{ collect($item->attributes)->filter()->implode(' / ') }})</span>@endif</span><span class="text-title">× {{ $item->quantity }}</span></li>
-                        @endforeach
-                    </ul>
+                @php
+                    $orderItems = collect($shipment->order?->items ?? []);
+                    $productGroups = $orderItems->groupBy('product_name');
+                @endphp
+                <section class="section-card" data-shipment-products>
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h2 class="heading-5 text-title">{{ __('Products in this order') }}</h2>
+                        <span class="text-xs text-body">{{ trans_choice(':count product|:count products', $productGroups->count()) }} · <span class="font-semibold text-title">{{ $orderItems->sum('quantity') }} {{ __('pcs') }}</span></span>
+                    </div>
+                    @if($productGroups->isEmpty())
+                        <p class="mt-3 text-sm text-body">{{ __('No products on this order.') }}</p>
+                    @else
+                        <div class="shipment-products">
+                            @foreach($productGroups as $productName => $productItems)
+                                @php
+                                    $details = $productItems->flatMap(fn ($item) => collect($item->attributes ?? [])->except(['size', 'color', 'colour'])->values())->filter()->unique()->values();
+                                    $colorGroups = $productItems->groupBy(fn ($item) => $item->attributes['color'] ?? $item->attributes['colour'] ?? '');
+                                @endphp
+                                <article class="shipment-product" data-shipment-product>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <h3 class="text-sm font-semibold leading-snug text-title">{{ $productName }}</h3>
+                                            @if($details->isNotEmpty())<p class="mt-0.5 truncate text-xs text-body" title="{{ $details->implode(' · ') }}">{{ $details->implode(' · ') }}</p>@endif
+                                        </div>
+                                        <span class="badge badge-neutral shrink-0">{{ $productItems->sum('quantity') }} {{ __('pcs') }}</span>
+                                    </div>
+                                    <div class="mt-3 space-y-2">
+                                        @foreach($colorGroups as $color => $colorItems)
+                                            @php $image = $colorItems->first()->productImages()[0] ?? null; @endphp
+                                            <div class="shipment-product-color">
+                                                <div class="shipment-product-thumb">
+                                                    @if($image)<img src="{{ $image['url'] }}" alt="{{ $image['label'] }}" loading="lazy" class="h-full w-full object-contain">@else<i class="ph ph-t-shirt text-lg text-body" aria-hidden="true"></i>@endif
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between gap-2 text-xs">
+                                                        <span class="font-medium text-title">{{ $color !== '' ? $color : __('No colour') }}</span>
+                                                        <span class="tabular-nums text-body">{{ $colorItems->sum('quantity') }} {{ __('pcs') }}</span>
+                                                    </div>
+                                                    <div class="mt-1.5 flex flex-wrap gap-1">
+                                                        @foreach($colorItems as $item)
+                                                            <span class="size-chip" title="{{ $item->sku }}">{{ $item->attributes['size'] ?? __('One size') }}<span class="size-chip-qty">×{{ $item->quantity }}</span></span>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
                 </section>
 
                 @if($auditEntries->isNotEmpty())

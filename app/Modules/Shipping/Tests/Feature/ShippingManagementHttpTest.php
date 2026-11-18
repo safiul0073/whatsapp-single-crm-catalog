@@ -262,3 +262,16 @@ it('reports order profit from cost prices and actual shipping, and audits cost c
     $response = $this->get(route('user.shipping.reports.index', ['period' => 'monthly']))->assertOk();
     $response->assertSee('150.00')->assertSee('12.00')->assertSee('24%')->assertSee('20.00');
 });
+
+it('groups shipment products by product and colour with size chips', function () {
+    foreach ([['Red', 'S', 1], ['Red', 'M', 2], ['Blue', 'L', 3]] as [$color, $size, $qty]) {
+        $this->order->items()->create(['workspace_id' => $this->workspace->id, 'retailer_id' => "T-{$color}-{$size}", 'sku' => "T-{$color}-{$size}", 'product_name' => 'Classic Tee', 'attributes' => ['color' => $color, 'size' => $size, 'material' => 'Cotton'], 'quantity' => $qty, 'unit_price' => 10, 'line_total' => 10 * $qty]);
+    }
+
+    $html = $this->actingAs($this->owner)->get(route('user.shipping.shipments.show', $this->shipment))->assertOk()->getContent();
+
+    expect(substr_count($html, 'data-shipment-product>'))->toBe(1)
+        ->and(substr_count($html, 'class="size-chip"'))->toBe(3)
+        ->and(substr_count($html, 'Cotton'))->toBe(2)
+        ->and($html)->toContain('6 pcs')->toContain('3 pcs')->toContain('×2');
+});

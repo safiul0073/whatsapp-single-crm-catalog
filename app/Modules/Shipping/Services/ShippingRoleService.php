@@ -17,7 +17,7 @@ class ShippingRoleService
             'description' => 'Quotes, booking, tracking and shipping invoices',
             'permissions' => [
                 'commerce.orders.view',
-                'shipping.shipments.view', 'shipping.shipments.manage', 'shipping.costs.view', 'shipping.quotes.manage',
+                'shipping.shipments.view', 'shipping.shipments.manage', 'shipping.bookings.create', 'shipping.costs.view', 'shipping.quotes.manage',
                 'shipping.agents.view', 'shipping.agents.manage', 'shipping.billing.view', 'shipping.billing.manage',
                 'shipping.reports.view', 'shipping.audit.view',
             ],

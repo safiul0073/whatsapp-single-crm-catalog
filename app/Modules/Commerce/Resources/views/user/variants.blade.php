@@ -3,6 +3,7 @@
         class="space-y-6"
         x-data="{
             csrfToken: '{{ csrf_token() }}',
+            updateUrlTemplate: '{{ route('user.commerce.variants.update', '__PRESET__') }}',
             savingId: null,
             successMsg: '',
             errorMsg: '',
@@ -11,7 +12,7 @@
                 this.successMsg = '';
                 this.errorMsg = '';
                 try {
-                    const response = await fetch(`/user/commerce/variants/${presetId}`, {
+                    const response = await fetch(this.updateUrlTemplate.replace('__PRESET__', presetId), {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
@@ -20,12 +21,13 @@
                         },
                         body: JSON.stringify(data)
                     });
-                    const res = await response.json();
+                    const res = await response.json().catch(() => ({}));
                     if (response.ok) {
                         this.successMsg = res.message || '{{ __('Saved successfully') }}';
                         setTimeout(() => { this.successMsg = ''; }, 3000);
                     } else {
-                        this.errorMsg = res.message || '{{ __('Could not update option') }}';
+                        const fieldErrors = res.errors ? Object.values(res.errors).flat().join(' ') : '';
+                        this.errorMsg = fieldErrors || res.message || '{{ __('Could not update option') }}';
                     }
                 } catch (e) {
                     this.errorMsg = '{{ __('Network error') }}';
@@ -93,7 +95,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
+                    <table class="w-full min-w-[780px] text-left text-sm">
                         <thead class="bg-neutral-50/80 text-[11px] font-bold uppercase tracking-wider text-body border-b border-border">
                             <tr>
                                 <th class="px-5 py-3.5">{{ __('OPTION') }}</th>
@@ -256,7 +258,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-5 py-12 text-center text-body">
+                                    <td colspan="7" class="px-5 py-12 text-center text-body">
                                         <i class="ph ph-squares-four text-4xl text-neutral-300"></i>
                                         <p class="mt-2 font-semibold text-title">{{ __('No variant options created yet') }}</p>
                                         <p class="text-xs text-neutral-500 mt-0.5">{{ __('Create your first reusable variant option using the form on the right.') }}</p>

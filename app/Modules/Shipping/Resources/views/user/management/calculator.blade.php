@@ -1,6 +1,6 @@
 <x-layouts.user :title="__('Shipping Rate Calculator')">
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
-        @include('shipping::user.management.partials.page-header', ['heading' => __('Shipping Rate Calculator'), 'intro' => __('Work out billable weight for a set of cartons under each courier and agent rule, before a shipment exists.')])
+        @include('shipping::user.management.partials.page-header', ['tabs' => 'rates', 'heading' => __('Shipping Rate Calculator'), 'intro' => __('Work out billable weight for a set of cartons under each courier and agent rule, before a shipment exists.')])
 
         <form method="POST" action="{{ route('user.shipping.calculator.calculate') }}" class="section-card space-y-3">
             @csrf
