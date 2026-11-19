@@ -199,10 +199,14 @@
                         <select id="whatsapp_template_id" name="whatsapp_template_id" class="form-input">
                             <option value="">{{ __('Do not send') }}</option>
                             @foreach($templates as $template)
-                                <option value="{{ $template->id }}" @selected($settings->whatsapp_template_id == $template->id)>{{ $template->name }}</option>
+                                <option value="{{ $template->id }}" @selected($settings->whatsapp_template_id == $template->id)>{{ $template->name }} ({{ $template->status?->value }})</option>
                             @endforeach
                         </select>
-                        <p class="mt-1 text-xs text-body">{{ __('Choose an approved utility template.') }}</p>
+                        @error('whatsapp_template_id')<p class="text-xs text-error mt-1">{{ $message }}</p>@enderror
+                        <p class="mt-1 text-xs text-body">{{ __('Order updates and invoices are sent as free messages first. This approved utility template is used only when WhatsApp blocks them because the customer has not messaged in 24 hours.') }}</p>
+                        <button type="submit" form="order-whatsapp-template-form" class="btn-sm btn-outline mt-2">
+                            <i class="ph ph-magic-wand"></i> {{ __('Create ready-made template') }}
+                        </button>
                     </div>
                 </div>
 
@@ -216,6 +220,10 @@
                     @endcan
                 </div>
             </section>
+        </form>
+
+        <form id="order-whatsapp-template-form" method="POST" action="{{ route('user.commerce.orders.settings.whatsapp-template') }}" class="hidden">
+            @csrf
         </form>
     </div>
 </x-layouts.user>

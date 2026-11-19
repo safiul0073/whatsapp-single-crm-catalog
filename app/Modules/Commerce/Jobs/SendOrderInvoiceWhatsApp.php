@@ -43,7 +43,7 @@ class SendOrderInvoiceWhatsApp implements ShouldBeUnique, ShouldQueue
 
         $needsOwnerAttention = in_array($result['status'], [
             OrderInvoiceWhatsAppService::SKIPPED_WINDOW,
-            OrderInvoiceWhatsAppService::SKIPPED_NO_CONVERSATION,
+            OrderInvoiceWhatsAppService::SKIPPED_NO_CHANNEL,
         ], true);
         $owner = $needsOwnerAttention ? Workspace::query()->find($order->workspace_id)?->owner : null;
         if ($owner) {

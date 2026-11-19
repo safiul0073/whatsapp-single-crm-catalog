@@ -2,20 +2,25 @@
 
 use App\Modules\Commerce\Jobs\NotifyOrderEvent;
 use App\Modules\Commerce\Jobs\SendOrderInvoiceWhatsApp;
+use App\Modules\Commerce\Jobs\SendOrderTemplateFallback;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderEvent;
 use App\Modules\Commerce\Models\OrderPayment;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
+use App\Modules\Commerce\Services\OrderWhatsAppTemplateFallbackService;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Services\InvoiceService;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
+use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Enums\ChannelAccountStatus;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
+use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -207,6 +212,47 @@ it('skips the invoice outside the 24 hour window when no template is set up', fu
 
     expect($result['status'])->toBe(OrderInvoiceWhatsAppService::SKIPPED_WINDOW)
         ->and($this->order->fresh()->invoice_sent_at)->toBeNull();
+});
+
+it('sends a manual invoice as a free document first and falls back to the template with the link when WhatsApp blocks it', function (): void {
+    $account = ChannelAccount::query()->create(['workspace_id' => $this->store->id, 'provider' => 'whatsapp', 'name' => 'WhatsApp', 'status' => ChannelAccountStatus::Connected, 'connected_at' => now(), 'provider_account_id' => 'waba-store']);
+    $template = MessageTemplate::query()->create(['workspace_id' => $this->store->id, 'provider' => 'whatsapp', 'name' => 'invoice_ready', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved', 'components' => [['type' => 'BODY', 'text' => 'Hello, {{1}}. Thanks.']]]);
+    MessageTemplateSubmission::query()->create(['workspace_id' => $this->store->id, 'message_template_id' => $template->id, 'channel_account_id' => $account->id, 'provider' => 'whatsapp', 'provider_account_id' => 'waba-store', 'whatsapp_template_id' => 'meta-invoice', 'status' => 'approved', 'submission_payload' => [], 'meta_response' => [], 'synced_at' => now()]);
+    StoreOrderSetting::forWorkspace($this->store->id)->update(['whatsapp_channel_id' => $account->id, 'whatsapp_template_id' => $template->id]);
+    $sent = [];
+    $this->mock(ChannelManager::class, function ($mock) use (&$sent): void {
+        $mock->shouldReceive('sendMessage')->twice()->andReturnUsing(function ($account, $to, $payload) use (&$sent): array {
+            $sent[] = $payload;
+
+            return $payload['type'] === 'document'
+                ? ['ok' => false, 'error_code' => '131047', 'error' => 'The 24-hour reply window has closed']
+                : ['ok' => true, 'provider_message_id' => 'wamid.template'];
+        });
+    });
+
+    $result = app(OrderInvoiceWhatsAppService::class)->send($this->order->fresh()->load('contact'), manual: true);
+
+    expect($result['status'])->toBe(OrderInvoiceWhatsAppService::SENT)
+        ->and(Conversation::query()->where('contact_id', $this->contact->id)->where('channel_account_id', $account->id)->count())->toBe(1);
+    Queue::assertPushed(SendOrderTemplateFallback::class, 1);
+    $job = Queue::pushed(SendOrderTemplateFallback::class)->first();
+    $job->handle(app(OrderWhatsAppTemplateFallbackService::class));
+    $job->handle(app(OrderWhatsAppTemplateFallbackService::class));
+
+    expect(array_column($sent, 'type'))->toBe(['document', 'template'])
+        ->and($sent[1]['template_name'])->toBe('invoice_ready')
+        ->and($sent[1]['components'][0]['parameters'][0]['text'])->toContain($this->order->fresh()->invoiceUrl());
+});
+
+it('does not resend the invoice when the window turned out closed and no template is selected', function (): void {
+    $account = invoiceWhatsAppFixture($this, now()->addHours(5));
+    $this->mock(ChannelManager::class, fn ($mock) => $mock->shouldReceive('sendMessage')->once()->andReturn(['ok' => true, 'provider_message_id' => 'wamid.doc']));
+
+    app(OrderInvoiceWhatsAppService::class)->send($this->order->fresh()->load('contact'));
+    app(OrderWhatsAppTemplateFallbackService::class)->handleStatus($account, ['id' => 'wamid.doc', 'status' => 'failed', 'errors' => [['code' => 131047]]]);
+    Queue::pushed(SendOrderTemplateFallback::class)->first()->handle(app(OrderWhatsAppTemplateFallbackService::class));
+
+    expect(Message::query()->where('type', 'template')->count())->toBe(0);
 });
 
 it('does not message customers who opted out or are blocked', function (): void {

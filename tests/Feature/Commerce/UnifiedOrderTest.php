@@ -18,13 +18,17 @@ use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
+use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
 use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingZone;
 use App\Modules\SystemNotifications\Models\SystemNotification;
 use App\Modules\SystemNotifications\Services\SystemNotificationService;
+use App\Modules\WhatsAppCloud\Services\WhatsAppCloudDriver;
 use App\Modules\Workspaces\Models\WorkspaceRole;
 use App\Modules\Workspaces\Models\WorkspaceRolePermission;
 use App\Modules\Workspaces\Services\TeamManagementService;
@@ -421,6 +425,107 @@ it('respects WhatsApp eligibility and sends each order event once', function () 
     $next = $order->events()->create(['key' => 'test-opt-out', 'label' => 'Update', 'occurred_at' => now()]);
     $service->send($order->fresh('contact'), $next);
     expect(CommerceMessageAttempt::count())->toBe(1);
+});
+
+it('stores a local customer phone in E.164 so the order joins the existing WhatsApp contact', function () {
+    $c = unifiedContext();
+    $existing = Contact::create(['workspace_id' => $c['workspace']->id, 'phone' => '+15555550100', 'name' => 'Buyer']);
+    $c['data']['customer']['phone'] = '(555) 555-0100';
+
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+
+    expect($order->contact_id)->toBe($existing->id)->and($order->customer_snapshot['phone'])->toBe('+15555550100')
+        ->and(Contact::where('workspace_id', $c['workspace']->id)->count())->toBe(1);
+});
+
+function orderFallbackSetup(array $c): array
+{
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $channel = ChannelAccount::create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'Sales', 'status' => 'connected', 'provider_account_id' => 'waba-test', 'provider_phone_id' => 'phone-test']);
+    $template = MessageTemplate::query()->create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'order_update', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved', 'components' => [['type' => 'BODY', 'text' => 'Update: {{1}}. Reply for help.']]]);
+    MessageTemplateSubmission::query()->create(['workspace_id' => $c['workspace']->id, 'message_template_id' => $template->id, 'channel_account_id' => $channel->id, 'provider' => 'whatsapp', 'provider_account_id' => 'waba-test', 'whatsapp_template_id' => 'meta-order-update', 'status' => 'approved', 'submission_payload' => [], 'meta_response' => [], 'synced_at' => now()]);
+    $c['settings']->update(['whatsapp_notifications' => true, 'whatsapp_channel_id' => $channel->id, 'whatsapp_template_id' => $template->id]);
+
+    return [$order, $channel];
+}
+
+function failedStatusWebhook(string $messageId, int $code): array
+{
+    return ['entry' => [['changes' => [['value' => ['statuses' => [['id' => $messageId, 'status' => 'failed', 'errors' => [['code' => $code, 'title' => 'Re-engagement message']]]]]]]]]];
+}
+
+it('sends a free text first to a first-time buyer and resends it as the template when WhatsApp reports the window is closed', function () {
+    $c = unifiedContext();
+    [$order, $channel] = orderFallbackSetup($c);
+    expect($order->contact->opt_in_status->value)->toBe('unknown');
+    $sent = [];
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->twice()
+        ->andReturnUsing(function ($account, $recipient, $payload) use (&$sent): array {
+            $sent[] = $recipient['to'].' '.$payload['type'];
+
+            return ['ok' => true, 'provider_message_id' => 'wamid.'.count($sent)];
+        });
+
+    expect(app(OrderWhatsAppNotificationService::class)->send($order, $order->events()->first()))->toBeTrue();
+    expect($sent)->toBe(['+15555550100 text'])
+        ->and(Conversation::where('contact_id', $order->contact_id)->where('channel_account_id', $channel->id)->count())->toBe(1);
+
+    app(WhatsAppCloudDriver::class)->processWebhook($channel, failedStatusWebhook('wamid.1', 131047));
+    app(WhatsAppCloudDriver::class)->processWebhook($channel, failedStatusWebhook('wamid.1', 131047));
+
+    $template = Message::where('type', 'template')->sole();
+    expect($sent)->toBe(['+15555550100 text', '+15555550100 template'])
+        ->and($template->payload['order_event_id'])->toBe($order->events()->first()->id)
+        ->and($template->payload['request']['template_name'])->toBe('order_update')
+        ->and($template->payload['request']['components'][0]['parameters'][0]['text'])->toContain($order->number)
+        ->and(Message::where('provider_message_id', 'wamid.1')->sole()->payload['fallback_message_id'])->toBe($template->id);
+});
+
+it('resends as the template right away when WhatsApp rejects the free text for the closed window', function () {
+    $c = unifiedContext();
+    [$order] = orderFallbackSetup($c);
+    $types = [];
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->twice()
+        ->andReturnUsing(function ($account, $recipient, $payload) use (&$types): array {
+            $types[] = $payload['type'];
+
+            return $payload['type'] === 'text'
+                ? ['ok' => false, 'error_code' => '131047', 'error' => 'The 24-hour reply window has closed']
+                : ['ok' => true, 'provider_message_id' => 'wamid.template'];
+        });
+
+    (new NotifyOrderEvent($order->events()->first()->id))->handle(app(SystemNotificationService::class));
+
+    expect($types)->toBe(['text', 'template'])
+        ->and($order->events()->first()->whatsapp_notified_at)->not->toBeNull();
+});
+
+it('does not resend as a template for failures that are not about the 24-hour window', function () {
+    $c = unifiedContext();
+    [$order, $channel] = orderFallbackSetup($c);
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()->andReturn(['ok' => true, 'provider_message_id' => 'wamid.only']);
+
+    app(OrderWhatsAppNotificationService::class)->send($order, $order->events()->first());
+    app(WhatsAppCloudDriver::class)->processWebhook($channel, failedStatusWebhook('wamid.only', 131026));
+
+    expect(Message::where('type', 'template')->count())->toBe(0);
+});
+
+it('keeps the WhatsApp update open for a retry when the store has no channel or template yet', function () {
+    $c = unifiedContext();
+    $c['data']['customer']['email'] = null;
+    $c['settings']->update(['whatsapp_notifications' => true]);
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $event = $order->events()->first();
+    $this->mock(ChannelManager::class)->shouldNotReceive('sendMessage');
+
+    (new NotifyOrderEvent($event->id))->handle(app(SystemNotificationService::class));
+    expect($event->fresh()->whatsapp_notified_at)->toBeNull()->and(Conversation::count())->toBe(0);
+
+    $channel = ChannelAccount::create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'Sales', 'status' => 'connected', 'provider_account_id' => 'waba-test', 'provider_phone_id' => 'phone-test']);
+    $c['settings']->update(['whatsapp_channel_id' => $channel->id]);
+    (new NotifyOrderEvent($event->id))->handle(app(SystemNotificationService::class));
+    expect($event->fresh()->whatsapp_notified_at)->toBeNull()->and(Conversation::count())->toBe(0);
 });
 
 it('rejects browser-provided order prices through the integration API', function () {

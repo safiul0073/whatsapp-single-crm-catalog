@@ -134,6 +134,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::get('order-settings', [$controller, 'settings'])->name('orders.settings');
         Route::put('order-settings', [$controller, 'updateSettings'])->name('orders.settings.update');
         Route::put('order-settings/customer-auth', [$controller, 'updateAuthSettings'])->name('orders.settings.customer-auth');
+        Route::post('order-settings/whatsapp-template', [$controller, 'createWhatsAppTemplate'])->name('orders.settings.whatsapp-template');
         Route::get('payment-services', [$controller, 'paymentServices'])->name('payment-services.index');
         Route::put('payment-services', [$controller, 'updatePaymentServices'])->name('payment-services.update');
     });

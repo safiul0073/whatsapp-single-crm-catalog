@@ -6,11 +6,15 @@ use App\Http\Middleware\EnsureTwoFactorAuthenticated;
 use App\Http\Middleware\PanelAccess;
 use App\Models\User;
 use App\Modules\Commerce\Models\CustomerAuthSetting;
+use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MessageTemplates\Models\MessageTemplateSubmission;
 use App\Modules\Workspaces\Models\Workspace;
 use App\Modules\Workspaces\Services\WorkspacePermissionResolver;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 uses(DatabaseTransactions::class);
@@ -67,4 +71,30 @@ it('saves customer login settings and returns to the new tab', function (): void
     $this->actingAs($this->user)->from($url)->put(route('user.commerce.orders.settings.customer-auth'), ['enabled' => '0'])
         ->assertRedirect($url)->assertSessionHasNoErrors()->assertSessionHas('success');
     expect(CustomerAuthSetting::forWorkspace($this->workspace->id)->enabled)->toBeFalse();
+});
+
+it('creates the ready-made order update template, submits it to WhatsApp and selects it', function (): void {
+    Http::fake(['graph.facebook.com/*/message_templates' => Http::response(['id' => 'meta-order-template', 'status' => 'PENDING'])]);
+    $channel = ChannelAccount::query()->create(['workspace_id' => $this->workspace->id, 'provider' => 'whatsapp', 'name' => 'Orders', 'status' => 'connected', 'credentials' => ['access_token' => 'EAA-test-token'], 'provider_account_id' => 'waba-orders', 'provider_phone_id' => 'phone-orders', 'connected_at' => now()]);
+    StoreOrderSetting::forWorkspace($this->workspace->id)->update(['whatsapp_channel_id' => $channel->id]);
+
+    $this->actingAs($this->user)->from(route('user.commerce.orders.settings'))
+        ->post(route('user.commerce.orders.settings.whatsapp-template'))
+        ->assertRedirect(route('user.commerce.orders.settings'))->assertSessionHas('success');
+
+    $template = MessageTemplate::query()->where('workspace_id', $this->workspace->id)->sole();
+    $body = collect($template->components)->firstWhere('type', 'BODY');
+    expect($template->name)->toBe('order_update')->and($template->category)->toBe('utility')
+        ->and($body['text'])->toContain('{{1}}')
+        ->and(StoreOrderSetting::forWorkspace($this->workspace->id)->whatsapp_template_id)->toBe($template->id)
+        ->and(MessageTemplateSubmission::query()->where('message_template_id', $template->id)->sole()->provider_account_id)->toBe('waba-orders');
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'waba-orders/message_templates') && $request['category'] === 'UTILITY');
+});
+
+it('asks for the order channel before creating the ready-made template', function (): void {
+    $this->actingAs($this->user)->from(route('user.commerce.orders.settings'))
+        ->post(route('user.commerce.orders.settings.whatsapp-template'))
+        ->assertRedirect(route('user.commerce.orders.settings'))->assertSessionHasErrors('whatsapp_template_id');
+
+    expect(MessageTemplate::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
 });
