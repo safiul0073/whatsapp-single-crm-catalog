@@ -28,7 +28,8 @@ Schedule::call(fn () => app(OrderInventoryService::class)->expire())->name('comm
 
 Schedule::call(function (): void {
     OrderEvent::query()->where('notification_attempts', '<', 10)->where(function ($query): void {
-        $query->whereNull('staff_notified_at')->orWhereNull('customer_notified_at')->orWhereNull('whatsapp_notified_at');
+        $query->whereNull('staff_notified_at')->orWhereNull('customer_notified_at')->orWhereNull('whatsapp_notified_at')
+            ->orWhere(fn ($owner) => $owner->whereNull('owner_whatsapp_notified_at')->where('key', 'placed')->where('created_at', '>', now()->subDay()));
     })->eachById(fn ($event) => NotifyOrderEvent::dispatch($event->id));
 })->name('commerce-recover-event-notifications')->everyFiveMinutes()->withoutOverlapping();
 

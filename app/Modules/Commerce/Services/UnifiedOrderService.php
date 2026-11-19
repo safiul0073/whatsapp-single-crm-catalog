@@ -15,6 +15,7 @@ use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Services\CustomerShipmentPresenter;
 use App\Modules\Shipping\Services\ShippingCalculatorService;
 use App\Modules\Workspaces\Models\Workspace;
+use App\Rules\InternationalPhone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -220,6 +221,7 @@ class UnifiedOrderService
 
                 return $existing;
             }
+            $data = $this->withNormalizedCustomerPhone($data);
             $preview = $this->preview($workspace, $data);
             $settings = StoreOrderSetting::forWorkspace($workspace->id);
             $walkIn = ($data['source'] ?? null) === 'pos' && ($data['walk_in'] ?? false);
@@ -530,6 +532,25 @@ class UnifiedOrderService
     private function invalid(string $field, string $message): never
     {
         throw ValidationException::withMessages([$field => $message]);
+    }
+
+    /**
+     * Stores the customer phone in E.164 (local numbers read in the shipping country) so the order joins the
+     * contact that already chats on WhatsApp instead of creating a duplicate. Unparseable numbers stay as typed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function withNormalizedCustomerPhone(array $data): array
+    {
+        if (isset($data['contact_id']) || ! filled($data['customer']['phone'] ?? null)) {
+            return $data;
+        }
+        $country = $data['shipping_address']['country'] ?? null;
+        $region = is_string($country) && preg_match('/^[A-Za-z]{2}$/', $country) ? $country : null;
+        $data['customer']['phone'] = InternationalPhone::normalize($data['customer']['phone'], $region) ?? $data['customer']['phone'];
+
+        return $data;
     }
 
     /**

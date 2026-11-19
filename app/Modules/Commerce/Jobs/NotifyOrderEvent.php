@@ -84,8 +84,7 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         if (! $email && ! $event->customer_notified_at) {
             $event->update(['customer_notified_at' => now()]);
         }
-        if (! $event->whatsapp_notified_at) {
-            app(OrderWhatsAppNotificationService::class)->send($order, $event);
+        if (! $event->whatsapp_notified_at && app(OrderWhatsAppNotificationService::class)->send($order, $event)) {
             $event->update(['whatsapp_notified_at' => now()]);
         }
         if (! $event->owner_whatsapp_notified_at && app(OrderOwnerWhatsAppNotificationService::class)->send($order, $event)) {

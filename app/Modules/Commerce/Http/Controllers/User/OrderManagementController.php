@@ -28,6 +28,7 @@ use App\Modules\Contacts\Services\ContactService;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MessageTemplates\Models\MessageTemplate;
+use App\Modules\MessageTemplates\Services\MessageTemplateService;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -250,6 +251,39 @@ class OrderManagementController extends Controller
         $workspace->update(['settings' => $workspaceSettings]);
 
         return back()->with('success', 'Order settings saved.');
+    }
+
+    /**
+     * Creates the ready-made order update utility template (one {{1}} body variable, as order and invoice
+     * messages need), submits it to WhatsApp for approval and selects it in order settings.
+     */
+    public function createWhatsAppTemplate(Request $request, MessageTemplateService $templates): RedirectResponse
+    {
+        $workspace = $this->workspaces->current($request->user());
+        $settings = StoreOrderSetting::forWorkspace($workspace->id);
+        $channel = ChannelAccount::query()->where('workspace_id', $workspace->id)->where('provider', 'whatsapp')->where('status', 'connected')->find($settings->whatsapp_channel_id);
+        if (! $channel) {
+            return back()->withErrors(['whatsapp_template_id' => 'Select and save the WhatsApp channel for order updates first.']);
+        }
+
+        $template = $templates->store($request->user(), [
+            'provider' => 'whatsapp',
+            'name' => $templates->uniqueNameForUser($request->user(), 'whatsapp', 'en_US', 'order_update'),
+            'language' => 'en_US',
+            'category' => 'utility',
+            'header' => ['type' => 'none'],
+            'body' => 'Here is an update on your order: {{1}}. Reply to this message if you need any help.',
+            'body_examples' => ['1' => 'Order shipped · Order ORD-1001 · BDT 1250 · Tracking TRK-AB12CD'],
+            'footer' => ['text' => ''],
+            'buttons' => [],
+        ]);
+        $submission = $templates->submit($request->user(), $template, (string) $channel->provider_account_id);
+        if (! ($submission['ok'] ?? false)) {
+            return back()->withErrors(['whatsapp_template_id' => 'WhatsApp did not accept the template: '.(data_get($submission, 'response.error.error_user_msg') ?: data_get($submission, 'response.error.message', 'unknown error'))]);
+        }
+        $settings->update(['whatsapp_template_id' => $template->id]);
+
+        return back()->with('success', 'Template "'.$template->name.'" submitted to WhatsApp and selected. It is used automatically once WhatsApp approves it (usually within minutes, sometimes up to 24 hours).');
     }
 
     private function persistPaymentMethods(Workspace $workspace, array $methods, Request $request): void

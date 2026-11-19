@@ -14,7 +14,7 @@ class StorefrontDatabase
             $t->id();
             $t->string('name')->nullable();
         });
-        foreach (['Workspaces', 'Contacts', 'Media', 'MarketingChannels', 'Inbox', 'Shipping', 'AuditLog', 'PaymentGatewaySettings'] as $module) {
+        foreach (['Workspaces', 'Contacts', 'Media', 'MarketingChannels', 'Inbox', 'MessageTemplates', 'Shipping', 'AuditLog', 'PaymentGatewaySettings'] as $module) {
             $paths = glob(app_path("Modules/{$module}/Database/Migrations/*"));
             sort($paths);
             foreach ($paths as $path) {

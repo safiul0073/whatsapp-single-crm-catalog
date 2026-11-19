@@ -2,17 +2,18 @@
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Commerce\Jobs\SendOrderTemplateFallback;
 use App\Modules\Commerce\Models\CommerceMessageAttempt;
 use App\Modules\Commerce\Models\CustomInvoice;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\Inbox\Enums\ConversationStatus;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
-use App\Modules\MessageTemplates\Models\MessageTemplate;
 use RuntimeException;
 
 class OrderInvoiceWhatsAppService
@@ -25,19 +26,17 @@ class OrderInvoiceWhatsAppService
 
     public const SKIPPED_NO_CHANNEL = 'no_whatsapp_channel';
 
-    public const SKIPPED_NO_CONVERSATION = 'no_conversation';
-
     public const SKIPPED_WINDOW = 'outside_24h_window';
 
     public const SKIPPED_ALREADY_SENT = 'already_sent';
 
     public const FAILED = 'failed';
 
-    public function __construct(protected ChannelManager $channels) {}
+    public function __construct(protected ChannelManager $channels, protected OrderWhatsAppTemplateFallbackService $fallback) {}
 
     /**
-     * Sends the invoice PDF (or, outside WhatsApp's 24-hour window, an approved
-     * template carrying the invoice link) to the customer.
+     * Sends the invoice PDF to the customer. When WhatsApp blocks it because the 24-hour window is
+     * closed, OrderWhatsAppTemplateFallbackService resends the invoice link as the approved utility template.
      *
      * Automatic sends happen once per order; a manual send always goes out.
      *
@@ -70,7 +69,6 @@ class OrderInvoiceWhatsAppService
             contact: $contact,
             phone: $phone,
             channelAccountId: $order->channel_account_id ?? $settings->whatsapp_channel_id,
-            settings: $settings,
             caption: 'Invoice '.$order->invoice_number.' for order '.$order->number,
             url: $order->invoiceUrl(),
             downloadUrl: $order->invoiceUrl(download: true),
@@ -107,7 +105,6 @@ class OrderInvoiceWhatsAppService
             contact: $contact,
             phone: (string) $contact->phone,
             channelAccountId: $settings->whatsapp_channel_id,
-            settings: $settings,
             caption: 'Invoice '.$invoice->number,
             url: $invoice->publicUrl(),
             downloadUrl: $invoice->publicUrl(download: true),
@@ -123,12 +120,12 @@ class OrderInvoiceWhatsAppService
     }
 
     /**
-     * Finds the WhatsApp channel and conversation, then sends the PDF (or a template with the link outside the 24-hour window).
+     * Finds the WhatsApp channel (opening the conversation if the customer never chatted), then sends the PDF free-form first.
      *
      * @param  array<string, int>  $reference
      * @return array{status: string, detail: string, attempt_status?: string}
      */
-    private function deliver(int $workspaceId, Contact $contact, string $phone, ?int $channelAccountId, StoreOrderSetting $settings, string $caption, string $url, string $downloadUrl, string $filename, string $key, array $reference): array
+    private function deliver(int $workspaceId, Contact $contact, string $phone, ?int $channelAccountId, string $caption, string $url, string $downloadUrl, string $filename, string $key, array $reference): array
     {
         $account = ChannelAccount::query()
             ->where('workspace_id', $workspaceId)
@@ -145,19 +142,19 @@ class OrderInvoiceWhatsAppService
             ->where('channel_account_id', $account->id)
             ->latest('id')
             ->first();
-        if (! $conversation) {
-            return ['status' => self::SKIPPED_NO_CONVERSATION, 'detail' => ''];
-        }
 
         $body = $caption.'. View or download: '.$url;
         $payload = ['type' => 'document', 'url' => $downloadUrl, 'filename' => $filename, 'caption' => $caption];
 
-        if (! $conversation->session_expires_at || $conversation->session_expires_at->isPast()) {
-            $payload = $this->templatePayload($workspaceId, $settings, $account, $contact->opt_in_status, $body);
-            if ($payload === null) {
-                return ['status' => self::SKIPPED_WINDOW, 'detail' => ''];
-            }
+        $windowOpen = $conversation?->session_expires_at?->isFuture() ?? false;
+        if (! $windowOpen && $this->fallback->templatePayload($workspaceId, $account, $body) === null) {
+            return ['status' => self::SKIPPED_WINDOW, 'detail' => ''];
         }
+
+        $conversation ??= Conversation::query()->firstOrCreate(
+            ['workspace_id' => $workspaceId, 'provider' => $account->provider, 'contact_id' => $contact->id, 'channel_account_id' => $account->id],
+            ['provider_conversation_id' => ltrim($phone, '+'), 'status' => ConversationStatus::Open->value, 'labels' => []],
+        );
 
         $attempt = CommerceMessageAttempt::query()->firstOrCreate(
             ['idempotency_key' => hash('sha256', $key)],
@@ -188,6 +185,12 @@ class OrderInvoiceWhatsAppService
             'whatsapp_message_id' => $result['provider_message_id'] ?? null,
             'status' => $ok ? 'sent' : 'failed',
         ]);
+        if (! $ok && $this->fallback->blockedByWindow($result)) {
+            $attempt->update(['status' => 'completed', 'last_error' => $result['error'] ?? null]);
+            SendOrderTemplateFallback::dispatch($message->id);
+
+            return ['status' => self::SENT, 'detail' => ''];
+        }
         $attempt->update([
             'status' => $ok ? 'completed' : (($result['error_code'] ?? '') === 'connection_error' ? 'uncertain' : 'failed'),
             'last_error' => $result['error'] ?? null,
@@ -196,37 +199,6 @@ class OrderInvoiceWhatsAppService
         return $ok
             ? ['status' => self::SENT, 'detail' => '']
             : ['status' => self::FAILED, 'detail' => (string) ($result['error'] ?? ''), 'attempt_status' => $attempt->status];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function templatePayload(int $workspaceId, StoreOrderSetting $settings, ChannelAccount $account, mixed $optIn, string $body): ?array
-    {
-        if ($optIn !== ContactOptInStatus::Subscribed) {
-            return null;
-        }
-        $template = MessageTemplate::query()
-            ->where('workspace_id', $workspaceId)
-            ->where('provider', 'whatsapp')
-            ->where('category', 'utility')
-            ->find($settings->whatsapp_template_id);
-        if (! $template || ! $template->approvedForWaba($account->provider_account_id)) {
-            return null;
-        }
-        $components = collect($template->components ?? []);
-        $templateBody = $components->first(fn ($component) => strtoupper($component['type'] ?? '') === 'BODY');
-        preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $templateBody['text'] ?? '', $variables);
-        if (array_values(array_unique($variables[1])) !== ['1'] || $components->contains(fn ($component) => in_array(strtoupper($component['type'] ?? ''), ['HEADER', 'BUTTONS']))) {
-            return null;
-        }
-
-        return [
-            'type' => 'template',
-            'template_name' => $template->name,
-            'language' => $template->language,
-            'components' => [['type' => 'body', 'parameters' => [['type' => 'text', 'text' => $body]]]],
-        ];
     }
 
     /**
@@ -239,8 +211,7 @@ class OrderInvoiceWhatsAppService
             self::SKIPPED_DISABLED => 'WhatsApp order notifications are turned off for this store.',
             self::SKIPPED_CONTACT => 'This customer cannot receive WhatsApp messages (blocked, opted out, or phone mismatch).',
             self::SKIPPED_NO_CHANNEL => 'No connected WhatsApp channel for this store.',
-            self::SKIPPED_NO_CONVERSATION => 'There is no WhatsApp conversation with this customer yet.',
-            self::SKIPPED_WINDOW => 'The customer has not messaged in the last 24 hours and no approved template is set up, so WhatsApp does not allow sending now. Copy the invoice link and share it instead.',
+            self::SKIPPED_WINDOW => 'The customer has not messaged in the last 24 hours and no approved utility template is selected in order settings, so WhatsApp does not allow sending now. Copy the invoice link and share it instead.',
             self::SKIPPED_ALREADY_SENT => 'The invoice was already sent.',
             self::FAILED => 'WhatsApp could not send the invoice.'.($detail !== '' ? ' '.$detail : ''),
         ];

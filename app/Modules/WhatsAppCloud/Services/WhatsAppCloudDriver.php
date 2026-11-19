@@ -4,6 +4,7 @@ namespace App\Modules\WhatsAppCloud\Services;
 
 use App\Modules\Campaigns\Models\Campaign;
 use App\Modules\Commerce\Services\OrderIntakeService;
+use App\Modules\Commerce\Services\OrderWhatsAppTemplateFallbackService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
@@ -800,6 +801,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
     protected function persistStatus(ChannelAccount $account, array $status): void
     {
         app(WhatsAppCustomerAuthService::class)->recordWelcomeDelivery($account, $status);
+        app(OrderWhatsAppTemplateFallbackService::class)->handleStatus($account, $status);
         Message::query()
             ->where('workspace_id', $account->workspace_id)
             ->where(function ($query) use ($status): void {
@@ -935,6 +937,7 @@ class WhatsAppCloudDriver implements MarketingChannelDriver
 
         foreach ($this->statuses($payload) as $status) {
             app(WhatsAppCustomerAuthService::class)->recordWelcomeDelivery($account, $status);
+            app(OrderWhatsAppTemplateFallbackService::class)->handleStatus($account, $status);
             $events[] = [
                 'type' => 'status',
                 'provider_message_id' => $status['id'] ?? null,
