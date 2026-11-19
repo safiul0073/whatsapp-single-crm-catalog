@@ -204,14 +204,26 @@ it('lets the owner resend an invoice that was already sent', function (): void {
     expect($result['status'])->toBe(OrderInvoiceWhatsAppService::SENT);
 });
 
-it('skips the invoice outside the 24 hour window when no template is set up', function (): void {
+it('tries the free invoice first and warns only after WhatsApp blocks it when no template is set up', function (): void {
     invoiceWhatsAppFixture($this, now()->subHour());
-    $this->mock(ChannelManager::class, fn ($mock) => $mock->shouldNotReceive('sendMessage'));
+    $this->mock(ChannelManager::class, fn ($mock) => $mock->shouldReceive('sendMessage')->once()
+        ->withArgs(fn ($account, $to, $payload): bool => $payload['type'] === 'document')
+        ->andReturn(['ok' => false, 'error_code' => '131047', 'error' => 'The 24-hour reply window has closed']));
 
     $result = app(OrderInvoiceWhatsAppService::class)->send($this->order->fresh()->load('contact'));
 
     expect($result['status'])->toBe(OrderInvoiceWhatsAppService::SKIPPED_WINDOW)
         ->and($this->order->fresh()->invoice_sent_at)->toBeNull();
+    Queue::assertNotPushed(SendOrderTemplateFallback::class);
+});
+
+it('delivers the free invoice when WhatsApp accepts it even though our record shows the window closed', function (): void {
+    invoiceWhatsAppFixture($this, now()->subHour());
+    $this->mock(ChannelManager::class, fn ($mock) => $mock->shouldReceive('sendMessage')->once()->andReturn(['ok' => true, 'provider_message_id' => 'wamid.free']));
+
+    $result = app(OrderInvoiceWhatsAppService::class)->send($this->order->fresh()->load('contact'), manual: true);
+
+    expect($result['status'])->toBe(OrderInvoiceWhatsAppService::SENT);
 });
 
 it('sends a manual invoice as a free document first and falls back to the template with the link when WhatsApp blocks it', function (): void {

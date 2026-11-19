@@ -50,10 +50,6 @@ class OrderWhatsAppNotificationService
             $body .= ' · Shipping quote required';
         }
         $payload = ['type' => 'text', 'body' => $body];
-        $windowOpen = $conversation?->session_expires_at?->isFuture() ?? false;
-        if (! $windowOpen && $this->fallback->templatePayload($order->workspace_id, $account, $body) === null) {
-            return $this->skipped($order, 'outside the 24-hour window and no approved utility template (one {{1}} body variable, no header or buttons) is selected', false);
-        }
         $conversation ??= Conversation::query()->firstOrCreate(
             ['workspace_id' => $order->workspace_id, 'provider' => $account->provider, 'contact_id' => $contact->id, 'channel_account_id' => $account->id],
             ['provider_conversation_id' => ltrim((string) $phone, '+'), 'status' => ConversationStatus::Open->value, 'labels' => []],
@@ -67,6 +63,11 @@ class OrderWhatsAppNotificationService
         $result = $this->channels->sendMessage($account, ['to' => $phone], $payload);
         $message->update(['provider_message_id' => $result['provider_message_id'] ?? null, 'whatsapp_message_id' => $result['provider_message_id'] ?? null, 'status' => ($result['ok'] ?? false) ? 'sent' : 'failed']);
         if (! ($result['ok'] ?? false) && $this->fallback->blockedByWindow($result)) {
+            if ($this->fallback->templatePayload($order->workspace_id, $account, $body) === null) {
+                $attempt->update(['status' => 'failed', 'last_error' => $result['error'] ?? null]);
+
+                return $this->skipped($order, 'WhatsApp blocked the free message (24-hour window closed) and no approved utility template is selected', false);
+            }
             $attempt->update(['status' => 'completed', 'last_error' => $result['error'] ?? null]);
             SendOrderTemplateFallback::dispatch($message->id);
 
