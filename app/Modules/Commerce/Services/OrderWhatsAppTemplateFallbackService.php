@@ -62,6 +62,36 @@ class OrderWhatsAppTemplateFallbackService
         ];
     }
 
+    public const DRAFT_TEMPLATE_NAME = 'order_update';
+
+    public const DRAFT_TEMPLATE_BODY = 'Here is an update on your order: {{1}}. Reply to this message if you need any help.';
+
+    /**
+     * Gives the store the ready-made order update utility template as a draft (once), so the owner can review it
+     * and submit it to WhatsApp from Templates, and selects it in order settings when none is chosen yet.
+     */
+    public function ensureDraftTemplate(int $workspaceId): MessageTemplate
+    {
+        $template = MessageTemplate::query()->firstOrCreate(
+            ['workspace_id' => $workspaceId, 'provider' => 'whatsapp', 'name' => self::DRAFT_TEMPLATE_NAME, 'language' => 'en_US'],
+            [
+                'template_kind' => 'standard',
+                'category' => 'utility',
+                'status' => 'draft',
+                'body' => self::DRAFT_TEMPLATE_BODY,
+                'components' => [['type' => 'BODY', 'text' => self::DRAFT_TEMPLATE_BODY, 'example' => ['body_text' => [['Order shipped · Order ORD-1001 · BDT 1250 · Tracking TRK-AB12CD']]]]],
+                'buttons' => [],
+                'variables' => ['body' => ['1']],
+            ],
+        );
+        $settings = StoreOrderSetting::forWorkspace($workspaceId);
+        if (! $settings->whatsapp_template_id) {
+            $settings->update(['whatsapp_template_id' => $template->id]);
+        }
+
+        return $template;
+    }
+
     /**
      * Whether a send result or a status-webhook error says the 24-hour window is closed.
      *

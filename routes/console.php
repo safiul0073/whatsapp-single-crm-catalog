@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\OrderEvent;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Services\OrderWhatsAppTemplateFallbackService;
 use App\Modules\Commerce\Storefront\Models\StorefrontPageView;
 use App\Modules\Commerce\Storefront\Models\StorefrontVisitor;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
@@ -18,6 +19,8 @@ use App\Modules\Shipping\Jobs\SyncShipmentTracking;
 use App\Modules\Shipping\Services\TrackingService;
 use App\Modules\TikTok\Services\TikTokPostService;
 use App\Modules\TikTok\Services\TikTokTokenService;
+use App\Modules\Workspaces\Models\Workspace;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 if (config('services.order_scheduler_scope') !== 'commerce') {
@@ -67,3 +70,12 @@ Schedule::call(fn () => app(TrackingService::class)->due()->each(fn ($shipment) 
 
 Schedule::call(fn () => app(MetaPagePostService::class)->publishDue())->name('meta-page-posts')->everyMinute()->withoutOverlapping();
 Schedule::call(fn () => app(TikTokPostService::class)->refreshPending())->name('tiktok-post-status')->everyMinute()->withoutOverlapping();
+
+Artisan::command('commerce:order-template-drafts', function (): void {
+    $count = 0;
+    Workspace::query()->eachById(function (Workspace $workspace) use (&$count): void {
+        app(OrderWhatsAppTemplateFallbackService::class)->ensureDraftTemplate($workspace->id);
+        $count++;
+    });
+    $this->info("Order update template draft ready in {$count} stores.");
+})->purpose('Add the ready-made WhatsApp order update template as a draft for every store');

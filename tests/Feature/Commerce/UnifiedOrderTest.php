@@ -414,10 +414,8 @@ it('respects WhatsApp eligibility and sends each order event once', function () 
     $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()->andReturn(['ok' => true, 'provider_message_id' => 'outbound-event-1']);
     $service = app(OrderWhatsAppNotificationService::class);
     $service->send($order, $event);
-    $c['settings']->update(['whatsapp_notifications' => true, 'whatsapp_channel_id' => $channel->id]);
-    $service->send($order, $event);
     expect(CommerceMessageAttempt::count())->toBe(0);
-    $conversation->update(['session_expires_at' => now()->addDay()]);
+    $c['settings']->update(['whatsapp_notifications' => true, 'whatsapp_channel_id' => $channel->id]);
     $service->send($order, $event);
     $service->send($order, $event);
     expect(CommerceMessageAttempt::count())->toBe(1)->and(CommerceMessageAttempt::first()->status)->toBe('completed');
@@ -524,8 +522,11 @@ it('keeps the WhatsApp update open for a retry when the store has no channel or 
 
     $channel = ChannelAccount::create(['workspace_id' => $c['workspace']->id, 'provider' => 'whatsapp', 'name' => 'Sales', 'status' => 'connected', 'provider_account_id' => 'waba-test', 'provider_phone_id' => 'phone-test']);
     $c['settings']->update(['whatsapp_channel_id' => $channel->id]);
+    $this->mock(ChannelManager::class)->shouldReceive('sendMessage')->once()
+        ->withArgs(fn ($account, $recipient, $payload) => $payload['type'] === 'text')
+        ->andReturn(['ok' => false, 'error_code' => '131047', 'error' => 'The 24-hour reply window has closed']);
     (new NotifyOrderEvent($event->id))->handle(app(SystemNotificationService::class));
-    expect($event->fresh()->whatsapp_notified_at)->toBeNull()->and(Conversation::count())->toBe(0);
+    expect($event->fresh()->whatsapp_notified_at)->toBeNull()->and(Message::where('type', 'template')->count())->toBe(0);
 });
 
 it('rejects browser-provided order prices through the integration API', function () {

@@ -146,11 +146,6 @@ class OrderInvoiceWhatsAppService
         $body = $caption.'. View or download: '.$url;
         $payload = ['type' => 'document', 'url' => $downloadUrl, 'filename' => $filename, 'caption' => $caption];
 
-        $windowOpen = $conversation?->session_expires_at?->isFuture() ?? false;
-        if (! $windowOpen && $this->fallback->templatePayload($workspaceId, $account, $body) === null) {
-            return ['status' => self::SKIPPED_WINDOW, 'detail' => ''];
-        }
-
         $conversation ??= Conversation::query()->firstOrCreate(
             ['workspace_id' => $workspaceId, 'provider' => $account->provider, 'contact_id' => $contact->id, 'channel_account_id' => $account->id],
             ['provider_conversation_id' => ltrim($phone, '+'), 'status' => ConversationStatus::Open->value, 'labels' => []],
@@ -186,6 +181,11 @@ class OrderInvoiceWhatsAppService
             'status' => $ok ? 'sent' : 'failed',
         ]);
         if (! $ok && $this->fallback->blockedByWindow($result)) {
+            if ($this->fallback->templatePayload($workspaceId, $account, $body) === null) {
+                $attempt->update(['status' => 'failed', 'last_error' => $result['error'] ?? null]);
+
+                return ['status' => self::SKIPPED_WINDOW, 'detail' => ''];
+            }
             $attempt->update(['status' => 'completed', 'last_error' => $result['error'] ?? null]);
             SendOrderTemplateFallback::dispatch($message->id);
 
@@ -211,7 +211,7 @@ class OrderInvoiceWhatsAppService
             self::SKIPPED_DISABLED => 'WhatsApp order notifications are turned off for this store.',
             self::SKIPPED_CONTACT => 'This customer cannot receive WhatsApp messages (blocked, opted out, or phone mismatch).',
             self::SKIPPED_NO_CHANNEL => 'No connected WhatsApp channel for this store.',
-            self::SKIPPED_WINDOW => 'The customer has not messaged in the last 24 hours and no approved utility template is selected in order settings, so WhatsApp does not allow sending now. Copy the invoice link and share it instead.',
+            self::SKIPPED_WINDOW => 'WhatsApp blocked the invoice because the customer has not messaged in the last 24 hours. Click "Create ready-made template" in Order settings so blocked invoices are resent as an approved template, or copy the invoice link and share it instead.',
             self::SKIPPED_ALREADY_SENT => 'The invoice was already sent.',
             self::FAILED => 'WhatsApp could not send the invoice.'.($detail !== '' ? ' '.$detail : ''),
         ];

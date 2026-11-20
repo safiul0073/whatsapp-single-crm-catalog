@@ -98,3 +98,16 @@ it('asks for the order channel before creating the ready-made template', functio
 
     expect(MessageTemplate::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
 });
+
+it('gives every store the order update template as a draft once and selects it', function (): void {
+    $other = Workspace::query()->create(['name' => 'Second store', 'slug' => 'second-'.Str::uuid(), 'status' => 'active']);
+
+    $this->artisan('commerce:order-template-drafts')->assertSuccessful();
+    $this->artisan('commerce:order-template-drafts')->assertSuccessful();
+
+    foreach ([$this->workspace, $other] as $workspace) {
+        $template = MessageTemplate::query()->where('workspace_id', $workspace->id)->sole();
+        expect($template->name)->toBe('order_update')->and($template->status->value)->toBe('draft')->and($template->category)->toBe('utility')
+            ->and(StoreOrderSetting::forWorkspace($workspace->id)->whatsapp_template_id)->toBe($template->id);
+    }
+});

@@ -19,6 +19,7 @@ use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
+use App\Modules\Commerce\Services\OrderWhatsAppTemplateFallbackService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Services\WhatsAppCustomerAuthService;
@@ -156,6 +157,7 @@ class OrderManagementController extends Controller
     public function settings(Request $request): View
     {
         $workspaceId = $this->workspaces->current($request->user())->id;
+        app(OrderWhatsAppTemplateFallbackService::class)->ensureDraftTemplate($workspaceId);
 
         return view('commerce::user.order-settings', ['channels' => ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')->get(), 'templates' => MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->get(), 'settings' => StoreOrderSetting::forWorkspace($workspaceId), 'paymentMethods' => StoreOrderSetting::paymentMethods($workspaceId), 'defaultPaymentMethods' => StoreOrderSetting::defaultPaymentMethods()]);
     }
@@ -254,8 +256,7 @@ class OrderManagementController extends Controller
     }
 
     /**
-     * Creates the ready-made order update utility template (one {{1}} body variable, as order and invoice
-     * messages need), submits it to WhatsApp for approval and selects it in order settings.
+     * Submits the store's ready-made order update template draft to WhatsApp for approval and selects it.
      */
     public function createWhatsAppTemplate(Request $request, MessageTemplateService $templates): RedirectResponse
     {
@@ -266,17 +267,7 @@ class OrderManagementController extends Controller
             return back()->withErrors(['whatsapp_template_id' => 'Select and save the WhatsApp channel for order updates first.']);
         }
 
-        $template = $templates->store($request->user(), [
-            'provider' => 'whatsapp',
-            'name' => $templates->uniqueNameForUser($request->user(), 'whatsapp', 'en_US', 'order_update'),
-            'language' => 'en_US',
-            'category' => 'utility',
-            'header' => ['type' => 'none'],
-            'body' => 'Here is an update on your order: {{1}}. Reply to this message if you need any help.',
-            'body_examples' => ['1' => 'Order shipped · Order ORD-1001 · BDT 1250 · Tracking TRK-AB12CD'],
-            'footer' => ['text' => ''],
-            'buttons' => [],
-        ]);
+        $template = app(OrderWhatsAppTemplateFallbackService::class)->ensureDraftTemplate($workspace->id);
         $submission = $templates->submit($request->user(), $template, (string) $channel->provider_account_id);
         if (! ($submission['ok'] ?? false)) {
             return back()->withErrors(['whatsapp_template_id' => 'WhatsApp did not accept the template: '.(data_get($submission, 'response.error.error_user_msg') ?: data_get($submission, 'response.error.message', 'unknown error'))]);
