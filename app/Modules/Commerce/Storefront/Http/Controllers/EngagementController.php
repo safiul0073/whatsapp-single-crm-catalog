@@ -23,13 +23,13 @@ class EngagementController extends Controller
         $c = $r->attributes->get('store_customer');
         $ids = Wishlist::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->pluck('product_id');
 
-        return response()->json(['data' => ProductResource::collection($catalog->query($c->workspace_id)->whereIn('id', $ids)->get())]);
+        return response()->json(['data' => ProductResource::collection($catalog->query($c->workspace_id, ['selling_mode' => 'all'])->whereIn('id', $ids)->get())]);
     }
 
     public function saveWishlist(Request $r, int $id, CatalogService $catalog): JsonResponse
     {
         $c = $r->attributes->get('store_customer');
-        $catalog->query($c->workspace_id)->findOrFail($id);
+        $catalog->query($c->workspace_id, ['selling_mode' => 'all'])->findOrFail($id);
         Wishlist::query()->firstOrCreate(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id, 'product_id' => $id]);
 
         return $this->wishlist($r, $catalog);
@@ -46,7 +46,7 @@ class EngagementController extends Controller
     public function reviews(Request $r, string $slug, CatalogService $catalog): JsonResponse
     {
         $w = $r->attributes->get('store_workspace')->id;
-        $p = $catalog->query($w)->where('slug', $slug)->firstOrFail();
+        $p = $catalog->query($w, ['selling_mode' => 'all'])->where('slug', $slug)->firstOrFail();
 
         return response()->json(['data' => ProductReview::query()->where('workspace_id', $w)->where('product_id', $p->id)->where('status', 'approved')->latest()->paginate(20, ['id', 'rating', 'body', 'created_at'])]);
     }
@@ -54,7 +54,7 @@ class EngagementController extends Controller
     public function review(EngagementRequest $r, string $slug, CatalogService $catalog): JsonResponse
     {
         $c = $r->attributes->get('store_customer');
-        $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
+        $p = $catalog->query($c->workspace_id, ['selling_mode' => 'all'])->where('slug', $slug)->firstOrFail();
         abort_unless($this->hasConfirmedPurchase($c, $p->id), 403, 'Only customers with a confirmed or delivered order of this product can review it.');
         $review = ProductReview::query()->updateOrCreate(['workspace_id' => $c->workspace_id, 'customer_id' => $c->id, 'product_id' => $p->id], [...$r->validated(), 'status' => 'pending']);
 
@@ -64,7 +64,7 @@ class EngagementController extends Controller
     public function reviewEligibility(Request $r, string $slug, CatalogService $catalog): JsonResponse
     {
         $c = $r->attributes->get('store_customer');
-        $p = $catalog->query($c->workspace_id)->where('slug', $slug)->firstOrFail();
+        $p = $catalog->query($c->workspace_id, ['selling_mode' => 'all'])->where('slug', $slug)->firstOrFail();
         $existing = ProductReview::query()->where('workspace_id', $c->workspace_id)->where('customer_id', $c->id)->where('product_id', $p->id)->first(['rating', 'body', 'status']);
 
         return response()->json(['data' => ['can_review' => $this->hasConfirmedPurchase($c, $p->id), 'review' => $existing]]);

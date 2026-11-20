@@ -31,6 +31,8 @@ class StoreOrderSettingsRequest extends FormRequest
             'payment_methods.*.name' => ['required', 'string', 'max:100'],
             'payment_methods.*.recipient_details' => ['nullable', 'string', 'max:2000'],
             'payment_methods.*.instructions' => ['nullable', 'string', 'max:4000'],
+            'payment_methods.*.video_url' => ['nullable', 'url:https', 'max:500', 'regex:#^https://(www\.|m\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com|vimeo\.com|player\.vimeo\.com)/#i'],
+            'payment_methods.*.help_url' => ['nullable', 'url:https', 'max:500'],
             'payment_methods.*.active' => ['required', 'boolean'],
             'payment_methods.*.sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'payment_methods.*.fields' => ['sometimes', 'array', 'max:10'],

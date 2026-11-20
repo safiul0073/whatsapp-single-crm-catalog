@@ -32,7 +32,9 @@ class AuthController extends Controller
     public function challenge(AuthRequest $r): JsonResponse
     {
         $data = $r->validated();
-        $data['client_ip'] = $r->header('X-Storefront-Client-IP') ?: $r->ip();
+        // Only the platform-authenticated web proxy may forward a visitor IP.
+        $forwarded = $r->attributes->get('storefront_platform') === true ? trim((string) $r->header('X-Storefront-Client-IP', '')) : '';
+        $data['client_ip'] = $forwarded !== '' ? $forwarded : $r->ip();
 
         return response()->json(['data' => $this->whatsapp->challenge($r->attributes->get('store_workspace')->id, $data)]);
     }

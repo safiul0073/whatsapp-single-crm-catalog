@@ -41,6 +41,7 @@ beforeEach(function (): void {
     DB::purge('sqlite');
     StorefrontDatabase::migrate();
     Schema::table('users', fn ($t) => $t->softDeletes());
+    (require database_path('migrations/2026_02_09_055051_create_permission_tables.php'))->up();
     Queue::fake();
     Event::fake([
         LiveStreamStatusChanged::class,
@@ -93,7 +94,7 @@ beforeEach(function (): void {
         'name' => 'Heavyweight Hoodie',
         'slug' => 'heavyweight-hoodie',
         'sku' => 'hoodie-01',
-        'status' => 'published',
+        'status' => 'active',
         'visibility' => 'published',
         'selling_mode' => 'retail',
         'single_piece_price' => 45,
@@ -380,8 +381,9 @@ it('exposes active live status in cms settings, renders live_videos cms sections
     // Verify the LiveStreamService settings & formatted stream structure used by the Owner Panel
     $liveService = app(LiveStreamService::class);
     $ownerLiveSettings = $liveService->settings($this->store->id);
+    // phpunit.xml broadcasts through the null driver, so clients must not try to connect.
     expect($ownerLiveSettings['enabled'])->toBeTrue()
-        ->and($ownerLiveSettings['reverb']['enabled'])->toBeTrue();
+        ->and($ownerLiveSettings['reverb']['enabled'])->toBeFalse();
 
     // Toggle slider off and back on via mobile owner endpoint
     $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/{$liveId}/toggle-slider", [
@@ -403,6 +405,34 @@ it('exposes active live status in cms settings, renders live_videos cms sections
 
     Storage::disk('public')->assertMissing($videoPath);
     expect(LiveStream::query()->find($liveId))->toBeNull();
+});
+
+it('enables reverb websocket details only when broadcasting through reverb', function (): void {
+    config(['broadcasting.default' => 'reverb']);
+    expect(app(LiveStreamService::class)->reverbConfig()['enabled'])->toBeTrue();
+
+    config(['broadcasting.default' => 'log']);
+    expect(app(LiveStreamService::class)->reverbConfig()['enabled'])->toBeFalse();
+});
+
+it('keeps an ended stream\'s end time and duration when a recording is uploaded later', function (): void {
+    $stream = LiveStream::query()->create([
+        'workspace_id' => $this->store->id,
+        'title' => 'Ended earlier',
+        'slug' => 'ended-earlier',
+        'stream_key' => 'ended-earlier-key',
+        'status' => 'ended',
+        'broadcast_platforms' => ['storefront'],
+        'started_at' => now()->subDays(3),
+        'ended_at' => now()->subDays(3)->addHour(),
+        'duration_seconds' => 3600,
+    ]);
+
+    $ended = app(LiveStreamService::class)->stopStream($stream, UploadedFile::fake()->create('later.mp4', 512, 'video/mp4'));
+
+    expect($ended->duration_seconds)->toBe(3600)
+        ->and($ended->ended_at->isSameMinute(now()->subDays(3)->addHour()))->toBeTrue()
+        ->and($ended->video_path)->not->toBeNull();
 });
 
 it('returns pusher websocket connection details when broadcasting through pusher', function (): void {
@@ -470,4 +500,27 @@ it('keeps live controls working when the realtime server is down and reports sig
         'sender_peer_id' => 'viewer_1',
         'payload' => [],
     ], $this->headers)->assertStatus(503);
+});
+
+it('lists active catalog products for the owner live studio', function (): void {
+    Sanctum::actingAs($this->owner);
+
+    $this->getJson("/api/v1/mobile/workspaces/{$this->store->id}/lives")
+        ->assertOk()
+        ->assertJsonPath('data.catalog_products.0.id', $this->product->id);
+});
+
+it('forbids owner live endpoints for workspace members without storefront permissions', function (): void {
+    if (! Schema::hasColumn('workspace_members', 'workspace_role_id')) {
+        Schema::table('workspace_members', fn ($t) => $t->unsignedBigInteger('workspace_role_id')->nullable());
+    }
+    $memberId = DB::table('users')->insertGetId(['name' => 'Packer']);
+    DB::table('workspace_members')->insert(['workspace_id' => $this->store->id, 'user_id' => $memberId, 'role' => 'member', 'status' => 'active']);
+    $member = new User;
+    $member->forceFill(['id' => $memberId, 'first_name' => 'Packer']);
+    $member->exists = true;
+    Sanctum::actingAs($member);
+
+    $this->getJson("/api/v1/mobile/workspaces/{$this->store->id}/lives")->assertForbidden();
+    $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives", ['title' => 'Nope'])->assertForbidden();
 });

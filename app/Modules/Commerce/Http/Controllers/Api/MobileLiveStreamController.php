@@ -23,6 +23,8 @@ class MobileLiveStreamController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.settings', 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $verifyFb = $request->boolean('verify_facebook', false);
 
@@ -42,7 +44,7 @@ class MobileLiveStreamController extends Controller
 
         $catalogProducts = Product::query()
             ->where('workspace_id', $workspaceId)
-            ->where('status', 'published')
+            ->where('status', 'active')
             ->with(['primaryMedia', 'category', 'brandRecord', 'variants', 'colors', 'options.values', 'tierPrices'])
             ->latest('id')
             ->limit(100)
@@ -65,6 +67,8 @@ class MobileLiveStreamController extends Controller
 
     public function updateSettings(LiveAdminRequest $request): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.settings');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $settings = $this->lives->saveSettings($workspaceId, $request->validated());
 
@@ -73,6 +77,8 @@ class MobileLiveStreamController extends Controller
 
     public function verifyFacebook(Request $request): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.settings');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $result = $this->facebook->verifyConnection($workspaceId);
 
@@ -81,6 +87,8 @@ class MobileLiveStreamController extends Controller
 
     public function store(LiveAdminRequest $request): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $validated = $request->validated();
 
@@ -110,6 +118,8 @@ class MobileLiveStreamController extends Controller
 
     public function show(Request $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -121,6 +131,8 @@ class MobileLiveStreamController extends Controller
 
     public function start(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -149,6 +161,8 @@ class MobileLiveStreamController extends Controller
 
     public function signal(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -167,6 +181,8 @@ class MobileLiveStreamController extends Controller
 
     public function pinProduct(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -181,6 +197,8 @@ class MobileLiveStreamController extends Controller
 
     public function comment(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -205,6 +223,8 @@ class MobileLiveStreamController extends Controller
 
     public function syncFacebook(Request $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -220,6 +240,8 @@ class MobileLiveStreamController extends Controller
 
     public function chunk(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -236,6 +258,8 @@ class MobileLiveStreamController extends Controller
 
     public function stop(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -257,6 +281,8 @@ class MobileLiveStreamController extends Controller
 
     public function toggleSlider(LiveAdminRequest $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -279,6 +305,8 @@ class MobileLiveStreamController extends Controller
 
     public function destroy(Request $request, string $workspace, string $live): JsonResponse
     {
+        $this->authorizeLive($request, 'commerce.storefront.marketing');
+
         $workspaceId = (int) $request->attributes->get('mobile_workspace_id');
         $liveId = (string) ($request->route('live') ?? $live);
         $stream = LiveStream::query()->where('workspace_id', $workspaceId)->findOrFail($liveId);
@@ -297,5 +325,10 @@ class MobileLiveStreamController extends Controller
         $stream->delete();
 
         return response()->json(['data' => ['deleted' => true]]);
+    }
+
+    private function authorizeLive(Request $request, string ...$permissions): void
+    {
+        abort_unless($request->user()?->canAny($permissions), 403);
     }
 }

@@ -564,6 +564,30 @@ it('lists only enabled configured methods and saves methods in workspace setting
     $this->put(route('user.commerce.orders.settings.update'), ['currency' => 'USD', 'reservation_hours' => 24, 'payment_methods' => $methods])->assertSessionHasErrors('payment_methods.0.recipient_details');
 });
 
+it('saves payment help links and exposes a safe video embed url', function () {
+    $c = unifiedContext();
+    $methods = [['id' => 'remitly', 'name' => 'Remitly', 'active' => '1', 'recipient_details' => 'Recipient details', 'instructions' => '1. Open Remitly', 'sort_order' => 0, 'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'help_url' => 'https://fashionfiest.com/pages/how-to-pay-with-remitly']];
+    $this->actingAs($c['user'])->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])->assertSessionHasNoErrors();
+
+    $saved = StoreOrderSetting::paymentMethods($c['workspace']->id, true)[0];
+    expect($saved['video_url'])->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->and($saved['video_embed_url'])->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        ->and($saved['help_url'])->toBe('https://fashionfiest.com/pages/how-to-pay-with-remitly');
+
+    $methods[0]['video_url'] = 'https://evil.example/video';
+    $this->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])->assertSessionHasErrors('payment_methods.0.video_url');
+    $methods[0]['video_url'] = '';
+    $methods[0]['help_url'] = 'http://insecure.example/guide';
+    $this->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])->assertSessionHasErrors('payment_methods.0.help_url');
+});
+
+it('converts supported video urls to embed urls only', function () {
+    expect(StoreOrderSetting::videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ'))->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        ->and(StoreOrderSetting::videoEmbedUrl('https://vimeo.com/123456'))->toBe('https://player.vimeo.com/video/123456')
+        ->and(StoreOrderSetting::videoEmbedUrl('https://evil.example/watch?v=dQw4w9WgXcQ'))->toBeNull()
+        ->and(StoreOrderSetting::videoEmbedUrl(null))->toBeNull();
+});
+
 it('rejects invalid manual proof and protects private receipts', function () {
     $c = unifiedContext();
     $c['workspace']->update(['settings' => ['commerce' => ['payment_methods' => [['id' => 'remitly', 'name' => 'Remitly', 'active' => true, 'recipient_details' => 'Account', 'sort_order' => 0, 'fields' => [['name' => 'sender', 'label' => 'Sender', 'required' => true]]]]]]]);
@@ -692,6 +716,36 @@ it('manages payment services through dedicated payment services page', function 
         ->assertRedirect();
 
     expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['name'])->toBe('Taptap Send');
+});
+
+it('posts payment service customer fields as slug names and 1/0 required flags', function () {
+    $c = unifiedContext();
+    $this->actingAs($c['user'])->get(route('user.commerce.payment-services.index'))
+        ->assertOk()
+        ->assertDontSee('true-value="1"', false)
+        ->assertSee(':value="fieldSlug(field.name || field.label)"', false)
+        ->assertSee(':value="fieldRequired(field)"', false);
+
+    $methods = [[
+        'id' => 'remitly',
+        'name' => 'Remitly',
+        'active' => '1',
+        'recipient_details' => 'bKash +8801819876543',
+        'sort_order' => 0,
+        'fields' => [
+            ['name' => 'sender_name', 'label' => 'Sender Name', 'required' => '1'],
+            ['name' => 'sender_phone', 'label' => 'Sender Phone', 'required' => '0'],
+        ],
+    ]];
+
+    $this->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])
+        ->assertSessionHasNoErrors();
+
+    $methods[0]['fields'][0]['required'] = 'true';
+    $methods[0]['fields'][1]['name'] = 'Sender Phone';
+
+    $this->put(route('user.commerce.payment-services.update'), ['payment_methods' => $methods])
+        ->assertSessionHasErrors(['payment_methods.0.fields.0.required', 'payment_methods.0.fields.1.name']);
 });
 
 it('serves the store api without credentials from the oldest active workspace', function () {

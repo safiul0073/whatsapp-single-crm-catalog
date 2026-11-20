@@ -212,7 +212,7 @@ class AutomationFlowTestService
             ];
         }
 
-        $draft = $this->replies->draftReply((string) ($context['body'] ?? ''), array_merge($context, ['chatbot' => $chatbot]));
+        $draft = $this->replies->draftReply((string) ($context['body'] ?? ''), array_merge($context, ['chatbot' => $chatbot, 'charge' => false]));
 
         return [
             'status' => 'completed',
