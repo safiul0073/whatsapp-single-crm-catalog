@@ -1262,3 +1262,26 @@ it('exposes the size chart for sizes the product still sells', function (): void
         ->assertJsonPath('data.size_chart.rows', [['size' => 'M', 'values' => ['100', '72']], ['size' => 'S', 'values' => ['96', '70']]])
         ->assertJsonPath('data.size_chart.note', 'Measured flat');
 });
+
+it('lets customers wishlist and read reviews of wholesale-only products', function (): void {
+    $pack = Product::query()->create(['workspace_id' => $this->store->id, 'name' => 'Bulk Tee', 'slug' => 'bulk-tee', 'sku' => 'bulk-tee', 'status' => 'active', 'visibility' => 'published', 'selling_mode' => 'wholesale', 'ws_enabled' => true, 'single_piece_price' => 20]);
+
+    $this->postJson("/api/storefront/v1/me/wishlist/{$pack->id}", [], $this->auth)
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $pack->id);
+    $this->getJson('/api/storefront/v1/catalog/products/bulk-tee/reviews', $this->headers)->assertOk();
+});
+
+it('ignores a forwarded client IP on mobile OTP requests', function (): void {
+    $this->mock(WhatsAppCustomerAuthService::class, function ($mock): void {
+        $mock->shouldReceive('challenge')->once()
+            ->withArgs(fn (int $workspace, array $data): bool => $data['client_ip'] === '127.0.0.1')
+            ->andReturn(['id' => 'challenge']);
+    });
+
+    $this->postJson('/api/v1/mobile/storefront/auth/whatsapp/challenges', [
+        'phone' => '+8801711111111',
+        'session_binding' => str_repeat('s', 40),
+        'consent' => true,
+    ], ['X-Store-Host' => 'one.localhost', 'X-Storefront-Client-IP' => '203.0.113.5'])->assertOk();
+});

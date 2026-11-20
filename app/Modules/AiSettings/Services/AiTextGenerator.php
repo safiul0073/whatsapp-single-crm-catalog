@@ -2,6 +2,7 @@
 
 namespace App\Modules\AiSettings\Services;
 
+use App\Modules\Shared\Contracts\AiCreditMeter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -61,11 +62,51 @@ class AiTextGenerator
      */
     public function prompt(string $feature, string $instructions, string $prompt, array $context = [], int $timeout = 20): array
     {
-        $chain = $this->providerChain() ?: $this->configuredProviders();
+        return $this->run(
+            $feature,
+            fn (string $provider, string $model): AgentResponse => (new AnonymousAgent(
+                instructions: $instructions,
+                messages: [],
+                tools: [],
+            ))->prompt(
+                prompt: $prompt,
+                provider: $provider,
+                model: $model,
+                timeout: $timeout,
+            ),
+            array_merge(['request' => $prompt], $context),
+        );
+    }
+
+    /**
+     * Run any agent call (tool-using agents included) across the provider chain.
+     *
+     * Context keys besides the usage-log fields:
+     * - credits: platform AI credits charged to workspace_id after a successful call (0 = not charged).
+     *
+     * @param  callable(string, string): AgentResponse  $call  Receives the provider and model to use.
+     * @param  array<string, mixed>  $context
+     * @param  array<string, string>|null  $chain  Provider => model list; defaults to the configured chain.
+     * @return array{response: AgentResponse, provider: string, model: string}
+     *
+     * @throws Throwable The last provider error when every provider failed, or the credit error.
+     */
+    public function run(string $feature, callable $call, array $context = [], ?array $chain = null): array
+    {
+        $chain ??= $this->providerChain() ?: $this->configuredProviders();
 
         if ($chain === []) {
             throw new RuntimeException('No AI text provider is configured or available.');
         }
+
+        $credits = max(0, (int) ($context['credits'] ?? 0));
+        $workspaceId = $this->workspaceId($context);
+        $meter = $credits > 0 && $workspaceId !== null && app()->bound(AiCreditMeter::class)
+            ? app(AiCreditMeter::class)
+            : null;
+        unset($context['credits']);
+
+        $meter?->ensure($workspaceId, $credits);
 
         $lastException = null;
 
@@ -76,19 +117,11 @@ class AiTextGenerator
                         'feature' => $feature,
                         'provider' => $provider,
                         'model' => $model,
-                        'request' => $prompt,
                     ]),
-                    fn (): AgentResponse => (new AnonymousAgent(
-                        instructions: $instructions,
-                        messages: [],
-                        tools: [],
-                    ))->prompt(
-                        prompt: $prompt,
-                        provider: $provider,
-                        model: $model,
-                        timeout: $timeout,
-                    ),
+                    fn (): AgentResponse => $call($provider, $model),
                 );
+
+                $meter?->consume($workspaceId, $credits);
 
                 return ['response' => $response, 'provider' => $provider, 'model' => $model];
             } catch (ValidationException $exception) {
@@ -199,6 +232,17 @@ class AiTextGenerator
             'openrouter' => 'meta-llama/llama-3.3-70b-instruct:free',
             default => 'gpt-4o',
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    protected function workspaceId(array $context): ?int
+    {
+        $workspace = $context['workspace'] ?? null;
+        $id = is_object($workspace) ? data_get($workspace, 'id') : ($context['workspace_id'] ?? null);
+
+        return filled($id) ? (int) $id : null;
     }
 
     protected function coolDown(string $provider): void

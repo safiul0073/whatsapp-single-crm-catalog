@@ -141,13 +141,15 @@ class LiveStreamService
         ];
 
         $config['live'] = [
-            'enabled' => filter_var($data['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            'enabled' => filter_var($data['enabled'] ?? ($existingLive['enabled'] ?? true), FILTER_VALIDATE_BOOLEAN),
             'default_platforms' => $platforms,
-            'show_header_live_badge' => filter_var($data['show_header_live_badge'] ?? true, FILTER_VALIDATE_BOOLEAN),
-            'auto_save_recording' => filter_var($data['auto_save_recording'] ?? true, FILTER_VALIDATE_BOOLEAN),
-            'auto_publish_to_slider' => filter_var($data['auto_publish_to_slider'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'default_slider_id' => ! empty($data['default_slider_id']) ? (int) $data['default_slider_id'] : null,
-            'allow_guest_chat' => filter_var($data['allow_guest_chat'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            'show_header_live_badge' => filter_var($data['show_header_live_badge'] ?? ($existingLive['show_header_live_badge'] ?? true), FILTER_VALIDATE_BOOLEAN),
+            'auto_save_recording' => filter_var($data['auto_save_recording'] ?? ($existingLive['auto_save_recording'] ?? true), FILTER_VALIDATE_BOOLEAN),
+            'auto_publish_to_slider' => filter_var($data['auto_publish_to_slider'] ?? ($existingLive['auto_publish_to_slider'] ?? false), FILTER_VALIDATE_BOOLEAN),
+            'default_slider_id' => array_key_exists('default_slider_id', $data)
+                ? (! empty($data['default_slider_id']) ? (int) $data['default_slider_id'] : null)
+                : ($existingLive['default_slider_id'] ?? null),
+            'allow_guest_chat' => filter_var($data['allow_guest_chat'] ?? ($existingLive['allow_guest_chat'] ?? true), FILTER_VALIDATE_BOOLEAN),
             'stun_url' => $stunUrl,
             'turn_url' => trim((string) ($data['turn_url'] ?? ($existingLive['turn_url'] ?? ''))),
             'turn_username' => trim((string) ($data['turn_username'] ?? ($existingLive['turn_username'] ?? ''))),
@@ -192,7 +194,7 @@ class LiveStreamService
             'host' => (string) ($options['host'] ?: parse_url((string) config('app.url', 'http://127.0.0.1'), PHP_URL_HOST) ?: '127.0.0.1'),
             'port' => (int) ($options['port'] ?? 8080),
             'scheme' => (string) ($options['scheme'] ?? 'http'),
-            'enabled' => config('broadcasting.default') !== 'null',
+            'enabled' => config('broadcasting.default') === 'reverb',
         ];
     }
 
@@ -418,19 +420,21 @@ class LiveStreamService
             $stream->video_size_bytes = (int) $disk->size($stream->video_path);
         }
 
-        $endedAt = now();
-        $computedDuration = $durationSeconds !== null && $durationSeconds > 0
-            ? $durationSeconds
-            : ($stream->started_at ? max(1, (int) $stream->started_at->diffInSeconds($endedAt)) : (int) $stream->duration_seconds);
-
-        $stream->status = 'ended';
-        $stream->ended_at = $endedAt;
-        $stream->duration_seconds = $computedDuration;
-        $stream->viewer_count = 0;
-        $stream->facebook_viewer_count = 0;
+        // A stream that already ended (e.g. a recording uploaded afterwards) keeps its end time and duration.
+        $alreadyEnded = $stream->status === 'ended';
+        if (! $alreadyEnded) {
+            $endedAt = now();
+            $stream->status = 'ended';
+            $stream->ended_at = $endedAt;
+            $stream->duration_seconds = $durationSeconds !== null && $durationSeconds > 0
+                ? $durationSeconds
+                : ($stream->started_at ? max(1, (int) $stream->started_at->diffInSeconds($endedAt)) : (int) $stream->duration_seconds);
+            $stream->viewer_count = 0;
+            $stream->facebook_viewer_count = 0;
+        }
         $stream->save();
 
-        if ($stream->hasPlatform('facebook')) {
+        if (! $alreadyEnded && $stream->hasPlatform('facebook')) {
             $stream = $this->facebook->endLiveVideo($stream);
         }
 

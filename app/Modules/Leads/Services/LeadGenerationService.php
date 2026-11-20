@@ -3,21 +3,18 @@
 namespace App\Modules\Leads\Services;
 
 use App\Models\User;
-use App\Modules\AiSettings\Services\AiSettingsService;
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Leads\Models\Lead;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
-use Laravel\Ai\AnonymousAgent;
 use Throwable;
 
 class LeadGenerationService
 {
     public function __construct(
-        protected AiSettingsService $settings,
         protected GooglePlacesLeadSourceService $places,
-        protected AiUsageLogger $usageLogger,
+        protected AiTextGenerator $textGenerator,
     ) {}
 
     /**
@@ -263,37 +260,22 @@ class LeadGenerationService
             return null;
         }
 
-        $provider = $this->settings->textProvider();
-        $model = $this->settings->textModel();
-
         try {
-            $agent = new AnonymousAgent(
+            $response = $this->textGenerator->prompt(
+                feature: 'lead_generation_ai_fallback',
                 instructions: $this->instructions(),
-                messages: [],
-                tools: [],
-            );
-            $prompt = json_encode($criteria, JSON_THROW_ON_ERROR);
-
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'lead_generation_ai_fallback',
+                prompt: json_encode($criteria, JSON_THROW_ON_ERROR),
+                context: [
                     'workspace_id' => $workspaceId,
                     'user' => $user,
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
+                    'credits' => 1,
                     'metadata' => [
                         'source' => 'platform',
                         'requested_count' => $criteria['count'] ?? null,
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $prompt,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 25,
-                ),
-            );
+                timeout: 25,
+            )['response'];
             $payload = $this->extractJson((string) $response->text);
             $leads = is_array($payload) ? (array) ($payload['leads'] ?? $payload) : [];
 
@@ -318,36 +300,21 @@ class LeadGenerationService
             return null;
         }
 
-        $provider = $this->settings->textProvider();
-        $model = $this->settings->textModel();
-
         try {
-            $agent = new AnonymousAgent(
+            $response = $this->textGenerator->prompt(
+                feature: 'lead_generation_search_query',
                 instructions: $this->queryInstructions(),
-                messages: [],
-                tools: [],
-            );
-            $prompt = json_encode($criteria, JSON_THROW_ON_ERROR);
-
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'lead_generation_search_query',
+                prompt: json_encode($criteria, JSON_THROW_ON_ERROR),
+                context: [
                     'workspace_id' => $workspaceId,
                     'user' => $user,
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
+                    'credits' => 1,
                     'metadata' => [
                         'source' => 'platform',
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $prompt,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 15,
-                ),
-            );
+                timeout: 15,
+            )['response'];
             $payload = $this->extractJson((string) $response->text);
             $query = is_array($payload) ? (string) ($payload['query'] ?? '') : '';
 
@@ -370,12 +337,12 @@ class LeadGenerationService
             return null;
         }
 
-        $provider = $this->settings->textProvider();
+        $provider = $this->textGenerator->primaryProvider();
 
         return [
             'generated_by' => 'platform_ai',
             'provider' => $provider,
-            'model' => $this->settings->textModel(),
+            'model' => $this->textGenerator->primaryModel(),
             'platform_ai_available' => true,
             'platform_ai_used' => false,
         ];
@@ -389,7 +356,7 @@ class LeadGenerationService
      */
     protected function hasConfiguredTextProvider(): bool
     {
-        return $this->settings->hasConfiguredProvider($this->settings->textProvider());
+        return $this->textGenerator->isAvailable();
     }
 
     protected function instructions(): string

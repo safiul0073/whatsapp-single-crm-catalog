@@ -13,9 +13,11 @@ use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
 use App\Modules\MarketingChannels\Services\ChannelManager;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\Shared\Contracts\AiCreditMeter;
 use App\Modules\SystemNotifications\Models\SystemNotification;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -174,4 +176,27 @@ it('lets a team member switch human takeover on and off from the web and mobile 
     $stranger = User::factory()->create(['email_verified_at' => now()]);
     $this->actingAs($stranger)->postJson(route('user.inbox.conversations.ai-pause', $conversation), ['paused' => false])->assertNotFound();
     expect($conversation->fresh()->isAiPaused())->toBeTrue();
+});
+
+it('charges one platform AI credit per chatbot reply and stays quiet without pausing when credits are over', function (): void {
+    [, $workspace, , $conversation] = handoffContext();
+    $sent = [];
+    recordChannelSends($sent);
+    $meter = Mockery::mock(AiCreditMeter::class);
+    $meter->shouldReceive('ensure')->once()->with($workspace->id, 1);
+    $meter->shouldReceive('consume')->once()->with($workspace->id, 1);
+    app()->instance(AiCreditMeter::class, $meter);
+    StoreAssistantAgent::fake(['The black hoodie is 1200 BDT.']);
+
+    app(ChannelAiReplyService::class)->reply(inboundOn($conversation, 'Price of the black hoodie?'));
+    expect($sent[0]['body'])->toBe('The black hoodie is 1200 BDT.');
+
+    $exhausted = Mockery::mock(AiCreditMeter::class);
+    $exhausted->shouldReceive('ensure')->andThrow(ValidationException::withMessages(['plan' => 'Credits are over.']));
+    $exhausted->shouldNotReceive('consume');
+    app()->instance(AiCreditMeter::class, $exhausted);
+
+    expect(app(ChannelAiReplyService::class)->reply(inboundOn($conversation, 'And the white one?')))->toBeNull()
+        ->and($conversation->fresh()->isAiPaused())->toBeFalse()
+        ->and($sent)->toHaveCount(1);
 });

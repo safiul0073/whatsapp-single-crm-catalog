@@ -62,7 +62,7 @@ class StoreOrderSetting extends Model
         $methods = $workspace->settings['commerce']['payment_methods'] ?? self::defaultPaymentMethods();
 
         return collect($methods)->filter(fn ($method) => ! $activeOnly || (! empty($method['active']) && filled($method['recipient_details'] ?? null)))
-            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['icon_url' => self::paymentIconUrl($workspaceId, $method), 'active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
+            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['icon_url' => self::paymentIconUrl($workspaceId, $method), 'video_embed_url' => self::videoEmbedUrl($method['video_url'] ?? null), 'active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
     }
 
     public static function defaultPaymentMethods(): array
@@ -72,7 +72,9 @@ class StoreOrderSetting extends Model
                 'id' => 'remitly',
                 'name' => 'Remitly',
                 'recipient_details' => "Account Name: Global Garments Export Ltd\nBank: Standard Chartered Bank\nAccount Number: 01-8492049-01\nBranch: Dhaka Main Branch, Bangladesh\nSwift/BIC: SCBLBDDX\nPhone: +880 1712 345678",
-                'instructions' => "1. Open Remitly and select send to Bangladesh.\n2. Choose Bank Deposit and enter the details above.\n3. Send the exact order total amount.\n4. Enter your transaction ID and upload payment screenshot below.",
+                'instructions' => "1. Open the Remitly app or website and choose Bangladesh as the destination.\n2. Choose Bank Deposit as the delivery method.\n3. Select the bank shown in the receiving details above.\n4. Enter the account name and account number exactly as shown above.\n5. Enter the exact order total, pick your payment method (debit card, credit card, Apple Pay, Google Pay or bank account) and review.\n6. Complete the transfer and copy the Remitly transaction/reference number.\n7. Enter that number and upload your payment screenshot below.",
+                'video_url' => '',
+                'help_url' => '',
                 'active' => '0',
                 'sort_order' => 0,
                 'fields' => [
@@ -104,6 +106,23 @@ class StoreOrderSetting extends Model
                 ],
             ],
         ];
+    }
+
+    public static function videoEmbedUrl(mixed $url): ?string
+    {
+        if (! is_string($url) || $url === '') {
+            return null;
+        }
+
+        if (preg_match('#^https://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:[^\#]*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})#i', $url, $matches)) {
+            return 'https://www.youtube-nocookie.com/embed/'.$matches[1];
+        }
+
+        if (preg_match('#^https://(?:player\.)?vimeo\.com/(?:video/)?(\d+)#i', $url, $matches)) {
+            return 'https://player.vimeo.com/video/'.$matches[1];
+        }
+
+        return null;
     }
 
     private static function paymentIconUrl(int $workspaceId, array $method): ?string

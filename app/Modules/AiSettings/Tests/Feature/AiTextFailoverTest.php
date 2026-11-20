@@ -1,10 +1,14 @@
 <?php
 
+use App\Models\User;
 use App\Modules\AiSettings\Models\AiSetting;
 use App\Modules\AiSettings\Models\AiUsageLog;
 use App\Modules\AiSettings\Services\AiTextGenerator;
+use App\Modules\MarketingChannels\Services\WorkspaceResolver;
+use App\Modules\Shared\Contracts\AiCreditMeter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Laravel\Ai\AnonymousAgent;
 use Laravel\Ai\Exceptions\RateLimitedException;
 
@@ -168,4 +172,109 @@ it('only uses ollama when it is the default or listed in the fallback order', fu
     Cache::forget('ai_settings_cache');
 
     expect(array_keys(app(AiTextGenerator::class)->providerChain()))->toBe(['ollama']);
+});
+
+/**
+ * @param  list<array{0: string, 1: int, 2: int}>  $calls
+ */
+function fakeAiCreditMeter(array &$calls, bool $exhausted = false): void
+{
+    app()->instance(AiCreditMeter::class, new class($calls, $exhausted) implements AiCreditMeter
+    {
+        /**
+         * @param  list<array{0: string, 1: int, 2: int}>  $calls
+         */
+        public function __construct(public array &$calls, public bool $exhausted) {}
+
+        public function ensure(int $workspaceId, int $amount = 1): void
+        {
+            if ($this->exhausted) {
+                throw ValidationException::withMessages(['plan' => 'Credits are over.']);
+            }
+
+            $this->calls[] = ['ensure', $workspaceId, $amount];
+        }
+
+        public function consume(int $workspaceId, int $amount = 1): void
+        {
+            $this->calls[] = ['consume', $workspaceId, $amount];
+        }
+    });
+}
+
+function aiCreditWorkspaceId(): int
+{
+    return (int) app(WorkspaceResolver::class)->current(User::factory()->create())->id;
+}
+
+it('runs a custom agent call across the chain and charges credits once on success', function (): void {
+    configureAiFailover([
+        'ai_default_text_provider' => 'gemini',
+        'ai_text_failover_order' => 'groq',
+    ], ['gemini', 'groq']);
+
+    $workspaceId = aiCreditWorkspaceId();
+    $credits = [];
+    fakeAiCreditMeter($credits);
+    $calls = [];
+    fakeAiProviders(function (string $provider): string {
+        if ($provider === 'gemini') {
+            throw RateLimitedException::forProvider('gemini', 429);
+        }
+
+        return 'ok';
+    }, $calls);
+
+    $result = app(AiTextGenerator::class)->run(
+        'chatbot_reply',
+        fn (string $provider, string $model) => (new AnonymousAgent('Be brief.', [], []))->prompt('Hi', provider: $provider, model: $model),
+        ['workspace_id' => $workspaceId, 'credits' => 1],
+    );
+
+    expect($result['provider'])->toBe('groq')
+        ->and($calls)->toBe(['gemini', 'groq'])
+        ->and($credits)->toBe([['ensure', $workspaceId, 1], ['consume', $workspaceId, 1]]);
+});
+
+it('does not charge credits when every provider fails', function (): void {
+    configureAiFailover(['ai_default_text_provider' => 'gemini'], ['gemini']);
+
+    $workspaceId = aiCreditWorkspaceId();
+    $credits = [];
+    fakeAiCreditMeter($credits);
+    fakeAiProviders(fn (string $provider): string => throw RateLimitedException::forProvider($provider, 429));
+
+    expect(fn () => app(AiTextGenerator::class)->prompt('inbox_ai_reply', 'Be brief.', 'Hello', ['workspace_id' => $workspaceId, 'credits' => 1]))
+        ->toThrow(RateLimitedException::class);
+
+    expect($credits)->toBe([['ensure', $workspaceId, 1]]);
+});
+
+it('stops before calling any provider when the workspace is out of credits', function (): void {
+    configureAiFailover(['ai_default_text_provider' => 'gemini'], ['gemini']);
+
+    $workspaceId = aiCreditWorkspaceId();
+    $credits = [];
+    fakeAiCreditMeter($credits, exhausted: true);
+    $calls = [];
+    fakeAiProviders(fn (): string => 'ok', $calls);
+
+    expect(fn () => app(AiTextGenerator::class)->prompt('inbox_ai_reply', 'Be brief.', 'Hello', ['workspace_id' => $workspaceId, 'credits' => 1]))
+        ->toThrow(ValidationException::class);
+
+    expect($calls)->toBe([])
+        ->and(AiUsageLog::query()->count())->toBe(0);
+});
+
+it('does not charge credits unless the caller asks for it', function (): void {
+    configureAiFailover(['ai_default_text_provider' => 'gemini'], ['gemini']);
+
+    $workspaceId = aiCreditWorkspaceId();
+    $credits = [];
+    fakeAiCreditMeter($credits);
+    fakeAiProviders(fn (): string => 'ok');
+
+    app(AiTextGenerator::class)->prompt('inbox_ai_reply', 'Be brief.', 'Hello', ['workspace_id' => $workspaceId]);
+
+    expect($credits)->toBe([]);
 });

@@ -3,7 +3,7 @@
 namespace App\Modules\Chatbots\Services;
 
 use App\Modules\AiSettings\Services\AiSettingsService;
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use App\Modules\Chatbots\Models\Chatbot;
 use App\Modules\Commerce\AiAgents\StoreAssistantAgent;
 use App\Modules\Commerce\AiTools\ChatbotProductPresenter;
@@ -34,11 +34,12 @@ class ClaudeReplyService
     public function __construct(
         protected AiSettingsService $settings,
         protected KnowledgeBaseSearchService $knowledgeBases,
-        protected AiUsageLogger $usageLogger,
+        protected AiTextGenerator $textGenerator,
     ) {}
 
     /**
-     * Context keys: chatbot (required), conversation_id, inbound_message_id, page_url, channel.
+     * Context keys: chatbot (required), conversation_id, inbound_message_id, page_url, channel,
+     * charge (false skips platform AI credits, e.g. owner test chats).
      *
      * handoff_reason: customer_request | bot_unsure (switch on Human takeover) or ai_unavailable (technical, never pauses).
      *
@@ -55,15 +56,15 @@ class ClaudeReplyService
         }
 
         $chatbot->loadMissing('knowledgeBases');
-        $provider = $this->settings->textProvider();
-        $model = $this->settings->textModel();
+        $provider = $this->textGenerator->primaryProvider() ?? $this->settings->textProvider();
+        $model = $this->textGenerator->primaryModel() ?? $this->settings->textModel();
         $search = $this->knowledgeBases->search($chatbot, $message);
 
         if ($chatbot->handoffEnabled('on_request') && $this->asksForHuman($message)) {
             return $this->fallback($message, $context, $provider, $model, $this->customerFallback($chatbot), Conversation::AI_PAUSE_CUSTOMER_REQUEST);
         }
 
-        if (! app()->runningUnitTests() && ! $this->settings->hasConfiguredProvider($provider)) {
+        if (! app()->runningUnitTests() && ! $this->textGenerator->isAvailable()) {
             Log::warning('Chatbot AI is not configured.', [
                 'chatbot_id' => $chatbot->id,
                 'provider' => $provider,
@@ -117,13 +118,18 @@ class ClaudeReplyService
                 channel: (string) ($context['channel'] ?? 'widget'),
             );
 
-            $response = $this->usageLogger->measure(
+            $result = $this->textGenerator->run(
+                'chatbot_reply',
+                fn (string $provider, string $model) => $agent->prompt(
+                    prompt: $message,
+                    provider: $provider,
+                    model: $model,
+                    timeout: 30,
+                ),
                 [
-                    'feature' => 'chatbot_reply',
                     'workspace_id' => $chatbot->workspace_id,
-                    'provider' => $provider,
-                    'model' => $model,
                     'request' => $message,
+                    'credits' => ($context['charge'] ?? true) === false ? 0 : 1,
                     'metadata' => [
                         'chatbot_id' => $chatbot->id,
                         'source' => 'platform',
@@ -132,13 +138,11 @@ class ClaudeReplyService
                         'current_product_id' => $currentProduct?->id,
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $message,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 30,
-                ),
+                $this->textGenerator->isAvailable() ? null : [(string) $provider => (string) $model],
             );
+            $response = $result['response'];
+            $provider = $result['provider'];
+            $model = $result['model'];
             $reply = trim((string) $response->text);
             $handedOff = $this->isHandoffReply($chatbot, $reply);
             if (! $handedOff) {

@@ -27,13 +27,14 @@ it('uses platform ai in chatbot replies embeddings and lead generation', functio
     expect($replyService)
         ->toContain('$this->settings->textProvider()')
         ->toContain('$this->settings->textModel()')
+        ->toContain('$this->textGenerator->run(')
         ->not->toContain('ChatbotAiProvider')
         ->and($embeddingService)
         ->toContain('$this->settings->embeddingsProvider()')
         ->toContain('$this->settings->embeddingsModel()')
         ->not->toContain('ChatbotAiProvider')
         ->and($leadService)
-        ->toContain('$this->settings->textProvider()')
+        ->toContain('$this->textGenerator->prompt(')
         ->not->toContain('workspaceProvider');
 });
 

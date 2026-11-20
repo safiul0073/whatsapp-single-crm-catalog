@@ -7,9 +7,11 @@ use App\Modules\PaymentGateways\Events\PaymentSucceeded;
 use App\Modules\PlansSubscriptions\Console\Commands\BackfillFreeSubscriptions;
 use App\Modules\PlansSubscriptions\Listeners\ActivateSubscriptionFromPayment;
 use App\Modules\PlansSubscriptions\Models\Plan;
+use App\Modules\PlansSubscriptions\Services\PlanAiCreditMeter;
 use App\Modules\PlansSubscriptions\Services\PlanLimitService;
 use App\Modules\PlansSubscriptions\Services\SubscriptionManager;
 use App\Modules\PlansSubscriptions\View\SubscriptionBannerComposer;
+use App\Modules\Shared\Contracts\AiCreditMeter;
 use App\Modules\Shared\Support\BasePanelModuleProvider;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Support\Facades\Event;
@@ -19,6 +21,11 @@ use Illuminate\Validation\ValidationException;
 
 class PlansSubscriptionsServiceProvider extends BasePanelModuleProvider
 {
+    public function register(): void
+    {
+        $this->app->bind(AiCreditMeter::class, PlanAiCreditMeter::class);
+    }
+
     protected function bootModule(array $module): void
     {
         Event::listen(PaymentSucceeded::class, ActivateSubscriptionFromPayment::class);

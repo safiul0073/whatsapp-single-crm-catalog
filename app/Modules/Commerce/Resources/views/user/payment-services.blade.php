@@ -11,6 +11,12 @@
                     fields: method.fields || []
                 }));
             },
+            fieldSlug(value) {
+                return String(value || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '').slice(0, 60);
+            },
+            fieldRequired(field) {
+                return field.required === true || field.required === '1' || field.required === 1 ? '1' : '0';
+            },
             defaultDummyData() {
                 return [
                     {
@@ -20,7 +26,9 @@
                         sort_order: 0,
                         icon_url: '{{ asset('images/payment-services/remitly.svg') }}',
                         recipient_details: 'Account Name: Global Garments Export Ltd\nBank: Standard Chartered Bank\nAccount Number: 01-8492049-01\nBranch: Dhaka Main Branch, Bangladesh\nSwift/BIC: SCBLBDDX\nPhone: +880 1712 345678',
-                        instructions: '1. Open Remitly and select send to Bangladesh.\n2. Choose Bank Deposit and enter the details above.\n3. Send the exact order total amount.\n4. Enter your transaction ID and upload payment screenshot below.',
+                        instructions: '1. Open the Remitly app or website and choose Bangladesh as the destination.\n2. Choose Bank Deposit as the delivery method.\n3. Select the bank shown in the receiving details above.\n4. Enter the account name and account number exactly as shown above.\n5. Enter the exact order total, pick your payment method (debit card, credit card, Apple Pay, Google Pay or bank account) and review.\n6. Complete the transfer and copy the Remitly transaction/reference number.\n7. Enter that number and upload your payment screenshot below.',
+                        video_url: '',
+                        help_url: '',
                         fields: [
                             { name: 'sender_name', label: 'Sender Full Name', required: '1' },
                             { name: 'sender_phone', label: 'Sender Phone Number', required: '0' }
@@ -78,6 +86,8 @@
                     name: '',
                     recipient_details: '',
                     instructions: '',
+                    video_url: '',
+                    help_url: '',
                     active: '1',
                     sort_order: this.methods.length,
                     fields: []
@@ -259,10 +269,10 @@
                                             <template x-for="field in (method.fields || [])" :key="field.name">
                                                 <span
                                                     class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium border"
-                                                    :class="field.required === '1' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-neutral-50 text-neutral-600 border-neutral-200'"
+                                                    :class="fieldRequired(field) === '1' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-neutral-50 text-neutral-600 border-neutral-200'"
                                                 >
                                                     <span x-text="field.label"></span>
-                                                    <span x-show="field.required === '1'" class="text-error font-bold">*</span>
+                                                    <span x-show="fieldRequired(field) === '1'" class="text-error font-bold">*</span>
                                                 </span>
                                             </template>
                                             <template x-if="!method.fields || method.fields.length === 0">
@@ -344,6 +354,8 @@
                     <input type="hidden" :name="`payment_methods[${index}][name]`" :value="method.name">
                     <input type="hidden" :name="`payment_methods[${index}][recipient_details]`" :value="method.recipient_details">
                     <input type="hidden" :name="`payment_methods[${index}][instructions]`" :value="method.instructions">
+                    <input type="hidden" :name="`payment_methods[${index}][video_url]`" :value="method.video_url || ''">
+                    <input type="hidden" :name="`payment_methods[${index}][help_url]`" :value="method.help_url || ''">
                     <input type="hidden" :name="`payment_methods[${index}][active]`" :value="method.active">
                     <input type="hidden" :name="`payment_methods[${index}][sort_order]`" :value="method.sort_order">
                     <template x-if="method.remove_icon">
@@ -351,9 +363,9 @@
                     </template>
                     <template x-for="(field, fIndex) in (method.fields || [])" :key="fIndex">
                         <div>
-                            <input type="hidden" :name="`payment_methods[${index}][fields][${fIndex}][name]`" :value="field.name">
+                            <input type="hidden" :name="`payment_methods[${index}][fields][${fIndex}][name]`" :value="fieldSlug(field.name || field.label)">
                             <input type="hidden" :name="`payment_methods[${index}][fields][${fIndex}][label]`" :value="field.label">
-                            <input type="hidden" :name="`payment_methods[${index}][fields][${fIndex}][required]`" :value="field.required">
+                            <input type="hidden" :name="`payment_methods[${index}][fields][${fIndex}][required]`" :value="fieldRequired(field)">
                         </div>
                     </template>
                 </div>
@@ -489,6 +501,38 @@
                                             placeholder="1. Open app and choose recipient.&#10;2. Transfer exact amount.&#10;3. Enter transaction ID and upload screenshot."
                                         ></textarea>
                                     </div>
+
+                                    <div>
+                                        <label class="form-label text-xs mb-1 font-medium text-neutral-800">{{ __('Tutorial Video URL') }}</label>
+                                        <input
+                                            type="url"
+                                            x-model="methods[editingIndex].video_url"
+                                            maxlength="500"
+                                            class="form-input form-input-compact !rounded-[4px] text-xs bg-white border border-neutral-200"
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                        >
+                                        <p class="text-[11px] text-neutral-500 mt-1">{{ __('Optional. YouTube or Vimeo link shown to customers as a "Watch tutorial" button.') }}</p>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label text-xs mb-1 font-medium text-neutral-800">{{ __('Help Guide URL') }}</label>
+                                        <input
+                                            type="url"
+                                            x-model="methods[editingIndex].help_url"
+                                            maxlength="500"
+                                            class="form-input form-input-compact !rounded-[4px] text-xs bg-white border border-neutral-200"
+                                            placeholder="https://fashionfiest.com/pages/how-to-pay-with-remitly"
+                                        >
+                                        <p class="text-[11px] text-neutral-500 mt-1">{{ __('Optional. Link to a full help page shown as a "Read full guide" link.') }}</p>
+                                    </div>
+
+                                    <p
+                                        x-show="methods[editingIndex].video_url || methods[editingIndex].help_url"
+                                        class="rounded-[4px] bg-neutral-50 border border-neutral-200 p-2 text-[11px] text-neutral-600"
+                                    >
+                                        <i class="ph ph-info"></i>
+                                        {{ __('Customers will see these buttons under "How to pay" after choosing this method at checkout, on the order payment pop-up and in the mobile app. Use either one or both. Click "Save Payment Services" for it to go live. The method must be active.') }}
+                                    </p>
                                 </div>
 
                                 <!-- Customer Fields -->
@@ -511,6 +555,7 @@
                                                     <input
                                                         type="text"
                                                         x-model="field.label"
+                                                        @blur="if (! field.name) { field.name = fieldSlug(field.label) }"
                                                         placeholder="{{ __('Field Label (e.g. Sender Name)') }}"
                                                         class="form-input form-input-compact !rounded-[4px] text-xs !py-1.5 !px-3 border border-neutral-200 bg-white"
                                                         required
@@ -520,6 +565,9 @@
                                                     <input
                                                         type="text"
                                                         x-model="field.name"
+                                                        @blur="field.name = fieldSlug(field.name)"
+                                                        pattern="[a-z][a-z0-9_]*"
+                                                        title="{{ __('Lowercase letters, numbers and underscores, starting with a letter') }}"
                                                         placeholder="{{ __('Slug (e.g. sender_name)') }}"
                                                         class="form-input form-input-compact !rounded-[4px] text-xs font-mono !py-1.5 !px-3 border border-neutral-200 bg-white"
                                                         required
@@ -527,7 +575,7 @@
                                                 </div>
                                                 <div class="col-span-3 sm:col-span-2 flex items-center justify-center">
                                                     <label class="flex items-center gap-1.5 text-xs text-neutral-600 whitespace-nowrap cursor-pointer select-none">
-                                                        <input type="checkbox" x-model="field.required" true-value="1" false-value="0" class="rounded border-neutral-300 text-primary">
+                                                        <input type="checkbox" :checked="fieldRequired(field) === '1'" @change="field.required = $event.target.checked ? '1' : '0'" class="rounded border-neutral-300 text-primary">
                                                         <span>{{ __('Required') }}</span>
                                                     </label>
                                                 </div>

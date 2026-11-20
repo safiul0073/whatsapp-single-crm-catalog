@@ -119,6 +119,6 @@ class ChatbotController extends Controller
             ], 422);
         }
 
-        return response()->json($replies->draftReply($validated['message'], ['chatbot' => $chatbot]));
+        return response()->json($replies->draftReply($validated['message'], ['chatbot' => $chatbot, 'charge' => false]));
     }
 }

@@ -2,21 +2,18 @@
 
 namespace App\Modules\Chatbots\Services;
 
-use App\Modules\AiSettings\Services\AiSettingsService;
-use App\Modules\AiSettings\Services\AiUsageLogger;
+use App\Modules\AiSettings\Services\AiTextGenerator;
 use App\Modules\KnowledgeBases\Models\KnowledgeBase;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Laravel\Ai\AnonymousAgent;
 use Throwable;
 
 class ChatbotPersonaGeneratorService
 {
     public function __construct(
-        protected AiUsageLogger $usageLogger,
-        protected AiSettingsService $settings,
+        protected AiTextGenerator $textGenerator,
     ) {}
 
     /**
@@ -25,10 +22,10 @@ class ChatbotPersonaGeneratorService
      */
     public function generate(array $data, Collection $knowledgeBases = new Collection, ?int $workspaceId = null): array
     {
-        $provider = $this->settings->textProvider();
-        $model = $this->settings->textModel();
+        $provider = $this->textGenerator->primaryProvider();
+        $model = $this->textGenerator->primaryModel();
 
-        if (! app()->runningUnitTests() && ! $this->settings->hasConfiguredProvider($provider)) {
+        if (! app()->runningUnitTests() && $provider === null) {
             throw ValidationException::withMessages([
                 'ai' => __('Platform AI is not configured for text generation. Enable a text provider in AI Settings first.'),
             ]);
@@ -43,32 +40,22 @@ class ChatbotPersonaGeneratorService
         }
 
         try {
-            $agent = new AnonymousAgent(
+            $result = $this->textGenerator->prompt(
+                feature: 'chatbot_persona_generation',
                 instructions: $this->instructions(),
-                messages: [],
-                tools: [],
-            );
-            $prompt = $this->prompt($data, $knowledgeBases);
-
-            $response = $this->usageLogger->measure(
-                [
-                    'feature' => 'chatbot_persona_generation',
+                prompt: $this->prompt($data, $knowledgeBases),
+                context: [
                     'workspace_id' => $workspaceId,
                     'user_id' => auth()->id(),
-                    'provider' => $provider,
-                    'model' => $model,
-                    'request' => $prompt,
+                    'credits' => 1,
                     'metadata' => [
                         'knowledge_base_count' => $knowledgeBases->count(),
                     ],
                 ],
-                fn () => $agent->prompt(
-                    prompt: $prompt,
-                    provider: $provider,
-                    model: $model,
-                    timeout: 20,
-                ),
             );
+            $provider = $result['provider'];
+            $model = $result['model'];
+            $response = $result['response'];
 
             $persona = trim((string) $response->text);
 
