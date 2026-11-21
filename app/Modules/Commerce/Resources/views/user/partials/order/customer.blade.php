@@ -26,6 +26,31 @@
                             <p class="text-xs text-muted">{{ __('No contact address saved.') }}</p>
                         @endif
                     </div>
+                    @if(($canMessageCustomers ?? false) && !empty($orderMessagePayload))
+                        <div class="border-t border-border pt-3 space-y-2">
+                            <button
+                                type="button"
+                                class="btn btn-outline btn-sm w-full justify-center"
+                                data-order-message-trigger="{{ $order->id }}"
+                                data-has-channels="{{ !empty($orderMessagePayload['channels']) ? '1' : '0' }}"
+                                x-on:click="$dispatch('open-order-message', {{ Js::from($orderMessagePayload) }})"
+                            >
+                                <i class="ph ph-paper-plane-tilt"></i> {{ __('Message customer') }}
+                            </button>
+                            @if(!empty($orderMessagePayload['channels']))
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach($orderMessagePayload['channels'] as $availableChannel)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700">
+                                            <i class="ph {{ $availableChannel['icon'] }} text-xs text-primary"></i>
+                                            <span>{{ $availableChannel['provider_label'] }}</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-xs text-muted">{{ __('No active channels available yet. Click above to connect one.') }}</p>
+                            @endif
+                        </div>
+                    @endif
                     @if($order->conversation)
                         <div class="pt-1">
                             <a href="{{ route('user.inbox.index', ['conversation' => $order->conversation->id]) }}" class="text-primary hover:underline inline-flex items-center gap-1"><i class="ph ph-chat-circle"></i> {{ __('Open conversation') }}</a>

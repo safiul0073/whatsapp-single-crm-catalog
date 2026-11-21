@@ -179,3 +179,50 @@ it('organizes the commerce module into functional groups', function (): void {
 
     expect(array_column($sales['items'], 'label'))->toContain('POS', 'Orders', 'Payment services', 'Order settings');
 });
+
+it('serves dedicated Live Streams, Videos, and Live Settings pages under Storefront & Growth', function (): void {
+    $owner = User::factory()->create();
+    createNavigationWorkspace($owner);
+
+    $this->actingAs($owner);
+    $navigation = app(WorkspaceNavigationRegistry::class)->forUser($owner);
+    $commerce = collect($navigation['modules'])->firstWhere('id', 'commerce');
+    $storefrontAndGrowth = collect($commerce['groups'])->firstWhere('label', 'Storefront & Growth');
+
+    expect(array_column($storefrontAndGrowth['items'], 'label'))
+        ->toContain('Storefront', 'Live Streams', 'Videos', 'Live Settings');
+
+    $this->actingAs($owner)
+        ->get(route('user.commerce.storefront.index', ['tab' => 'live']))
+        ->assertRedirect(route('user.commerce.storefront.live'));
+
+    $this->actingAs($owner)
+        ->get(route('user.commerce.storefront.live'))
+        ->assertOk()
+        ->assertSee('Schedule Live Stream');
+
+    $this->actingAs($owner)
+        ->get(route('user.commerce.storefront.videos'))
+        ->assertOk()
+        ->assertSee('Upload Video or Add YouTube Link');
+
+    $this->actingAs($owner)
+        ->get(route('user.commerce.storefront.live-settings'))
+        ->assertOk()
+        ->assertSee('Save Live &amp; Facebook Settings', false);
+
+    $this->actingAs($owner)
+        ->post(route('user.commerce.storefront.lives.store'), [
+            '_return' => 'videos',
+            'title' => 'New Arrivals Showcase',
+            'video_url' => 'https://youtu.be/dQw4w9WgXcQ',
+            'broadcast_platforms' => ['storefront'],
+        ])
+        ->assertRedirect(route('user.commerce.storefront.videos'));
+
+    $this->actingAs($owner)
+        ->get(route('user.commerce.storefront.videos'))
+        ->assertOk()
+        ->assertSee('New Arrivals Showcase')
+        ->assertSee('YouTube Video');
+});

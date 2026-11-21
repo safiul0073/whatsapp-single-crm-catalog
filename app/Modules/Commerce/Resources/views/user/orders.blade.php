@@ -363,29 +363,67 @@
 
                                 {{-- Actions --}}
                                 <td class="py-3 px-4 text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
-                                        <a href="{{ route('user.commerce.orders.show', $order) }}" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('View order details') }}">
-                                            <i class="ph ph-arrow-right text-base"></i>
-                                            <span class="sr-only">{{ __('View order') }}</span>
-                                        </a>
-                                        <a href="{{ route('user.commerce.orders.packing-slip', $order) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('Print packing slip') }}">
-                                            <i class="ph ph-printer text-base"></i>
-                                            <span class="sr-only">{{ __('Print packing slip') }}</span>
-                                        </a>
-                                        <a href="{{ route('user.commerce.orders.invoice.print', $order->source === 'pos' ? ['order' => $order, 'format' => 'receipt'] : $order) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs" title="{{ __('Print invoice') }}">
-                                            <i class="ph ph-file-text text-base"></i>
-                                            <span class="sr-only">{{ __('Print invoice') }}</span>
-                                        </a>
-                                        @if($canDeleteOrders)
-                                            <form method="POST" action="{{ route('user.commerce.orders.destroy', $order) }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-error hover:text-error transition shadow-2xs" title="{{ __('Delete order') }}" data-confirm data-confirm-title="{{ __('Delete order :number?', ['number' => $order->number]) }}" data-confirm-message="{{ $order->payments->isNotEmpty() || in_array($order->status, ['shipped', 'completed', 'delivered'], true) ? __('This order has payments or has already shipped. It disappears from your lists and reports. Stock it holds is released.') : __('The order disappears from your lists and reports. Stock it holds is released.') }}" data-confirm-button="{{ __('Delete') }}" data-confirm-variant="danger">
-                                                    <i class="ph ph-trash text-base"></i>
-                                                    <span class="sr-only">{{ __('Delete order') }}</span>
+                                    @php
+                                        $orderMessagePayload = $orderMessagePayloads[(string) $order->id] ?? null;
+                                        $orderChannels = $orderMessagePayload['channels'] ?? [];
+                                        $hasAvailableChannels = count($orderChannels) > 0;
+                                        $orderMenuId = 'order-actions-'.$order->id;
+                                    @endphp
+                                    <div class="inline-flex items-center justify-end">
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-neutral-0 text-neutral-600 hover:border-primary hover:text-primary transition shadow-2xs"
+                                            data-floating-dropdown="{{ $orderMenuId }}"
+                                            aria-label="{{ __('Actions for order :number', ['number' => $order->number]) }}"
+                                            title="{{ __('Actions') }}"
+                                        >
+                                            <i class="ph-bold ph-dots-three-vertical text-base"></i>
+                                        </button>
+                                        <div id="{{ $orderMenuId }}" class="floating-dropdown-panel min-w-52">
+                                            <a href="{{ route('user.commerce.orders.show', $order) }}" class="floating-dropdown-item">
+                                                <i class="ph ph-arrow-right text-base"></i>
+                                                <span>{{ __('View order details') }}</span>
+                                            </a>
+                                            @if(($canMessageCustomers ?? false) && $orderMessagePayload)
+                                                <button
+                                                    type="button"
+                                                    x-data
+                                                    @click="$dispatch('open-order-message', {{ Js::from($orderMessagePayload) }})"
+                                                    data-order-message-trigger="{{ $order->id }}"
+                                                    data-has-channels="{{ $hasAvailableChannels ? '1' : '0' }}"
+                                                    class="floating-dropdown-item w-full text-left"
+                                                >
+                                                    <i class="ph ph-chat-circle-text text-base"></i>
+                                                    <span>{{ __('Message customer') }}</span>
                                                 </button>
-                                            </form>
-                                        @endif
+                                            @endif
+                                            <a href="{{ route('user.commerce.orders.packing-slip', $order) }}" target="_blank" rel="noopener" class="floating-dropdown-item">
+                                                <i class="ph ph-printer text-base"></i>
+                                                <span>{{ __('Print packing slip') }}</span>
+                                            </a>
+                                            <a href="{{ route('user.commerce.orders.invoice.print', $order->source === 'pos' ? ['order' => $order, 'format' => 'receipt'] : $order) }}" target="_blank" rel="noopener" class="floating-dropdown-item">
+                                                <i class="ph ph-file-text text-base"></i>
+                                                <span>{{ __('Print invoice') }}</span>
+                                            </a>
+                                            @if($canDeleteOrders)
+                                                <form method="POST" action="{{ route('user.commerce.orders.destroy', $order) }}" class="border-t border-neutral-100 mt-1 pt-1">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button
+                                                        type="submit"
+                                                        class="floating-dropdown-item w-full text-left text-error"
+                                                        data-confirm
+                                                        data-confirm-title="{{ __('Delete order :number?', ['number' => $order->number]) }}"
+                                                        data-confirm-message="{{ $order->payments->isNotEmpty() || in_array($order->status, ['shipped', 'completed', 'delivered'], true) ? __('This order has payments or has already shipped. It disappears from your lists and reports. Stock it holds is released.') : __('The order disappears from your lists and reports. Stock it holds is released.') }}"
+                                                        data-confirm-button="{{ __('Delete') }}"
+                                                        data-confirm-variant="danger"
+                                                    >
+                                                        <i class="ph ph-trash text-base"></i>
+                                                        <span>{{ __('Delete order') }}</span>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -425,5 +463,7 @@
                 </div>
             @endif
         </section>
+
+        @include('commerce::user.partials.order.modal-message')
     </div>
 </x-layouts.user>

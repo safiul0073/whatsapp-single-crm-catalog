@@ -65,5 +65,6 @@
         @include('commerce::user.partials.order-product-gallery')
         @include('commerce::user.partials.order.modal-customer')
         @include('commerce::user.partials.order.modal-hold')
+        @include('commerce::user.partials.order.modal-message')
     </div>
 </x-layouts.user>

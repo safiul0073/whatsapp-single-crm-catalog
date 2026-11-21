@@ -272,6 +272,7 @@ class MobileLiveStreamController extends Controller
             array_key_exists('add_to_slider', $validated) ? (bool) $validated['add_to_slider'] : null,
             ! empty($validated['slider_id']) ? (int) $validated['slider_id'] : null,
             ! empty($validated['duration_seconds']) ? (int) $validated['duration_seconds'] : null,
+            $validated['video_url'] ?? null,
         );
 
         return response()->json([
@@ -315,7 +316,7 @@ class MobileLiveStreamController extends Controller
             $this->lives->syncToSlider($stream, false);
         }
 
-        if (filled($stream->video_path) && Storage::disk('public')->exists($stream->video_path)) {
+        if (filled($stream->video_path) && ! $stream->isExternalVideo() && Storage::disk('public')->exists($stream->video_path)) {
             Storage::disk('public')->delete($stream->video_path);
         }
         if (filled($stream->thumbnail_path) && Storage::disk('public')->exists($stream->thumbnail_path)) {

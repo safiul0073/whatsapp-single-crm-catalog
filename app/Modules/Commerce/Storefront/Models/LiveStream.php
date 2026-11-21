@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LiveStream extends Model
 {
+    public const YOUTUBE_REGEX = '~^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/|youtube-nocookie\.com/embed/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)~i';
+
     protected $table = 'commerce_live_streams';
 
     protected $guarded = ['id'];
@@ -85,13 +87,51 @@ class LiveStream extends Model
         return in_array($platform, $platforms, true);
     }
 
+    public static function extractYoutubeId(?string $url): ?string
+    {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return null;
+        }
+
+        if (preg_match(self::YOUTUBE_REGEX, $url, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    public static function normalizeYoutubeUrl(?string $url): ?string
+    {
+        $id = self::extractYoutubeId($url);
+
+        return $id ? "https://www.youtube.com/watch?v={$id}" : null;
+    }
+
+    public function youtubeId(): ?string
+    {
+        return self::extractYoutubeId($this->video_path);
+    }
+
+    public function videoEmbedUrl(): ?string
+    {
+        $id = $this->youtubeId();
+
+        return $id ? "https://www.youtube-nocookie.com/embed/{$id}" : null;
+    }
+
+    public function isExternalVideo(): bool
+    {
+        return filled($this->video_path) && (str_starts_with($this->video_path, 'http://') || str_starts_with($this->video_path, 'https://'));
+    }
+
     public function videoUrl(): ?string
     {
         if (blank($this->video_path)) {
             return null;
         }
 
-        if (str_starts_with($this->video_path, 'http://') || str_starts_with($this->video_path, 'https://')) {
+        if ($this->isExternalVideo()) {
             return $this->video_path;
         }
 
@@ -100,14 +140,16 @@ class LiveStream extends Model
 
     public function thumbnailUrl(): ?string
     {
-        if (blank($this->thumbnail_path)) {
-            return null;
+        if (filled($this->thumbnail_path)) {
+            if (str_starts_with($this->thumbnail_path, 'http://') || str_starts_with($this->thumbnail_path, 'https://')) {
+                return $this->thumbnail_path;
+            }
+
+            return rtrim((string) config('app.url'), '/').'/storage/'.ltrim($this->thumbnail_path, '/');
         }
 
-        if (str_starts_with($this->thumbnail_path, 'http://') || str_starts_with($this->thumbnail_path, 'https://')) {
-            return $this->thumbnail_path;
-        }
+        $youtubeId = $this->youtubeId();
 
-        return rtrim((string) config('app.url'), '/').'/storage/'.ltrim($this->thumbnail_path, '/');
+        return $youtubeId ? "https://i.ytimg.com/vi/{$youtubeId}/hqdefault.jpg" : null;
     }
 }
