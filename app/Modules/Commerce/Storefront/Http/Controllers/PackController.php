@@ -128,9 +128,7 @@ class PackController extends Controller
     {
         return DB::transaction(function () use ($r, $id) {
             $cart = $this->carts->resolve($r, true);
-            $group = CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->findOrFail($id);
-            CartItem::query()->where('cart_id', $cart->id)->where('group_id', $id)->delete();
-            $group->update(['removed_at' => now()]);
+            $this->carts->removeGroup($cart, $id);
 
             return response()->json(['data' => $this->carts->summary($cart)]);
         });

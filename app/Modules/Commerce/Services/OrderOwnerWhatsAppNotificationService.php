@@ -24,26 +24,42 @@ class OrderOwnerWhatsAppNotificationService
      */
     public function send(Order $order, OrderEvent $event): bool
     {
-        $settings = StoreOrderSetting::forWorkspace($order->workspace_id);
-        $ownerPhone = preg_replace('/[^\d+]/', '', (string) $settings->owner_whatsapp_number);
-
-        if ($event->key !== 'placed' || blank($ownerPhone)) {
+        if ($event->key !== 'placed') {
             return true;
         }
 
-        $account = ChannelAccount::query()->where('workspace_id', $order->workspace_id)->where('provider', 'whatsapp')->where('status', 'connected')
+        return $this->sendToOwner($order->workspace_id, $this->summary($order), ['order' => $order->number]);
+    }
+
+    /**
+     * Sends a text to the owner's WhatsApp number from the store's connected channel: free text inside the
+     * 24-hour window, otherwise the approved utility template.
+     *
+     * @param  array<string, mixed>  $context  extra log context
+     * @return bool true when the alert was sent or intentionally skipped (nothing left to retry)
+     */
+    public function sendToOwner(int $workspaceId, string $text, array $context = []): bool
+    {
+        $settings = StoreOrderSetting::forWorkspace($workspaceId);
+        $ownerPhone = preg_replace('/[^\d+]/', '', (string) $settings->owner_whatsapp_number);
+
+        if (blank($ownerPhone)) {
+            return true;
+        }
+
+        $account = ChannelAccount::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('status', 'connected')
             ->when($settings->whatsapp_channel_id, fn ($query, $id) => $query->whereKey($id))->oldest('id')->first();
 
         if (! $account) {
-            Log::warning('Owner order alert skipped: no connected WhatsApp channel.', ['order' => $order->number]);
+            Log::warning('Owner WhatsApp alert skipped: no connected WhatsApp channel.', $context);
 
             return true;
         }
 
-        $payload = $this->payloadFor($order, $settings, $account, $ownerPhone);
+        $payload = $this->payloadFor($workspaceId, $text, $settings, $account, $ownerPhone);
 
         if ($payload === null) {
-            Log::warning('Owner order alert skipped: no open service window and no approved template.', ['order' => $order->number]);
+            Log::warning('Owner WhatsApp alert skipped: no open service window and no approved template.', $context);
 
             return true;
         }
@@ -51,7 +67,7 @@ class OrderOwnerWhatsAppNotificationService
         $result = $this->channels->sendMessage($account, ['to' => $ownerPhone, 'phone' => $ownerPhone], $payload);
 
         if (! ($result['ok'] ?? false)) {
-            throw new \RuntimeException($result['error'] ?? 'Owner order alert failed.');
+            throw new \RuntimeException($result['error'] ?? 'Owner WhatsApp alert failed.');
         }
 
         return true;
@@ -60,15 +76,13 @@ class OrderOwnerWhatsAppNotificationService
     /**
      * @return array<string, mixed>|null
      */
-    protected function payloadFor(Order $order, StoreOrderSetting $settings, ChannelAccount $account, string $ownerPhone): ?array
+    protected function payloadFor(int $workspaceId, string $text, StoreOrderSetting $settings, ChannelAccount $account, string $ownerPhone): ?array
     {
-        $summary = $this->summary($order);
-
-        if ($this->hasOpenServiceWindow($order->workspace_id, $account, $ownerPhone)) {
-            return ['type' => 'text', 'body' => $summary];
+        if ($this->hasOpenServiceWindow($workspaceId, $account, $ownerPhone)) {
+            return ['type' => 'text', 'body' => $text];
         }
 
-        $template = MessageTemplate::query()->where('workspace_id', $order->workspace_id)->where('provider', 'whatsapp')->where('category', 'utility')->find($settings->whatsapp_template_id);
+        $template = MessageTemplate::query()->where('workspace_id', $workspaceId)->where('provider', 'whatsapp')->where('category', 'utility')->find($settings->whatsapp_template_id);
 
         if (! $template || ! $template->approvedForWaba((string) $account->provider_account_id)) {
             return null;
@@ -78,7 +92,7 @@ class OrderOwnerWhatsAppNotificationService
             'type' => 'template',
             'template_name' => $template->name,
             'language' => $template->language,
-            'components' => [['type' => 'body', 'parameters' => [['type' => 'text', 'text' => $summary]]]],
+            'components' => [['type' => 'body', 'parameters' => [['type' => 'text', 'text' => $text]]]],
         ];
     }
 

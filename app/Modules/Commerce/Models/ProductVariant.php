@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Commerce\Services\LowStockAlertService;
 use App\Modules\Media\Models\Media;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,9 +33,18 @@ class ProductVariant extends Model
     /** The cost price is internal: it must never appear in customer-facing responses. */
     protected $hidden = ['cost_price'];
 
+    protected static function booted(): void
+    {
+        static::updated(function (ProductVariant $variant): void {
+            if ($variant->wasChanged('stock_quantity')) {
+                app(LowStockAlertService::class)->check($variant, (int) $variant->stock_quantity < (int) $variant->getOriginal('stock_quantity'));
+            }
+        });
+    }
+
     protected function casts(): array
     {
-        return ['attributes' => 'array', 'package_dimensions' => 'array', 'price' => 'decimal:4', 'compare_at_price' => 'decimal:4', 'cost_price' => 'decimal:4', 'stock_quantity' => 'integer', 'weight_kg' => 'decimal:3'];
+        return ['attributes' => 'array', 'package_dimensions' => 'array', 'price' => 'decimal:4', 'compare_at_price' => 'decimal:4', 'cost_price' => 'decimal:4', 'stock_quantity' => 'integer', 'low_stock_notified_at' => 'datetime', 'weight_kg' => 'decimal:3'];
     }
 
     /**

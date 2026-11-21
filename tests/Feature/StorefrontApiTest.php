@@ -1285,3 +1285,28 @@ it('ignores a forwarded client IP on mobile OTP requests', function (): void {
         'consent' => true,
     ], ['X-Store-Host' => 'one.localhost', 'X-Storefront-Client-IP' => '203.0.113.5'])->assertOk();
 });
+
+it('caches cms settings per workspace without querying Meta tables and invalidates on updates', function (): void {
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['name' => 'Before Cache']]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Before Cache');
+    $firstQueries = collect(DB::getQueryLog())->pluck('query');
+    expect($firstQueries->contains(fn (string $sql): bool => str_contains($sql, 'meta_business_connections') || str_contains($sql, 'channel_accounts')))->toBeFalse();
+
+    DB::flushQueryLog();
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Before Cache');
+    $secondQueries = collect(DB::getQueryLog())->pluck('query');
+    expect($secondQueries->contains(fn (string $sql): bool => str_contains($sql, 'commerce_storefront_settings')))->toBeFalse();
+    DB::disableQueryLog();
+
+    StorefrontSetting::query()->updateOrCreate(['workspace_id' => $this->store->id], ['config' => ['name' => 'After Save']]);
+    $this->getJson('/api/storefront/v1/cms/settings', $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.name', 'After Save');
+});

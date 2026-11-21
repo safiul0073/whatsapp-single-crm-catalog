@@ -163,6 +163,28 @@
             </section>
 
             <section class="section-card space-y-4 rounded-md border border-neutral-200">
+                <h2 class="heading-4 text-title">{{ __('Low stock alerts') }}</h2>
+
+                <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
+                    <div>
+                        <input type="hidden" name="low_stock_alerts_enabled" value="0">
+                        <label class="flex min-h-11 cursor-pointer items-center gap-2.5">
+                            <input type="checkbox" name="low_stock_alerts_enabled" value="1" @checked(old('low_stock_alerts_enabled', $settings->low_stock_alerts_enabled ?? true)) class="rounded border-neutral-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-title">{{ __('Alert me when a size or color runs low') }}</span>
+                        </label>
+                        <p class="text-xs text-body">{{ __('Sent to the dashboard, the owner app and the owner WhatsApp number below.') }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="low_stock_threshold">{{ __('Alert at stock of') }}</label>
+                        <input id="low_stock_threshold" type="number" min="0" max="100000" name="low_stock_threshold" value="{{ old('low_stock_threshold', $settings->low_stock_threshold ?? 3) }}" class="form-input">
+                        @error('low_stock_threshold')<p class="text-xs text-error mt-1">{{ $message }}</p>@enderror
+                        <p class="mt-1 text-xs text-body">{{ __('Each variant alerts once when it drops to this number or less.') }}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section-card space-y-4 rounded-md border border-neutral-200">
                 <h2 class="heading-4 text-title">{{ __('WhatsApp notifications') }}</h2>
 
                 <div class="grid gap-4 sm:grid-cols-2 sm:items-end">

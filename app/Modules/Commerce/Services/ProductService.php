@@ -117,6 +117,7 @@ class ProductService
                     }
                 } else {
                     $product->variants()->update(['stock_quantity' => $stock]);
+                    app(LowStockAlertService::class)->checkProducts([$product->id]);
                 }
             }
             $this->audit->log($product, 'updated');
