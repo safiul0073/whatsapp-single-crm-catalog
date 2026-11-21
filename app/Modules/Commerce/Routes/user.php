@@ -174,6 +174,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::put('orders/{order}/hold', [CommerceController::class, 'extendHold'])->middleware('permission:commerce.orders.update')->name('orders.hold');
     Route::put('orders/{order}/status', [CommerceController::class, 'transition'])->middleware('permission:commerce.orders.update')->name('orders.transition');
     Route::put('orders/{order}/shipment', [CommerceController::class, 'updateShipment'])->middleware('permission:commerce.orders.update')->name('orders.shipment');
+    Route::post('orders/{order}/message', [CommerceController::class, 'sendMessage'])->middleware('permission:commerce.orders.update')->name('orders.message.send');
     Route::post('conversations/{conversation}/catalog', [CommerceController::class, 'sendCatalog'])->middleware('permission:commerce.catalog.manage')->name('conversations.catalog');
     Route::get('conversations/{conversation}/products', [CommerceController::class, 'conversationProducts'])->middleware('permission:commerce.products.view')->name('conversations.products');
     Route::post('conversations/{conversation}/product', [CommerceController::class, 'sendProduct'])->middleware('permission:commerce.catalog.manage')->name('conversations.product');
@@ -185,6 +186,8 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     $c = AdminController::class;
     Route::get('/', [$c, 'index'])->middleware('permission:commerce.storefront.settings|commerce.storefront.pages|commerce.storefront.marketing|commerce.storefront.domains|commerce.storefront.reviews|commerce.storefront.credentials')->name('index');
     Route::get('live', [$c, 'liveStudio'])->middleware('permission:commerce.storefront.settings|commerce.storefront.marketing')->name('live');
+    Route::get('videos', [$c, 'videos'])->middleware('permission:commerce.storefront.settings|commerce.storefront.marketing')->name('videos');
+    Route::get('live-settings', [$c, 'liveSettingsPage'])->middleware('permission:commerce.storefront.settings')->name('live-settings');
     Route::put('settings', [$c, 'settings'])->middleware('permission:commerce.storefront.settings')->name('settings');
     Route::post('upload-app', [$c, 'uploadApp'])->middleware('permission:commerce.storefront.settings')->name('upload-app');
     Route::put('tracking', [$c, 'tracking'])->middleware('permission:commerce.storefront.settings')->name('tracking');

@@ -14,6 +14,17 @@
             @if($primaryAction)
                 <a href="{{ $primaryAction['href'] }}" class="btn btn-primary btn-sm"><i class="ph {{ $primaryAction['icon'] }}"></i> {{ $primaryAction['label'] }}</a>
             @endif
+            @if(($canMessageCustomers ?? false) && !empty($orderMessagePayload))
+                <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    data-order-message-trigger="{{ $order->id }}"
+                    data-has-channels="{{ !empty($orderMessagePayload['channels']) ? '1' : '0' }}"
+                    x-on:click="$dispatch('open-order-message', {{ Js::from($orderMessagePayload) }})"
+                >
+                    <i class="ph ph-chat-circle-text"></i> {{ __('Message') }}
+                </button>
+            @endif
             @if($canUpdate && $order->isEditable())
                 <a href="{{ route('user.commerce.orders.edit', $order) }}" class="btn btn-outline btn-sm" data-edit-order><i class="ph ph-pencil-simple"></i> {{ __('Edit order') }}</a>
             @endif

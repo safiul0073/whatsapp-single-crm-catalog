@@ -2,6 +2,7 @@
 
 namespace App\Modules\Commerce\Storefront\Http\Requests;
 
+use App\Modules\Commerce\Storefront\Models\LiveStream;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LiveAdminRequest extends FormRequest
@@ -53,6 +54,7 @@ class LiveAdminRequest extends FormRequest
                 'duration_seconds' => 'nullable|integer|min:0',
                 'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:10240',
                 'video' => 'nullable|file|mimes:mp4,webm,mov|max:512000',
+                'video_url' => ['nullable', 'string', 'max:500', 'regex:'.LiveStream::YOUTUBE_REGEX],
             ],
             'start' => [
                 'broadcast_platforms' => 'nullable|array',
@@ -77,6 +79,7 @@ class LiveAdminRequest extends FormRequest
             ],
             'stop', 'stopLive' => [
                 'video' => 'nullable|file|mimes:mp4,webm,mov|max:512000',
+                'video_url' => ['nullable', 'string', 'max:500', 'regex:'.LiveStream::YOUTUBE_REGEX],
                 'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:10240',
                 'add_to_slider' => 'nullable|boolean',
                 'slider_id' => 'nullable|integer',
@@ -99,6 +102,7 @@ class LiveAdminRequest extends FormRequest
             'title.required' => 'Please enter a title for the live stream.',
             'broadcast_platforms.*.in' => 'Broadcast platform must be storefront or facebook.',
             'video.mimes' => 'Recorded video must be an MP4, WebM, or MOV file.',
+            'video_url.regex' => 'Please enter a valid YouTube video URL (e.g. https://www.youtube.com/watch?v=...).',
         ];
     }
 }

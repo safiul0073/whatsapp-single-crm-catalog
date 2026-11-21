@@ -60,8 +60,12 @@ class AdminController extends Controller
         return $this->workspaces->current($r->user())->id;
     }
 
-    public function index(Request $r): View
+    public function index(Request $r): View|RedirectResponse
     {
+        if ($r->query('tab') === 'live') {
+            return redirect()->route('user.commerce.storefront.live');
+        }
+
         $w = $this->workspace($r);
         $credentials = $this->cms->credentials($w, true);
         $settings = StorefrontSetting::query()->where('workspace_id', $w)->first()?->config ?? $this->cms->settings($w);
@@ -73,10 +77,6 @@ class AdminController extends Controller
             'featureIcons' => app(FeatureIconCatalog::class)->presets($w),
             'featureIconDefaults' => FeatureIconCatalog::DEFAULTS,
             'tracking' => app(TrackingSettingsService::class)->admin($w),
-            'liveSettings' => $this->lives->settings($w),
-            'facebookSignup' => app(MetaBusinessConnectService::class)->signupConfig(),
-            'liveStreams' => LiveStream::query()->where('workspace_id', $w)->with('products')->latest('id')->get(),
-            'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
             'chatWidgets' => ChatbotWidget::query()->where('workspace_id', $w)->where('is_active', true)->orderBy('name')->get(['name', 'public_token']),
             'credentials' => $credentials,
             'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(),
@@ -103,10 +103,100 @@ class AdminController extends Controller
 
     public function liveStudio(Request $r): View
     {
-        $r->merge(['tab' => 'live']);
-        session()->flash('storefront_tab', 'live');
+        $w = $this->workspace($r);
+        $streams = LiveStream::query()
+            ->where('workspace_id', $w)
+            ->whereIn('status', ['live', 'scheduled'])
+            ->with('products')
+            ->latest('id')
+            ->get();
 
-        return $this->index($r);
+        return view('commerce::user.live.streams', [
+            'liveSettings' => $this->lives->settings($w),
+            'streams' => $streams,
+            'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
+            'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
+            'storeUrl' => $this->storePublicUrl($r, $w),
+            'stats' => [
+                'live_now' => $streams->where('status', 'live')->count(),
+                'scheduled' => $streams->where('status', 'scheduled')->count(),
+                'videos_count' => LiveStream::query()->where('workspace_id', $w)->where('status', 'ended')->count(),
+                'total_views' => (int) LiveStream::query()->where('workspace_id', $w)->sum('total_views'),
+            ],
+        ]);
+    }
+
+    public function videos(Request $r): View
+    {
+        $w = $this->workspace($r);
+        $videos = LiveStream::query()
+            ->where('workspace_id', $w)
+            ->where(function ($q): void {
+                $q->where('status', 'ended')
+                    ->orWhereNotNull('video_path');
+            })
+            ->with('products')
+            ->latest('id')
+            ->get();
+
+        return view('commerce::user.live.videos', [
+            'liveSettings' => $this->lives->settings($w),
+            'videos' => $videos,
+            'products' => Product::query()->where('workspace_id', $w)->orderBy('name')->get(['id', 'name', 'slug']),
+            'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
+            'storeUrl' => $this->storePublicUrl($r, $w),
+            'stats' => [
+                'total' => $videos->count(),
+                'youtube' => $videos->filter(fn (LiveStream $v): bool => $v->youtubeId() !== null)->count(),
+                'uploaded' => $videos->filter(fn (LiveStream $v): bool => filled($v->video_path) && ! $v->isExternalVideo())->count(),
+                'in_slider' => $videos->where('is_in_slider', true)->count(),
+            ],
+        ]);
+    }
+
+    public function liveSettingsPage(Request $r): View
+    {
+        $w = $this->workspace($r);
+
+        return view('commerce::user.live.settings', [
+            'liveSettings' => $this->lives->settings($w),
+            'facebookSignup' => app(MetaBusinessConnectService::class)->signupConfig(),
+            'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
+            'storeUrl' => $this->storePublicUrl($r, $w),
+        ]);
+    }
+
+    private function storePublicUrl(Request $request, int $w): ?string
+    {
+        $primary = StoreDomain::query()
+            ->where('workspace_id', $w)
+            ->where('is_primary', true)
+            ->first();
+
+        if ($primary) {
+            return ($request->isSecure() ? 'https://' : 'http://').$primary->host;
+        }
+
+        $credentials = $this->cms->credentials($w, false);
+
+        return ($credentials['storefront_url'] ?? '') ?: null;
+    }
+
+    private function redirectLivePage(Request $request, string $defaultRoute, ?string $message = null, string $level = 'success'): RedirectResponse
+    {
+        $allowed = [
+            'live' => 'user.commerce.storefront.live',
+            'videos' => 'user.commerce.storefront.videos',
+            'live-settings' => 'user.commerce.storefront.live-settings',
+        ];
+        $target = $allowed[(string) $request->input('_return', '')] ?? $defaultRoute;
+
+        $response = redirect()->route($target);
+        if ($message) {
+            $response->with($level, $message);
+        }
+
+        return $response;
     }
 
     private function redirectTab(Request $request, string $defaultTab, ?string $message = null, string $level = 'success'): RedirectResponse
@@ -520,7 +610,7 @@ class AdminController extends Controller
         $w = $this->workspace($r);
         $this->lives->saveSettings($w, $r->validated());
 
-        return $this->redirectTab($r, 'live', 'Live streaming and Facebook Live settings saved.');
+        return $this->redirectLivePage($r, 'user.commerce.storefront.live-settings', 'Live streaming and Facebook Live settings saved.');
     }
 
     public function connectFacebookLive(ConnectMetaBusinessRequest $r, MetaBusinessConnectService $meta): RedirectResponse
@@ -528,9 +618,9 @@ class AdminController extends Controller
         $meta->connect($r->user(), $r->validated('code'));
         $pages = $this->facebook->connectedPages($this->workspace($r));
 
-        return $this->redirectTab(
+        return $this->redirectLivePage(
             $r,
-            'live',
+            'user.commerce.storefront.live-settings',
             $pages === []
                 ? __('Facebook connected, but no Page was shared. Click "Reconnect" and select your Page.')
                 : __('Facebook connected. Choose the Page to stream to and save.'),
@@ -543,9 +633,9 @@ class AdminController extends Controller
         $w = $this->workspace($r);
         $result = $this->facebook->verifyConnection($w);
 
-        return $this->redirectTab(
+        return $this->redirectLivePage(
             $r,
-            'live',
+            'user.commerce.storefront.live-settings',
             $result['message'],
             $result['ready'] ? 'success' : 'error'
         );
@@ -554,15 +644,24 @@ class AdminController extends Controller
     public function storeLive(LiveAdminRequest $r): RedirectResponse
     {
         $w = $this->workspace($r);
-        $this->lives->createStream(
+        $validated = $r->validated();
+        $stream = $this->lives->createStream(
             $w,
             $r->user()?->id,
-            $r->validated(),
+            $validated,
             $r->file('thumbnail'),
             $r->file('video'),
         );
 
-        return $this->redirectTab($r, 'live', 'Live stream / recorded video saved to public storage.');
+        $isVideo = filled($stream->video_path);
+
+        return $this->redirectLivePage(
+            $r,
+            $isVideo ? 'user.commerce.storefront.videos' : 'user.commerce.storefront.live',
+            $isVideo
+                ? 'Video published to Storefront Live & Videos.'
+                : 'Live stream scheduled.'
+        );
     }
 
     public function toggleLiveSlider(LiveAdminRequest $r, int $id): RedirectResponse
@@ -580,10 +679,10 @@ class AdminController extends Controller
             ! empty($validated['slider_id']) ? (int) $validated['slider_id'] : null
         );
 
-        return $this->redirectTab(
+        return $this->redirectLivePage(
             $r,
-            'live',
-            $enable ? 'Recorded live video added to Storefront Hero Slider.' : 'Recorded live video removed from Storefront Hero Slider.'
+            'user.commerce.storefront.videos',
+            $enable ? 'Video added to Storefront Hero Slider.' : 'Video removed from Storefront Hero Slider.'
         );
     }
 
@@ -600,20 +699,22 @@ class AdminController extends Controller
             array_key_exists('add_to_slider', $validated) ? (bool) $validated['add_to_slider'] : null,
             ! empty($validated['slider_id']) ? (int) $validated['slider_id'] : null,
             ! empty($validated['duration_seconds']) ? (int) $validated['duration_seconds'] : null,
+            $validated['video_url'] ?? null,
         );
 
-        return $this->redirectTab($r, 'live', 'Live broadcast ended and recording updated.');
+        return $this->redirectLivePage($r, 'user.commerce.storefront.live', 'Live broadcast ended and recording updated.');
     }
 
     public function deleteLive(Request $r, int $id): RedirectResponse
     {
         $w = $this->workspace($r);
         $stream = LiveStream::query()->where('workspace_id', $w)->findOrFail($id);
+        $defaultRoute = $stream->status === 'ended' ? 'user.commerce.storefront.videos' : 'user.commerce.storefront.live';
 
         if ($stream->is_in_slider) {
             $this->lives->syncToSlider($stream, false);
         }
-        if (filled($stream->video_path) && Storage::disk('public')->exists($stream->video_path)) {
+        if (filled($stream->video_path) && ! $stream->isExternalVideo() && Storage::disk('public')->exists($stream->video_path)) {
             Storage::disk('public')->delete($stream->video_path);
         }
         if (filled($stream->thumbnail_path) && Storage::disk('public')->exists($stream->thumbnail_path)) {
@@ -622,7 +723,7 @@ class AdminController extends Controller
 
         $stream->delete();
 
-        return $this->redirectTab($r, 'live', 'Live stream and stored video deleted.');
+        return $this->redirectLivePage($r, $defaultRoute, 'Deleted successfully.');
     }
 
     private function invalidate(int $w): void

@@ -20,6 +20,7 @@ use App\Modules\Commerce\Http\Requests\ProductTypeRequest;
 use App\Modules\Commerce\Http\Requests\ProductVariantsRequest;
 use App\Modules\Commerce\Http\Requests\PublishProductRequest;
 use App\Modules\Commerce\Http\Requests\QuoteOrderRequest;
+use App\Modules\Commerce\Http\Requests\SendOrderMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductListRequest;
 use App\Modules\Commerce\Http\Requests\SendProductMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductVideoRequest;
@@ -43,6 +44,7 @@ use App\Modules\Commerce\Services\CatalogMessageService;
 use App\Modules\Commerce\Services\CatalogSyncService;
 use App\Modules\Commerce\Services\MetaCatalogClient;
 use App\Modules\Commerce\Services\OrderInventoryService;
+use App\Modules\Commerce\Services\OrderMessageService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
@@ -629,11 +631,11 @@ class CommerceController extends Controller
         return back()->with('success', __('WhatsApp catalog and cart settings updated.'));
     }
 
-    public function orders(Request $request): View
+    public function orders(Request $request, OrderMessageService $orderMessages): View
     {
         $workspace = $this->workspaces->current($request->user());
 
-        $query = Order::query()->with(['contact', 'payments'])->where('workspace_id', $workspace->id);
+        $query = Order::query()->with(['contact.identities', 'payments'])->where('workspace_id', $workspace->id);
 
         if ($request->filled('search')) {
             $search = trim($request->string('search')->toString());
@@ -693,12 +695,25 @@ class CommerceController extends Controller
 
         $totalCount = Order::query()->where('workspace_id', $workspace->id)->count();
 
+        $orders = $query->latest()->paginate(25)->withQueryString();
+        $canMessageCustomers = $request->user()?->can('commerce.orders.update') ?? false;
+        $activeChannels = $canMessageCustomers ? $orderMessages->activeChannelAccounts($workspace->id) : collect();
+        $orderMessagePayloads = $canMessageCustomers
+            ? $orders->getCollection()
+                ->mapWithKeys(fn (Order $order): array => [
+                    (string) $order->id => $orderMessages->orderModalPayload($order, $activeChannels),
+                ])
+                ->all()
+            : [];
+
         return view('commerce::user.orders', [
-            'orders' => $query->latest()->paginate(25)->withQueryString(),
+            'orders' => $orders,
             'sources' => Order::query()->where('workspace_id', $workspace->id)->whereNotNull('source')->distinct()->pluck('source'),
             'statusCounts' => $statusCounts,
             'totalCount' => $totalCount,
             'canDeleteOrders' => $workspace->isOwner($request->user()),
+            'canMessageCustomers' => $canMessageCustomers,
+            'orderMessagePayloads' => $orderMessagePayloads,
         ]);
     }
 
@@ -724,11 +739,11 @@ class CommerceController extends Controller
         return back()->with('success', trans_choice(':count order deleted.|:count orders deleted.', $orders->count(), ['count' => $orders->count()]));
     }
 
-    public function order(Request $request, Order $order): View
+    public function order(Request $request, Order $order, OrderMessageService $orderMessages): View
     {
         $this->assertWorkspace($request, $order->workspace_id);
 
-        $order->load(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'items.variant.product.gallery', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery', 'contact', 'conversation', 'events', 'shipment', 'payments.staff']);
+        $order->load(['items.variant.color.swatchMedia', 'items.variant.product.primaryMedia', 'items.variant.product.gallery', 'groups', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery', 'contact.identities', 'conversation', 'events', 'shipment', 'payments.staff']);
         $pos = app(PosService::class);
 
         $storeCustomer = $order->contact_id
@@ -737,6 +752,7 @@ class CommerceController extends Controller
         $customerAddresses = $storeCustomer
             ? CustomerAddress::query()->where('customer_id', $storeCustomer->id)->orderByDesc('is_default')->get()
             : collect();
+        $canMessageCustomers = $request->user()?->can('commerce.orders.update') ?? false;
 
         return view('commerce::user.order', [
             'order' => $order,
@@ -745,6 +761,8 @@ class CommerceController extends Controller
             'storeCustomer' => $storeCustomer,
             'customerAddresses' => $customerAddresses,
             'canDeleteOrders' => $this->workspaces->current($request->user())?->isOwner($request->user()) ?? false,
+            'canMessageCustomers' => $canMessageCustomers,
+            'orderMessagePayload' => $canMessageCustomers ? $orderMessages->orderModalPayload($order) : null,
         ]);
     }
 
@@ -1047,6 +1065,22 @@ class CommerceController extends Controller
         $this->orders->updateShipment($order, $request->validated());
 
         return back()->with('success', __('Shipment details updated.'));
+    }
+
+    public function sendMessage(SendOrderMessageRequest $request, Order $order, OrderMessageService $orderMessages): RedirectResponse|JsonResponse
+    {
+        $this->assertWorkspace($request, $order->workspace_id);
+        $result = $orderMessages->send($request->user(), $order, $request->validated());
+
+        if ($request->expectsJson()) {
+            return response()->json($result, ($result['ok'] ?? false) ? 200 : 422);
+        }
+
+        if ($result['ok'] ?? false) {
+            return back()->with('success', $result['message'] ?? __('Message sent.'));
+        }
+
+        return back()->with('error', $result['error'] ?? __('Message could not be sent.'));
     }
 
     public function sendCatalog(Request $request, Conversation $conversation, CatalogMessageService $messages): JsonResponse

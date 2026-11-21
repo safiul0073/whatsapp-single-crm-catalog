@@ -256,8 +256,10 @@ class LiveStreamService
                 'public'
             );
             $videoSize = (int) $video->getSize();
+        } elseif (! empty($data['video_url']) && is_string($data['video_url'])) {
+            $videoPath = LiveStream::normalizeYoutubeUrl($data['video_url']);
         } elseif (! empty($data['video_path']) && is_string($data['video_path'])) {
-            $videoPath = trim($data['video_path']);
+            $videoPath = LiveStream::normalizeYoutubeUrl($data['video_path']) ?? trim($data['video_path']);
         }
 
         $productIds = array_values(array_unique(array_map('intval', (array) ($data['product_ids'] ?? []))));
@@ -298,8 +300,11 @@ class LiveStreamService
 
         $this->syncStreamProducts($stream, $validProductIds, $pinnedProductId);
 
-        if ($videoPath && filter_var($data['add_to_slider'] ?? $liveSettings['auto_publish_to_slider'], FILTER_VALIDATE_BOOLEAN)) {
+        $addedToSlider = $videoPath && filter_var($data['add_to_slider'] ?? $liveSettings['auto_publish_to_slider'], FILTER_VALIDATE_BOOLEAN);
+        if ($addedToSlider) {
             $this->syncToSlider($stream, true, ! empty($data['slider_id']) ? (int) $data['slider_id'] : $liveSettings['default_slider_id']);
+        } elseif ($videoPath) {
+            RevalidateStorefront::dispatch($workspaceId, ['cms/pages/home', 'live']);
         }
 
         return $stream->refresh();
@@ -394,6 +399,7 @@ class LiveStreamService
         ?bool $addToSlider = null,
         ?int $sliderId = null,
         ?int $durationSeconds = null,
+        ?string $videoUrl = null,
     ): LiveStream {
         $disk = Storage::disk('public');
 
@@ -416,7 +422,13 @@ class LiveStreamService
             );
             $stream->video_path = $videoPath;
             $stream->video_size_bytes = (int) $videoFile->getSize();
-        } elseif (filled($stream->video_path) && $disk->exists($stream->video_path)) {
+        } elseif (filled($videoUrl)) {
+            if (filled($stream->video_path) && ! $stream->isExternalVideo() && $disk->exists($stream->video_path)) {
+                $disk->delete($stream->video_path);
+            }
+            $stream->video_path = LiveStream::normalizeYoutubeUrl($videoUrl);
+            $stream->video_size_bytes = 0;
+        } elseif (filled($stream->video_path) && ! $stream->isExternalVideo() && $disk->exists($stream->video_path)) {
             $stream->video_size_bytes = (int) $disk->size($stream->video_path);
         }
 
@@ -505,8 +517,8 @@ class LiveStreamService
             'live_stream_id' => $stream->id,
             'title' => $stream->title,
             'subtitle' => $stream->description ?: 'Watch our recorded live session and shop the featured collection.',
-            'image' => $stream->thumbnail_path ?: '/images/placeholder-live.jpg',
-            'mobile_image' => $stream->thumbnail_path ?: '',
+            'image' => $stream->thumbnail_path ?: ($stream->thumbnailUrl() ?: '/images/placeholder-live.jpg'),
+            'mobile_image' => $stream->thumbnail_path ?: ($stream->thumbnailUrl() ?: ''),
             'video' => $stream->video_path ?: '',
             'button_text' => 'Watch & Shop Live',
             'button_link' => '/live/'.$stream->slug,
@@ -690,6 +702,8 @@ class LiveStreamService
             'facebook_permalink_url' => $stream->facebook_permalink_url,
             'thumbnail_url' => $stream->thumbnailUrl(),
             'video_url' => $stream->videoUrl(),
+            'youtube_id' => $stream->youtubeId(),
+            'video_embed_url' => $stream->videoEmbedUrl(),
             'video_size_bytes' => (int) $stream->video_size_bytes,
             'duration_seconds' => (int) $stream->duration_seconds,
             'is_in_slider' => (bool) $stream->is_in_slider,

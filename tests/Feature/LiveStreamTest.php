@@ -9,6 +9,7 @@ use App\Modules\Commerce\Storefront\Events\LiveStreamStatusChanged;
 use App\Modules\Commerce\Storefront\Events\LiveWebRtcSignal;
 use App\Modules\Commerce\Storefront\Models\LiveStream;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
@@ -523,4 +524,82 @@ it('forbids owner live endpoints for workspace members without storefront permis
 
     $this->getJson("/api/v1/mobile/workspaces/{$this->store->id}/lives")->assertForbidden();
     $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives", ['title' => 'Nope'])->assertForbidden();
+});
+
+it('creates a youtube video entry, exposes embed and thumbnail fields on storefront endpoints, and deletes safely without disk files', function (): void {
+    Sanctum::actingAs($this->owner);
+
+    StorefrontPage::query()->updateOrCreate(
+        ['workspace_id' => $this->store->id, 'slug' => 'home'],
+        [
+            'title' => 'Home',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'published_content' => [
+                'title' => 'Home',
+                'seo' => [],
+                'sections' => [
+                    [
+                        'id' => 1,
+                        'type' => 'live_videos',
+                        'active' => true,
+                        'visibility' => 'all',
+                        'config' => ['title' => 'Live & Videos', 'limit' => 6],
+                    ],
+                ],
+            ],
+        ],
+    );
+
+    // Rejects invalid non-YouTube URLs
+    $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives", [
+        'title' => 'Invalid Video Link',
+        'video_url' => 'https://example.com/not-youtube.mp4',
+    ])->assertStatus(422);
+
+    // Accepts a YouTube shorts / share / watch link and normalizes it
+    $createRes = $this->postJson("/api/v1/mobile/workspaces/{$this->store->id}/lives", [
+        'title' => 'Autumn Collection Lookbook',
+        'description' => 'Full walk-through on YouTube.',
+        'broadcast_platforms' => ['storefront'],
+        'video_url' => 'https://youtu.be/dQw4w9WgXcQ?si=test123',
+        'product_ids' => [$this->product->id],
+    ])->assertCreated();
+
+    $liveId = $createRes->json('data.id');
+    $slug = $createRes->json('data.slug');
+
+    expect($createRes->json('data.status'))->toBe('ended')
+        ->and($createRes->json('data.video_url'))->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->and($createRes->json('data.youtube_id'))->toBe('dQw4w9WgXcQ')
+        ->and($createRes->json('data.video_embed_url'))->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        ->and($createRes->json('data.thumbnail_url'))->toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+
+    // Included in /api/storefront/v1/lives recorded_streams
+    $this->getJson('/api/storefront/v1/lives', $this->headers)
+        ->assertOk()
+        ->assertJsonCount(1, 'data.recorded_streams')
+        ->assertJsonPath('data.recorded_streams.0.youtube_id', 'dQw4w9WgXcQ')
+        ->assertJsonPath('data.recorded_streams.0.video_embed_url', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+
+    // Included in /api/storefront/v1/lives/{slug}
+    $this->getJson("/api/storefront/v1/lives/{$slug}", $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.youtube_id', 'dQw4w9WgXcQ')
+        ->assertJsonPath('data.video_embed_url', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+
+    // Included in cms/pages/home live_videos section
+    $homeSections = $this->getJson('/api/storefront/v1/cms/pages/home', $this->headers)
+        ->assertOk()
+        ->json('data.sections');
+    $liveSection = collect($homeSections)->firstWhere('type', 'live_videos');
+    expect($liveSection)->not->toBeNull()
+        ->and($liveSection['data'][0]['youtube_id'])->toBe('dQw4w9WgXcQ')
+        ->and($liveSection['data'][0]['video_embed_url'])->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+
+    // Deleting an external YouTube entry cleans up cleanly without touching local disk
+    $this->deleteJson("/api/v1/mobile/workspaces/{$this->store->id}/lives/{$liveId}")
+        ->assertOk()
+        ->assertJsonPath('data.deleted', true);
+    expect(LiveStream::query()->find($liveId))->toBeNull();
 });
