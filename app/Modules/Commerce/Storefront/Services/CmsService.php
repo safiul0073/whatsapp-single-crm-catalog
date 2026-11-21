@@ -13,6 +13,7 @@ use App\Modules\Commerce\Storefront\Models\StorefrontPage;
 use App\Modules\Commerce\Storefront\Models\StorefrontSection;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Commerce\Storefront\Models\StorefrontSlider;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -49,8 +50,31 @@ class CmsService
         'custom_chatbot' => ['enabled' => false, 'source' => 'marketing_chatbot', 'title' => 'AI Assistant', 'icon' => 'bot', 'widget_token' => '', 'script_url' => '', 'direct_url' => ''],
     ];
 
+    public static function settingsCacheKey(int $workspace): string
+    {
+        return 'storefront_cms_settings_'.$workspace;
+    }
+
+    public static function forgetSettingsCache(int $workspace): void
+    {
+        Cache::forget(self::settingsCacheKey($workspace));
+    }
+
     public function settings(int $workspace): array
     {
+        return Cache::remember(
+            self::settingsCacheKey($workspace),
+            60,
+            fn (): array => $this->buildSettings($workspace),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSettings(int $workspace): array
+    {
+        $rawConfig = (array) (StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? []);
         $settings = array_replace(
             [
                 'name' => 'Fashion Fiest',
@@ -77,7 +101,7 @@ class CmsService
                 'app_ios_url' => '',
                 'app_android_url' => '',
             ],
-            array_diff_key(StorefrontSetting::query()->where('workspace_id', $workspace)->first()?->config ?? [], array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
+            array_diff_key($rawConfig, array_flip(['password_login', 'blog_ids', 'faq_ids', 'deployment', 'tracking']))
         );
         $settings['wholesale_enabled'] = (bool) $settings['wholesale_enabled'];
         $settings['retail_enabled'] = ! $settings['wholesale_enabled'] || (bool) $settings['retail_enabled'];
@@ -108,7 +132,7 @@ class CmsService
         $settings['recent_orders_ticker'] = (bool) ($settings['recent_orders_ticker'] ?? true);
         $settings['welcome_guide'] = (bool) ($settings['welcome_guide'] ?? true);
 
-        $settings['tracking'] = app(TrackingSettingsService::class)->public($workspace);
+        $settings['tracking'] = app(TrackingSettingsService::class)->publicFromConfig($rawConfig);
         $settings['chat_channels'] = array_replace_recursive(self::CHAT_CHANNEL_DEFAULTS, $settings['chat_channels'] ?? []);
         $bot = &$settings['chat_channels']['custom_chatbot'];
         if ($bot['enabled'] && $bot['source'] === 'marketing_chatbot') {
@@ -118,12 +142,13 @@ class CmsService
             $bot['script_url'] = $widget ? route('widgets.chatbot.loader', $widget->public_token) : '';
         }
 
+        $liveRaw = (array) ($rawConfig['live'] ?? []);
         unset($settings['live']);
         try {
-            $liveService = app(LiveStreamService::class);
-            $liveConfig = $liveService->settings($workspace);
+            $liveEnabled = (bool) ($liveRaw['enabled'] ?? true);
+            $showHeaderLiveBadge = (bool) ($liveRaw['show_header_live_badge'] ?? true);
             $activeLive = null;
-            if ($liveConfig['enabled']) {
+            if ($liveEnabled) {
                 $activeModel = LiveStream::query()
                     ->where('workspace_id', $workspace)
                     ->where('status', 'live')
@@ -142,10 +167,10 @@ class CmsService
                 }
             }
             $settings['live_shopping'] = [
-                'enabled' => (bool) $liveConfig['enabled'],
-                'show_header_live_badge' => (bool) $liveConfig['show_header_live_badge'],
+                'enabled' => $liveEnabled,
+                'show_header_live_badge' => $showHeaderLiveBadge,
                 'is_live_now' => $activeLive !== null,
-                'reverb' => $liveConfig['reverb'],
+                'reverb' => app(LiveStreamService::class)->reverbConfig(),
                 'active_live' => $activeLive,
             ];
         } catch (\Throwable) {

@@ -42,6 +42,8 @@ class StoreOrderSettingsRequest extends FormRequest
             'whatsapp_notifications' => ['sometimes', 'boolean'],
             'review_request_enabled' => ['sometimes', 'boolean'],
             'review_request_delay_hours' => ['sometimes', 'integer', 'min:0', 'max:720'],
+            'low_stock_alerts_enabled' => ['sometimes', 'boolean'],
+            'low_stock_threshold' => ['sometimes', 'integer', 'min:0', 'max:100000'],
             'whatsapp_channel_id' => ['nullable', 'integer'],
             'whatsapp_template_id' => ['nullable', 'integer'],
             'owner_whatsapp_number' => ['nullable', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'],

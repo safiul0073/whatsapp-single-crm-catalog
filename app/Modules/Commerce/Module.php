@@ -61,6 +61,7 @@ class Module extends BasePanelModule
             ['label' => 'Orders', 'route' => 'user.commerce.orders.index'],
             ['label' => 'Invoices', 'route' => 'user.commerce.custom-invoices.index'],
             ['label' => 'Customers', 'route' => 'user.commerce.customers.index'],
+            ['label' => 'Carts', 'route' => 'user.commerce.carts.index'],
             ['label' => 'Storefront', 'route' => 'user.commerce.storefront.index'],
             ['label' => 'Referrals', 'route' => 'user.commerce.referrals.index'],
             ['label' => 'Meta Catalog', 'route' => 'user.commerce.catalog'],

@@ -40,7 +40,16 @@ class TrackingSettingsService
      */
     public function public(int $workspace): array
     {
-        $tracking = $this->normalized($this->stored($workspace));
+        return $this->publicFromConfig(['tracking' => $this->stored($workspace)]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array{meta_pixel_id: string, tiktok_pixel_id: string, consent_required: bool}
+     */
+    public function publicFromConfig(array $config): array
+    {
+        $tracking = $this->normalized((array) ($config['tracking'] ?? []));
 
         return ['meta_pixel_id' => $tracking['meta_pixel_id'], 'tiktok_pixel_id' => $tracking['tiktok_pixel_id'], 'consent_required' => $tracking['consent_required']];
     }

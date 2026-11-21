@@ -161,7 +161,7 @@ class LiveStreamService
         $setting->config = $config;
         $setting->save();
 
-        RevalidateStorefront::dispatch($workspaceId, ['cms', 'settings', 'live']);
+        RevalidateStorefront::dispatch($workspaceId, ['cms/settings', 'live']);
 
         return $this->settings($workspaceId);
     }
@@ -352,7 +352,7 @@ class LiveStreamService
 
         $formatted = $this->formatStream($stream->refresh(), true, false);
         $this->broadcastSafely(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'live', $formatted));
-        RevalidateStorefront::dispatch($stream->workspace_id, ['cms', 'live']);
+        RevalidateStorefront::dispatch($stream->workspace_id, ['cms/settings', 'cms/pages/home', 'live']);
 
         return $stream;
     }
@@ -448,7 +448,7 @@ class LiveStreamService
 
         $formatted = $this->formatStream($stream->refresh(), true, false);
         $this->broadcastSafely(new LiveStreamStatusChanged($stream->workspace_id, $stream->id, 'ended', $formatted));
-        RevalidateStorefront::dispatch($stream->workspace_id, ['cms', 'live']);
+        RevalidateStorefront::dispatch($stream->workspace_id, ['cms/settings', 'cms/pages/home', 'live']);
 
         return $stream;
     }
@@ -476,7 +476,7 @@ class LiveStreamService
             ]);
 
             $this->republishHomePageSections($workspaceId);
-            RevalidateStorefront::dispatch($workspaceId, ['cms', 'live']);
+            RevalidateStorefront::dispatch($workspaceId, ['cms/pages/home', 'live']);
 
             return $stream->refresh();
         }
@@ -522,7 +522,7 @@ class LiveStreamService
         ]);
 
         $this->republishHomePageSections($workspaceId);
-        RevalidateStorefront::dispatch($workspaceId, ['cms', 'live']);
+        RevalidateStorefront::dispatch($workspaceId, ['cms/pages/home', 'live']);
 
         return $stream->refresh();
     }

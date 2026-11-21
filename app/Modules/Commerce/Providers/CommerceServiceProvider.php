@@ -2,17 +2,22 @@
 
 namespace App\Modules\Commerce\Providers;
 
+use App\Modules\Chatbots\Models\ChatbotWidget;
 use App\Modules\Commerce\AiTools\ProductShowcaseCollector;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductColor;
 use App\Modules\Commerce\Models\ProductMedia;
 use App\Modules\Commerce\Models\ProductVariant;
+use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\StorefrontUrl;
 use App\Modules\Commerce\Storefront\Console\ImportLegacy;
 use App\Modules\Commerce\Storefront\Console\ProvisionStore;
 use App\Modules\Commerce\Storefront\Console\RefreshProductRatings;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
+use App\Modules\Commerce\Storefront\Models\LiveStream;
+use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
+use App\Modules\Commerce\Storefront\Services\CmsService;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
 use App\Modules\Commerce\Storefront\Services\ProvisionStoreService;
 use App\Modules\Contacts\Models\Contact;
@@ -50,6 +55,20 @@ class CommerceServiceProvider extends BasePanelModuleProvider
         ProductVariant::saved(fn ($variant) => RevalidateStorefront::dispatch($variant->workspace_id, ['all'])->afterCommit());
         ProductMedia::saved(fn ($media) => RevalidateStorefront::dispatch($media->workspace_id, ['all'])->afterCommit());
         ProductMedia::deleted(fn ($media) => RevalidateStorefront::dispatch($media->workspace_id, ['all'])->afterCommit());
+        StorefrontSetting::saved(function (StorefrontSetting $setting): void {
+            CmsService::forgetSettingsCache((int) $setting->workspace_id);
+            StoreFeatures::flush();
+        });
+        StorefrontSetting::deleted(function (StorefrontSetting $setting): void {
+            CmsService::forgetSettingsCache((int) $setting->workspace_id);
+            StoreFeatures::flush();
+        });
+        LiveStream::saved(fn (LiveStream $stream) => CmsService::forgetSettingsCache((int) $stream->workspace_id));
+        LiveStream::deleted(fn (LiveStream $stream) => CmsService::forgetSettingsCache((int) $stream->workspace_id));
+        if (class_exists(ChatbotWidget::class)) {
+            ChatbotWidget::saved(fn (ChatbotWidget $widget) => CmsService::forgetSettingsCache((int) $widget->workspace_id));
+            ChatbotWidget::deleted(fn (ChatbotWidget $widget) => CmsService::forgetSettingsCache((int) $widget->workspace_id));
+        }
         Event::listen(ImageVariantsGenerated::class, function (ImageVariantsGenerated $event): void {
             Product::query()->where('primary_media_id', $event->mediaId)->pluck('workspace_id')
                 ->merge(ProductMedia::query()->where('media_id', $event->mediaId)->pluck('workspace_id'))

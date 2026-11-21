@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Commerce\Http\Controllers\User\CartController;
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\CustomInvoiceController;
 use App\Modules\Commerce\Http\Controllers\User\FeatureIconController;
@@ -115,6 +116,20 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('visitors/now', [VisitorController::class, 'livePage'])->middleware('permission:commerce.customers.view')->name('visitors.live-page');
     Route::get('visitors/all', [VisitorController::class, 'list'])->middleware('permission:commerce.customers.view')->name('visitors.list');
     Route::get('visitors/{visitor}', [VisitorController::class, 'show'])->whereNumber('visitor')->middleware('permission:commerce.customers.view')->name('visitors.show');
+    Route::prefix('carts')->name('carts.')->controller(CartController::class)->group(function (): void {
+        Route::middleware('permission:commerce.customers.view')->group(function (): void {
+            Route::get('/', 'index')->name('index');
+            Route::get('products', 'products')->name('products');
+            Route::get('{cart}', 'show')->whereNumber('cart')->name('show');
+        });
+        Route::middleware('permission:commerce.customers.manage')->group(function (): void {
+            Route::post('{cart}/items', 'addItem')->whereNumber('cart')->name('items.store');
+            Route::put('{cart}/items/{item}', 'updateItem')->whereNumber(['cart', 'item'])->name('items.update');
+            Route::delete('{cart}/items/{item}', 'destroyItem')->whereNumber(['cart', 'item'])->name('items.destroy');
+            Route::delete('{cart}/groups/{group}', 'destroyGroup')->whereNumber(['cart', 'group'])->name('groups.destroy');
+            Route::delete('{cart}/items', 'clear')->whereNumber('cart')->name('clear');
+        });
+    });
     Route::get('customers', [CommerceController::class, 'customers'])->middleware('permission:commerce.customers.view')->name('customers.index');
     Route::get('customers/{customer}', [CommerceController::class, 'customer'])->middleware('permission:commerce.customers.view')->name('customers.show');
     Route::middleware('permission:commerce.customers.manage')->group(function (): void {

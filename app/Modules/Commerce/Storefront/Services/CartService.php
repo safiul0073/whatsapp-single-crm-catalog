@@ -8,6 +8,7 @@ use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Storefront\Models\Cart;
 use App\Modules\Commerce\Storefront\Models\CartGroup;
 use App\Modules\Commerce\Storefront\Models\CartItem;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +34,96 @@ class CartService
         abort_if($cart->customer_id && $cart->customer_id !== $r->attributes->get('store_customer')?->id, 404);
 
         return $cart;
+    }
+
+    /**
+     * Adds retail units of a variant to the cart, merging into its existing retail line.
+     * Call inside a transaction with the cart row locked.
+     */
+    public function addRetail(Cart $cart, int $variantId, int $quantity): CartItem
+    {
+        $v = ProductVariant::query()->where('workspace_id', $cart->workspace_id)->whereIn('status', ['active', 'out_of_stock'])->with('product')->lockForUpdate()->findOrFail($variantId);
+        abort_unless($v->product->status === 'active' && $v->product->visibility === 'published' && $v->product->isRetailEnabled(), 422, 'Product unavailable.');
+        $group = CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->get()->first(fn ($g) => $g->selection['type'] === 'retail' && (int) $g->selection['variant_id'] === $v->id);
+        $group ??= CartGroup::query()->create(['workspace_id' => $cart->workspace_id, 'cart_id' => $cart->id, 'selection' => ['type' => 'retail', 'variant_id' => $v->id, 'quantity' => 0]]);
+        $item = CartItem::query()->firstOrNew(['cart_id' => $cart->id, 'group_id' => $group->id, 'variant_id' => $v->id], ['workspace_id' => $cart->workspace_id, 'product_id' => $v->product_id, 'quantity' => 0]);
+        abort_if(CartItem::query()->where('cart_id', $cart->id)->count() >= 50 && ! $item->exists, 422, 'Cart is full.');
+        $item->quantity += $quantity;
+        abort_if($item->quantity > 10000, 422);
+        $available = $v->availableQuantity(ProductVariant::reservedQuantities([$v->id])[$v->id] ?? 0);
+        if ($item->quantity > $available) {
+            $this->outOfStock($available);
+        }
+        $item->price_snapshot = $v->product->single_piece_price ?? $v->price;
+        $item->save();
+        $group->update(['selection' => ['type' => 'retail', 'variant_id' => $v->id, 'quantity' => $item->quantity]]);
+
+        return $item;
+    }
+
+    /**
+     * Sets the quantity of a retail line. Only increases are checked against available stock.
+     * Call inside a transaction with the cart row locked.
+     */
+    public function setRetailQuantity(Cart $cart, int $itemId, int $quantity): CartItem
+    {
+        $item = CartItem::query()->where('cart_id', $cart->id)->findOrFail($itemId);
+        $group = $item->group_id ? CartGroup::query()->where('cart_id', $cart->id)->findOrFail($item->group_id) : null;
+        abort_if($group && $group->selection['type'] !== 'retail', 422, 'Edit the complete pack instead.');
+        $variant = ProductVariant::query()->where('workspace_id', $cart->workspace_id)->with('product')->findOrFail($item->variant_id);
+        abort_unless($variant->product->isRetailEnabled(), 422, 'Remove this selection and rebuild a wholesale pack.');
+        if ($quantity > $item->quantity) {
+            $available = $variant->availableQuantity(ProductVariant::reservedQuantities([$variant->id])[$variant->id] ?? 0);
+            if ($quantity > $available) {
+                $this->outOfStock($available);
+            }
+        }
+        $group ??= CartGroup::query()->create(['workspace_id' => $cart->workspace_id, 'cart_id' => $cart->id, 'selection' => []]);
+        $item->update(['quantity' => $quantity, 'group_id' => $group->id]);
+        $group->update(['selection' => ['type' => 'retail', 'variant_id' => $item->variant_id, 'quantity' => $item->quantity]]);
+
+        return $item;
+    }
+
+    /**
+     * Removes a retail line. Lines inside a wholesale pack are removed with the whole pack.
+     */
+    public function removeLine(Cart $cart, int $itemId): void
+    {
+        $item = CartItem::query()->where('cart_id', $cart->id)->findOrFail($itemId);
+        $group = $item->group_id ? CartGroup::query()->where('cart_id', $cart->id)->findOrFail($item->group_id) : null;
+        abort_if($group && $group->selection['type'] !== 'retail', 422, 'Remove the complete pack instead.');
+        $item->delete();
+        $group?->update(['removed_at' => now()]);
+    }
+
+    /**
+     * Removes a cart group (a wholesale pack or a retail selection) with all its lines.
+     */
+    public function removeGroup(Cart $cart, int $groupId): void
+    {
+        $group = CartGroup::query()->where('cart_id', $cart->id)->whereNull('removed_at')->findOrFail($groupId);
+        CartItem::query()->where('cart_id', $cart->id)->where('group_id', $groupId)->delete();
+        $group->update(['removed_at' => now()]);
+    }
+
+    public function clear(Cart $cart): void
+    {
+        CartItem::query()->where('cart_id', $cart->id)->delete();
+        CartGroup::query()->where('cart_id', $cart->id)->update(['removed_at' => now()]);
+        $cart->update(['coupon_code' => null]);
+    }
+
+    /**
+     * @throws HttpResponseException
+     */
+    private function outOfStock(int $available): never
+    {
+        throw new HttpResponseException(response()->json([
+            'message' => $available > 0 ? "Only {$available} left in stock." : 'This item is out of stock.',
+            'code' => 'out_of_stock',
+            'available' => $available,
+        ], 422));
     }
 
     /**

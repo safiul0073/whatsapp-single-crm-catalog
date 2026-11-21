@@ -66,7 +66,7 @@ class OrderInventoryService
                     'quantity_delta' => $reservation->quantity, 'reason' => 'order_cancelled',
                 ]);
                 if ($movement->wasRecentlyCreated) {
-                    ProductVariant::query()->whereKey($reservation->variant_id)->increment('stock_quantity', $reservation->quantity);
+                    ProductVariant::query()->findOrFail($reservation->variant_id)->increment('stock_quantity', $reservation->quantity);
                 }
             }
             $this->recordReservation($order, $reservation, 'released');
