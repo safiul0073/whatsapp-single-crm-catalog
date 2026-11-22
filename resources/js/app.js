@@ -35,6 +35,7 @@ import './components/commerce-custom-invoice.js';
 import './components/commerce-product-gallery.js';
 import './components/commerce-visitors.js';
 import './components/commerce-carts.js';
+import './components/commerce-inventory.js';
 import './components/crm-board.js';
 import './components/social-widget-layout-picker.js';
 import './components/social-widget-editor.js';

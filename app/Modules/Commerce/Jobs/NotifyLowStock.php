@@ -59,7 +59,7 @@ class NotifyLowStock implements ShouldBeUnique, ShouldQueue
         $lines = $variants->map(fn (ProductVariant $variant): string => $this->label($variant).': '.max(0, (int) $variant->stock_quantity))->implode(', ');
         $title = 'Low stock: '.$product->name;
         $body = $lines." (alert at {$threshold} or less)";
-        $url = route('user.commerce.products.edit', $product);
+        $url = route('user.commerce.inventory.index', ['q' => $product->name]);
 
         $owner = Workspace::query()->find($product->workspace_id)?->owner;
         if ($owner) {

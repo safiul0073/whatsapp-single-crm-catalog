@@ -1375,6 +1375,23 @@ it('registers and removes the signed-in customer device for push', function (): 
         ->assertUnauthorized();
 });
 
+it('deletes the signed-in customer account and its sign-in data', function (): void {
+    $headers = ['X-Store-Host' => 'one.localhost', 'Authorization' => $this->auth['Authorization']];
+    CustomerAddress::query()->create(['workspace_id' => $this->store->id, 'customer_id' => $this->customer->id, 'label' => 'Home', 'address' => ['line1' => 'Road 1']]);
+    MobileCustomerDevice::query()->create(['workspace_id' => $this->store->id, 'customer_reference' => 'storefront:'.$this->customer->id, 'token' => 'fcm-gone', 'platform' => 'ios']);
+
+    $this->deleteJson('/api/v1/mobile/storefront/me', [], $headers)->assertOk();
+
+    $this->customer->refresh();
+    expect($this->customer->password)->toBeNull()
+        ->and($this->customer->verified_phone)->toBeNull()
+        ->and($this->customer->tokens()->count())->toBe(0)
+        ->and(CustomerAddress::query()->where('customer_id', $this->customer->id)->exists())->toBeFalse()
+        ->and(MobileCustomerDevice::query()->where('token', 'fcm-gone')->exists())->toBeFalse();
+    app('auth')->forgetGuards();
+    $this->getJson('/api/v1/mobile/storefront/me', $headers)->assertUnauthorized();
+});
+
 it('sends mobile alerts through the store firebase project and skips stores without push', function (): void {
     $device = MobileCustomerDevice::query()->create(['workspace_id' => $this->store->id, 'customer_reference' => 'storefront:'.$this->customer->id, 'token' => 'fcm-1', 'platform' => 'android']);
     $alert = new MobileAlert('Shipped', 'On its way', ['type' => 'order'], $this->store->id);
@@ -1390,4 +1407,18 @@ it('sends mobile alerts through the store firebase project and skips stores with
     expect($alert->via($device))->toBe([FcmChannel::class])
         ->and($alert->toFcm($device)->client)->toBe($messaging)
         ->and($alert->toFcm($device)->data['workspace_id'])->toBe((string) $this->store->id);
+});
+
+it('returns product text in the requested storefront language with fallback', function (): void {
+    $this->product->update(['short_description' => 'Soft cotton', 'translations' => ['es' => ['name' => 'Camisa'], 'ar' => ['name' => 'قميص', 'short_description' => 'قطن ناعم']]]);
+
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', [...$this->headers, 'X-Locale' => 'es'])->assertOk()
+        ->assertJsonPath('data.name', 'Camisa')
+        ->assertJsonPath('data.short_description', 'Soft cotton');
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', [...$this->headers, 'X-Locale' => 'ar'])->assertOk()
+        ->assertJsonPath('data.short_description', 'قطن ناعم');
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', [...$this->headers, 'X-Locale' => 'pt'])->assertOk()
+        ->assertJsonPath('data.name', 'Shirt');
+    $this->getJson('/api/storefront/v1/catalog/products/shirt', [...$this->headers, 'X-Locale' => 'xx'])->assertOk()
+        ->assertJsonPath('data.name', 'Shirt');
 });

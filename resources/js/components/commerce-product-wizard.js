@@ -142,6 +142,48 @@ Alpine.data('commerceProductWizard', (config = {}) => ({
     });
   },
 
+  translating: false,
+  translateError: '',
+
+  async autoTranslate(locale, url, form) {
+    'use strict';
+    this.translating = true;
+    this.translateError = '';
+    const source = {};
+    ['name', 'short_description', 'description'].forEach((field) => {
+      const input = form?.elements?.namedItem(field);
+      if (input && typeof input.value === 'string' && input.value.trim() !== '') {
+        source[field] = input.value;
+      }
+    });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ locale, ...source }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        this.translateError = data?.errors?.ai?.[0] || data?.message || 'Translation failed.';
+        return;
+      }
+      Object.entries(data.fields || {}).forEach(([field, value]) => {
+        const input = form?.elements?.namedItem(`translations[${locale}][${field}]`);
+        if (input) {
+          input.value = value;
+        }
+      });
+    } catch (error) {
+      this.translateError = 'Translation failed.';
+    } finally {
+      this.translating = false;
+    }
+  },
+
   openMediaPicker() {
     'use strict';
     this._colorPickerIndex = null;

@@ -17,6 +17,7 @@
                 <p class="mt-1 text-sm text-body">{{ __('Manage any product category, option, and sellable variant.') }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <x-ui.button variant="outline" href="{{ route('user.commerce.inventory.index') }}"><i class="ph ph-stack"></i> {{ __('Inventory') }}</x-ui.button>
                 <x-ui.button variant="outline" href="{{ route('user.commerce.categories.index') }}"><i class="ph ph-tree-structure"></i> {{ __('Categories') }}</x-ui.button>
                 <x-ui.button variant="outline" href="{{ route('user.commerce.product-types.index') }}"><i class="ph ph-shapes"></i> {{ __('Product types') }}</x-ui.button>
                 <x-ui.button variant="outline" href="{{ route('user.commerce.catalog') }}">{{ __('Meta catalog') }}</x-ui.button>
@@ -108,6 +109,16 @@
                                     <td class="px-4 py-3.5">
                                         <span class="block whitespace-nowrap font-semibold {{ (int) $product->stock_total > 0 ? 'text-title' : 'text-error' }}">{{ number_format((int) $product->stock_total) }} <span class="font-normal text-body">{{ __('in stock') }}</span></span>
                                         <span class="block text-xs text-body">{{ __('MOQ: :count', ['count' => number_format((int) ($product->moq ?? 1))]) }}</span>
+                                        @if ($product->out_of_stock_count || $product->low_stock_count)
+                                            <a href="{{ route('user.commerce.inventory.index', ['q' => $product->name]) }}" class="mt-1 inline-flex flex-wrap gap-1" data-stock-alert>
+                                                @if ($product->out_of_stock_count)
+                                                    <span class="rounded-md bg-error/10 px-1.5 py-0.5 text-xs font-medium text-error">{{ __(':count out', ['count' => $product->out_of_stock_count]) }}</span>
+                                                @endif
+                                                @if ($product->low_stock_count)
+                                                    <span class="rounded-md bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">{{ __(':count low', ['count' => $product->low_stock_count]) }}</span>
+                                                @endif
+                                            </a>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3.5">
                                         <span @class([

@@ -1587,6 +1587,44 @@
                     </div>
                 </section>
 
+                <section class="bg-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-neutral-200" x-data="{ tab: 'es' }">
+                    <h2 class="text-lg font-bold text-neutral-900">{{ __('Translations') }}</h2>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ __('Shown on the storefront when a customer switches language. Empty fields fall back to the original text.') }}</p>
+
+                    <div class="mt-4 flex gap-2">
+                        @foreach(['es' => __('Spanish'), 'pt' => __('Portuguese'), 'ar' => __('Arabic')] as $code => $label)
+                            <button type="button" class="btn btn-sm" :class="tab === '{{ $code }}' ? 'btn-primary' : 'btn-outline'" x-on:click="tab = '{{ $code }}'">{{ $label }}</button>
+                        @endforeach
+                    </div>
+
+                    @foreach(['es', 'pt', 'ar'] as $code)
+                        <div class="mt-5 space-y-4" x-show="tab === '{{ $code }}'" x-cloak data-translation-locale="{{ $code }}" dir="{{ $code === 'ar' ? 'rtl' : 'ltr' }}">
+                            <div class="flex justify-end">
+                                <button type="button" class="btn btn-outline btn-sm" x-on:click="autoTranslate('{{ $code }}', '{{ route('user.commerce.products.translate', $product) }}', $el.closest('form'))" :disabled="translating">
+                                    <span x-show="!translating">{{ __('Auto-translate with AI') }}</span>
+                                    <span x-show="translating">{{ __('Translating…') }}</span>
+                                </button>
+                            </div>
+                            <p class="text-xs font-semibold text-red-600" x-show="translateError" x-text="translateError"></p>
+                            <div>
+                                <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="tr_{{ $code }}_name">{{ __('Product Name') }}</label>
+                                <input id="tr_{{ $code }}_name" class="form-input text-sm" name="translations[{{ $code }}][name]" maxlength="255" value="{{ old('translations.'.$code.'.name', $product->translations[$code]['name'] ?? '') }}">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="tr_{{ $code }}_short_description">{{ __('Short Description') }}</label>
+                                <textarea id="tr_{{ $code }}_short_description" class="form-input text-sm min-h-20" name="translations[{{ $code }}][short_description]" maxlength="1000">{{ old('translations.'.$code.'.short_description', $product->translations[$code]['short_description'] ?? '') }}</textarea>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-bold uppercase tracking-wider text-neutral-700" for="tr_{{ $code }}_description">{{ __('Full Description') }}</label>
+                                <textarea id="tr_{{ $code }}_description" class="form-input text-sm min-h-40" name="translations[{{ $code }}][description]">{{ old('translations.'.$code.'.description', $product->translations[$code]['description'] ?? '') }}</textarea>
+                            </div>
+                            @error('translations.'.$code.'.*')
+                                <p class="text-xs font-semibold text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    @endforeach
+                </section>
+
                 <div class="flex items-center justify-between gap-3 pt-2">
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.products.edit', ['product' => $product, 'step' => 7]) }}">{{ __('Back') }}</x-ui.button>
                     <button type="submit" class="btn btn-primary px-6 py-2.5 font-bold shadow-sm">{{ __('Save & Next: Specifications →') }}</button>

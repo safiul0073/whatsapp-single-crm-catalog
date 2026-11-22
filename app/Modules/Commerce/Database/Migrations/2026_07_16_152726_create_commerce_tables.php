@@ -70,6 +70,7 @@ return new class extends Migration
             $table->string('brand')->nullable();
             $table->text('short_description')->nullable();
             $table->longText('description')->nullable();
+            $table->json('translations')->nullable();
             $table->text('care_information')->nullable();
             $table->json('features')->nullable();
             $table->json('feature_highlights')->nullable();

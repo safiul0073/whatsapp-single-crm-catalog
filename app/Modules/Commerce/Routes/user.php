@@ -4,6 +4,7 @@ use App\Modules\Commerce\Http\Controllers\User\CartController;
 use App\Modules\Commerce\Http\Controllers\User\CommerceController;
 use App\Modules\Commerce\Http\Controllers\User\CustomInvoiceController;
 use App\Modules\Commerce\Http\Controllers\User\FeatureIconController;
+use App\Modules\Commerce\Http\Controllers\User\InventoryController;
 use App\Modules\Commerce\Http\Controllers\User\OrderManagementController;
 use App\Modules\Commerce\Http\Controllers\User\PosController;
 use App\Modules\Commerce\Http\Controllers\User\VisitorController;
@@ -51,6 +52,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::get('products/{product}/edit', [CommerceController::class, 'edit'])->middleware('permission:commerce.products.manage')->name('products.edit');
     Route::put('products/{product}', [CommerceController::class, 'update'])->middleware('permission:commerce.products.manage')->name('products.update');
     Route::put('products/{product}/details', [CommerceController::class, 'updateDetails'])->middleware('permission:commerce.products.manage')->name('products.details.update');
+    Route::post('products/{product}/translate', [CommerceController::class, 'translate'])->middleware('permission:commerce.products.manage')->name('products.translate');
     Route::put('products/{product}/gallery', [CommerceController::class, 'updateGallery'])->middleware('permission:commerce.products.manage')->name('products.gallery.update');
     Route::put('products/{product}/options', [CommerceController::class, 'updateOptions'])->middleware('permission:commerce.products.manage')->name('products.options.update');
     Route::get('products/{product}/variants/preview', [CommerceController::class, 'previewVariants'])->middleware('permission:commerce.products.manage')->name('products.variants.preview');
@@ -60,6 +62,9 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::post('products/media', [CommerceController::class, 'uploadMedia'])->middleware('permission:commerce.products.manage')->name('products.media.upload');
     Route::delete('products/bulk', [CommerceController::class, 'bulkDestroyProducts'])->middleware('permission:commerce.products.manage')->name('products.bulk-destroy');
     Route::delete('products/{product}', [CommerceController::class, 'destroy'])->middleware('permission:commerce.products.manage')->name('products.destroy');
+    Route::get('inventory', [InventoryController::class, 'index'])->middleware('permission:commerce.products.view')->name('inventory.index');
+    Route::patch('inventory/variants/{variant}', [InventoryController::class, 'adjust'])->middleware('permission:commerce.products.manage')->name('inventory.adjust');
+    Route::get('inventory/variants/{variant}/history', [InventoryController::class, 'history'])->middleware('permission:commerce.products.view')->name('inventory.history');
     Route::get('product-types', [CommerceController::class, 'productTypes'])->middleware('permission:commerce.products.view')->name('product-types.index');
     Route::post('product-types', [CommerceController::class, 'storeProductType'])->middleware('permission:commerce.products.manage')->name('product-types.store');
     Route::put('product-types/{productType}', [CommerceController::class, 'updateProductType'])->middleware('permission:commerce.products.manage')->name('product-types.update');
