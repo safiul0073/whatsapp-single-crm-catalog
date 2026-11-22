@@ -40,6 +40,26 @@ class ProductService
         });
     }
 
+    /**
+     * @param  array<string, mixed>|null  $translations
+     * @return array<string, array<string, string>>|null
+     */
+    private function cleanTranslations(?array $translations): ?array
+    {
+        $clean = [];
+        foreach (Product::TRANSLATION_LOCALES as $locale) {
+            $fields = array_filter(
+                array_intersect_key((array) ($translations[$locale] ?? []), array_flip(Product::TRANSLATABLE_FIELDS)),
+                fn (mixed $value): bool => is_string($value) && trim($value) !== '',
+            );
+            if ($fields !== []) {
+                $clean[$locale] = $fields;
+            }
+        }
+
+        return $clean === [] ? null : $clean;
+    }
+
     public function createDraft(int $workspaceId, array $data): Product
     {
         return DB::transaction(function () use ($workspaceId, $data): Product {
@@ -116,7 +136,9 @@ class ProductService
                         $this->syncVariants($product, $variants);
                     }
                 } else {
+                    $stockBefore = $product->variants()->pluck('stock_quantity', 'id')->all();
                     $product->variants()->update(['stock_quantity' => $stock]);
+                    app(InventoryService::class)->recordProductEdits($product->workspace_id, $stockBefore, auth()->id());
                     app(LowStockAlertService::class)->checkProducts([$product->id]);
                 }
             }
@@ -444,6 +466,7 @@ class ProductService
 
     protected function syncVariants(Product $product, array $variants): void
     {
+        $stockBefore = $product->variants()->pluck('stock_quantity', 'id')->all();
         $retained = [];
         foreach ($variants as $variantData) {
             if (blank($variantData['sku'] ?? null)) {
@@ -485,6 +508,7 @@ class ProductService
             CartItem::query()->where('variant_id', $variant->id)->delete();
             $variant->delete();
         }
+        app(InventoryService::class)->recordProductEdits($product->workspace_id, $stockBefore, auth()->id());
     }
 
     protected function productData(int $workspaceId, array $data, ?Product $product = null): array
@@ -510,6 +534,7 @@ class ProductService
             'brand' => $brandName,
             'short_description' => array_key_exists('short_description', $data) ? $data['short_description'] : $product?->short_description,
             'description' => array_key_exists('description', $data) ? $data['description'] : $product?->description,
+            'translations' => array_key_exists('translations', $data) ? $this->cleanTranslations($data['translations']) : $product?->translations,
             'care_information' => array_key_exists('care_information', $data) ? $data['care_information'] : $product?->care_information,
             'features' => array_key_exists('features', $data) ? $data['features'] : $product?->features,
             'feature_highlights' => array_key_exists('feature_highlights', $data) ? $data['feature_highlights'] : $product?->feature_highlights,

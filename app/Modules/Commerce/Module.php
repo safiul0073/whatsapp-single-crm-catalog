@@ -57,6 +57,7 @@ class Module extends BasePanelModule
     {
         $navigation->group('Sales')->item('Commerce', 'user.commerce.*', 'shopping-bag', 'commerce.orders.view|commerce.products.view|commerce.customers.view|commerce.pos.use|commerce.storefront.settings', 38, [
             ['label' => 'Products', 'route' => 'user.commerce.products.index'],
+            ['label' => 'Inventory', 'route' => 'user.commerce.inventory.index'],
             ['label' => 'POS', 'route' => 'user.commerce.pos.index'],
             ['label' => 'Orders', 'route' => 'user.commerce.orders.index'],
             ['label' => 'Invoices', 'route' => 'user.commerce.custom-invoices.index'],

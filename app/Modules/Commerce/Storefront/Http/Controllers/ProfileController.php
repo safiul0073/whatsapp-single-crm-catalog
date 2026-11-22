@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Storefront\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Commerce\Models\MobileCustomerDevice;
 use App\Modules\Commerce\Storefront\Http\Requests\ProfileRequest;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
 use App\Modules\Commerce\Storefront\Services\CustomerService;
@@ -23,6 +24,29 @@ class ProfileController extends Controller
         $c = $r->attributes->get('store_customer');
 
         return response()->json(['data' => $s->profile($s->updateProfile($c, $r->validated()))]);
+    }
+
+    /**
+     * Deletes the customer's account (App Store requirement): sign-in, saved
+     * addresses, carts and devices are removed. Orders and invoices stay with
+     * the store's contact record as business records.
+     */
+    public function destroy(Request $r): JsonResponse
+    {
+        $customer = $r->attributes->get('store_customer');
+        DB::transaction(function () use ($customer): void {
+            MobileCustomerDevice::query()->where('customer_reference', 'storefront:'.$customer->id)->delete();
+            $customer->tokens()->delete();
+            $customer->addresses()->delete();
+            $customer->forceFill([
+                'password' => null,
+                'verified_phone' => null,
+                'verified_at' => null,
+                'registered_at' => null,
+            ])->save();
+        });
+
+        return response()->json(['data' => ['success' => true]]);
     }
 
     public function addresses(Request $r): JsonResponse

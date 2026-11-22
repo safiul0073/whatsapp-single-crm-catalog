@@ -22,6 +22,7 @@ use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticateCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\AuthenticatePlatform;
 use App\Modules\Commerce\Storefront\Http\Middleware\OptionalCustomer;
 use App\Modules\Commerce\Storefront\Http\Middleware\ResolveStore;
+use App\Modules\Commerce\Storefront\Http\Middleware\SetStorefrontLocale;
 use Illuminate\Support\Facades\Route;
 
 $storefrontRoutes = function (): void {
@@ -88,6 +89,7 @@ $storefrontRoutes = function (): void {
         Route::put('auth/password', [AuthController::class, 'password']);
         Route::get('me', [ProfileController::class, 'show']);
         Route::put('me', [ProfileController::class, 'update']);
+        Route::delete('me', [ProfileController::class, 'destroy']);
         Route::get('me/addresses', [ProfileController::class, 'addresses']);
         Route::post('me/addresses', [ProfileController::class, 'saveAddress']);
         Route::put('me/addresses/{id}', [ProfileController::class, 'saveAddress']);
@@ -133,10 +135,10 @@ $storefrontRoutes = function (): void {
 Route::middleware([AuthenticatePlatform::class, 'throttle:storefront'])->group(function () use ($storefrontRoutes): void {
     Route::get('internal/stores/resolve', [DomainController::class, 'resolve']);
     Route::get('internal/domains/allowed', [DomainController::class, 'allowed']);
-    Route::prefix('api/storefront/v1')->name('storefront.')->middleware(ResolveStore::class)->group($storefrontRoutes);
+    Route::prefix('api/storefront/v1')->name('storefront.')->middleware([ResolveStore::class, SetStorefrontLocale::class])->group($storefrontRoutes);
 });
 
 Route::prefix('api/v1/mobile/storefront')
     ->name('mobile.storefront.')
-    ->middleware(['throttle:storefront', ResolveStore::class])
+    ->middleware(['throttle:storefront', ResolveStore::class, SetStorefrontLocale::class])
     ->group($storefrontRoutes);

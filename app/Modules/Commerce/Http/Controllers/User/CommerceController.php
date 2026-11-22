@@ -26,6 +26,7 @@ use App\Modules\Commerce\Http\Requests\SendProductMessageRequest;
 use App\Modules\Commerce\Http\Requests\SendProductVideoRequest;
 use App\Modules\Commerce\Http\Requests\SyncProductCatalogRequest;
 use App\Modules\Commerce\Http\Requests\TransitionOrderRequest;
+use App\Modules\Commerce\Http\Requests\TranslateProductRequest;
 use App\Modules\Commerce\Http\Requests\UpdateShipmentRequest;
 use App\Modules\Commerce\Http\Requests\UploadCommerceMediaRequest;
 use App\Modules\Commerce\Http\Requests\VariantPresetRequest;
@@ -49,6 +50,7 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\PosService;
 use App\Modules\Commerce\Services\ProductReadinessService;
 use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Services\ProductTranslationService;
 use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Customer;
@@ -77,6 +79,7 @@ class CommerceController extends Controller
     public function index(Request $request): View
     {
         $workspace = $this->workspaces->current($request->user());
+        $threshold = max(0, (int) StoreOrderSetting::forWorkspace($workspace->id)->low_stock_threshold);
 
         return view('commerce::user.index', [
             'metaCatalogs' => Catalog::query()->with('channelAccount')->where('workspace_id', $workspace->id)->where('is_active', true)->where('sync_mode', 'api')->get(),
@@ -85,6 +88,10 @@ class CommerceController extends Controller
                 ->withCount('variants')
                 ->withMin('variants as starting_price', 'price')
                 ->withSum('variants as stock_total', 'stock_quantity')
+                ->withCount([
+                    'variants as out_of_stock_count' => fn ($query) => $query->where('status', '!=', 'archived')->where('stock_quantity', '<=', 0),
+                    'variants as low_stock_count' => fn ($query) => $query->where('status', '!=', 'archived')->where('stock_quantity', '>', 0)->where('stock_quantity', '<=', $threshold),
+                ])
                 ->where('workspace_id', $workspace->id)
                 ->latest()
                 ->paginate(20),
@@ -137,6 +144,13 @@ class CommerceController extends Controller
         });
 
         return redirect()->route('user.commerce.products.edit', ['product' => $product, 'step' => $nextStep])->with('success', __('Changes saved.'));
+    }
+
+    public function translate(TranslateProductRequest $request, Product $product, ProductTranslationService $translations): JsonResponse
+    {
+        $this->assertWorkspace($request, $product->workspace_id);
+
+        return response()->json(['fields' => $translations->draft($product, $request->validated('locale'), $request->safe()->except('locale'))]);
     }
 
     public function updateOptions(ProductOptionsRequest $request, Product $product): RedirectResponse

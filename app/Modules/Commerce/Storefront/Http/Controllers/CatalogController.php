@@ -65,7 +65,7 @@ class CatalogController extends Controller
                     'first_name' => self::firstName($customerName),
                     'country' => self::countryCode($order->shipping_address['country'] ?? $order->contact?->country),
                     'total_items' => (int) $order->items->sum('quantity'),
-                    'product_name' => $product->name,
+                    'product_name' => $product->translated('name'),
                     'product_slug' => $product->slug,
                     'image_thumb' => $product->primaryMedia?->variantUrl('thumb') ?? $product->primaryMedia?->url,
                     'quantity' => (int) $order->items->where('variant.product_id', $product->id)->sum('quantity'),

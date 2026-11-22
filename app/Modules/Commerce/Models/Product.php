@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Schema;
 
 class Product extends Model
 {
+    public const STOREFRONT_LOCALES = ['en', 'bn', 'es', 'pt', 'ar'];
+
+    public const TRANSLATION_LOCALES = ['es', 'pt', 'ar'];
+
+    public const TRANSLATABLE_FIELDS = ['name', 'short_description', 'description'];
+
     protected $table = 'commerce_products';
 
     protected $fillable = [
@@ -28,6 +34,7 @@ class Product extends Model
         'brand',
         'short_description',
         'description',
+        'translations',
         'care_information',
         'features',
         'feature_highlights',
@@ -74,6 +81,7 @@ class Product extends Model
             'wizard_step' => 'integer',
             'published_at' => 'datetime',
             'features' => 'array',
+            'translations' => 'array',
             'feature_highlights' => 'array',
             'shipping_countries' => 'array',
             'specifications' => 'array',
@@ -353,5 +361,13 @@ class Product extends Model
             'total_savings' => $totalSavings,
             'is_wholesale' => $quantity >= 10,
         ];
+    }
+
+    public function translated(string $field, ?string $locale = null): ?string
+    {
+        $locale ??= app()->getLocale();
+        $value = $this->translations[$locale][$field] ?? null;
+
+        return is_string($value) && trim($value) !== '' ? $value : $this->getAttribute($field);
     }
 }

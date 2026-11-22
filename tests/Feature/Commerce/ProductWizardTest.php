@@ -268,3 +268,26 @@ it('rejects size chart rows for sizes the product does not have', function (): v
         'size_chart' => ['unit' => 'mm', 'columns' => array_fill(0, 9, 'X')],
     ])->assertUnprocessable()->assertJsonValidationErrors(['size_chart.unit', 'size_chart.columns']);
 });
+
+it('saves product translations from the description step and drops empty or unknown entries', function (): void {
+    $this->post(route('user.commerce.products.store'), [
+        'name' => 'Wizard Tee', 'single_piece_price' => 20, 'selling_mode' => 'retail', 'country_of_origin' => 'BD',
+    ])->assertSessionHasNoErrors();
+    $product = Product::query()->sole();
+
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Wizard Tee', 'next_step' => 9,
+        'translations' => [
+            'es' => ['name' => 'Camiseta', 'description' => '<p>Suave</p>', 'short_description' => ''],
+            'ar' => ['name' => '  '],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($product->fresh()->translations)->toBe(['es' => ['name' => 'Camiseta', 'description' => '<p>Suave</p>']]);
+
+    $this->put(route('user.commerce.products.details.update', $product), [
+        'name' => 'Wizard Tee', 'next_step' => 9, 'translations' => ['fr' => ['name' => 'Tee']],
+    ])->assertSessionHasErrors('translations');
+
+    $this->postJson(route('user.commerce.products.translate', $product), ['locale' => 'fr'])->assertUnprocessable();
+});
