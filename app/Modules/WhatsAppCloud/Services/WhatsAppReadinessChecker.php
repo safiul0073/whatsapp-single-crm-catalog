@@ -69,7 +69,7 @@ class WhatsAppReadinessChecker implements ReadinessChecker
             $this->displayName($p),
             $this->health($p),
             $this->accountReview($w),
-            $this->payment($funding),
+            $this->payment($funding, $p),
             $this->webhooks($subscriptions),
             $this->templates($account),
             $this->verification($w),
@@ -244,22 +244,31 @@ class WhatsAppReadinessChecker implements ReadinessChecker
         );
     }
 
-    protected function payment(?Response $funding): array
+    /**
+     * @param  array<string, mixed>  $p
+     */
+    protected function payment(?Response $funding, array $p = []): array
     {
         if (! $funding?->successful()) {
-            return ReadinessItem::make(
-                'payment',
-                __('Payment method added'),
-                'unknown',
-                __('Template and marketing messages are charged by Meta, so the WhatsApp account needs a payment method.'),
-                [__('Open Payment settings in Meta Business and check that a card is attached to this WhatsApp account.')],
-                self::PAYMENT_SETTINGS,
-                ['templates', 'campaigns'],
-                __('Meta did not share the payment status with this app.'),
-            );
-        }
+            $healthPayment = $this->paymentFromHealth($p);
 
-        $hasFunding = filled($funding->json('primary_funding_id'));
+            if ($healthPayment === null) {
+                return ReadinessItem::make(
+                    'payment',
+                    __('Payment method added'),
+                    'unknown',
+                    __('Template and marketing messages are charged by Meta, so the WhatsApp account needs a payment method.'),
+                    [__('Open Payment settings in Meta Business and check that a card is attached to this WhatsApp account.')],
+                    self::PAYMENT_SETTINGS,
+                    ['templates', 'campaigns'],
+                    __('Meta did not share the payment status with this app.'),
+                );
+            }
+
+            $hasFunding = $healthPayment;
+        } else {
+            $hasFunding = filled($funding->json('primary_funding_id'));
+        }
 
         return ReadinessItem::make(
             'payment',
@@ -276,6 +285,44 @@ class WhatsAppReadinessChecker implements ReadinessChecker
             null,
             __('Add payment method'),
         );
+    }
+
+    /**
+     * When Meta hides primary_funding_id from a standard WhatsApp token, infer payment status
+     * from the phone's health_status (which blocks WABA with error 141006 when payment is missing,
+     * and marks sending AVAILABLE when billing is in good standing).
+     *
+     * @param  array<string, mixed>  $p
+     */
+    protected function paymentFromHealth(array $p): ?bool
+    {
+        $health = $p['health_status'] ?? null;
+
+        if (! is_array($health)) {
+            return null;
+        }
+
+        $errors = collect($health['entities'] ?? [])
+            ->flatMap(fn (array $entity): array => is_array($entity['errors'] ?? null) ? $entity['errors'] : []);
+
+        $hasPaymentError = $errors->contains(function (mixed $error): bool {
+            if (! is_array($error)) {
+                return false;
+            }
+
+            $code = (int) ($error['error_code'] ?? 0);
+            $text = strtolower(($error['error_description'] ?? '').' '.($error['possible_solution'] ?? ''));
+
+            return in_array($code, [141006, 131042], true)
+                || str_contains($text, 'payment')
+                || str_contains($text, 'billing');
+        });
+
+        if ($hasPaymentError) {
+            return false;
+        }
+
+        return ($this->health($p)['state'] ?? null) === 'done' ? true : null;
     }
 
     protected function webhooks(?Response $subscriptions): array
