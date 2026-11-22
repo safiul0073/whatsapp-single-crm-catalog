@@ -300,3 +300,62 @@ it('turns a WhatsApp send failure into a plain-language error with a next step',
         ->and($result['error_detail']['trace_id'])->toBe('TR1')
         ->and($result['response']['error']['message'])->toBe('Re-engagement message');
 });
+
+it('marks payment as done when Meta hides primary_funding_id but health_status allows sending', function (): void {
+    Http::fake([
+        '*/phone-1*' => Http::response([
+            'id' => 'phone-1',
+            'display_phone_number' => '+880 1711-657272',
+            'verified_name' => 'FactoryFits',
+            'name_status' => 'APPROVED',
+            'status' => 'CONNECTED',
+            'quality_rating' => 'GREEN',
+            'messaging_limit_tier' => 'TIER_1K',
+            'health_status' => ['can_send_message' => 'AVAILABLE', 'entities' => []],
+        ]),
+        '*/waba-1/subscribed_apps*' => Http::response(['data' => [['whatsapp_business_api_data' => ['id' => 'app']]]]),
+        '*/waba-1?fields=primary_funding_id*' => Http::response(['error' => ['message' => 'Permissions error', 'code' => 100]], 400),
+        '*/waba-1*' => Http::response(['id' => 'waba-1', 'account_review_status' => 'APPROVED', 'business_verification_status' => 'verified']),
+    ]);
+
+    $channel = readinessChannel('whatsapp');
+    MessageTemplate::query()->create(['workspace_id' => $channel->workspace_id, 'provider' => 'whatsapp', 'name' => 'hello', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved']);
+
+    $report = app(ChannelReadinessService::class)->check($channel);
+
+    expect(readinessItem($report, 'payment')['state'])->toBe('done')
+        ->and($report['status'])->toBe('ready');
+});
+
+it('flags payment as action needed when Meta hides primary_funding_id and health_status reports a billing error', function (): void {
+    Http::fake([
+        '*/phone-1*' => Http::response([
+            'id' => 'phone-1',
+            'display_phone_number' => '+880 1711-657272',
+            'verified_name' => 'FactoryFits',
+            'name_status' => 'APPROVED',
+            'status' => 'CONNECTED',
+            'quality_rating' => 'GREEN',
+            'messaging_limit_tier' => 'TIER_1K',
+            'health_status' => [
+                'can_send_message' => 'BLOCKED',
+                'entities' => [[
+                    'entity_type' => 'WABA',
+                    'can_send_message' => 'BLOCKED',
+                    'errors' => [['error_code' => 141006, 'error_description' => 'There is no payment method.', 'possible_solution' => 'Add a payment method to the WhatsApp Business Account.']],
+                ]],
+            ],
+        ]),
+        '*/waba-1/subscribed_apps*' => Http::response(['data' => [['whatsapp_business_api_data' => ['id' => 'app']]]]),
+        '*/waba-1?fields=primary_funding_id*' => Http::response(['error' => ['message' => 'Permissions error', 'code' => 100]], 400),
+        '*/waba-1*' => Http::response(['id' => 'waba-1', 'account_review_status' => 'APPROVED', 'business_verification_status' => 'verified']),
+    ]);
+
+    $channel = readinessChannel('whatsapp');
+    MessageTemplate::query()->create(['workspace_id' => $channel->workspace_id, 'provider' => 'whatsapp', 'name' => 'hello', 'language' => 'en_US', 'category' => 'utility', 'status' => 'approved']);
+
+    $report = app(ChannelReadinessService::class)->check($channel);
+
+    expect(readinessItem($report, 'payment')['state'])->toBe('action')
+        ->and(readinessItem($report, 'payment')['link'])->toContain('payment_settings');
+});
