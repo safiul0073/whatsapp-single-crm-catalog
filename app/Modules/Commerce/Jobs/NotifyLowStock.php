@@ -65,7 +65,7 @@ class NotifyLowStock implements ShouldBeUnique, ShouldQueue
         if ($owner) {
             $notifications->send($owner, ['title' => $title, 'body' => $body, 'url' => $url], 'commerce');
             try {
-                $owner->notify(new MobileAlert($title, $body, ['type' => 'low_stock', 'product_id' => (string) $product->id]));
+                $owner->notify(new MobileAlert($title, $body, ['type' => 'low_stock', 'product_id' => (string) $product->id], $product->workspace_id));
             } catch (\Throwable $exception) {
                 report($exception);
             }

@@ -153,6 +153,7 @@ class ProcessChannelWebhookJob implements ShouldQueue
                 $title,
                 mb_strimwidth($body !== '' ? $body : 'New attachment', 0, 120),
                 ['type' => 'inbox', 'workspace_id' => $account->workspace_id, 'conversation_id' => $conversationId],
+                (int) $account->workspace_id,
             ));
         }
     }

@@ -221,6 +221,8 @@ Route::prefix('commerce/storefront')->name('commerce.storefront.')->group(functi
     Route::put('domains/{id}/handle', [$c, 'renameDomain'])->middleware('permission:commerce.storefront.domains')->name('domains.rename');
     Route::post('credentials/generate', [$c, 'generateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.generate');
     Route::put('credentials', [$c, 'updateCredentials'])->middleware('permission:commerce.storefront.credentials')->name('credentials.update');
+    Route::put('push', [$c, 'updatePush'])->middleware('permission:commerce.storefront.credentials')->name('push.update');
+    Route::post('push/test', [$c, 'testPush'])->middleware('permission:commerce.storefront.credentials')->name('push.test');
     Route::put('live-settings', [$c, 'liveSettings'])->middleware('permission:commerce.storefront.settings')->name('live.settings');
     Route::post('live-settings/verify-facebook', [$c, 'verifyFacebookLive'])->middleware('permission:commerce.storefront.settings')->name('live.verify-facebook');
     Route::post('live-settings/facebook/connect', [$c, 'connectFacebookLive'])->middleware(['permission:commerce.storefront.settings', 'can:meta-social.manage'])->name('live.facebook.connect');

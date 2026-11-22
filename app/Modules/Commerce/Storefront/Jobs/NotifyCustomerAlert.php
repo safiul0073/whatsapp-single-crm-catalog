@@ -33,7 +33,7 @@ class NotifyCustomerAlert implements ShouldQueue
             return;
         }
         MobileCustomerDevice::query()->where('workspace_id', $this->workspaceId)->where('customer_reference', 'storefront:'.$customer->id)
-            ->each(fn (MobileCustomerDevice $device) => rescue(fn () => $device->notify(new MobileAlert($this->title, $this->body, $this->data)), report: true));
+            ->each(fn (MobileCustomerDevice $device) => rescue(fn () => $device->notify(new MobileAlert($this->title, $this->body, $this->data, $this->workspaceId)), report: true));
         $email = $customer->contact?->email;
         if ($email) {
             Mail::raw($this->body, function ($message) use ($email): void {

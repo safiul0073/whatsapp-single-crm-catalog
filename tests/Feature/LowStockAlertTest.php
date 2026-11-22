@@ -5,6 +5,7 @@ use App\Modules\Commerce\Jobs\NotifyLowStock;
 use App\Modules\Commerce\Models\Product;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Storefront\Services\StorePushService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Kreait\Firebase\Contract\Messaging;
 use Tests\Support\StorefrontDatabase;
 
 beforeEach(function (): void {
@@ -26,6 +28,9 @@ beforeEach(function (): void {
     (require app_path('Modules/SystemNotifications/Database/Migrations/2026_03_29_000001_create_system_notifications_table.php'))->up();
     Queue::fake();
     Notification::fake();
+    $push = Mockery::mock(StorePushService::class)->makePartial();
+    $push->shouldReceive('messaging')->andReturn(Mockery::mock(Messaging::class));
+    $this->app->instance(StorePushService::class, $push);
 
     Schema::table('users', fn (Blueprint $table) => $table->softDeletes());
     $this->owner = User::query()->findOrFail(DB::table('users')->insertGetId(['name' => 'Owner']));

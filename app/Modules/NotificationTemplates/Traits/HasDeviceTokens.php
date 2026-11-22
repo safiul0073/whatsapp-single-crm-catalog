@@ -20,19 +20,24 @@ trait HasDeviceTokens
      *
      * @return array<string>
      */
-    public function routeNotificationForFcm(): array
+    public function routeNotificationForFcm(mixed $notification = null): array
     {
-        return $this->deviceTokens()->pluck('token')->toArray();
+        $workspaceId = $notification->workspaceId ?? null;
+
+        return $this->deviceTokens()
+            ->when($workspaceId, fn ($query) => $query->where(fn ($scoped) => $scoped->where('workspace_id', $workspaceId)->orWhereNull('workspace_id')))
+            ->pluck('token')
+            ->toArray();
     }
 
     /**
      * Register a new device token.
      */
-    public function addDeviceToken(string $token, string $platform = 'web'): DeviceToken
+    public function addDeviceToken(string $token, string $platform = 'web', ?int $workspaceId = null): DeviceToken
     {
-        return $this->deviceTokens()->firstOrCreate(
+        return $this->deviceTokens()->updateOrCreate(
             ['token' => $token],
-            ['platform' => $platform]
+            ['platform' => $platform, 'workspace_id' => $workspaceId]
         );
     }
 

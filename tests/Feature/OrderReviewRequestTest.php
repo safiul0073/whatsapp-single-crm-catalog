@@ -13,6 +13,7 @@ use App\Modules\Commerce\Services\OrderReviewRequestService;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Models\StoreDomain;
+use App\Modules\Commerce\Storefront\Services\StorePushService;
 use App\Modules\Contacts\Enums\ContactOptInStatus;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Kreait\Firebase\Contract\Messaging;
 use Tests\Support\StorefrontDatabase;
 
 beforeEach(function (): void {
@@ -35,6 +37,9 @@ beforeEach(function (): void {
     Queue::fake();
     Mail::fake();
     Notification::fake();
+    $push = Mockery::mock(StorePushService::class)->makePartial();
+    $push->shouldReceive('messaging')->andReturn(Mockery::mock(Messaging::class));
+    $this->app->instance(StorePushService::class, $push);
 
     $this->store = Workspace::query()->create(['name' => 'Fashion Fiest', 'slug' => 'one', 'status' => 'active']);
     StoreDomain::query()->create(['workspace_id' => $this->store->id, 'host' => 'one.localhost', 'is_primary' => true, 'status' => 'active', 'verification_token' => 'test', 'type' => 'system']);

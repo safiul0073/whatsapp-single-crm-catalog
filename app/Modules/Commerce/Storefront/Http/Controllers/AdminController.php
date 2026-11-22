@@ -12,6 +12,7 @@ use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Http\Requests\AdminRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ChatChannelsRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\LiveAdminRequest;
+use App\Modules\Commerce\Storefront\Http\Requests\PushSettingsRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\ReplyInquiryRequest;
 use App\Modules\Commerce\Storefront\Http\Requests\TrackingSettingsRequest;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
@@ -32,10 +33,12 @@ use App\Modules\Commerce\Storefront\Services\DomainResolver;
 use App\Modules\Commerce\Storefront\Services\FacebookLiveService;
 use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
 use App\Modules\Commerce\Storefront\Services\LiveStreamService;
+use App\Modules\Commerce\Storefront\Services\StorePushService;
 use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MetaSocial\Http\Requests\ConnectMetaBusinessRequest;
 use App\Modules\MetaSocial\Services\MetaBusinessConnectService;
+use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\Workspaces\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -79,6 +82,7 @@ class AdminController extends Controller
             'tracking' => app(TrackingSettingsService::class)->admin($w),
             'chatWidgets' => ChatbotWidget::query()->where('workspace_id', $w)->where('is_active', true)->orderBy('name')->get(['name', 'public_token']),
             'credentials' => $credentials,
+            'push' => app(StorePushService::class)->settings($w),
             'pages' => StorefrontPage::query()->where('workspace_id', $w)->get(),
             'domains' => StoreDomain::query()->where('workspace_id', $w)->get(),
             'sliders' => StorefrontSlider::query()->where('workspace_id', $w)->get(),
@@ -341,6 +345,37 @@ class AdminController extends Controller
         $this->cms->saveDeploymentEndpoints($w, $r->validated());
 
         return $this->redirectTab($r, 'deployment', 'Storefront deployment endpoints saved.');
+    }
+
+    public function updatePush(PushSettingsRequest $r, StorePushService $push): RedirectResponse
+    {
+        $push->save($this->workspace($r), $r->pushData());
+
+        return $this->redirectTab($r, 'push', 'Push notification settings saved.');
+    }
+
+    /**
+     * Sends a test alert to the signed-in owner's phones registered for this store.
+     */
+    public function testPush(Request $r, StorePushService $push): RedirectResponse
+    {
+        $w = $this->workspace($r);
+        if ($push->messaging($w) === null) {
+            return $this->redirectTab($r, 'push', 'Turn push on and save a complete Firebase setup first.', 'error');
+        }
+        $user = $r->user();
+        if (! $user->deviceTokens()->where(fn ($q) => $q->where('workspace_id', $w)->orWhereNull('workspace_id'))->exists()) {
+            return $this->redirectTab($r, 'push', 'No phone registered yet: open the store app, sign in as owner and allow notifications in Settings.', 'error');
+        }
+        try {
+            $user->notifyNow(new MobileAlert('Test notification', 'Push notifications are working for this store.', ['type' => 'test'], $w));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->redirectTab($r, 'push', 'Firebase rejected the test: '.Str::limit($exception->getMessage(), 180), 'error');
+        }
+
+        return $this->redirectTab($r, 'push', 'Test notification sent to your registered phones.');
     }
 
     public function editor(Request $r, int $id): View

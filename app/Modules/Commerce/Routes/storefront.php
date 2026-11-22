@@ -13,6 +13,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\LiveController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
+use App\Modules\Commerce\Storefront\Http\Controllers\PushController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ReferralController;
 use App\Modules\Commerce\Storefront\Http\Controllers\RefundRequestController;
 use App\Modules\Commerce\Storefront\Http\Controllers\TrackingController;
@@ -38,6 +39,7 @@ $storefrontRoutes = function (): void {
     Route::get('catalog/recent-orders', [CatalogController::class, 'recentOrders']);
     Route::get('catalog/sitemap', [CatalogController::class, 'sitemap']);
     Route::get('cms/settings', [CmsController::class, 'settings']);
+    Route::get('cms/push-config', [PushController::class, 'config']);
     Route::get('cms/menus/{slot}', [CmsController::class, 'menu']);
     Route::get('cms/pages/{slug}', [CmsController::class, 'page']);
     Route::get('cms/sitemap', [CmsController::class, 'sitemap']);
@@ -106,6 +108,8 @@ $storefrontRoutes = function (): void {
         Route::get('me/invoices/{number}/pdf', [CustomInvoiceController::class, 'pdf']);
         Route::get('me/invoice-requests', [CustomInvoiceController::class, 'requests']);
         Route::post('me/invoice-requests', [CustomInvoiceController::class, 'storeRequest']);
+        Route::post('me/devices', [PushController::class, 'register']);
+        Route::delete('me/devices', [PushController::class, 'unregister']);
         Route::get('me/wishlist', [EngagementController::class, 'wishlist']);
         Route::post('me/wishlist/{id}', [EngagementController::class, 'saveWishlist']);
         Route::delete('me/wishlist/{id}', [EngagementController::class, 'deleteWishlist']);
