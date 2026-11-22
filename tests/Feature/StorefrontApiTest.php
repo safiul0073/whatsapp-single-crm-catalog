@@ -7,6 +7,7 @@ use App\Modules\Commerce\Jobs\SendMetaEvent;
 use App\Modules\Commerce\Jobs\SendMetaPurchaseEvent;
 use App\Modules\Commerce\Jobs\SendTikTokPurchaseEvent;
 use App\Modules\Commerce\Models\Category;
+use App\Modules\Commerce\Models\MobileCustomerDevice;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderReservation;
 use App\Modules\Commerce\Models\Product;
@@ -43,9 +44,11 @@ use App\Modules\Commerce\Storefront\Services\LegacyImportService;
 use App\Modules\Commerce\Storefront\Services\ReferralService;
 use App\Modules\Commerce\Storefront\Services\RefundRequestService;
 use App\Modules\Commerce\Storefront\Services\RewardWalletService;
+use App\Modules\Commerce\Storefront\Services\StorePushService;
 use App\Modules\Commerce\Storefront\Services\TrackingSettingsService;
 use App\Modules\Commerce\Storefront\Services\WithdrawalService;
 use App\Modules\Contacts\Models\Contact;
+use App\Modules\NotificationTemplates\Notifications\MobileAlert;
 use App\Modules\Shipping\Models\ShippingMethod;
 use App\Modules\Shipping\Models\ShippingRate;
 use App\Modules\Shipping\Models\ShippingZone;
@@ -64,6 +67,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Kreait\Firebase\Contract\Messaging;
+use NotificationChannels\Fcm\FcmChannel;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\StorefrontDatabase;
 
@@ -1309,4 +1314,80 @@ it('caches cms settings per workspace without querying Meta tables and invalidat
     $this->getJson('/api/storefront/v1/cms/settings', $this->headers)
         ->assertOk()
         ->assertJsonPath('data.name', 'After Save');
+});
+
+function pushServiceAccount(string $project = 'fashion-fiest-test'): string
+{
+    return json_encode(['type' => 'service_account', 'project_id' => $project, 'private_key' => "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n", 'client_email' => 'firebase-adminsdk@'.$project.'.iam.gserviceaccount.com'], JSON_THROW_ON_ERROR);
+}
+
+function pushSettings(array $overrides = []): array
+{
+    return ['enabled' => true, 'project_id' => 'fashion-fiest-test', 'api_key' => 'AIzaTestKey', 'messaging_sender_id' => '123456789012', 'android_app_id' => '1:123456789012:android:abc123', 'ios_app_id' => '', 'ios_bundle_id' => '', 'service_account' => pushServiceAccount(), ...$overrides];
+}
+
+it('exposes only public firebase identifiers to the store app and keeps the key encrypted', function (): void {
+    $this->getJson('/api/v1/mobile/storefront/cms/push-config', ['X-Store-Host' => 'one.localhost'])
+        ->assertOk()->assertExactJson(['data' => ['enabled' => false]]);
+
+    $service = app(StorePushService::class);
+    $settings = $service->save($this->store->id, pushSettings());
+
+    expect($settings['ready'])->toBeTrue()
+        ->and($settings['service_account_email'])->toBe('firebase-adminsdk@fashion-fiest-test.iam.gserviceaccount.com')
+        ->and($settings)->not->toHaveKey('service_account');
+    $stored = StorefrontSetting::query()->where('workspace_id', $this->store->id)->value('config');
+    expect(json_encode($stored))->not->toContain('PRIVATE KEY');
+
+    $this->getJson('/api/v1/mobile/storefront/cms/push-config', ['X-Store-Host' => 'one.localhost'])
+        ->assertOk()
+        ->assertJsonPath('data.enabled', true)
+        ->assertJsonPath('data.project_id', 'fashion-fiest-test')
+        ->assertJsonPath('data.android_app_id', '1:123456789012:android:abc123')
+        ->assertJsonMissingPath('data.service_account');
+
+    $service->save($this->store->id, pushSettings(['service_account' => '']));
+    expect($service->settings($this->store->id)['service_account_email'])->toBe('firebase-adminsdk@fashion-fiest-test.iam.gserviceaccount.com');
+});
+
+it('rejects a service account from another firebase project or an incomplete setup', function (): void {
+    $service = app(StorePushService::class);
+
+    expect(fn () => $service->save($this->store->id, pushSettings(['service_account' => pushServiceAccount('other-project')])))
+        ->toThrow(ValidationException::class);
+    expect(fn () => $service->save($this->store->id, pushSettings(['android_app_id' => '', 'ios_app_id' => ''])))
+        ->toThrow(ValidationException::class);
+    expect(fn () => $service->save($this->store->id, pushSettings(['service_account' => '{"type":"user"}'])))
+        ->toThrow(ValidationException::class);
+});
+
+it('registers and removes the signed-in customer device for push', function (): void {
+    $this->postJson('/api/v1/mobile/storefront/me/devices', ['token' => 'fcm-customer', 'platform' => 'android'], ['X-Store-Host' => 'one.localhost', 'Authorization' => $this->auth['Authorization']])
+        ->assertOk();
+    expect(MobileCustomerDevice::query()->where('token', 'fcm-customer')->value('customer_reference'))
+        ->toBe('storefront:'.$this->customer->id);
+
+    $this->deleteJson('/api/v1/mobile/storefront/me/devices', ['token' => 'fcm-customer'], ['X-Store-Host' => 'one.localhost', 'Authorization' => $this->auth['Authorization']])
+        ->assertOk();
+    expect(MobileCustomerDevice::query()->where('token', 'fcm-customer')->exists())->toBeFalse();
+
+    $this->postJson('/api/v1/mobile/storefront/me/devices', ['token' => 'fcm-guest', 'platform' => 'android'], ['X-Store-Host' => 'one.localhost'])
+        ->assertUnauthorized();
+});
+
+it('sends mobile alerts through the store firebase project and skips stores without push', function (): void {
+    $device = MobileCustomerDevice::query()->create(['workspace_id' => $this->store->id, 'customer_reference' => 'storefront:'.$this->customer->id, 'token' => 'fcm-1', 'platform' => 'android']);
+    $alert = new MobileAlert('Shipped', 'On its way', ['type' => 'order'], $this->store->id);
+
+    expect($alert->via($device))->toBe([]);
+
+    app(StorePushService::class)->save($this->store->id, pushSettings());
+    $messaging = Mockery::mock(Messaging::class);
+    $push = Mockery::mock(StorePushService::class)->makePartial();
+    $push->shouldReceive('messaging')->with($this->store->id)->andReturn($messaging);
+    $this->app->instance(StorePushService::class, $push);
+
+    expect($alert->via($device))->toBe([FcmChannel::class])
+        ->and($alert->toFcm($device)->client)->toBe($messaging)
+        ->and($alert->toFcm($device)->data['workspace_id'])->toBe((string) $this->store->id);
 });

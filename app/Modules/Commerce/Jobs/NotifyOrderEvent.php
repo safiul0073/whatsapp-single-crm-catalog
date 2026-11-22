@@ -66,12 +66,15 @@ class NotifyOrderEvent implements ShouldBeUnique, ShouldQueue
         if (filled($order->customer_reference) && Cache::add('mobile-order-alert:'.$event->id, true, now()->addDays(7))) {
             MobileCustomerDevice::query()->where('workspace_id', $order->workspace_id)
                 ->where('customer_reference', $order->customer_reference)->each(function (MobileCustomerDevice $device) use ($order, $event): void {
-                    $device->notify(new MobileAlert($order->number, $event->label, ['type' => 'order', 'reference' => $order->submission_reference]));
+                    $device->notify(new MobileAlert($order->number, $event->label, ['type' => 'order', 'reference' => $order->submission_reference], $order->workspace_id));
                 });
         }
         $owner = Workspace::query()->findOrFail($order->workspace_id)->owner;
         if (! $event->staff_notified_at && $owner) {
-            $notifications->send($owner, ['title' => $order->number.' — '.$event->label, 'body' => $order->currency.' '.($order->total ?? $order->subtotal), 'url' => route('user.commerce.orders.show', $order)], 'commerce');
+            $title = $order->number.' — '.$event->label;
+            $body = $order->currency.' '.($order->total ?? $order->subtotal);
+            $notifications->send($owner, ['title' => $title, 'body' => $body, 'url' => route('user.commerce.orders.show', $order)], 'commerce');
+            rescue(fn () => $owner->notify(new MobileAlert($title, $body, ['type' => 'owner_order', 'order_id' => (string) $order->id], $order->workspace_id)), report: true);
             $event->update(['staff_notified_at' => now()]);
         }
         $email = $order->customer_snapshot !== null ? ($order->customer_snapshot['email'] ?? null) : $order->contact?->email;

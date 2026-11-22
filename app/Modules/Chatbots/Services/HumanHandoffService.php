@@ -63,7 +63,7 @@ class HumanHandoffService
                         'type' => 'inbox',
                         'workspace_id' => $conversation->workspace_id,
                         'conversation_id' => $conversation->id,
-                    ]));
+                    ], (int) $conversation->workspace_id));
                 }
             } catch (Throwable $exception) {
                 Log::warning('Human handoff notification failed.', ['conversation_id' => $conversation->id, 'user_id' => $user->id, 'message' => $exception->getMessage()]);

@@ -634,6 +634,7 @@
             [
                 ['chat-channels', 'ph-chat-circle-dots', __('Chat & Contact'), null, false],
                 ['tracking', 'ph-chart-line-up', __('Ads & Tracking'), null, false],
+                ['push', 'ph-bell-ringing', __('Push Notifications'), null, ! ($push['ready'] ?? false)],
                 ['deployment', 'ph-key', __('API & Deploy'), null, false],
             ],
         ];
@@ -4003,6 +4004,99 @@ npm run start</pre>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div x-show="activeTab === 'push'" x-cloak class="space-y-6">
+        <div class="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+            <div class="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200/70 pb-4 dark:border-neutral-800">
+                <div class="space-y-1">
+                    <h2 class="flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                        <i class="ph ph-bell-ringing text-primary"></i>
+                        <span>{{ __('Mobile push notifications') }}</span>
+                    </h2>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ __('Your store app sends order, inbox and stock alerts through your own Firebase project. Copy the values from the Firebase console → Project settings.') }}
+                    </p>
+                </div>
+                <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold {{ ($push['ready'] ?? false) ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' }}">
+                    {{ ($push['ready'] ?? false) ? __('Active') : __('Not set up') }}
+                </span>
+            </div>
+
+            <form method="POST" action="{{ route('user.commerce.storefront.push.update') }}" enctype="multipart/form-data" class="mt-5 space-y-5">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="_tab" value="push">
+
+                <label class="flex items-center gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                    <input type="hidden" name="enabled" value="0">
+                    <input type="checkbox" name="enabled" value="1" class="form-checkbox rounded text-primary" @checked(old('enabled', $push['enabled'] ?? false))>
+                    <span>{{ __('Send push notifications to the store app') }}</span>
+                </label>
+                @error('enabled')
+                    <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                @enderror
+
+                @php
+                    $pushFields = [
+                        ['project_id', __('Project ID'), 'fashion-fiest-12ab3', __('Project settings → General → Project ID')],
+                        ['messaging_sender_id', __('Sender ID'), '123456789012', __('Project settings → Cloud Messaging → Sender ID')],
+                        ['api_key', __('Web API key'), 'AIza…', __('Project settings → General → Web API key')],
+                        ['android_app_id', __('Android app ID'), '1:123456789012:android:abc123', __('Project settings → Your apps → Android app → App ID')],
+                        ['ios_app_id', __('iOS app ID'), '1:123456789012:ios:abc123', __('Project settings → Your apps → iOS app → App ID')],
+                        ['ios_bundle_id', __('iOS bundle ID'), 'com.yourstore.app', __('Bundle ID of the iOS app')],
+                    ];
+                @endphp
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    @foreach($pushFields as [$field, $label, $placeholder, $hint])
+                        <div class="space-y-1.5">
+                            <label for="push_{{ $field }}" class="text-xs font-semibold text-neutral-900 dark:text-neutral-100">{{ $label }}</label>
+                            <input id="push_{{ $field }}" type="text" name="{{ $field }}" value="{{ old($field, $push[$field] ?? '') }}" placeholder="{{ $placeholder }}" autocomplete="off"
+                                class="form-input w-full rounded-lg border-neutral-200 bg-white text-xs font-mono dark:border-neutral-700 dark:bg-neutral-900">
+                            @error($field)
+                                <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                            @else
+                                <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ $hint }}</p>
+                            @enderror
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="space-y-2 rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/20">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100">{{ __('Service-account key (server)') }}</span>
+                        @if(! empty($push['service_account_email']))
+                            <span class="text-[11px] text-emerald-700 dark:text-emerald-300">{{ __('Saved') }} · {{ $push['service_account_email'] }}</span>
+                        @endif
+                    </div>
+                    <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
+                        {{ __('Project settings → Service accounts → Generate new private key. Stored encrypted and never shown again; leave empty to keep the saved key.') }}
+                    </p>
+                    <input type="file" name="service_account_file" accept="application/json,.json" class="block w-full text-xs text-neutral-600 dark:text-neutral-300">
+                    <textarea name="service_account" rows="3" placeholder="{{ __('…or paste the JSON here') }}" autocomplete="off"
+                        class="form-textarea w-full rounded-lg border-neutral-200 bg-white text-[11px] font-mono dark:border-neutral-700 dark:bg-neutral-900"></textarea>
+                    @error('service_account')
+                        <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                    @enderror
+                    @error('service_account_file')
+                        <p class="text-[11px] text-rose-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" class="btn btn-primary">{{ __('Save push settings') }}</button>
+                </div>
+            </form>
+
+            <form method="POST" action="{{ route('user.commerce.storefront.push.test') }}" class="mt-3">
+                @csrf
+                <input type="hidden" name="_tab" value="push">
+                <button type="submit" class="btn btn-outline" @disabled(! ($push['ready'] ?? false))>
+                    <i class="ph ph-paper-plane-tilt"></i>
+                    <span>{{ __('Send test notification to my phone') }}</span>
+                </button>
+            </form>
         </div>
     </div>
 

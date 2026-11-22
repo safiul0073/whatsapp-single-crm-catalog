@@ -123,7 +123,7 @@ class OrderReviewRequestService
         }
         if (Cache::add('mobile-review-request:'.$order->id, true, now()->addDays(7))) {
             foreach ($devices as $device) {
-                $device->notify(new MobileAlert('How was your order?', 'Rate '.$this->productSummary($names), ['type' => 'order', 'reference' => $order->submission_reference]));
+                $device->notify(new MobileAlert('How was your order?', 'Rate '.$this->productSummary($names), ['type' => 'order', 'reference' => $order->submission_reference], $order->workspace_id));
             }
         }
 

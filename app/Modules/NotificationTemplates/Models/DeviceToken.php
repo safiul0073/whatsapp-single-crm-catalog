@@ -13,6 +13,7 @@ class DeviceToken extends Model
     protected $fillable = [
         'tokenable_type',
         'tokenable_id',
+        'workspace_id',
         'token',
         'platform',
     ];
