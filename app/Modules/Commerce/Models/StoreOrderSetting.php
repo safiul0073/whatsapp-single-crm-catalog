@@ -64,7 +64,7 @@ class StoreOrderSetting extends Model
         $methods = $workspace->settings['commerce']['payment_methods'] ?? self::defaultPaymentMethods();
 
         return collect($methods)->filter(fn ($method) => ! $activeOnly || (! empty($method['active']) && filled($method['recipient_details'] ?? null)))
-            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['icon_url' => self::paymentIconUrl($workspaceId, $method), 'video_embed_url' => self::videoEmbedUrl($method['video_url'] ?? null), 'active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
+            ->sortBy('sort_order')->map(fn ($method) => array_replace($method, ['icon_url' => self::paymentIconUrl($workspaceId, $method), 'qr_url' => self::paymentQrUrl($workspaceId, $method), 'video_embed_url' => self::videoEmbedUrl($method['video_url'] ?? null), 'active' => ! empty($method['active']) ? '1' : '0', 'fields' => array_map(fn ($field) => array_replace($field, ['required' => ! empty($field['required']) ? '1' : '0']), $method['fields'] ?? [])]))->values()->all();
     }
 
     public static function defaultPaymentMethods(): array
@@ -122,6 +122,16 @@ class StoreOrderSetting extends Model
 
         if (preg_match('#^https://(?:player\.)?vimeo\.com/(?:video/)?(\d+)#i', $url, $matches)) {
             return 'https://player.vimeo.com/video/'.$matches[1];
+        }
+
+        return null;
+    }
+
+    private static function paymentQrUrl(int $workspaceId, array $method): ?string
+    {
+        $path = $method['qr_path'] ?? null;
+        if (is_string($path) && preg_match('#^payment-qr/'.$workspaceId.'/[a-zA-Z0-9]+\.(png|jpg|jpeg|webp)$#', $path)) {
+            return Storage::disk('public')->url($path);
         }
 
         return null;

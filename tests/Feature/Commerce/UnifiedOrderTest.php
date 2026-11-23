@@ -692,6 +692,58 @@ it('rejects unsafe or oversized icons and protects payment configuration from ot
     $this->withSession(['active_workspace_id' => $c['workspace']->id])->actingAs($outsider)->put($url, $data)->assertForbidden();
 });
 
+it('stores an optional workspace scoped payment qr code and exposes it to customers', function () {
+    Storage::fake('public');
+    $c = unifiedContext();
+    $url = route('user.commerce.payment-services.update');
+    $method = ['id' => 'bkash', 'name' => 'bKash', 'active' => '1', 'recipient_details' => 'Number: 017', 'instructions' => 'Scan and pay', 'sort_order' => 0];
+    $data = ['payment_methods' => [$method]];
+    $this->actingAs($c['user'])->put($url, $data)->assertSessionHasNoErrors();
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['qr_url'])->toBeNull();
+
+    $data['payment_qr_codes'] = ['bkash' => UploadedFile::fake()->image('qr.png')];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    $saved = StoreOrderSetting::paymentMethods($c['workspace']->id)[0];
+    expect($saved['qr_path'])->toStartWith('payment-qr/'.$c['workspace']->id.'/');
+    Storage::disk('public')->assertExists($saved['qr_path']);
+    $this->getJson('/api/commerce/store/settings')->assertJsonPath('payment_methods.0.qr_url', Storage::disk('public')->url($saved['qr_path']));
+
+    unset($data['payment_qr_codes']);
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['qr_path'])->toBe($saved['qr_path']);
+
+    $data['payment_qr_codes'] = ['bkash' => UploadedFile::fake()->image('qr2.jpg')];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    Storage::disk('public')->assertMissing($saved['qr_path']);
+    $replacement = StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['qr_path'];
+
+    unset($data['payment_qr_codes']);
+    $data['payment_methods'][0]['remove_qr'] = '1';
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    Storage::disk('public')->assertMissing($replacement);
+    expect(StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['qr_url'])->toBeNull();
+
+    unset($data['payment_methods'][0]['remove_qr']);
+    $data['payment_qr_codes'] = ['bkash' => UploadedFile::fake()->image('qr3.png')];
+    $this->put($url, $data)->assertSessionHasNoErrors();
+    $last = StoreOrderSetting::paymentMethods($c['workspace']->id)[0]['qr_path'];
+    $this->put($url, ['payment_methods' => [array_replace($method, ['id' => 'nagad', 'name' => 'Nagad'])]])->assertSessionHasNoErrors();
+    Storage::disk('public')->assertMissing($last);
+});
+
+it('rejects unsafe or oversized payment qr codes and forged qr paths', function () {
+    Storage::fake('public');
+    $c = unifiedContext();
+    $url = route('user.commerce.payment-services.update');
+    $data = ['payment_methods' => StoreOrderSetting::defaultPaymentMethods(), 'payment_qr_codes' => ['remitly' => UploadedFile::fake()->create('qr.svg', 1, 'image/svg+xml')]];
+    $this->actingAs($c['user'])->put($url, $data)->assertSessionHasErrors('payment_qr_codes.remitly');
+    $data['payment_qr_codes']['remitly'] = UploadedFile::fake()->image('qr.png')->size(2049);
+    $this->put($url, $data)->assertSessionHasErrors('payment_qr_codes.remitly');
+    unset($data['payment_qr_codes']);
+    $data['payment_methods'][0]['qr_path'] = 'payment-qr/another-workspace/qr.png';
+    $this->put($url, $data)->assertSessionHasErrors('payment_methods.0.qr_path');
+});
+
 it('manages payment services through dedicated payment services page', function () {
     $c = unifiedContext();
     $this->actingAs($c['user'])->get(route('user.commerce.payment-services.index'))

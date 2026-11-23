@@ -28,6 +28,11 @@ class StoreOrderSettingsRequest extends FormRequest
             'payment_methods.*.icon_path' => ['prohibited'],
             'payment_methods.*.icon_url' => ['prohibited'],
             'payment_methods.*.remove_icon' => ['sometimes', 'boolean'],
+            'payment_qr_codes' => ['sometimes', 'array', 'max:30'],
+            'payment_qr_codes.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'payment_methods.*.qr_path' => ['prohibited'],
+            'payment_methods.*.qr_url' => ['prohibited'],
+            'payment_methods.*.remove_qr' => ['sometimes', 'boolean'],
             'payment_methods.*.name' => ['required', 'string', 'max:100'],
             'payment_methods.*.recipient_details' => ['nullable', 'string', 'max:2000'],
             'payment_methods.*.instructions' => ['nullable', 'string', 'max:4000'],
@@ -76,6 +81,6 @@ class StoreOrderSettingsRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['payment_icons.*.image' => 'Upload a JPEG, PNG, or WebP service icon.', 'payment_icons.*.max' => 'Service icons must be no larger than 2 MB.', 'currency.in' => 'Choose a supported store currency.'];
+        return ['payment_qr_codes.*.image' => 'Upload a JPEG, PNG, or WebP QR code image.', 'payment_qr_codes.*.mimes' => 'Upload a JPEG, PNG, or WebP QR code image.', 'payment_qr_codes.*.max' => 'QR code images must be no larger than 2 MB.', 'payment_icons.*.image' => 'Upload a JPEG, PNG, or WebP service icon.', 'payment_icons.*.max' => 'Service icons must be no larger than 2 MB.', 'currency.in' => 'Choose a supported store currency.'];
     }
 }

@@ -1,9 +1,9 @@
 /**
  * Storefront Page & Section Builder Editor
  */
-window.storefrontPageEditor = function (initial, options = {}) {
-    'use strict';
+'use strict';
 
+window.storefrontPageEditor = function (initial, options = {}) {
     return {
         sections: (initial || []).map((s, i) => {
             const cfg = s.config || {};
