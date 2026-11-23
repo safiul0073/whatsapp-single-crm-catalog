@@ -872,7 +872,15 @@ class WorkspaceNavigationRegistry
                                 'active' => 'user.commerce.products.*',
                                 'icon' => 'ph-t-shirt',
                                 'permission' => 'commerce.products.view',
-                                'keywords' => 'products inventory catalog items',
+                                'keywords' => 'products catalog items',
+                            ],
+                            [
+                                'label' => __('Inventory'),
+                                'route' => 'user.commerce.inventory.index',
+                                'active' => 'user.commerce.inventory.*',
+                                'icon' => 'ph-stack',
+                                'permission' => 'commerce.products.view',
+                                'keywords' => 'inventory stock quantity low stock out of stock restock',
                             ],
                             [
                                 'label' => __('Categories'),

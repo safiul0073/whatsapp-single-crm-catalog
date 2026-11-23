@@ -46,8 +46,10 @@ Alpine.data('inventoryRow', (row) => ({
         'use strict';
         return row.labels[this.status];
     },
-    async save(mode, quantity, reason = 'correction', note = null) {
+    async save(mode, quantity, reason, note) {
         'use strict';
+        reason = reason ?? 'correction';
+        note = note ?? null;
         if (this.saving) {
             return false;
         }
@@ -95,7 +97,7 @@ Alpine.data('inventoryRow', (row) => ({
         if (delta < 0 && this.stock <= 0) {
             return;
         }
-        this.save('add', delta);
+        this.save('add', delta, 'other');
     },
     commitDraft() {
         'use strict';

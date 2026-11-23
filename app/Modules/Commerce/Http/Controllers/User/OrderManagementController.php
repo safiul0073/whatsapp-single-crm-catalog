@@ -230,7 +230,7 @@ class OrderManagementController extends Controller
             }
         }
         $methods = $data['payment_methods'] ?? null;
-        unset($data['payment_methods'], $data['payment_icons']);
+        unset($data['payment_methods'], $data['payment_icons'], $data['payment_qr_codes']);
         if (array_key_exists('owner_whatsapp_number', $data)) {
             try {
                 $data['owner_whatsapp_number'] = filled($data['owner_whatsapp_number'])
@@ -280,29 +280,40 @@ class OrderManagementController extends Controller
     private function persistPaymentMethods(Workspace $workspace, array $methods, Request $request): void
     {
         $oldMethods = collect(StoreOrderSetting::paymentMethods($workspace->id))->keyBy('id');
-        $obsoleteIcons = [];
+        $images = [
+            'icon_path' => ['input' => 'payment_icons', 'remove' => 'remove_icon', 'dir' => 'payment-icons', 'error' => 'The icon could not be saved. Please retry.'],
+            'qr_path' => ['input' => 'payment_qr_codes', 'remove' => 'remove_qr', 'dir' => 'payment-qr', 'error' => 'The QR code could not be saved. Please retry.'],
+        ];
+        $obsoleteFiles = [];
 
         foreach ($methods as &$method) {
-            $oldIcon = $oldMethods->get($method['id'])['icon_path'] ?? null;
-            if ($oldIcon && empty($method['remove_icon'])) {
-                $method['icon_path'] = $oldIcon;
-            }
-            if ($request->hasFile('payment_icons.'.$method['id'])) {
-                $method['icon_path'] = $request->file('payment_icons.'.$method['id'])->store('payment-icons/'.$workspace->id, 'public');
-                if (! $method['icon_path']) {
-                    throw ValidationException::withMessages(['payment_icons' => 'The icon could not be saved. Please retry.']);
+            foreach ($images as $key => $image) {
+                $oldPath = $oldMethods->get($method['id'])[$key] ?? null;
+                if ($oldPath && empty($method[$image['remove']])) {
+                    $method[$key] = $oldPath;
                 }
+                if ($request->hasFile($image['input'].'.'.$method['id'])) {
+                    $method[$key] = $request->file($image['input'].'.'.$method['id'])->store($image['dir'].'/'.$workspace->id, 'public');
+                    if (! $method[$key]) {
+                        throw ValidationException::withMessages([$image['input'] => $image['error']]);
+                    }
+                }
+                if ($oldPath && ($method[$key] ?? null) !== $oldPath) {
+                    $obsoleteFiles[] = $oldPath;
+                }
+                unset($method[$image['remove']]);
             }
-            if ($oldIcon && ($method['icon_path'] ?? null) !== $oldIcon) {
-                $obsoleteIcons[] = $oldIcon;
-            }
-            unset($method['remove_icon']);
         }
         unset($method);
 
         foreach ($oldMethods as $oldMethod) {
-            if (! in_array($oldMethod['id'], array_column($methods, 'id')) && ! empty($oldMethod['icon_path'])) {
-                $obsoleteIcons[] = $oldMethod['icon_path'];
+            if (in_array($oldMethod['id'], array_column($methods, 'id'))) {
+                continue;
+            }
+            foreach (array_keys($images) as $key) {
+                if (! empty($oldMethod[$key])) {
+                    $obsoleteFiles[] = $oldMethod[$key];
+                }
             }
         }
 
@@ -310,8 +321,8 @@ class OrderManagementController extends Controller
         $workspaceSettings['commerce']['payment_methods'] = $methods;
         $workspace->update(['settings' => $workspaceSettings]);
 
-        foreach ($obsoleteIcons as $path) {
-            if (str_starts_with($path, 'payment-icons/'.$workspace->id.'/')) {
+        foreach ($obsoleteFiles as $path) {
+            if (str_starts_with($path, 'payment-icons/'.$workspace->id.'/') || str_starts_with($path, 'payment-qr/'.$workspace->id.'/')) {
                 Storage::disk('public')->delete($path);
             }
         }

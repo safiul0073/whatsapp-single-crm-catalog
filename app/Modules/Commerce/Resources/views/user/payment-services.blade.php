@@ -112,6 +112,18 @@
                 this.methods[this.editingIndex].icon_url = URL.createObjectURL(file);
                 this.methods[this.editingIndex].remove_icon = false;
             },
+            stageQr(event) {
+                const file = event.target.files[0];
+                const target = this.$root.querySelectorAll('input[type=file][data-qr-index]')[this.editingIndex];
+                if (!file || !target) {
+                    return;
+                }
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+                target.files = transfer.files;
+                this.methods[this.editingIndex].qr_url = URL.createObjectURL(file);
+                this.methods[this.editingIndex].remove_qr = false;
+            },
             async removeMethod(index) {
                 const confirmed = await window.requestConfirm?.({
                     title: '{{ __('Remove Payment Service?') }}',
@@ -233,7 +245,14 @@
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="font-semibold text-neutral-900 text-sm truncate" x-text="method.name || 'Unnamed service'"></div>
-                                                <div class="text-[11px] text-neutral-500 font-mono" x-text="method.id"></div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-[11px] text-neutral-500 font-mono" x-text="method.id"></span>
+                                                    <template x-if="method.qr_url && !method.remove_qr">
+                                                        <span class="inline-flex items-center gap-0.5 rounded-sm bg-primary/10 px-1 text-[10px] font-medium text-primary" title="{{ __('QR code attached') }}">
+                                                            <i class="ph ph-qr-code"></i> QR
+                                                        </span>
+                                                    </template>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -350,6 +369,7 @@
             <template x-for="(method, index) in methods" :key="index">
                 <div>
                     <input type="file" class="hidden" tabindex="-1" :data-icon-index="index" :name="`payment_icons[${method.id}]`">
+                    <input type="file" class="hidden" tabindex="-1" :data-qr-index="index" :name="`payment_qr_codes[${method.id}]`">
                     <input type="hidden" :name="`payment_methods[${index}][id]`" :value="method.id">
                     <input type="hidden" :name="`payment_methods[${index}][name]`" :value="method.name">
                     <input type="hidden" :name="`payment_methods[${index}][recipient_details]`" :value="method.recipient_details">
@@ -360,6 +380,9 @@
                     <input type="hidden" :name="`payment_methods[${index}][sort_order]`" :value="method.sort_order">
                     <template x-if="method.remove_icon">
                         <input type="hidden" :name="`payment_methods[${index}][remove_icon]`" value="1">
+                    </template>
+                    <template x-if="method.remove_qr">
+                        <input type="hidden" :name="`payment_methods[${index}][remove_qr]`" value="1">
                     </template>
                     <template x-for="(field, fIndex) in (method.fields || [])" :key="fIndex">
                         <div>
@@ -467,6 +490,38 @@
                                                 accept="image/png,image/jpeg,image/webp"
                                                 class="form-input form-input-compact !rounded-[4px] text-xs flex-1 !py-1"
                                             >
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Payment QR Code (optional) -->
+                                <div class="rounded-md border border-dashed border-neutral-200 bg-neutral-50/60 p-3.5">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                        <div class="h-28 w-28 shrink-0 rounded-md border border-neutral-200 bg-white p-1.5 flex items-center justify-center overflow-hidden">
+                                            <template x-if="methods[editingIndex].qr_url && !methods[editingIndex].remove_qr">
+                                                <img :src="methods[editingIndex].qr_url" alt="{{ __('Payment QR code') }}" class="h-full w-full object-contain">
+                                            </template>
+                                            <template x-if="!methods[editingIndex].qr_url || methods[editingIndex].remove_qr">
+                                                <i class="ph ph-qr-code text-4xl text-neutral-300"></i>
+                                            </template>
+                                        </div>
+                                        <div class="flex-1 space-y-1.5">
+                                            <label class="form-label text-xs mb-0 font-medium text-neutral-800">{{ __('Payment QR Code (optional)') }}</label>
+                                            <p class="text-[11px] text-neutral-500">{{ __('Upload a QR code image customers can scan to pay. It is shown on checkout and on the order payment page. JPEG, PNG or WebP, up to 2 MB.') }}</p>
+                                            <div class="flex items-center gap-2">
+                                                <input
+                                                    type="file"
+                                                    @change="stageQr($event)"
+                                                    accept="image/png,image/jpeg,image/webp"
+                                                    class="form-input form-input-compact !rounded-[4px] text-xs flex-1 !py-1"
+                                                >
+                                                <template x-if="methods[editingIndex].qr_url">
+                                                    <label class="text-[11px] text-error cursor-pointer flex items-center gap-0.5">
+                                                        <input type="checkbox" x-model="methods[editingIndex].remove_qr" value="1">
+                                                        {{ __('Remove') }}
+                                                    </label>
+                                                </template>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

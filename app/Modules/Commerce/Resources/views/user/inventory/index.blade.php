@@ -69,19 +69,19 @@
                         </a>
                     @endforeach
                 </nav>
-                <form method="GET" action="{{ route('user.commerce.inventory.index') }}" class="flex flex-wrap items-center gap-2">
+                <form method="GET" action="{{ route('user.commerce.inventory.index') }}" class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     @if ($filters['status'] !== 'all')
                         <input type="hidden" name="status" value="{{ $filters['status'] }}">
                     @endif
                     <label class="sr-only" for="inventory-search">{{ __('Search products or SKU') }}</label>
-                    <input id="inventory-search" type="search" name="q" value="{{ $filters['q'] }}" class="form-input h-9 w-56" placeholder="{{ __('Search product or SKU') }}">
+                    <div class="w-full sm:w-56"><input id="inventory-search" type="search" name="q" value="{{ $filters['q'] }}" class="form-input h-9" placeholder="{{ __('Search product or SKU') }}"></div>
                     <label class="sr-only" for="inventory-category">{{ __('Category') }}</label>
-                    <select id="inventory-category" name="category_id" class="form-input h-9 w-44" @change="$el.form.submit()">
+                    <div class="w-full sm:w-52"><select id="inventory-category" name="category_id" class="form-input h-9" @change="$el.form.submit()">
                         <option value="">{{ __('All categories') }}</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}" @selected($filters['category_id'] === $category->id)>{{ $category->name }}</option>
                         @endforeach
-                    </select>
+                    </select></div>
                     <button type="submit" class="btn btn-sm btn-outline"><i class="ph ph-magnifying-glass"></i> {{ __('Search') }}</button>
                 </form>
             </div>
@@ -103,15 +103,14 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[1040px] text-left text-sm">
+                    <table class="w-full min-w-[900px] text-left text-sm">
                         <thead>
                             <tr class="border-b border-border-soft bg-section">
                                 <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Product') }}</th>
-                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('SKU') }}</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Reserved') }}</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Available') }}</th>
-                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Status') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('On hand') }}</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Status') }}</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Available') }}</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Reserved') }}</th>
                                 <th class="w-24 px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('History') }}</th>
                             </tr>
                         </thead>
@@ -155,25 +154,17 @@
                                                         <span class="inline-flex rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs text-body">{{ str($variant->status)->replace('_', ' ')->title() }}</span>
                                                     @endif
                                                 </span>
+                                                <span class="mt-0.5 block max-w-72 truncate font-mono text-xs text-body" title="{{ $variant->sku }}">{{ $variant->sku }}</span>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-body">{{ $variant->sku }}</td>
-                                    <td class="px-4 py-3 text-right text-body" x-text="reserved">{{ $held }}</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-title" x-text="available">{{ $variant->availableQuantity($held) }}</td>
-                                    <td class="px-4 py-3">
-                                        <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium"
-                                              :class="{ 'bg-error/10 text-error': status === 'out', 'bg-warning/10 text-warning': status === 'low', 'bg-success/10 text-success': status === 'in' }">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-current"></span><span x-text="badgeLabel()">{{ $statusLabels[$stockStatus] }}</span>
-                                        </span>
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($canManage)
                                             <div class="relative flex items-center gap-1.5">
-                                                <button type="button" class="grid h-8 w-8 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(-1)" :disabled="saving || stock <= 0" aria-label="{{ __('Remove one unit of :item', ['item' => $title]) }}"><i class="ph ph-minus"></i></button>
+                                                <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(-1)" :disabled="saving || stock <= 0" aria-label="{{ __('Remove one unit of :item', ['item' => $title]) }}"><i class="ph ph-minus"></i></button>
                                                 <label class="sr-only" for="stock-{{ $variant->id }}">{{ __('Stock for :item', ['item' => $title]) }}</label>
-                                                <input id="stock-{{ $variant->id }}" type="number" min="0" max="100000" inputmode="numeric" class="form-input h-8 w-20 text-center font-semibold" x-model="draft" :disabled="saving" @keydown.enter.prevent="$el.blur()" @blur="commitDraft()" @keydown.escape="draft = stock; $el.blur()">
-                                                <button type="button" class="grid h-8 w-8 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(1)" :disabled="saving" aria-label="{{ __('Add one unit of :item', ['item' => $title]) }}"><i class="ph ph-plus"></i></button>
+                                                <div class="w-20 shrink-0"><input id="stock-{{ $variant->id }}" type="number" min="0" max="100000" inputmode="numeric" class="form-input h-8 text-center font-semibold" x-model="draft" :disabled="saving" @keydown.enter.prevent="$el.blur()" @blur="commitDraft()" @keydown.escape="draft = stock; $el.blur()"></div>
+                                                <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(1)" :disabled="saving" aria-label="{{ __('Add one unit of :item', ['item' => $title]) }}"><i class="ph ph-plus"></i></button>
                                                 <button type="button" class="btn btn-sm btn-outline ml-1" @click="restockOpen = ! restockOpen" :aria-expanded="restockOpen"><i class="ph ph-arrows-down-up"></i> {{ __('Adjust') }}</button>
                                                 <i class="ph ph-spinner animate-spin text-primary" x-show="saving" x-cloak></i>
 
@@ -207,6 +198,14 @@
                                             <span class="font-semibold text-title">{{ number_format($stock) }}</span>
                                         @endif
                                     </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium"
+                                              :class="{ 'bg-error/10 text-error': status === 'out', 'bg-warning/10 text-warning': status === 'low', 'bg-success/10 text-success': status === 'in' }">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-current"></span><span x-text="badgeLabel()">{{ $statusLabels[$stockStatus] }}</span>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-semibold text-title" x-text="available">{{ $variant->availableQuantity($held) }}</td>
+                                    <td class="px-4 py-3 text-right text-body" x-text="reserved">{{ $held }}</td>
                                     <td class="px-5 py-3 text-right">
                                         <button type="button" class="btn-icon h-8 w-8" @click="openHistory(@js(route('user.commerce.inventory.history', $variant)), @js($title), @js($variant->sku))" aria-label="{{ __('Stock history for :item', ['item' => $title]) }}"><i class="ph ph-clock-counter-clockwise"></i></button>
                                     </td>
