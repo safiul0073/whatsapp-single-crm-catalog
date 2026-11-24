@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class Order extends Model
@@ -67,6 +68,14 @@ class Order extends Model
         $url = rtrim((string) config('app.url'), '/').'/invoices/'.$this->invoice_token;
 
         return $download ? $url.'?download=1' : $url;
+    }
+
+    /**
+     * Private link to the packing slip PDF, valid for 30 days, for sharing on WhatsApp.
+     */
+    public function packingSlipUrl(bool $download = false): string
+    {
+        return URL::temporarySignedRoute('commerce.packing-slips.show', now()->addDays(30), ['order' => $this->id] + ($download ? ['download' => 1] : []));
     }
 
     public function moneyPrecision(): int

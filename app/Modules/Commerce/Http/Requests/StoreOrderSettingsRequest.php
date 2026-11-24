@@ -16,6 +16,9 @@ class StoreOrderSettingsRequest extends FormRequest
         if ($this->exists('payment_methods') && blank($this->input('payment_methods'))) {
             $this->merge(['payment_methods' => []]);
         }
+        if ($this->exists('packing_slip_recipients') && blank($this->input('packing_slip_recipients'))) {
+            $this->merge(['packing_slip_recipients' => []]);
+        }
     }
 
     public function rules(): array
@@ -49,6 +52,9 @@ class StoreOrderSettingsRequest extends FormRequest
             'review_request_delay_hours' => ['sometimes', 'integer', 'min:0', 'max:720'],
             'low_stock_alerts_enabled' => ['sometimes', 'boolean'],
             'low_stock_threshold' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            'packing_slip_recipients' => ['sometimes', 'array', 'max:20'],
+            'packing_slip_recipients.*.name' => ['required', 'string', 'max:80'],
+            'packing_slip_recipients.*.phone' => ['required', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'],
             'whatsapp_channel_id' => ['nullable', 'integer'],
             'whatsapp_template_id' => ['nullable', 'integer'],
             'owner_whatsapp_number' => ['nullable', 'string', 'max:32', 'regex:/^\+[0-9][0-9 ()\-]{6,30}$/'],

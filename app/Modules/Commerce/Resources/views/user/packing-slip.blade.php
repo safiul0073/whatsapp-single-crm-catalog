@@ -1,46 +1,13 @@
 <x-layouts.document :title="$order->number.' · '.__('Packing slip')" :back="route('user.commerce.orders.show', $order)" format="a4">
     @php
-        $boxes = $order->boxes->sortBy(fn ($box) => preg_match('/(?:BOX-|#)(\d+)/i', $box->label, $matches) ? (int) $matches[1] : (int) $box->id)->values();
+        $presenter = app(\App\Modules\Commerce\Services\OrderDocumentPresenter::class);
+        $boxes = $presenter->boxes($order);
         $totalPieces = $boxes->flatMap->contents->sum('quantity');
         $packedCount = $boxes->whereNotNull('packed_at')->count();
-        $sizeOrder = array_flip(\App\Modules\Commerce\Services\OrderDocumentPresenter::SIZE_ORDER);
         $customerName = $customer['name'] ?? __('Customer');
         $addressLine = collect($shipTo)->filter()->implode(', ');
-        $sizeRank = fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99;
-        $packTiles = $boxes->flatMap(fn ($box) => $box->contents
-            ->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))
-            ->flatMap(function ($contents) use ($box, $sizeRank) {
-                $contents = $contents->sortBy($sizeRank)->values();
-                $total = (int) $contents->sum('quantity');
-                $perPack = $box->group?->mode === 'wholesale' ? (int) $box->group->pieces_per_box : 0;
-                $packCount = $perPack > 0 && $total > $perPack && $total % $perPack === 0 ? intdiv($total, $perPack) : 1;
-                $packCount = $contents->every(fn ($content) => $content->quantity % $packCount === 0) ? $packCount : 1;
-                $quantities = $contents->map(fn ($content) => intdiv((int) $content->quantity, $packCount));
-
-                return collect(range(1, $packCount))->map(fn () => [
-                    'box' => $box,
-                    'item' => $contents->first()->item,
-                    'color' => (string) ($contents->first()->item->attributes['color'] ?? ''),
-                    'sizes' => $contents->map(fn ($content) => $content->item->attributes['size'] ?? '—'),
-                    'quantities' => $quantities,
-                    'pieces' => (int) $quantities->sum(),
-                ]);
-            }))
-            ->values()
-            ->map(fn (array $tile, int $index): array => $tile + ['number' => $index + 1]);
-        $packNumbers = function ($numbers): string {
-            $ranges = [];
-            foreach ($numbers->sort()->values() as $number) {
-                $last = array_key_last($ranges);
-                if ($last !== null && $ranges[$last][1] + 1 === $number) {
-                    $ranges[$last][1] = $number;
-                } else {
-                    $ranges[] = [$number, $number];
-                }
-            }
-
-            return collect($ranges)->map(fn ($range) => $range[0] === $range[1] ? '#'.$range[0] : '#'.$range[0].'–'.$range[1])->implode(', ');
-        };
+        $packTiles = $presenter->packTiles($order);
+        $packNumbers = fn ($numbers): string => $presenter->packNumbers($numbers);
     @endphp
         <header class="flex items-start justify-between gap-4 border-b border-border-default pb-2">
             <div>

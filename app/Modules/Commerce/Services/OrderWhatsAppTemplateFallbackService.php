@@ -26,7 +26,7 @@ use RuntimeException;
 class OrderWhatsAppTemplateFallbackService
 {
     /** Message payload keys that mark an order update or invoice message. */
-    public const REFERENCES = ['order_event_id', 'order_invoice_id', 'custom_invoice_id'];
+    public const REFERENCES = ['order_event_id', 'order_invoice_id', 'custom_invoice_id', 'packing_slip_order_id'];
 
     public function __construct(protected ChannelManager $channels) {}
 

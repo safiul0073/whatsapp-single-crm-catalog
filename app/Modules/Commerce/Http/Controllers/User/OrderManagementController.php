@@ -5,10 +5,12 @@ namespace App\Modules\Commerce\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Http\Requests\CreateUnifiedOrderRequest;
 use App\Modules\Commerce\Http\Requests\PackOrderRequest;
+use App\Modules\Commerce\Http\Requests\SharePackingSlipRequest;
 use App\Modules\Commerce\Http\Requests\StoreCustomerAuthSettingsRequest;
 use App\Modules\Commerce\Http\Requests\StoreOrderSettingsRequest;
 use App\Modules\Commerce\Http\Requests\StorePaymentServicesRequest;
 use App\Modules\Commerce\Http\Requests\UpdateOrderRequest;
+use App\Modules\Commerce\Jobs\SendPackingSlipWhatsApp;
 use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\CustomerAuthSetting;
 use App\Modules\Commerce\Models\Order;
@@ -19,6 +21,7 @@ use App\Modules\Commerce\Models\WhatsAppCustomerRegistration;
 use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderInvoiceWhatsAppService;
 use App\Modules\Commerce\Services\OrderPackingService;
+use App\Modules\Commerce\Services\OrderPackingSlipShareService;
 use App\Modules\Commerce\Services\OrderWhatsAppTemplateFallbackService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
@@ -240,6 +243,18 @@ class OrderManagementController extends Controller
                 throw ValidationException::withMessages(['owner_whatsapp_number' => 'Enter a valid international WhatsApp number, for example +8801711223344.']);
             }
         }
+        if (array_key_exists('packing_slip_recipients', $data)) {
+            $recipients = [];
+            foreach ($data['packing_slip_recipients'] as $index => $recipient) {
+                try {
+                    $phone = app(ContactService::class)->normalizePhone($recipient['phone']);
+                } catch (ValidationException) {
+                    throw ValidationException::withMessages(["packing_slip_recipients.$index.phone" => 'Enter a valid international WhatsApp number, for example +8801711223344.']);
+                }
+                $recipients[$phone] = ['name' => trim($recipient['name']), 'phone' => $phone];
+            }
+            $data['packing_slip_recipients'] = array_values($recipients);
+        }
 
         if ($methods !== null) {
             $this->persistPaymentMethods($workspace, $methods, $request);
@@ -411,6 +426,42 @@ class OrderManagementController extends Controller
         $result = $invoices->send($order->loadMissing('contact'), manual: true);
 
         return back()->with($result['status'] === OrderInvoiceWhatsAppService::SENT ? 'success' : 'warning', $result['message']);
+    }
+
+    /**
+     * Sends one order's packing slip PDF on WhatsApp to the picked people right away and reports each result.
+     */
+    public function sharePackingSlip(SharePackingSlipRequest $request, Order $order, OrderPackingSlipShareService $share): RedirectResponse
+    {
+        $this->assertOrder($request, $order);
+        $recipients = $share->recipients($order->workspace_id, $request->validated('recipients') ?? [], $request->validated('extra_phone'));
+        $result = $share->share($order, $recipients);
+        $summary = trans_choice('Packing slip sent to :count person on WhatsApp.|Packing slip sent to :count people on WhatsApp.', $result['sent'], ['count' => $result['sent']]);
+        if ($result['problems'] === []) {
+            return back()->with('success', $summary);
+        }
+
+        return back()->with('warning', trim(($result['sent'] > 0 ? $summary.' ' : '').__('Not sent').' — '.implode(' ', $result['problems'])));
+    }
+
+    /**
+     * Queues the packing slips of the selected orders for every picked person.
+     */
+    public function bulkSharePackingSlips(SharePackingSlipRequest $request, OrderPackingSlipShareService $share): RedirectResponse
+    {
+        $workspaceId = $this->workspaces->current($request->user())->id;
+        $recipients = $share->recipients($workspaceId, $request->validated('recipients') ?? [], $request->validated('extra_phone'));
+        $orderIds = Order::query()->where('workspace_id', $workspaceId)->whereKey($request->validated('order_ids'))->pluck('id');
+        foreach ($orderIds as $orderId) {
+            foreach ($recipients as $recipient) {
+                SendPackingSlipWhatsApp::dispatch($orderId, $recipient);
+            }
+        }
+
+        return back()->with('success', __('Sending :orders packing slips to :people on WhatsApp. They go out free when possible, otherwise as your approved order update template.', [
+            'orders' => $orderIds->count(),
+            'people' => trans_choice(':count person|:count people', count($recipients), ['count' => count($recipients)]),
+        ]));
     }
 
     public function regenerateInvoiceLink(Request $request, Order $order): RedirectResponse

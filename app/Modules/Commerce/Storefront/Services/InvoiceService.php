@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderGroup;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Models\StoreOrderSetting;
+use App\Modules\Commerce\Services\OrderDocumentPresenter;
 use App\Modules\Commerce\Services\OrderMoney;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Workspaces\Models\Workspace;
@@ -123,6 +124,137 @@ class InvoiceService
         ], $rows);
     }
 
+    /**
+     * The packing slip as an A4 PDF, one row per product colour and pack size, the same grouping as the printable slip.
+     */
+    public function packingSlipPdf(Order $order): string
+    {
+        $order->loadMissing([
+            'contact',
+            'boxes.group',
+            'boxes.contents.item.variant.media', 'boxes.contents.item.variant.color.swatchMedia', 'boxes.contents.item.variant.product.primaryMedia', 'boxes.contents.item.variant.product.gallery.media',
+        ]);
+        $presenter = app(OrderDocumentPresenter::class);
+        $boxes = $presenter->boxes($order);
+        $tiles = $presenter->packTiles($order);
+
+        $rows = [];
+        foreach ($tiles->groupBy(fn (array $tile) => $tile['item']->product_name) as $productName => $productTiles) {
+            foreach ($productTiles->groupBy(fn (array $tile) => $tile['color'].'|'.$tile['quantities']->implode(':')) as $cardTiles) {
+                $first = $cardTiles->first();
+                $packs = $cardTiles->count();
+                $packed = $cardTiles->filter(fn (array $tile) => $tile['box']->packed_at !== null)->count();
+                $rows[] = [
+                    'title' => (string) $productName,
+                    'subtitle' => (filled($first['color']) ? $first['color'] : 'No color').' · '.$first['sizes']->first().'-'.$first['sizes']->last().' · '.$first['quantities']->implode(':').' per pack',
+                    'packs' => $packs.' '.($packs === 1 ? 'pack' : 'packs').' · '.$presenter->packNumbers($cardTiles->pluck('number')),
+                    'pieces' => $cardTiles->sum('pieces').' pcs',
+                    'packed' => $packed.' / '.$packs,
+                    'is_packed' => $packed === $packs,
+                    'image_url' => $this->resolveItemImageUrl($first['item']),
+                ];
+            }
+        }
+
+        $customer = $presenter->customer($order);
+        $document = [
+            'number' => (string) $order->number,
+            'date' => $order->created_at?->format('M j, Y') ?? '',
+            'customer' => array_values(array_filter([(string) ($customer['name'] ?? 'Customer'), (string) ($customer['phone'] ?? '')])),
+            'ship_to' => $presenter->shipTo($order)->all() ?: ['Counter pickup'],
+            'summary' => $tiles->count().' packs · '.(int) $boxes->flatMap->contents->sum('quantity').' pcs · '.$boxes->whereNotNull('packed_at')->count().' / '.$boxes->count().' boxes packed',
+        ];
+        $chunks = $rows === [] ? [[]] : array_merge([array_slice($rows, 0, 8)], array_chunk(array_slice($rows, 8), 11));
+
+        return $this->assemble($order->workspace_id, $rows, $chunks, fn (array $store, ?array $logo, array $pageRows, int $pageIndex, int $totalPages, array $imageUrlToName): string => $this->renderPackingSlipPage($document, $store, $logo, $pageRows, $pageIndex, $totalPages, $imageUrlToName));
+    }
+
+    /**
+     * @param  array{number: string, date: string, customer: list<string>, ship_to: list<string>, summary: string}  $document
+     * @param  array{name: string, address: string, email: string, tax_id: string}  $store
+     * @param  array{name: string, w: float, h: float}|null  $logo
+     * @param  array<int, array{title: string, subtitle: string, packs: string, pieces: string, packed: string, is_packed: bool, image_url: ?string}>  $rows
+     * @param  array<string, string>  $imageUrlToName
+     */
+    private function renderPackingSlipPage(array $document, array $store, ?array $logo, array $rows, int $pageIndex, int $totalPages, array $imageUrlToName): string
+    {
+        $dark = [0.07, 0.09, 0.15];
+        $muted = [0.30, 0.35, 0.43];
+        $ops = ['0.07 0.09 0.15 rg 0 836 595 6 re f'];
+
+        if ($logo) {
+            $ops[] = 'q '.$logo['w'].' 0 0 '.$logo['h'].' 40 '.(826 - $logo['h']).' cm /'.$logo['name'].' Do Q';
+            $ops[] = $this->text(40, 826 - $logo['h'] - 12, $this->truncate($store['name'], 40), 'F2', 10.5, $dark);
+        } else {
+            $ops[] = $this->text(40, 806, $this->truncate($store['name'], 30), 'F2', 20, $dark);
+        }
+        $ops[] = $this->text(380, 806, 'PACKING SLIP', 'F2', 20, $dark);
+        $ops[] = $this->text(380, 788, $this->truncate($document['number'], 28), 'F2', 10, $dark);
+        $ops[] = $this->text(380, 774, 'Date: '.$document['date'], 'F1', 9, $muted);
+        $ops[] = $this->text(380, 761, 'Page '.($pageIndex + 1).' of '.$totalPages, 'F1', 8, [0.50, 0.55, 0.62]);
+        $ops[] = '0.86 0.88 0.91 RG 0.7 w 40 738 m 555 738 l S';
+
+        $y = 730;
+        if ($pageIndex === 0) {
+            $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 40 632 250 90 re B';
+            $ops[] = '0.97 0.98 0.99 rg 0.86 0.88 0.91 RG 0.7 w 305 632 250 90 re B';
+            $ops[] = $this->text(50, 707, 'CUSTOMER', 'F2', 8, [0.40, 0.45, 0.55]);
+            $lineY = 691;
+            foreach (array_slice($document['customer'], 0, 2) as $index => $line) {
+                $ops[] = $this->text(50, $lineY, $this->truncate($line, 40), $index === 0 ? 'F2' : 'F1', $index === 0 ? 10 : 9, $index === 0 ? $dark : [0.25, 0.30, 0.38]);
+                $lineY -= 14;
+            }
+            $ops[] = $this->text(50, 645, $this->truncate($document['summary'], 46), 'F2', 8.5, [0.15, 0.25, 0.45]);
+            $ops[] = $this->text(315, 707, 'SHIP TO', 'F2', 8, [0.40, 0.45, 0.55]);
+            $lineY = 691;
+            foreach (array_slice($document['ship_to'], 0, 5) as $line) {
+                $ops[] = $this->text(315, $lineY, $this->truncate((string) $line, 44), 'F1', 9, [0.25, 0.30, 0.38]);
+                $lineY -= 13;
+            }
+            $y = 612;
+        }
+
+        $ops[] = '0.12 0.16 0.23 rg 40 '.($y - 22).' 515 22 re f';
+        $ops[] = $this->text(48, $y - 14, 'ITEM / COLOR / SIZES', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(345, $y - 14, 'PACKS', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(445, $y - 14, 'PIECES', 'F2', 8.5, [1, 1, 1]);
+        $ops[] = $this->text(500, $y - 14, 'PACKED', 'F2', 8.5, [1, 1, 1]);
+        $y -= 22;
+
+        if ($rows === [] && $pageIndex === 0) {
+            $ops[] = $this->text(48, $y - 24, 'No boxes have been created for this order yet.', 'F1', 9, $muted);
+        }
+        foreach ($rows as $index => $row) {
+            $rowHeight = 52;
+            $nextY = $y - $rowHeight;
+            if ($index % 2 === 1) {
+                $ops[] = '0.98 0.985 0.995 rg 40 '.$nextY.' 515 '.$rowHeight.' re f';
+            }
+            $ops[] = '0.88 0.90 0.93 RG 0.5 w 40 '.$nextY.' 515 '.$rowHeight.' re S';
+            $imageName = $row['image_url'] ? ($imageUrlToName[$row['image_url']] ?? null) : null;
+            if ($imageName) {
+                $ops[] = 'q 44 0 0 44 48 '.($nextY + 4).' cm /'.$imageName.' Do Q';
+            } else {
+                $ops[] = '0.94 0.95 0.97 rg 0.82 0.85 0.90 RG 0.5 w 48 '.($nextY + 4).' 44 44 re B';
+            }
+            $ops[] = $this->text(102, $y - 20, $this->truncate($row['title'], 46), 'F2', 9, $dark);
+            $ops[] = $this->text(102, $y - 34, $this->truncate($row['subtitle'], 56), 'F1', 8, [0.25, 0.30, 0.38]);
+            $ops[] = $this->text(345, $y - 28, $this->truncate($row['packs'], 22), 'F1', 8.5, $dark);
+            $ops[] = $this->text(445, $y - 28, $row['pieces'], 'F2', 9, $dark);
+            $ops[] = $this->text(500, $y - 28, $row['packed'], 'F2', 9, $row['is_packed'] ? [0.10, 0.50, 0.30] : [0.75, 0.40, 0.05]);
+            $y = $nextY;
+        }
+
+        if ($pageIndex === $totalPages - 1) {
+            $signY = max(70, $y - 50);
+            $ops[] = '0.60 0.63 0.68 RG 0.7 w 40 '.$signY.' m 260 '.$signY.' l S 335 '.$signY.' m 555 '.$signY.' l S';
+            $ops[] = $this->text(40, $signY - 12, 'Packed by', 'F1', 8.5, $muted);
+            $ops[] = $this->text(335, $signY - 12, 'Checked by', 'F1', 8.5, $muted);
+        }
+
+        return implode("\n", $ops);
+    }
+
     private function formatter(int $precision, string $currency): Closure
     {
         return fn ($amount): string => $amount !== null
@@ -143,6 +275,28 @@ class InvoiceService
      */
     private function render(int $workspaceId, array $document, array $rows): string
     {
+        return $this->assemble($workspaceId, $rows, $this->paginateRows($rows), fn (array $store, ?array $logo, array $pageRows, int $pageIndex, int $totalPages, array $imageUrlToName): string => $this->renderPageStream(
+            document: $document,
+            store: $store,
+            logo: $logo,
+            rows: $pageRows,
+            isFirstPage: $pageIndex === 0,
+            isLastPage: $pageIndex === ($totalPages - 1),
+            pageNum: $pageIndex + 1,
+            totalPages: $totalPages,
+            imageUrlToName: $imageUrlToName
+        ));
+    }
+
+    /**
+     * Builds an A4 PDF: embeds the row thumbnails and the store logo once, then draws each page with $pageStream.
+     *
+     * @param  array<int, array{image_url?: ?string}>  $rows
+     * @param  array<int, array<int, mixed>>  $rowChunks
+     * @param  Closure(array{name: string, address: string, email: string, tax_id: string}, ?array{name: string, w: float, h: float}, array<int, mixed>, int, int, array<string, string>): string  $pageStream
+     */
+    private function assemble(int $workspaceId, array $rows, array $rowChunks, Closure $pageStream): string
+    {
         $storeSetting = StorefrontSetting::query()->where('workspace_id', $workspaceId)->first();
         $storeName = (string) ($storeSetting?->config['name'] ?? Workspace::query()->find($workspaceId)?->name ?? 'Storefront');
         $store = [
@@ -151,8 +305,6 @@ class InvoiceService
             'email' => trim((string) ($storeSetting?->config['contact_email'] ?? '')),
             'tax_id' => trim((string) ($storeSetting?->config['tax_id'] ?? '')),
         ];
-
-        $rowChunks = $this->paginateRows($rows);
 
         $totalPages = max(1, count($rowChunks));
 
@@ -207,20 +359,7 @@ class InvoiceService
         foreach ($rowChunks as $pageIndex => $pageRows) {
             $pageObjId = 5 + $pageIndex * 2;
             $contentObjId = $pageObjId + 1;
-            $isFirstPage = $pageIndex === 0;
-            $isLastPage = $pageIndex === ($totalPages - 1);
-
-            $stream = $this->renderPageStream(
-                document: $document,
-                store: $store,
-                logo: $logo ? ['name' => $logoName, 'w' => $logo['pt_width'], 'h' => $logo['pt_height']] : null,
-                rows: $pageRows,
-                isFirstPage: $isFirstPage,
-                isLastPage: $isLastPage,
-                pageNum: $pageIndex + 1,
-                totalPages: $totalPages,
-                imageUrlToName: $imageUrlToName
-            );
+            $stream = $pageStream($store, $logo ? ['name' => $logoName, 'w' => $logo['pt_width'], 'h' => $logo['pt_height']] : null, $pageRows, $pageIndex, $totalPages, $imageUrlToName);
 
             $objects[$pageObjId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>'.$xObjectDict.' >> /Contents '.$contentObjId.' 0 R >>';
             $objects[$contentObjId] = '<< /Length '.strlen($stream).">>\nstream\n".$stream."\nendstream";

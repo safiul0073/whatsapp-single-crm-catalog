@@ -110,6 +110,70 @@ class OrderDocumentPresenter
             })->values();
     }
 
+    /**
+     * The order's boxes in box-number order.
+     *
+     * @return Collection<int, mixed>
+     */
+    public function boxes(Order $order): Collection
+    {
+        return $order->boxes->sortBy(fn ($box) => preg_match('/(?:BOX-|#)(\d+)/i', $box->label, $matches) ? (int) $matches[1] : (int) $box->id)->values();
+    }
+
+    /**
+     * Every box's contents as packs: a wholesale box holding several full packs is split into one tile per pack.
+     * Tiles are numbered across the order, in box order.
+     *
+     * @return Collection<int, array{box: mixed, item: mixed, color: string, sizes: Collection<int, string>, quantities: Collection<int, int>, pieces: int, number: int}>
+     */
+    public function packTiles(Order $order): Collection
+    {
+        $sizeOrder = array_flip(self::SIZE_ORDER);
+        $sizeRank = fn ($content) => $sizeOrder[strtoupper($content->item->attributes['size'] ?? '')] ?? 99;
+
+        return $this->boxes($order)->flatMap(fn ($box) => $box->contents
+            ->groupBy(fn ($content) => $content->item->product_name.'|'.($content->item->attributes['color'] ?? ''))
+            ->flatMap(function ($contents) use ($box, $sizeRank) {
+                $contents = $contents->sortBy($sizeRank)->values();
+                $total = (int) $contents->sum('quantity');
+                $perPack = $box->group?->mode === 'wholesale' ? (int) $box->group->pieces_per_box : 0;
+                $packCount = $perPack > 0 && $total > $perPack && $total % $perPack === 0 ? intdiv($total, $perPack) : 1;
+                $packCount = $contents->every(fn ($content) => $content->quantity % $packCount === 0) ? $packCount : 1;
+                $quantities = $contents->map(fn ($content) => intdiv((int) $content->quantity, $packCount));
+
+                return collect(range(1, $packCount))->map(fn () => [
+                    'box' => $box,
+                    'item' => $contents->first()->item,
+                    'color' => (string) ($contents->first()->item->attributes['color'] ?? ''),
+                    'sizes' => $contents->map(fn ($content) => $content->item->attributes['size'] ?? '—'),
+                    'quantities' => $quantities,
+                    'pieces' => (int) $quantities->sum(),
+                ]);
+            }))
+            ->values()
+            ->map(fn (array $tile, int $index): array => $tile + ['number' => $index + 1]);
+    }
+
+    /**
+     * Pack numbers as compact ranges, e.g. "#1–3, #5".
+     *
+     * @param  Collection<int, int>  $numbers
+     */
+    public function packNumbers(Collection $numbers): string
+    {
+        $ranges = [];
+        foreach ($numbers->sort()->values() as $number) {
+            $last = array_key_last($ranges);
+            if ($last !== null && $ranges[$last][1] + 1 === $number) {
+                $ranges[$last][1] = $number;
+            } else {
+                $ranges[] = [$number, $number];
+            }
+        }
+
+        return collect($ranges)->map(fn ($range) => $range[0] === $range[1] ? '#'.$range[0] : '#'.$range[0].'–'.$range[1])->implode(', ');
+    }
+
     private function logoUrl(mixed $logo): ?string
     {
         $logo = is_string($logo) ? trim($logo) : '';

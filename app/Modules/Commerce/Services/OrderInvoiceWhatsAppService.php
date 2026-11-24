@@ -120,6 +120,43 @@ class OrderInvoiceWhatsAppService
     }
 
     /**
+     * Sends the order's packing slip PDF to one person (a packer, courier or the owner). It goes out free-form first;
+     * when the recipient's 24-hour window is closed it is resent as the store's approved utility template.
+     *
+     * @return array{status: string, message: string}
+     */
+    public function sendPackingSlip(Order $order, Contact $contact): array
+    {
+        if ($contact->blocked_at || $contact->opt_out_at || $contact->opt_in_status === ContactOptInStatus::Unsubscribed) {
+            return ['status' => self::SKIPPED_CONTACT, 'message' => 'This number cannot receive WhatsApp messages (blocked or opted out).'];
+        }
+
+        $settings = StoreOrderSetting::forWorkspace($order->workspace_id);
+        $deliver = $this->deliver(
+            workspaceId: $order->workspace_id,
+            contact: $contact,
+            phone: (string) $contact->phone,
+            channelAccountId: $settings->whatsapp_channel_id ?? $order->channel_account_id,
+            caption: 'Packing slip for order '.$order->number,
+            url: $order->packingSlipUrl(),
+            downloadUrl: $order->packingSlipUrl(download: true),
+            filename: $order->number.'-packing-slip.pdf',
+            key: 'packing-slip:'.$order->id.':'.$contact->id.':'.now()->format('YmdHisu'),
+            reference: ['packing_slip_order_id' => $order->id],
+        );
+
+        $messages = [
+            self::SENT => 'Packing slip sent on WhatsApp.',
+            self::SKIPPED_NO_CHANNEL => 'No connected WhatsApp channel for this store.',
+            self::SKIPPED_WINDOW => 'WhatsApp blocked it because this number has not messaged in the last 24 hours and no approved utility template is selected in Order settings.',
+            self::SKIPPED_ALREADY_SENT => 'The packing slip was already sent.',
+            self::FAILED => 'WhatsApp could not send the packing slip.'.($deliver['detail'] !== '' ? ' '.$deliver['detail'] : ''),
+        ];
+
+        return ['status' => $deliver['status'], 'message' => $messages[$deliver['status']] ?? $deliver['status']];
+    }
+
+    /**
      * Finds the WhatsApp channel (opening the conversation if the customer never chatted), then sends the PDF free-form first.
      *
      * @param  array<string, int>  $reference
