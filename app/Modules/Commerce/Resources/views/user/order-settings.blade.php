@@ -184,6 +184,31 @@
                 </div>
             </section>
 
+            <section
+                id="packing-slip-recipients"
+                x-data="{ recipients: {{ Js::from(array_values(old('packing_slip_recipients', $settings->packing_slip_recipients ?? []))) }} }"
+                class="section-card space-y-4 rounded-md border border-neutral-200"
+            >
+                <div>
+                    <h2 class="heading-4 text-title">{{ __('Packing slip recipients') }}</h2>
+                    <p class="text-xs text-body">{{ __('People you share packing slips with on WhatsApp, such as packers or your courier. Pick them when you share a packing slip from an order.') }}</p>
+                </div>
+                <input type="hidden" name="packing_slip_recipients" value="" x-bind:disabled="recipients.length > 0">
+                <template x-for="(recipient, index) in recipients" :key="index">
+                    <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
+                        <input type="text" class="form-input" maxlength="80" :name="`packing_slip_recipients[${index}][name]`" x-model="recipient.name" placeholder="{{ __('Name (e.g. Packer Rahim)') }}" required>
+                        <input type="text" class="form-input" maxlength="32" inputmode="tel" autocomplete="off" :name="`packing_slip_recipients[${index}][phone]`" x-model="recipient.phone" placeholder="+8801711223344" required>
+                        <button type="button" class="btn-sm btn-outline text-error" @click="recipients.splice(index, 1)" aria-label="{{ __('Remove recipient') }}"><i class="ph ph-trash"></i></button>
+                    </div>
+                </template>
+                @foreach($errors->get('packing_slip_recipients*') as $messages)
+                    @foreach($messages as $message)<p class="text-xs text-error">{{ $message }}</p>@endforeach
+                @endforeach
+                <button type="button" class="btn-sm btn-outline" x-show="recipients.length < 20" @click="recipients.push({ name: '', phone: '' })">
+                    <i class="ph ph-plus"></i> {{ __('Add recipient') }}
+                </button>
+            </section>
+
             <section class="section-card space-y-4 rounded-md border border-neutral-200">
                 <h2 class="heading-4 text-title">{{ __('WhatsApp notifications') }}</h2>
 

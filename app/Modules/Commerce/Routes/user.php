@@ -166,6 +166,8 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
         Route::put('orders/{order}/boxes/{box}/packed', [$controller, 'packed'])->name('orders.boxes.packed');
         Route::post('orders/{order}/invoice/send', [$controller, 'sendInvoice'])->name('orders.invoice.send');
         Route::post('orders/{order}/invoice/link', [$controller, 'regenerateInvoiceLink'])->name('orders.invoice.link');
+        Route::post('orders/packing-slips/share', [$controller, 'bulkSharePackingSlips'])->name('orders.packing-slips.bulk-share');
+        Route::post('orders/{order}/packing-slip/share', [$controller, 'sharePackingSlip'])->name('orders.packing-slip.share');
     });
     Route::get('orders/{order}/packing-slip', [OrderManagementController::class, 'slip'])->middleware('permission:commerce.orders.view')->name('orders.packing-slip');
     Route::get('orders/{order}/invoice/print', [OrderManagementController::class, 'invoicePrint'])->middleware('permission:commerce.orders.view')->name('orders.invoice.print');

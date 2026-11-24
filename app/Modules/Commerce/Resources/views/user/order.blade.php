@@ -66,5 +66,6 @@
         @include('commerce::user.partials.order.modal-customer')
         @include('commerce::user.partials.order.modal-hold')
         @include('commerce::user.partials.order.modal-message')
+        @can('commerce.orders.update')@include('commerce::user.partials.order.share-packing-slip-modal')@endcan
     </div>
 </x-layouts.user>

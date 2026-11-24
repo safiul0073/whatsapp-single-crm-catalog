@@ -12,7 +12,7 @@ class StoreOrderSetting extends Model
 
     protected $table = 'commerce_store_order_settings';
 
-    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'order_number_prefix', 'order_number_digits', 'next_order_sequence', 'review_request_enabled', 'review_request_delay_hours', 'low_stock_alerts_enabled', 'low_stock_threshold'];
+    protected $fillable = ['whatsapp_notifications', 'whatsapp_channel_id', 'whatsapp_template_id', 'owner_whatsapp_number', 'workspace_id', 'currency', 'reservation_hours', 'payment_instructions', 'order_number_prefix', 'order_number_digits', 'next_order_sequence', 'review_request_enabled', 'review_request_delay_hours', 'low_stock_alerts_enabled', 'low_stock_threshold', 'packing_slip_recipients'];
 
     protected function casts(): array
     {
@@ -22,6 +22,7 @@ class StoreOrderSetting extends Model
             'review_request_delay_hours' => 'integer',
             'low_stock_alerts_enabled' => 'boolean',
             'low_stock_threshold' => 'integer',
+            'packing_slip_recipients' => 'array',
             'reservation_hours' => 'integer',
             'order_number_digits' => 'integer',
             'next_order_sequence' => 'integer',

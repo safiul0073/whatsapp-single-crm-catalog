@@ -194,6 +194,12 @@
                     <span class="rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-bold text-neutral-600">{{ $orders->total() }}</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-3 text-xs text-body">
+                    @can('commerce.orders.update')
+                        <button type="button" class="btn btn-sm btn-outline" x-show="selected.length > 0" x-cloak @click="$dispatch('open-packing-slip-share', { action: {{ Js::from(route('user.commerce.orders.packing-slips.bulk-share')) }}, orderIds: [...selected], label: selected.length + ' ' + {{ Js::from(__('orders selected')) }} })">
+                            <i class="ph ph-whatsapp-logo"></i>
+                            <span x-text="{{ Js::from(__('Share packing slips')) }} + ' (' + selected.length + ')'"></span>
+                        </button>
+                    @endcan
                     @if($canDeleteOrders)
                         <form method="POST" action="{{ route('user.commerce.orders.bulk-destroy') }}" x-show="selected.length > 0" x-cloak>
                             @csrf
@@ -401,6 +407,12 @@
                                                 <i class="ph ph-printer text-base"></i>
                                                 <span>{{ __('Print packing slip') }}</span>
                                             </a>
+                                            @can('commerce.orders.update')
+                                                <button type="button" class="floating-dropdown-item w-full text-left" x-data @click="$dispatch('open-packing-slip-share', {{ Js::from(['action' => route('user.commerce.orders.packing-slip.share', $order), 'label' => $order->number]) }})">
+                                                    <i class="ph ph-whatsapp-logo text-base"></i>
+                                                    <span>{{ __('Share packing slip') }}</span>
+                                                </button>
+                                            @endcan
                                             <a href="{{ route('user.commerce.orders.invoice.print', $order->source === 'pos' ? ['order' => $order, 'format' => 'receipt'] : $order) }}" target="_blank" rel="noopener" class="floating-dropdown-item">
                                                 <i class="ph ph-file-text text-base"></i>
                                                 <span>{{ __('Print invoice') }}</span>
@@ -465,5 +477,6 @@
         </section>
 
         @include('commerce::user.partials.order.modal-message')
+        @can('commerce.orders.update')@include('commerce::user.partials.order.share-packing-slip-modal')@endcan
     </div>
 </x-layouts.user>

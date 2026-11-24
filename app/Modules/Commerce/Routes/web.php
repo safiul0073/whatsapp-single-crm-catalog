@@ -14,3 +14,4 @@ Route::get('shop/{workspace:slug}/products/{product:slug}', [PublicCommerceContr
 
 Route::get('invoices/{token}', [PublicInvoiceController::class, 'show'])->middleware('throttle:60,1')->name('commerce.invoices.show');
 Route::get('custom-invoices/{token}', [PublicInvoiceController::class, 'custom'])->middleware('throttle:60,1')->name('commerce.custom-invoices.show');
+Route::get('packing-slips/{order}', [PublicInvoiceController::class, 'packingSlip'])->whereNumber('order')->middleware(['signed', 'throttle:60,1'])->name('commerce.packing-slips.show');

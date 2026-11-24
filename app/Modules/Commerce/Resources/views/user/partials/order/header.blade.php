@@ -42,6 +42,9 @@
                             <button type="submit" class="order-menu-item" role="menuitem"><i class="ph ph-whatsapp-logo"></i> {{ $order->invoice_sent_at ? __('Resend invoice on WhatsApp') : __('Send invoice on WhatsApp') }}</button>
                         </form>
                     @endcan
+                    @can('commerce.orders.update')
+                        <button type="button" class="order-menu-item" role="menuitem" @click="open = false; $dispatch('open-packing-slip-share', {{ Js::from(['action' => route('user.commerce.orders.packing-slip.share', $order), 'label' => $order->number]) }})"><i class="ph ph-share-network"></i> {{ __('Share packing slip on WhatsApp') }}</button>
+                    @endcan
                     @if($order->invoice_sent_at)<p class="px-3 py-2 text-xs text-body">{{ __('Invoice sent on WhatsApp') }} {{ $order->invoice_sent_at->format('M j, Y · g:i A') }}</p>@endif
                 </div>
             </div>

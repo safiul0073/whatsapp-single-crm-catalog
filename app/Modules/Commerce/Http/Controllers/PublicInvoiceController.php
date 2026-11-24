@@ -48,4 +48,19 @@ class PublicInvoiceController extends Controller
             'X-Robots-Tag' => 'noindex, nofollow',
         ]);
     }
+
+    /**
+     * Serves the packing slip PDF on the signed link shared with packers or couriers on WhatsApp.
+     */
+    public function packingSlip(Request $request, Order $order): Response
+    {
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($this->invoices->packingSlipPdf($order), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$order->number.'-packing-slip.pdf"',
+            'Cache-Control' => 'private, no-store',
+            'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
+    }
 }

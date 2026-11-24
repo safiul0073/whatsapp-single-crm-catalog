@@ -728,6 +728,7 @@ class CommerceController extends Controller
             'canDeleteOrders' => $workspace->isOwner($request->user()),
             'canMessageCustomers' => $canMessageCustomers,
             'orderMessagePayloads' => $orderMessagePayloads,
+            'packingSlipRecipients' => StoreOrderSetting::forWorkspace($workspace->id)->packing_slip_recipients ?? [],
         ]);
     }
 
@@ -777,6 +778,7 @@ class CommerceController extends Controller
             'canDeleteOrders' => $this->workspaces->current($request->user())?->isOwner($request->user()) ?? false,
             'canMessageCustomers' => $canMessageCustomers,
             'orderMessagePayload' => $canMessageCustomers ? $orderMessages->orderModalPayload($order) : null,
+            'packingSlipRecipients' => StoreOrderSetting::forWorkspace($order->workspace_id)->packing_slip_recipients ?? [],
         ]);
     }
 
