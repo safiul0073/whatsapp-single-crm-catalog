@@ -10,6 +10,7 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Storefront\Models\ProductReview;
 use App\Modules\Commerce\Storefront\Services\InvoiceService;
+use App\Modules\Commerce\Storefront\Services\OrderEditRequestService;
 use App\Modules\Shipping\Models\Shipment;
 use App\Modules\Shipping\Services\CustomerShipmentPresenter;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,9 +41,11 @@ class OrderController extends Controller
         return response()->json(['data' => $this->withReviews($r, $payloads), 'meta' => ['last_page' => $p->lastPage(), 'current_page' => $p->currentPage()]]);
     }
 
-    public function show(Request $r, string $ref, UnifiedOrderService $s): JsonResponse
+    public function show(Request $r, string $ref, UnifiedOrderService $s, OrderEditRequestService $edits): JsonResponse
     {
-        return response()->json(['data' => $this->withReviews($r, [$s->payload($this->find($r, $ref))])[0]]);
+        $order = $this->find($r, $ref);
+
+        return response()->json(['data' => array_merge($this->withReviews($r, [$s->payload($order)])[0], $edits->customerPayload($order))]);
     }
 
     /**

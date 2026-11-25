@@ -180,6 +180,7 @@ Route::prefix('commerce')->name('commerce.')->group(function (): void {
     Route::put('orders/{order}/quote', [CommerceController::class, 'quote'])->middleware('permission:commerce.orders.update')->name('orders.quote');
     Route::put('orders/{order}/hold', [CommerceController::class, 'extendHold'])->middleware('permission:commerce.orders.update')->name('orders.hold');
     Route::put('orders/{order}/status', [CommerceController::class, 'transition'])->middleware('permission:commerce.orders.update')->name('orders.transition');
+    Route::put('orders/{order}/edit-requests/{editRequest}', [CommerceController::class, 'decideEditRequest'])->middleware('permission:commerce.orders.update')->name('orders.edit-requests.decide');
     Route::put('orders/{order}/shipment', [CommerceController::class, 'updateShipment'])->middleware('permission:commerce.orders.update')->name('orders.shipment');
     Route::post('orders/{order}/message', [CommerceController::class, 'sendMessage'])->middleware('permission:commerce.orders.update')->name('orders.message.send');
     Route::post('conversations/{conversation}/catalog', [CommerceController::class, 'sendCatalog'])->middleware('permission:commerce.catalog.manage')->name('conversations.catalog');
