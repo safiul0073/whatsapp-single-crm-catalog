@@ -12,6 +12,7 @@ use App\Modules\Commerce\Http\Requests\CommerceSettingsRequest;
 use App\Modules\Commerce\Http\Requests\CustomerAccountRequest;
 use App\Modules\Commerce\Http\Requests\DeleteOrdersRequest;
 use App\Modules\Commerce\Http\Requests\ExtendOrderHoldRequest;
+use App\Modules\Commerce\Http\Requests\OrderEditDecisionRequest;
 use App\Modules\Commerce\Http\Requests\ProductDetailsRequest;
 use App\Modules\Commerce\Http\Requests\ProductGalleryRequest;
 use App\Modules\Commerce\Http\Requests\ProductOptionsRequest;
@@ -55,7 +56,9 @@ use App\Modules\Commerce\Services\ProductTypeService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\CustomerAddress;
+use App\Modules\Commerce\Storefront\Models\OrderEditRequest;
 use App\Modules\Commerce\Storefront\Services\FeatureIconCatalog;
+use App\Modules\Commerce\Storefront\Services\OrderEditRequestService;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
@@ -649,7 +652,7 @@ class CommerceController extends Controller
     {
         $workspace = $this->workspaces->current($request->user());
 
-        $query = Order::query()->with(['contact.identities', 'payments'])->where('workspace_id', $workspace->id);
+        $query = Order::query()->with(['contact.identities', 'payments'])->withExists(['editRequests as has_pending_edit_request' => fn ($q) => $q->where('status', 'pending')])->where('workspace_id', $workspace->id);
 
         if ($request->filled('search')) {
             $search = trim($request->string('search')->toString());
@@ -779,6 +782,7 @@ class CommerceController extends Controller
             'canMessageCustomers' => $canMessageCustomers,
             'orderMessagePayload' => $canMessageCustomers ? $orderMessages->orderModalPayload($order) : null,
             'packingSlipRecipients' => StoreOrderSetting::forWorkspace($order->workspace_id)->packing_slip_recipients ?? [],
+            'editRequest' => app(OrderEditRequestService::class)->latest($order),
         ]);
     }
 
@@ -1065,6 +1069,20 @@ class CommerceController extends Controller
         $this->orders->transition($order, $request->string('status')->toString(), $request->validated());
 
         return back()->with('success', __('Order status updated.'));
+    }
+
+    public function decideEditRequest(OrderEditDecisionRequest $request, Order $order, OrderEditRequest $editRequest, OrderEditRequestService $edits): RedirectResponse
+    {
+        $this->assertWorkspace($request, $order->workspace_id);
+        abort_unless($editRequest->order_id === $order->id, 404);
+        $decision = $request->string('decision')->toString();
+        $edits->decide($order, $editRequest, $decision, $request->validated('owner_note'), $request->user());
+
+        return back()->with('success', match ($decision) {
+            'approve' => __('Edit approved. The customer can now change this order once.'),
+            'reject' => __('Edit request declined.'),
+            default => __('Edit permission withdrawn.'),
+        });
     }
 
     public function extendHold(ExtendOrderHoldRequest $request, Order $order): RedirectResponse

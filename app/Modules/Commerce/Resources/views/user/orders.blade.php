@@ -316,6 +316,9 @@
                                         <span class="h-1.5 w-1.5 rounded-full {{ $statusBadge['dot'] }}"></span>
                                         <span>{{ str($order->status)->replace('_', ' ')->title() }}</span>
                                     </span>
+                                    @if($order->has_pending_edit_request)
+                                        <span class="mt-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"><i class="ph ph-pencil-simple-line"></i> {{ __('Edit requested') }}</span>
+                                    @endif
                                 </td>
 
                                 {{-- Source & Payment State --}}

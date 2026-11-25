@@ -45,6 +45,7 @@
     <div class="order-compact" x-data="commerceProductGallery">
         @include('commerce::user.partials.order.header')
         @include('commerce::user.partials.order.attention')
+        @include('commerce::user.partials.order.edit-request')
 
         <div class="order-layout grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">

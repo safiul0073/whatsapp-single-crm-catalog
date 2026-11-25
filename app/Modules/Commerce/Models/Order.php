@@ -3,6 +3,7 @@
 namespace App\Modules\Commerce\Models;
 
 use App\Modules\Commerce\Services\OrderMoney;
+use App\Modules\Commerce\Storefront\Models\OrderEditRequest;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -185,6 +186,11 @@ class Order extends Model
     public function events(): HasMany
     {
         return $this->hasMany(OrderEvent::class)->orderBy('occurred_at')->orderBy('id');
+    }
+
+    public function editRequests(): HasMany
+    {
+        return $this->hasMany(OrderEditRequest::class)->orderByDesc('id');
     }
 
     public function reservations(): HasMany

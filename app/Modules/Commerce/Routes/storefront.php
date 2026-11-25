@@ -11,6 +11,7 @@ use App\Modules\Commerce\Storefront\Http\Controllers\EngagementController;
 use App\Modules\Commerce\Storefront\Http\Controllers\GeoController;
 use App\Modules\Commerce\Storefront\Http\Controllers\LiveController;
 use App\Modules\Commerce\Storefront\Http\Controllers\OrderController;
+use App\Modules\Commerce\Storefront\Http\Controllers\OrderEditController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PackController;
 use App\Modules\Commerce\Storefront\Http\Controllers\ProfileController;
 use App\Modules\Commerce\Storefront\Http\Controllers\PushController;
@@ -103,6 +104,9 @@ $storefrontRoutes = function (): void {
         Route::get('me/orders', [OrderController::class, 'index']);
         Route::get('me/orders/{ref}', [OrderController::class, 'show']);
         Route::post('me/orders/{ref}/cancel', [OrderController::class, 'cancel']);
+        Route::post('me/orders/{ref}/edit-requests', [OrderEditController::class, 'store']);
+        Route::post('me/orders/{ref}/edit/preview', [OrderEditController::class, 'preview']);
+        Route::put('me/orders/{ref}/edit', [OrderEditController::class, 'update']);
         Route::get('me/orders/{ref}/invoice', [OrderController::class, 'invoice']);
         Route::post('orders/{ref}/evidence', [OrderController::class, 'evidence']);
         Route::get('me/invoices', [CustomInvoiceController::class, 'index']);
