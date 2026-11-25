@@ -26,7 +26,7 @@
             </div>
         </header>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="{{ __('Stock summary') }}">
+        <section class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="{{ __('Stock summary') }}">
             <a href="{{ route('user.commerce.inventory.index', ['status' => 'out']) }}" @class(['app-card flex items-center gap-4 p-4 transition hover:border-error', 'ring-2 ring-error/40' => $filters['status'] === 'out'])>
                 <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-error/10 text-xl text-error"><i class="ph ph-prohibit"></i></span>
                 <span>
@@ -69,14 +69,14 @@
                         </a>
                     @endforeach
                 </nav>
-                <form method="GET" action="{{ route('user.commerce.inventory.index') }}" class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                <form method="GET" action="{{ route('user.commerce.inventory.index') }}" class="grid grid-cols-[1fr_auto] items-center gap-2 sm:flex sm:flex-nowrap">
                     @if ($filters['status'] !== 'all')
                         <input type="hidden" name="status" value="{{ $filters['status'] }}">
                     @endif
                     <label class="sr-only" for="inventory-search">{{ __('Search products or SKU') }}</label>
-                    <div class="w-full sm:w-56"><input id="inventory-search" type="search" name="q" value="{{ $filters['q'] }}" class="form-input h-9" placeholder="{{ __('Search product or SKU') }}"></div>
+                    <div class="relative w-full sm:w-64"><i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400"></i><input id="inventory-search" type="search" name="q" value="{{ $filters['q'] }}" class="form-input input-search h-9 py-0" placeholder="{{ __('Search product or SKU') }}"></div>
                     <label class="sr-only" for="inventory-category">{{ __('Category') }}</label>
-                    <div class="w-full sm:w-52"><select id="inventory-category" name="category_id" class="form-input h-9" @change="$el.form.submit()">
+                    <div class="col-span-2 row-start-2 w-full sm:w-52"><select id="inventory-category" name="category_id" class="form-input h-9 py-0" @change="$el.form.submit()">
                         <option value="">{{ __('All categories') }}</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}" @selected($filters['category_id'] === $category->id)>{{ $category->name }}</option>
@@ -86,13 +86,13 @@
                 </form>
             </div>
 
-            <p class="flex items-center gap-2 border-b border-border-soft bg-section/60 px-5 py-2 text-xs text-body">
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-soft bg-section/60 px-5 py-2 text-xs text-body">
                 <i class="ph ph-info text-sm"></i>
                 {{ __('Low stock means :count units or fewer.', ['count' => $threshold]) }}
                 @can('commerce.orders.settings')
                     <a href="{{ route('user.commerce.orders.settings') }}" class="font-medium text-primary hover:underline">{{ __('Change') }}</a>
                 @endcan
-                <span class="ml-auto hidden sm:inline">{{ __('Reserved = held for unpaid orders. Available = what shoppers can still buy.') }}</span>
+                <span class="w-full sm:ml-auto sm:w-auto">{{ __('Reserved = held for unpaid orders. Available = what shoppers can still buy.') }}</span>
             </p>
 
             @if ($variants->isEmpty())
@@ -106,8 +106,8 @@
                     <table class="w-full min-w-[900px] text-left text-sm">
                         <thead>
                             <tr class="border-b border-border-soft bg-section">
-                                <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Product') }}</th>
-                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('On hand') }}</th>
+                                <th class="w-[42%] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Product') }}</th>
+                                <th class="w-72 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('On hand') }}</th>
                                 <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-body">{{ __('Status') }}</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Available') }}</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-body">{{ __('Reserved') }}</th>
@@ -126,22 +126,22 @@
                                 @endphp
                                 <tr
                                     class="border-l-4 transition hover:bg-section/70"
-                                    :class="{ 'border-l-error bg-error/5': status === 'out', 'border-l-warning bg-warning/5': status === 'low', 'border-l-transparent': status === 'in' }"
+                                    :class="{ 'border-l-error': status === 'out', 'border-l-warning': status === 'low', 'border-l-transparent': status === 'in' }"
                                     x-data="inventoryRow(@js(['url' => route('user.commerce.inventory.adjust', $variant), 'stock' => $stock, 'reserved' => $held, 'available' => $variant->availableQuantity($held), 'status' => $stockStatus, 'labels' => $rowLabels]))"
                                     data-inventory-row="{{ $variant->id }}"
                                 >
                                     <td class="px-5 py-3">
                                         <div class="flex min-w-0 items-center gap-3">
                                             @if ($variant->product->primaryMedia)
-                                                <img src="{{ $variant->product->primaryMedia->url }}" alt="{{ $variant->product->name }}" class="h-10 w-10 shrink-0 rounded-md border border-neutral-100 object-cover" loading="lazy">
+                                                <img src="{{ $variant->product->primaryMedia->url }}" alt="{{ $variant->product->name }}" class="h-11 w-11 shrink-0 rounded-md border border-border bg-neutral-0 object-cover" loading="lazy">
                                             @else
-                                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-section text-lg text-neutral-300"><i class="ph ph-t-shirt"></i></span>
+                                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-section text-lg text-neutral-300"><i class="ph ph-t-shirt"></i></span>
                                             @endif
                                             <div class="min-w-0">
                                                 @if ($canManage)
-                                                    <a href="{{ route('user.commerce.products.edit', ['product' => $variant->product, 'step' => 5]) }}" class="block max-w-72 truncate font-semibold text-title hover:text-primary">{{ $variant->product->name }}</a>
+                                                    <a href="{{ route('user.commerce.products.edit', ['product' => $variant->product, 'step' => 5]) }}" class="block max-w-md truncate font-semibold text-title hover:text-primary" title="{{ $variant->product->name }}">{{ $variant->product->name }}</a>
                                                 @else
-                                                    <span class="block max-w-72 truncate font-semibold text-title">{{ $variant->product->name }}</span>
+                                                    <span class="block max-w-md truncate font-semibold text-title" title="{{ $variant->product->name }}">{{ $variant->product->name }}</span>
                                                 @endif
                                                 <span class="mt-0.5 flex flex-wrap gap-1">
                                                     @if ($colorName)
@@ -154,18 +154,18 @@
                                                         <span class="inline-flex rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs text-body">{{ str($variant->status)->replace('_', ' ')->title() }}</span>
                                                     @endif
                                                 </span>
-                                                <span class="mt-0.5 block max-w-72 truncate font-mono text-xs text-body" title="{{ $variant->sku }}">{{ $variant->sku }}</span>
+                                                <span class="mt-0.5 block max-w-md truncate font-mono text-xs text-body" title="{{ $variant->sku }}">{{ $variant->sku }}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($canManage)
-                                            <div class="relative flex items-center gap-1.5">
-                                                <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(-1)" :disabled="saving || stock <= 0" aria-label="{{ __('Remove one unit of :item', ['item' => $title]) }}"><i class="ph ph-minus"></i></button>
+                                            <div class="relative flex items-center gap-2"><div class="flex h-8 shrink-0 items-stretch overflow-hidden rounded-md border border-border bg-neutral-0">
+                                                <button type="button" class="grid w-8 shrink-0 place-items-center border-r border-border text-title transition hover:bg-section hover:text-primary disabled:opacity-40" @click="step(-1)" :disabled="saving || stock <= 0" aria-label="{{ __('Remove one unit of :item', ['item' => $title]) }}"><i class="ph ph-minus"></i></button>
                                                 <label class="sr-only" for="stock-{{ $variant->id }}">{{ __('Stock for :item', ['item' => $title]) }}</label>
-                                                <div class="w-20 shrink-0"><input id="stock-{{ $variant->id }}" type="number" min="0" max="100000" inputmode="numeric" class="form-input h-8 text-center font-semibold" x-model="draft" :disabled="saving" @keydown.enter.prevent="$el.blur()" @blur="commitDraft()" @keydown.escape="draft = stock; $el.blur()"></div>
-                                                <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border text-title transition hover:border-primary hover:text-primary disabled:opacity-40" @click="step(1)" :disabled="saving" aria-label="{{ __('Add one unit of :item', ['item' => $title]) }}"><i class="ph ph-plus"></i></button>
-                                                <button type="button" class="btn btn-sm btn-outline ml-1" @click="restockOpen = ! restockOpen" :aria-expanded="restockOpen"><i class="ph ph-arrows-down-up"></i> {{ __('Adjust') }}</button>
+                                                <div class="w-16 shrink-0"><input id="stock-{{ $variant->id }}" type="number" min="0" max="100000" inputmode="numeric" class="h-full w-full border-0 bg-transparent px-1 text-center text-sm font-semibold text-title focus:ring-2 focus:ring-primary/20 focus:outline-none" x-model="draft" :disabled="saving" @keydown.enter.prevent="$el.blur()" @blur="commitDraft()" @keydown.escape="draft = stock; $el.blur()"></div>
+                                                <button type="button" class="grid w-8 shrink-0 place-items-center border-l border-border text-title transition hover:bg-section hover:text-primary disabled:opacity-40" @click="step(1)" :disabled="saving" aria-label="{{ __('Add one unit of :item', ['item' => $title]) }}"><i class="ph ph-plus"></i></button></div>
+                                                <button type="button" class="btn btn-sm btn-outline" @click="restockOpen = ! restockOpen" :aria-expanded="restockOpen"><i class="ph ph-arrows-down-up"></i> {{ __('Adjust') }}</button>
                                                 <i class="ph ph-spinner animate-spin text-primary" x-show="saving" x-cloak></i>
 
                                                 <form class="absolute right-0 top-10 z-20 w-72 space-y-3 rounded-md border border-border bg-neutral-0 p-4 shadow-lg" x-show="restockOpen" x-cloak x-transition @click.outside="restockOpen = false" @keydown.escape.window="restockOpen = false" @submit.prevent="submitRestock()">
