@@ -809,6 +809,14 @@ class CommerceController extends Controller
             });
         }
 
+        if ($request->filled('from')) {
+            $query->whereDate('registered_at', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('registered_at', '<=', $request->date('to'));
+        }
+
         $customers = $query->latest('registered_at')->latest('id')->paginate(25)->withQueryString();
 
         $contactIds = $customers->pluck('contact_id')->filter()->unique()->values();

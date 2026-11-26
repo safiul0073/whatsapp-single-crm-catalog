@@ -2,6 +2,7 @@
 
 use App\Modules\MetaSocial\Http\Controllers\User\MessengerOffersController;
 use App\Modules\MetaSocial\Http\Controllers\User\MetaBusinessController;
+use App\Modules\MetaSocial\Http\Controllers\User\MetaPagePostAiController;
 use App\Modules\MetaSocial\Http\Controllers\User\MetaPagePostController;
 use App\Modules\MetaSocial\Http\Controllers\User\MetaSocialSetupController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,9 @@ Route::middleware(['can:meta-social.publish'])->prefix('meta/posts')->name('meta
     Route::get('/', [MetaPagePostController::class, 'index'])->name('index');
     Route::get('create', [MetaPagePostController::class, 'create'])->name('create');
     Route::post('/', [MetaPagePostController::class, 'store'])->name('store');
+    Route::get('products/{product}/assets', [MetaPagePostAiController::class, 'productAssets'])->whereNumber('product')->name('product-assets');
+    Route::post('ai/caption', [MetaPagePostAiController::class, 'caption'])->middleware('throttle:20,1')->name('ai-caption');
+    Route::post('ai/image', [MetaPagePostAiController::class, 'image'])->middleware('throttle:6,1')->name('ai-image');
     Route::post('{post}/retry', [MetaPagePostController::class, 'retry'])->whereNumber('post')->name('retry');
     Route::delete('{post}', [MetaPagePostController::class, 'destroy'])->whereNumber('post')->name('destroy');
 });

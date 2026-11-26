@@ -15,6 +15,7 @@ use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\StoreFeatures;
 use App\Modules\Commerce\Services\UnifiedOrderService;
 use App\Modules\Commerce\Storefront\Jobs\RevalidateStorefront;
+use App\Modules\Commerce\Storefront\Models\Customer;
 use App\Modules\Commerce\Storefront\Models\StorefrontSetting;
 use App\Modules\Contacts\Models\Contact;
 use App\Modules\Inbox\Models\Conversation;
@@ -1213,4 +1214,45 @@ it('releases held stock when an unpaid order is deleted and still expires holds 
 
     expect($legacyDeleted->reservations()->where('state', 'reserved')->count())->toBe(0)
         ->and($live->fresh()->status)->toBe('cancelled');
+});
+
+it('filters the order list by created date range', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $order->forceFill(['created_at' => now()->subDays(20)])->save();
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $index = fn (int $fromDaysAgo, int $toDaysAgo) => route('user.commerce.orders.index', ['from' => now()->subDays($fromDaysAgo)->toDateString(), 'to' => now()->subDays($toDaysAgo)->toDateString()]);
+
+    $this->actingAs($c['user'])->get($index(25, 15))->assertOk()->assertSee($order->number);
+    $this->actingAs($c['user'])->get($index(3, 0))->assertOk()->assertDontSee($order->number.'<', false)->assertSee('No orders matched');
+});
+
+it('filters the customer list by registered date range for page and ajax requests', function () {
+    $c = unifiedContext();
+    $make = fn (string $name, $registeredAt) => Customer::query()->create([
+        'workspace_id' => $c['workspace']->id,
+        'contact_id' => Contact::query()->create(['workspace_id' => $c['workspace']->id, 'name' => $name, 'phone' => '+8801'.random_int(100000000, 999999999)])->id,
+        'registered_at' => $registeredAt,
+    ]);
+    $make('Recent Buyer Zeta', now()->subDay());
+    $make('Old Buyer Omega', now()->subDays(40));
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+    $url = route('user.commerce.customers.index', ['from' => now()->subDays(7)->toDateString()]);
+
+    $this->actingAs($c['user'])->get($url)->assertOk()->assertSee('Recent Buyer Zeta')->assertDontSee('Old Buyer Omega');
+    $this->actingAs($c['user'])->getJson($url)->assertOk()->assertJsonPath('total', 1);
+});
+
+it('shows a WhatsApp inbox chat button for each order with a contact', function () {
+    $c = unifiedContext();
+    $order = app(UnifiedOrderService::class)->create($c['workspace'], $c['data']);
+    $this->withSession(['active_workspace_id' => $c['workspace']->id]);
+
+    $this->actingAs($c['user'])->get(route('user.commerce.orders.index'))
+        ->assertOk()
+        ->assertSee(route('user.inbox.contacts.conversation', $order->contact_id), false);
+
+    $this->actingAs(workspaceMemberWith($c, ['commerce.orders.view']))->get(route('user.commerce.orders.index'))
+        ->assertOk()
+        ->assertDontSee(route('user.inbox.contacts.conversation', $order->contact_id), false);
 });

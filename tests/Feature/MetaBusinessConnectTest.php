@@ -8,6 +8,7 @@ use App\Modules\MetaSocial\Services\MetaAppSettingsService;
 use App\Modules\WhatsAppCloud\Services\WhatsAppSettingsService;
 use App\Modules\Workspaces\Services\WorkspacePermissionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
@@ -181,6 +182,25 @@ it('refuses to connect when the business configuration is missing', function ():
         ->assertSessionHasErrors('meta_business');
 
     expect(MetaBusinessConnection::query()->exists())->toBeFalse();
+});
+
+it('shows the reason Meta gives when the code exchange fails', function (): void {
+    Http::swap(new HttpFactory);
+    Http::fake([
+        '*/oauth/access_token*' => Http::response(['error' => [
+            'message' => 'This authorization code has been used.',
+            'type' => 'OAuthException',
+            'code' => 100,
+        ]], 400),
+    ]);
+
+    $this->withoutMiddleware()
+        ->actingAs(metaBusinessUser())
+        ->post(route('user.meta-social.business.connect'), ['code' => 'used-code'])
+        ->assertSessionHasErrors('meta_business');
+
+    expect(session('errors')->first('meta_business'))->not->toBe('Meta code exchange failed. Please try connecting again.')
+        ->and(MetaBusinessConnection::query()->exists())->toBeFalse();
 });
 
 it('shows what each newly connected channel still needs after activation', function (): void {

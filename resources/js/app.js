@@ -44,6 +44,7 @@ import './components/image-color-picker.js';
 import './components/meta-connect.js';
 import './components/meta-ad-builder.js';
 import './components/tiktok-post-form.js';
+import './components/meta-post-composer.js';
 
 // Alpine.js components (register before Alpine.start())
 import './components/datatable.js';

@@ -1,0 +1,23 @@
+.meta-composer-step { display: flex; align-items: center; gap: .6rem; font-weight: 600; color: var(--color-text-strong); }
+.meta-composer-step span { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary); font-size: .8rem; }
+.meta-composer-step small { font-weight: 400; opacity: .6; }
+.meta-composer-product { border-radius: .75rem; padding: .75rem 1rem; background: color-mix(in srgb, var(--color-primary) 6%, transparent); }
+.meta-composer-ai { display: grid; gap: .75rem; padding: 1rem; border-radius: .9rem; border: 1px dashed color-mix(in srgb, var(--color-primary) 45%, transparent); background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+.meta-composer-ai-title { display: flex; align-items: center; gap: .4rem; font-weight: 600; color: var(--color-primary); }
+.meta-composer-tabs { display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; border-radius: .75rem; background: color-mix(in srgb, currentColor 6%, transparent); width: fit-content; max-width: 100%; }
+.meta-composer-tabs button { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .9rem; border-radius: .55rem; font-size: .875rem; opacity: .75; }
+.meta-composer-tabs button.is-active { background: var(--color-bg-elevated); opacity: 1; font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .1); }
+.meta-composer-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .6rem; }
+.meta-composer-thumb { position: relative; aspect-ratio: 1; border-radius: .7rem; overflow: hidden; border: 2px solid transparent; }
+.meta-composer-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.meta-composer-thumb i { position: absolute; top: .3rem; right: .3rem; font-size: 1.3rem; color: var(--color-primary); background: #fff; border-radius: 999px; display: none; }
+.meta-composer-thumb.is-selected { border-color: var(--color-primary); }
+.meta-composer-thumb.is-selected i { display: block; }
+.meta-composer-preview { border-radius: 1rem; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); background: var(--color-bg-elevated); overflow: hidden; }
+.meta-composer-preview-head { display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem .5rem; }
+.meta-composer-avatar { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 999px; background: var(--color-primary); color: #fff; font-weight: 700; text-transform: uppercase; }
+.meta-composer-preview-text { padding: 0 1rem .75rem; white-space: pre-line; font-size: .9rem; max-height: 14rem; overflow: auto; }
+.meta-composer-preview-image { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.meta-composer-preview-empty { display: flex; align-items: center; justify-content: center; gap: .4rem; aspect-ratio: 16 / 9; opacity: .5; background: color-mix(in srgb, currentColor 5%, transparent); }
+.meta-composer-preview-link { padding: .5rem 1rem; font-size: .75rem; opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: color-mix(in srgb, currentColor 5%, transparent); }
+.meta-composer-preview-actions { display: flex; justify-content: space-around; padding: .6rem; font-size: .8rem; opacity: .7; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }

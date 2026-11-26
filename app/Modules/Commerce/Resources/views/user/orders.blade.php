@@ -31,7 +31,7 @@
                 <h1 class="heading-3 text-title font-bold">{{ __('Orders') }}</h1>
                 <p class="mt-1 text-sm text-body">{{ __('Review cart requests, prepare shipping quotes, track fulfillment, and manage sales.') }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2.5">
+            <div class="flex flex-wrap items-center gap-2 lg:flex-nowrap">
                 @can('commerce.pos.use')
                     <x-ui.button variant="outline" size="sm" href="{{ route('user.commerce.pos.index') }}" class="shadow-xs hover:border-primary hover:text-primary">
                         <i class="ph ph-cash-register text-base"></i>
@@ -77,8 +77,8 @@
         </div>
 
         {{-- Filters & Search Bar --}}
-        <div class="card p-4 sm:p-5">
-            <form method="GET" action="{{ route('user.commerce.orders.index') }}" class="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div class="card !p-2">
+            <form method="GET" action="{{ route('user.commerce.orders.index') }}" x-data @submit="[...$el.elements].forEach((field) => { if (field.name && field.value === '') { field.disabled = true; } })" class="flex flex-col gap-2 lg:flex-row lg:items-center">
                 @if(request()->filled('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
@@ -87,14 +87,14 @@
                 @endif
 
                 {{-- Search Box --}}
-                <div class="relative flex-1">
+                <div class="relative min-w-0 flex-1 lg:min-w-[15rem]">
                     <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400"></i>
                     <input
                         type="search"
                         name="search"
                         value="{{ request('search') }}"
                         placeholder="{{ __('Search order #, customer, tracking code, phone...') }}"
-                        class="form-input input-search !pl-11 !pr-10 w-full py-2 text-sm rounded-lg border-neutral-200 bg-neutral-0 placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+                        class="form-input input-search !pl-10 !pr-9 !h-9 w-full !py-0 !text-xs rounded-lg border-neutral-200 bg-neutral-0 placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                     />
                     @if(request('search'))
                         <a href="{{ request()->fullUrlWithQuery(['search' => null, 'page' => null]) }}" class="absolute top-1/2 right-3 -translate-y-1/2 flex items-center text-neutral-400 hover:text-neutral-600" title="{{ __('Clear search') }}">
@@ -105,8 +105,8 @@
 
                 <div class="flex flex-wrap items-center gap-2.5">
                     {{-- Source Dropdown --}}
-                    <div class="min-w-[160px] flex-1 sm:flex-initial">
-                        <select name="source" class="form-input py-2 text-sm rounded-lg border-neutral-200 bg-neutral-0 focus:border-primary focus:ring-2 focus:ring-primary/20" onchange="this.form.submit()">
+                    <div class="min-w-[120px] flex-1 sm:flex-initial lg:w-36">
+                        <select name="source" class="form-input !h-9 !py-0 !pl-3 !pr-8 !text-xs rounded-lg border-neutral-200 bg-neutral-0 focus:border-primary focus:ring-2 focus:ring-primary/20" onchange="this.form.requestSubmit()">
                             <option value="">{{ __('All sources') }}</option>
                             @foreach($sources as $src)
                                 @php
@@ -124,8 +124,8 @@
                     </div>
 
                     {{-- Payment State Dropdown --}}
-                    <div class="min-w-[160px] flex-1 sm:flex-initial">
-                        <select name="payment_state" class="form-input py-2 text-sm rounded-lg border-neutral-200 bg-neutral-0 focus:border-primary focus:ring-2 focus:ring-primary/20" onchange="this.form.submit()">
+                    <div class="min-w-[120px] flex-1 sm:flex-initial lg:w-36">
+                        <select name="payment_state" class="form-input !h-9 !py-0 !pl-3 !pr-8 !text-xs rounded-lg border-neutral-200 bg-neutral-0 focus:border-primary focus:ring-2 focus:ring-primary/20" onchange="this.form.requestSubmit()">
                             <option value="">{{ __('All payment states') }}</option>
                             @foreach(['unpaid' => __('Unpaid'), 'partially_paid' => __('Partially Paid'), 'paid' => __('Paid'), 'submitted' => __('Submitted')] as $stateKey => $stateLabel)
                                 <option value="{{ $stateKey }}" @selected(request('payment_state') === $stateKey)>{{ $stateLabel }}</option>
@@ -133,14 +133,17 @@
                         </select>
                     </div>
 
+                    {{-- Date Range --}}
+                    <x-forms.filters.date-range :submit="true" class="basis-full sm:basis-auto" />
+
                     {{-- Action Buttons --}}
-                    <button type="submit" class="btn btn-sm btn-primary inline-flex items-center gap-1.5 shadow-xs">
+                    <button type="submit" class="btn btn-sm btn-primary inline-flex h-9 items-center gap-1.5 shadow-xs">
                         <i class="ph ph-funnel text-base"></i>
                         <span>{{ __('Filter') }}</span>
                     </button>
 
                     @if(request()->anyFilled(['search', 'status', 'source', 'payment_state', 'contact_id', 'from', 'to']))
-                        <a href="{{ route('user.commerce.orders.index') }}" class="btn btn-sm btn-outline inline-flex items-center gap-1.5 text-neutral-600 hover:text-error hover:border-error" title="{{ __('Reset all filters') }}">
+                        <a href="{{ route('user.commerce.orders.index') }}" class="btn btn-sm btn-outline inline-flex h-9 items-center gap-1.5 text-neutral-600 hover:text-error hover:border-error" title="{{ __('Reset all filters') }}">
                             <i class="ph ph-arrow-counter-clockwise text-base"></i>
                             <span>{{ __('Reset') }}</span>
                         </a>
@@ -149,8 +152,8 @@
             </form>
 
             {{-- Active Filter Tags --}}
-            @if(request()->anyFilled(['search', 'status', 'source', 'payment_state', 'contact_id']))
-                <div class="mt-3.5 pt-3 border-t border-border-soft flex flex-wrap items-center gap-2 text-xs">
+            @if(request()->anyFilled(['search', 'status', 'source', 'payment_state', 'contact_id', 'from', 'to']))
+                <div class="mt-2 pt-2 px-1 border-t border-border-soft flex flex-wrap items-center gap-2 text-xs">
                     <span class="text-neutral-500 font-medium">{{ __('Active filters:') }}</span>
                     @if(request('search'))
                         <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-neutral-700">
@@ -178,6 +181,13 @@
                             <span class="text-neutral-400">{{ __('Payment:') }}</span>
                             <span class="font-medium">{{ str(request('payment_state'))->replace('_', ' ')->title() }}</span>
                             <a href="{{ request()->fullUrlWithQuery(['payment_state' => null, 'page' => null]) }}" class="text-neutral-400 hover:text-error"><i class="ph ph-x"></i></a>
+                        </span>
+                    @endif
+                    @if(request('from') || request('to'))
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-neutral-700">
+                            <i class="ph ph-calendar-blank text-neutral-400"></i>
+                            <span class="font-medium">{{ request('from') ? \Illuminate\Support\Carbon::parse(request('from'))->format('d M Y') : __('Any') }} – {{ request('to') ? \Illuminate\Support\Carbon::parse(request('to'))->format('d M Y') : __('Today') }}</span>
+                            <a href="{{ request()->fullUrlWithQuery(['from' => null, 'to' => null, 'page' => null]) }}" class="text-neutral-400 hover:text-error"><i class="ph ph-x"></i></a>
                         </span>
                     @endif
                     <a href="{{ route('user.commerce.orders.index') }}" class="text-xs text-primary hover:underline ml-1 font-semibold">{{ __('Clear all') }}</a>
@@ -238,6 +248,9 @@
                             <th class="py-3 px-4 text-right">{{ __('Total') }}</th>
                             <th class="py-3 px-4 text-right">{{ __('Balance due') }}</th>
                             <th class="py-3 px-4">{{ __('Received') }}</th>
+                            @canany(['inbox.view', 'inbox.assigned_only'])
+                                <th class="py-3 px-4 text-center">{{ __('Chat') }}</th>
+                            @endcanany
                             <th class="py-3 px-4 text-right">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
@@ -370,6 +383,24 @@
                                     </div>
                                 </td>
 
+                                {{-- WhatsApp Inbox --}}
+                                @canany(['inbox.view', 'inbox.assigned_only'])
+                                    <td class="py-3 px-4 text-center">
+                                        @if ($order->contact_id)
+                                            <form method="POST" action="{{ route('user.inbox.contacts.conversation', $order->contact_id) }}" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="provider" value="whatsapp">
+                                                <button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-2.5 text-xs font-semibold text-success transition hover:bg-success hover:text-white" title="{{ __('Open WhatsApp chat with this customer in Inbox') }}" aria-label="{{ __('Open WhatsApp chat for order :number', ['number' => $order->number]) }}">
+                                                    <i class="ph ph-whatsapp-logo text-base"></i>
+                                                    <span>{{ __('Chat') }}</span>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs text-neutral-400" title="{{ __('No customer contact on this order') }}">—</span>
+                                        @endif
+                                    </td>
+                                @endcanany
+
                                 {{-- Actions --}}
                                 <td class="py-3 px-4 text-right">
                                     @php
@@ -444,7 +475,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $canDeleteOrders ? 9 : 8 }}" class="p-12 text-center">
+                                <td colspan="{{ ($canDeleteOrders ? 9 : 8) + (auth()->user()?->canAny(['inbox.view', 'inbox.assigned_only']) ? 1 : 0) }}" class="p-12 text-center">
                                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 mb-3">
                                         <i class="ph ph-shopping-bag text-2xl"></i>
                                     </div>

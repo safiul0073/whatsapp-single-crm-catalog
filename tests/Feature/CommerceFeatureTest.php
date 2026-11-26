@@ -21,10 +21,8 @@ use App\Modules\Commerce\Services\GarmentPricingService;
 use App\Modules\Commerce\Services\OrderIntakeService;
 use App\Modules\Commerce\Services\OrderWorkflowService;
 use App\Modules\Commerce\Services\ProductService;
+use App\Modules\Commerce\Services\StorefrontUrl;
 use App\Modules\Contacts\Models\Contact;
-use App\Modules\Frontend\Database\Seeders\FrontendPageSeeder;
-use App\Modules\Frontend\Database\Seeders\FrontendSectionSeeder;
-use App\Modules\Frontend\Database\Seeders\FrontendThemeSettingSeeder;
 use App\Modules\Inbox\Models\Conversation;
 use App\Modules\Inbox\Models\Message;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
@@ -108,174 +106,9 @@ function commerceMedia(User $user, string $name, string $type = 'image'): Media
     ]);
 }
 
-it('renders a merchant public shop with only active products', function (): void {
-    $context = commerceContext();
-    $activeProduct = commerceProduct($context['workspace']->id);
-    $activeProduct->update(['name' => 'Public Performance Jacket', 'slug' => 'public-performance-jacket']);
-
-    Product::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'name' => 'Draft Hidden Jacket',
-        'slug' => 'draft-hidden-jacket',
-        'brand' => 'Dhaka Apparel',
-        'description' => 'This product should not be public.',
-        'condition' => 'new',
-        'audience' => 'adult',
-        'country_of_origin' => 'BD',
-        'status' => 'draft',
-    ]);
-
-    $this->get(route('commerce.products.index', $context['workspace']->slug))
-        ->assertOk()
-        ->assertSee($context['workspace']->name)
-        ->assertSee('Public Performance Jacket')
-        ->assertSee(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $activeProduct->slug]), false)
-        ->assertDontSee('Draft Hidden Jacket');
-});
-
-it('renders all active products with category and subcategory filters on the public products page', function (): void {
-    $context = commerceContext();
-    $parent = Category::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'name' => 'Outerwear',
-        'slug' => 'outerwear',
-        'is_active' => true,
-    ]);
-    $jackets = Category::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'parent_id' => $parent->id,
-        'name' => 'Jackets',
-        'slug' => 'jackets',
-        'is_active' => true,
-    ]);
-    $shirts = Category::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'parent_id' => $parent->id,
-        'name' => 'Shirts',
-        'slug' => 'shirts',
-        'is_active' => true,
-    ]);
-    $jacket = commerceProduct($context['workspace']->id);
-    $jacket->update(['name' => 'Public Filter Jacket', 'slug' => 'public-filter-jacket', 'category_id' => $jackets->id]);
-    $shirt = commerceProduct($context['workspace']->id);
-    $shirt->update(['name' => 'Public Filter Shirt', 'slug' => 'public-filter-shirt', 'category_id' => $shirts->id]);
-
-    $this->get(route('commerce.products.shortcut'))
-        ->assertOk()
-        ->assertSee('All active products')
-        ->assertSee('Outerwear')
-        ->assertSee('Jackets')
-        ->assertSee('Public Filter Jacket')
-        ->assertSee('Public Filter Shirt')
-        ->assertSee(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $jacket->slug]), false);
-
-    $this->get(route('commerce.products.shortcut', ['category' => $parent->id, 'subcategory' => $jackets->id]))
-        ->assertOk()
-        ->assertSee('Public Filter Jacket')
-        ->assertDontSee('Public Filter Shirt');
-});
-
-it('renders active commerce products on the home page products section', function (): void {
-    $this->seed(FrontendThemeSettingSeeder::class);
-    $this->seed(FrontendSectionSeeder::class);
-    $this->seed(FrontendPageSeeder::class);
-
-    $context = commerceContext();
-    $activeProduct = commerceProduct($context['workspace']->id);
-    $activeProduct->update(['name' => 'Homepage Active Jacket', 'slug' => 'homepage-active-jacket']);
-    $front = commerceMedia($context['user'], 'homepage-active-front');
-    $front->update(['alt' => 'Homepage active front']);
-
-    app(ProductService::class)->updateGallery($activeProduct, [
-        ['id' => $front->id, 'alt_text' => 'Homepage active front', 'is_primary' => true],
-    ]);
-
-    Product::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'name' => 'Homepage Draft Jacket',
-        'slug' => 'homepage-draft-jacket',
-        'brand' => 'Dhaka Apparel',
-        'description' => 'This draft product should not render on the home page.',
-        'condition' => 'new',
-        'audience' => 'adult',
-        'country_of_origin' => 'BD',
-        'status' => 'draft',
-    ]);
-
-    Catalog::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'channel_account_id' => $context['channel']->id,
-        'meta_catalog_id' => 'catalog-homepage',
-        'feed_token' => str_repeat('h', 64),
-        'is_active' => true,
-    ]);
-
-    $productUrl = route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $activeProduct->fresh()->slug]);
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertSee('WhatsApp Catalog')
-        ->assertSee('Homepage Active Jacket')
-        ->assertSee('Homepage active front')
-        ->assertSee('USD 49.95')
-        ->assertSee($productUrl, false)
-        ->assertSee('https://wa.me/14155550100', false)
-        ->assertDontSee('Homepage Draft Jacket');
-});
-
-it('redirects the legacy product URL when the slug is unique', function (): void {
-    $context = commerceContext();
-    $product = commerceProduct($context['workspace']->id);
-    $product->update(['slug' => 'legacy-jacket']);
-
-    $this->get(route('commerce.products.legacy', $product->slug))
-        ->assertRedirect(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => 'legacy-jacket']));
-});
-
-it('renders a modern active public product detail page', function (): void {
-    $context = commerceContext();
-    $product = commerceProduct($context['workspace']->id);
-    $product->update(['name' => 'Modern Detail Jacket', 'slug' => 'modern-detail-jacket']);
-    $front = commerceMedia($context['user'], 'public-front');
-
-    app(ProductService::class)->updateGallery($product, [
-        ['id' => $front->id, 'alt_text' => 'Front view', 'is_primary' => true],
-    ]);
-
-    Catalog::query()->create([
-        'workspace_id' => $context['workspace']->id,
-        'channel_account_id' => $context['channel']->id,
-        'meta_catalog_id' => 'catalog-public',
-        'feed_token' => str_repeat('b', 64),
-        'is_active' => true,
-    ]);
-
-    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->fresh()->slug]))
-        ->assertOk()
-        ->assertSee('Modern Detail Jacket')
-        ->assertSee('49.95')
-        ->assertSee('JKT-BLK-M')
-        ->assertSee('WhatsApp Order')
-        ->assertViewHas('whatsappPhone', '14155550100')
-        ->assertSee(':href="whatsappOrderUrl"', false)
-        ->assertSee('Front view')
-        ->assertSee('Catalog')
-        ->assertDontSee('ADD TO SHOPPING CART')
-        ->assertDontSee('https://wa.me/?text=', false)
-        ->assertDontSee('Furniture')
-        ->assertDontSee('Payment:')
-        ->assertDontSee('EMI available')
-        ->assertDontSee('2 - 5 working days')
-        ->assertDontSee('Standard delivery timeline');
-});
-
-it('does not render inactive public product detail pages', function (string $status): void {
-    $context = commerceContext();
-    $product = commerceProduct($context['workspace']->id);
-    $product->update(['slug' => 'inactive-public-product-'.$status, 'status' => $status]);
-
-    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))->assertNotFound();
-})->with(['draft', 'archived']);
+it('no longer serves the old public shop pages', function (string $path): void {
+    $this->get($path)->assertNotFound();
+})->with(['/products', '/shop', '/shop/products']);
 
 it('shows commerce sidebar links to a permitted web user', function (): void {
     Permission::findOrCreate('commerce.view', 'web');
@@ -598,7 +431,7 @@ it('generates a Meta CSV feed with merchant URLs and configured currency prices'
 
     expect($csv)->toContain('meta-jkt-blk-m')
         ->toContain('49.95 BDT')
-        ->toContain(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))
+        ->toContain(app(StorefrontUrl::class)->product($context['workspace']->id, $product->slug))
         ->toContain('Polyester')
         ->and($catalog->fresh()->last_item_count)->toBe(1);
 });
@@ -997,34 +830,6 @@ it('supports color-dedicated multi-image galleries and connects them to swatches
     expect($blackGallery->count())->toBe(2)
         ->and($blackGallery->pluck('media_id')->all())->toBe([$media3->id, $media4->id])
         ->and($blackColor->fresh()->swatch_media_id)->toBe($media3->id);
-
-    // Check Public Storefront
-    $product->update([
-        'status' => 'active',
-        'wizard_step' => 5,
-        'moq' => 40,
-        'wholesale_price' => 20.00,
-        'fit' => 'USA True-to-Size',
-        'set_includes' => 'Hoodie + Jogger Pants',
-        'gender' => 'Unisex (Boys & Girls)',
-        'season' => 'All Season',
-        'shipping_info' => 'USA & Canada Shipping',
-        'delivery_time' => '6–10 Working Days Delivery',
-    ]);
-
-    $this->get(route('commerce.products.public', ['workspace' => $context['workspace']->slug, 'product' => $product->slug]))
-        ->assertOk()
-        ->assertSee('Royal Blue')
-        ->assertSee('Jet Black')
-        ->assertSee('Add to Quote')
-        ->assertSee('WhatsApp Order')
-        ->assertSee('MOQ: 40')
-        ->assertSee('USA &amp; Canada Shipping', false)
-        ->assertSee('USA True-to-Size')
-        ->assertSee('COLORS AVAILABLE')
-        ->assertSee('1000+')
-        ->assertSee('USA Buyers Trust Us')
-        ->assertSee($product->name);
 });
 
 function readyApiCatalog(array $context, string $token = 'catalog-access'): Catalog
@@ -1309,6 +1114,7 @@ it('offers catalog upload for published products and queues only the selected pr
 
 it('upserts existing local products with complete supported variant details and confirms batch results', function (): void {
     Queue::fake();
+    config(['storefront.url' => 'https://shop.test']);
     Http::fake([
         'graph.facebook.com/*/batch' => Http::response(['handles' => ['handle-1']], 200),
         'graph.facebook.com/*/check_batch_request_status*' => Http::response(['data' => [['handle' => 'handle-1', 'status' => 'finished', 'errors_total_count' => 0]]], 200),
