@@ -6,11 +6,12 @@ use App\Modules\Commerce\Models\Catalog;
 use App\Modules\Commerce\Models\ProductVariant;
 use App\Modules\Commerce\Models\StoreOrderSetting;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CatalogFeedService
 {
+    public function __construct(protected StorefrontUrl $storefrontUrl) {}
+
     public function response(Catalog $catalog): StreamedResponse
     {
         $catalog->forceFill(['last_fetched_at' => now()])->save();
@@ -73,7 +74,7 @@ class CatalogFeedService
             'condition' => $variant->product->condition,
             'price' => (int) round((float) $variant->price * 100),
             'currency' => StoreOrderSetting::catalogCurrency($variant->workspace_id),
-            'url' => URL::route('commerce.products.public', ['workspace' => $variant->product->workspace->slug, 'product' => $variant->product->slug]),
+            'url' => $this->storefrontUrl->product($variant->workspace_id, $variant->product->slug),
             'image_url' => $primary,
             'additional_image_urls' => $additional,
             'brand' => $variant->product->brand ?: config('app.name'),

@@ -22,7 +22,6 @@ test('classic home sections are registered across theme config and seeders', fun
         'home_testimonials',
         'global_faq',
         'faq_hero',
-        'home_products',
         'home_blog',
         'blog_hero',
         'blog_featured',
@@ -94,7 +93,6 @@ test('classic home sections are registered across theme config and seeders', fun
         'home_stack',
         'home_testimonials',
         'global_faq',
-        'home_products',
         'home_blog',
         'blog_hero',
         'blog_featured',
@@ -138,7 +136,6 @@ test('classic home sections are registered across theme config and seeders', fun
         'homepage-testimonials',
         'global-faq',
         'global-contact',
-        'homepage-products',
         'homepage-blog',
     ])->and($sectionSlugs)->toContain(...FrontendPageSeeder::homeSectionSlugs());
 
@@ -157,13 +154,12 @@ test('classic home sections are registered across theme config and seeders', fun
 
 test('classic home page section ids are ordered by the declared slug list', function () {
     $orderedIds = FrontendPageSeeder::orderedHomeSectionIdsBySlugMap([
-        'homepage-blog' => 14,
+        'homepage-blog' => 13,
         'homepage-about' => 2,
         'homepage-hero' => 1,
         'homepage-stack' => 9,
         'global-faq' => 11,
         'global-contact' => 12,
-        'homepage-products' => 13,
         'homepage-services' => 3,
         'homepage-how-work' => 8,
         'homepage-stats' => 4,
@@ -173,7 +169,7 @@ test('classic home page section ids are ordered by the declared slug list', func
         'homepage-marquee' => 6,
     ]);
 
-    expect($orderedIds)->toBe([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect($orderedIds)->toBe([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
 });
 
 test('home testimonials section exposes configurable copy fields', function () {
@@ -209,25 +205,4 @@ test('home blog section exposes configurable copy fields', function () {
         ->and($fields['heading_highlight']['default'])->toBe('articles')
         ->and($fields['cta_text']['default'])->toBe('View all posts')
         ->and($fields['cta_link']['default'])->toBe('/blog');
-});
-
-test('home products section exposes configurable copy and limit fields', function () {
-    $fields = config('frontend-sections.home_products.fields');
-
-    expect($fields)->toHaveKeys([
-        'eyebrow_text',
-        'heading_line_one',
-        'heading_highlight',
-        'subheading',
-        'cta_text',
-        'cta_link',
-        'product_limit',
-    ]);
-
-    expect($fields['eyebrow_text']['default'])->toBe('WhatsApp Catalog')
-        ->and($fields['heading_line_one']['default'])->toBe('Latest')
-        ->and($fields['heading_highlight']['default'])->toBe('products')
-        ->and($fields['cta_text']['default'])->toBe('View all products')
-        ->and($fields['cta_link']['default'])->toBe('/products')
-        ->and($fields['product_limit']['default'])->toBe(4);
 });

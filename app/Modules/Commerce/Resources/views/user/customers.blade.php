@@ -19,6 +19,8 @@
     @endphp
     <div class="space-y-6" x-data="{
         search: {{ Js::from((string) request('search', '')) }},
+        from: {{ Js::from((string) request('from', '')) }},
+        to: {{ Js::from((string) request('to', '')) }},
         loadingList: false,
         listController: null,
         total: {{ Js::from($customers->total()) }},
@@ -44,10 +46,24 @@
             if (term !== '') {
                 url.searchParams.set('search', term);
             }
+            if (this.from) {
+                url.searchParams.set('from', this.from);
+            }
+            if (this.to) {
+                url.searchParams.set('to', this.to);
+            }
             return url.toString();
+        },
+        setDates(detail) {
+            this.from = detail.from;
+            this.to = detail.to;
+            this.fetchList(this.searchUrl());
         },
         clearSearch() {
             this.search = '';
+        },
+        resetFilters() {
+            window.location.href = {{ Js::from(route('user.commerce.customers.index')) }};
         },
         fetchList(url) {
             if (this.listController) {
@@ -152,10 +168,10 @@
         </header>
 
         {{-- Filters & Search Bar --}}
-        <div class="card p-4 sm:p-5">
-            <form method="GET" action="{{ route('user.commerce.customers.index') }}" @submit.prevent="fetchList(searchUrl())" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="card !p-2">
+            <form method="GET" action="{{ route('user.commerce.customers.index') }}" @submit.prevent="fetchList(searchUrl())" @date-range-change="setDates($event.detail)" class="flex flex-col gap-2 md:flex-row md:items-center">
                 {{-- Instant Search Box --}}
-                <div class="relative flex-1">
+                <div class="relative min-w-0 flex-1 lg:min-w-[15rem]">
                     <i class="ph ph-magnifying-glass pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-400" x-show="!loadingList"></i>
                     <i class="ph ph-spinner animate-spin pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-primary" x-show="loadingList" x-cloak></i>
                     <input
@@ -166,16 +182,22 @@
                         autocomplete="off"
                         aria-label="{{ __('Search customers') }}"
                         placeholder="{{ __('Search customer name, phone, email, or city...') }}"
-                        class="form-input input-search !pl-11 !pr-10 w-full py-2 text-sm rounded-lg border-neutral-200 bg-neutral-0 placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+                        class="form-input input-search !pl-10 !pr-9 !h-9 w-full !py-0 !text-xs rounded-lg border-neutral-200 bg-neutral-0 placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                     />
                     <button type="button" x-show="search !== ''" x-cloak @click="clearSearch()" class="absolute top-1/2 right-3 -translate-y-1/2 flex items-center text-neutral-400 hover:text-neutral-600" title="{{ __('Clear search') }}">
                         <i class="ph ph-x text-sm"></i>
                     </button>
                 </div>
-                <p class="text-xs text-neutral-500 sm:w-48 sm:text-right">
-                    <span x-show="search === ''">{{ __('Results update as you type.') }}</span>
-                    <span x-show="search !== ''" x-cloak>{{ __('Matches for') }} "<span class="font-semibold text-title" x-text="search"></span>"</span>
-                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-forms.filters.date-range class="basis-full sm:basis-auto" />
+                    <span class="hidden whitespace-nowrap text-[11px] text-neutral-500 lg:inline" x-show="search !== '' || from || to" x-cloak>
+                        <span x-text="total"></span> {{ __('matches') }}
+                    </span>
+                    <button type="button" x-show="search !== '' || from || to" x-cloak @click="resetFilters()" class="btn btn-sm btn-outline inline-flex h-9 items-center gap-1.5 text-neutral-600 hover:text-error hover:border-error" title="{{ __('Reset all filters') }}">
+                        <i class="ph ph-arrow-counter-clockwise text-base"></i>
+                        <span>{{ __('Reset') }}</span>
+                    </button>
+                </div>
             </form>
         </div>
 

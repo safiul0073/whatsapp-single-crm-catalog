@@ -21,7 +21,6 @@ return [
             'home_testimonials',
             'global_faq',
             'faq_hero',
-            'home_products',
             'home_blog',
             'blog_hero',
             'blog_featured',

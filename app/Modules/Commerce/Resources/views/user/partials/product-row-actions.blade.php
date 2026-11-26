@@ -2,8 +2,8 @@
 @php($showcaseUrl = $showcaseLinks->url($product))
 @php($menuId = 'product-actions-'.$product->id)
 <div class="flex items-center justify-end gap-1">
-    @if ($product->status === 'active')
-        <a href="{{ route('commerce.products.direct', ['product' => $product->slug]) }}" class="grid h-8 w-8 place-items-center rounded-md text-body transition hover:bg-neutral-100 hover:text-title" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}">
+    @if ($showcaseUrl)
+        <a href="{{ $showcaseUrl }}" class="grid h-8 w-8 place-items-center rounded-md text-body transition hover:bg-neutral-100 hover:text-title" target="_blank" rel="noopener" aria-label="{{ __('Preview :product', ['product' => $product->name]) }}" title="{{ __('Preview') }}">
             <i class="ph ph-arrow-square-out text-base"></i>
         </a>
     @endif
@@ -23,7 +23,7 @@
             </a>
         @endif
 
-        @if ($product->status === 'active')
+        @if ($showcaseUrl)
             @can('meta-ads.manage')
                 <a href="{{ route('user.meta-ads.ads.create', ['product_id' => $product->id]) }}" class="floating-dropdown-item" data-promote-product>
                     <i class="ph ph-megaphone"></i> {{ __('Promote with a Facebook ad') }}

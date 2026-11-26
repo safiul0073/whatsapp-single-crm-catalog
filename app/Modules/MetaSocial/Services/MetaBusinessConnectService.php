@@ -4,6 +4,7 @@ namespace App\Modules\MetaSocial\Services;
 
 use App\Models\User;
 use App\Modules\MarketingChannels\Models\ChannelAccount;
+use App\Modules\MarketingChannels\Services\MetaErrorTranslator;
 use App\Modules\MarketingChannels\Services\WorkspaceResolver;
 use App\Modules\MetaSocial\Models\MetaBusinessConnection;
 use App\Modules\WhatsAppCloud\Services\ChannelSetupService;
@@ -65,8 +66,11 @@ class MetaBusinessConnectService
         $response = $this->client->exchangeCode($code);
 
         if (! $response->successful() || blank($response->json('access_token'))) {
+            $errors = app(MetaErrorTranslator::class);
+            $errors->log('meta_business.code_exchange_failed', $response->json(), ['status' => $response->status()]);
+
             throw ValidationException::withMessages([
-                'meta_business' => __('Meta code exchange failed. Please try connecting again.'),
+                'meta_business' => $errors->summary($response->json(), __('Meta code exchange failed. Please try connecting again.')),
             ]);
         }
 

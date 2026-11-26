@@ -420,8 +420,11 @@ class MetaSocialSetupService
         $response = $this->client->exchangeEmbeddedSignupCode($code);
 
         if (! $response->successful() || ! $response->json('access_token')) {
+            $errors = app(MetaErrorTranslator::class);
+            $errors->log('meta_social.code_exchange_failed', $response->json(), ['status' => $response->status()]);
+
             throw ValidationException::withMessages([
-                'embedded_signup' => __('Meta code exchange failed. Please try connecting again.'),
+                'embedded_signup' => $errors->summary($response->json(), __('Meta code exchange failed. Please try connecting again.')),
             ]);
         }
 
